@@ -1,60 +1,76 @@
-import { Injectable, OnModuleInit, OnModuleDestroy } from '@nestjs/common';
+import { Injectable, OnModuleInit, OnModuleDestroy, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import Redis from 'ioredis';
 
 @Injectable()
 export class RedisService implements OnModuleInit, OnModuleDestroy {
-  private client: Redis;
+  private client: Redis | null = null;
+  private readonly logger = new Logger(RedisService.name);
+  private isConnected = false;
 
   constructor(private configService: ConfigService) {}
 
   async onModuleInit() {
-    const redisUrl = this.configService.get('redis.url');
-    
-    if (redisUrl) {
-      // Use URL connection (for Railway/Upstash)
-      this.client = new Redis(redisUrl, {
-        retryStrategy: (times) => {
+    try {
+      const redisUrl = this.configService.get('redis.url');
+      
+      const redisOptions: any = {
+        retryStrategy: (times: number) => {
           if (times > 3) {
-            console.error('❌ Redis connection failed after 3 retries');
+            this.logger.warn('Redis connection failed after 3 retries - continuing without Redis');
             return null;
           }
           return Math.min(times * 200, 1000);
         },
         maxRetriesPerRequest: 3,
         lazyConnect: true,
+        enableOfflineQueue: false,
+      };
+
+      if (redisUrl) {
+        this.logger.log('Connecting to Redis via URL...');
+        this.client = new Redis(redisUrl, redisOptions);
+      } else {
+        this.logger.log('Connecting to Redis via host/port...');
+        this.client = new Redis({
+          ...redisOptions,
+          host: this.configService.get('redis.host'),
+          port: this.configService.get('redis.port'),
+          password: this.configService.get('redis.password') || undefined,
+        });
+      }
+
+      this.client.on('connect', () => {
+        this.isConnected = true;
+        this.logger.log('✅ Redis connected');
       });
-    } else {
-      // Use host/port connection (for local development)
-      this.client = new Redis({
-        host: this.configService.get('redis.host'),
-        port: this.configService.get('redis.port'),
-        password: this.configService.get('redis.password') || undefined,
-        retryStrategy: (times) => {
-          if (times > 3) {
-            console.error('❌ Redis connection failed after 3 retries');
-            return null;
-          }
-          return Math.min(times * 200, 1000);
-        },
+
+      this.client.on('error', (error) => {
+        this.isConnected = false;
+        this.logger.warn(`Redis error: ${error.message}`);
       });
+
+      // Try to connect but don't block startup
+      await this.client.connect().catch((err) => {
+        this.logger.warn(`Redis initial connection failed: ${err.message} - app will continue without Redis`);
+      });
+    } catch (error) {
+      this.logger.warn(`Redis setup failed: ${error.message} - app will continue without Redis`);
     }
-
-    this.client.on('connect', () => {
-      console.log('🔴 Redis connected');
-    });
-
-    this.client.on('error', (error) => {
-      console.error('Redis error:', error);
-    });
   }
 
   async onModuleDestroy() {
-    await this.client.quit();
+    if (this.client) {
+      await this.client.quit().catch(() => {});
+    }
   }
 
-  getClient(): Redis {
+  getClient(): Redis | null {
     return this.client;
+  }
+
+  isReady(): boolean {
+    return this.isConnected && this.client !== null;
   }
 
   // ============================================================================
@@ -62,28 +78,47 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
   // ============================================================================
 
   async get(key: string): Promise<string | null> {
-    return this.client.get(key);
-  }
-
-  async set(key: string, value: string, ttlSeconds?: number): Promise<void> {
-    if (ttlSeconds) {
-      await this.client.setex(key, ttlSeconds, value);
-    } else {
-      await this.client.set(key, value);
+    if (!this.client) return null;
+    try {
+      return await this.client.get(key);
+    } catch {
+      return null;
     }
   }
 
+  async set(key: string, value: string, ttlSeconds?: number): Promise<void> {
+    if (!this.client) return;
+    try {
+      if (ttlSeconds) {
+        await this.client.setex(key, ttlSeconds, value);
+      } else {
+        await this.client.set(key, value);
+      }
+    } catch {}
+  }
+
   async del(key: string): Promise<void> {
-    await this.client.del(key);
+    if (!this.client) return;
+    try {
+      await this.client.del(key);
+    } catch {}
   }
 
   async exists(key: string): Promise<boolean> {
-    const result = await this.client.exists(key);
-    return result === 1;
+    if (!this.client) return false;
+    try {
+      const result = await this.client.exists(key);
+      return result === 1;
+    } catch {
+      return false;
+    }
   }
 
   async expire(key: string, ttlSeconds: number): Promise<void> {
-    await this.client.expire(key, ttlSeconds);
+    if (!this.client) return;
+    try {
+      await this.client.expire(key, ttlSeconds);
+    } catch {}
   }
 
   // ============================================================================
@@ -91,9 +126,10 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
   // ============================================================================
 
   async getJson<T>(key: string): Promise<T | null> {
-    const data = await this.client.get(key);
-    if (!data) return null;
+    if (!this.client) return null;
     try {
+      const data = await this.client.get(key);
+      if (!data) return null;
       return JSON.parse(data) as T;
     } catch {
       return null;
@@ -101,12 +137,15 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
   }
 
   async setJson<T>(key: string, value: T, ttlSeconds?: number): Promise<void> {
-    const data = JSON.stringify(value);
-    if (ttlSeconds) {
-      await this.client.setex(key, ttlSeconds, data);
-    } else {
-      await this.client.set(key, data);
-    }
+    if (!this.client) return;
+    try {
+      const data = JSON.stringify(value);
+      if (ttlSeconds) {
+        await this.client.setex(key, ttlSeconds, data);
+      } else {
+        await this.client.set(key, data);
+      }
+    } catch {}
   }
 
   // ============================================================================
@@ -114,23 +153,44 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
   // ============================================================================
 
   async hget(key: string, field: string): Promise<string | null> {
-    return this.client.hget(key, field);
+    if (!this.client) return null;
+    try {
+      return await this.client.hget(key, field);
+    } catch {
+      return null;
+    }
   }
 
   async hset(key: string, field: string, value: string): Promise<void> {
-    await this.client.hset(key, field, value);
+    if (!this.client) return;
+    try {
+      await this.client.hset(key, field, value);
+    } catch {}
   }
 
   async hgetall(key: string): Promise<Record<string, string>> {
-    return this.client.hgetall(key);
+    if (!this.client) return {};
+    try {
+      return await this.client.hgetall(key);
+    } catch {
+      return {};
+    }
   }
 
   async hdel(key: string, field: string): Promise<void> {
-    await this.client.hdel(key, field);
+    if (!this.client) return;
+    try {
+      await this.client.hdel(key, field);
+    } catch {}
   }
 
   async hincrby(key: string, field: string, increment: number): Promise<number> {
-    return this.client.hincrby(key, field, increment);
+    if (!this.client) return 0;
+    try {
+      return await this.client.hincrby(key, field, increment);
+    } catch {
+      return 0;
+    }
   }
 
   // ============================================================================
@@ -138,27 +198,57 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
   // ============================================================================
 
   async lpush(key: string, ...values: string[]): Promise<number> {
-    return this.client.lpush(key, ...values);
+    if (!this.client) return 0;
+    try {
+      return await this.client.lpush(key, ...values);
+    } catch {
+      return 0;
+    }
   }
 
   async rpush(key: string, ...values: string[]): Promise<number> {
-    return this.client.rpush(key, ...values);
+    if (!this.client) return 0;
+    try {
+      return await this.client.rpush(key, ...values);
+    } catch {
+      return 0;
+    }
   }
 
   async lpop(key: string): Promise<string | null> {
-    return this.client.lpop(key);
+    if (!this.client) return null;
+    try {
+      return await this.client.lpop(key);
+    } catch {
+      return null;
+    }
   }
 
   async rpop(key: string): Promise<string | null> {
-    return this.client.rpop(key);
+    if (!this.client) return null;
+    try {
+      return await this.client.rpop(key);
+    } catch {
+      return null;
+    }
   }
 
   async lrange(key: string, start: number, stop: number): Promise<string[]> {
-    return this.client.lrange(key, start, stop);
+    if (!this.client) return [];
+    try {
+      return await this.client.lrange(key, start, stop);
+    } catch {
+      return [];
+    }
   }
 
   async llen(key: string): Promise<number> {
-    return this.client.llen(key);
+    if (!this.client) return 0;
+    try {
+      return await this.client.llen(key);
+    } catch {
+      return 0;
+    }
   }
 
   // ============================================================================
@@ -166,20 +256,40 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
   // ============================================================================
 
   async sadd(key: string, ...members: string[]): Promise<number> {
-    return this.client.sadd(key, ...members);
+    if (!this.client) return 0;
+    try {
+      return await this.client.sadd(key, ...members);
+    } catch {
+      return 0;
+    }
   }
 
   async srem(key: string, ...members: string[]): Promise<number> {
-    return this.client.srem(key, ...members);
+    if (!this.client) return 0;
+    try {
+      return await this.client.srem(key, ...members);
+    } catch {
+      return 0;
+    }
   }
 
   async smembers(key: string): Promise<string[]> {
-    return this.client.smembers(key);
+    if (!this.client) return [];
+    try {
+      return await this.client.smembers(key);
+    } catch {
+      return [];
+    }
   }
 
   async sismember(key: string, member: string): Promise<boolean> {
-    const result = await this.client.sismember(key, member);
-    return result === 1;
+    if (!this.client) return false;
+    try {
+      const result = await this.client.sismember(key, member);
+      return result === 1;
+    } catch {
+      return false;
+    }
   }
 
   // ============================================================================
@@ -187,27 +297,57 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
   // ============================================================================
 
   async zadd(key: string, score: number, member: string): Promise<number> {
-    return this.client.zadd(key, score, member);
+    if (!this.client) return 0;
+    try {
+      return await this.client.zadd(key, score, member);
+    } catch {
+      return 0;
+    }
   }
 
   async zrem(key: string, member: string): Promise<number> {
-    return this.client.zrem(key, member);
+    if (!this.client) return 0;
+    try {
+      return await this.client.zrem(key, member);
+    } catch {
+      return 0;
+    }
   }
 
   async zrange(key: string, start: number, stop: number): Promise<string[]> {
-    return this.client.zrange(key, start, stop);
+    if (!this.client) return [];
+    try {
+      return await this.client.zrange(key, start, stop);
+    } catch {
+      return [];
+    }
   }
 
   async zrangebyscore(key: string, min: number | string, max: number | string): Promise<string[]> {
-    return this.client.zrangebyscore(key, min, max);
+    if (!this.client) return [];
+    try {
+      return await this.client.zrangebyscore(key, min, max);
+    } catch {
+      return [];
+    }
   }
 
   async zrank(key: string, member: string): Promise<number | null> {
-    return this.client.zrank(key, member);
+    if (!this.client) return null;
+    try {
+      return await this.client.zrank(key, member);
+    } catch {
+      return null;
+    }
   }
 
   async zcard(key: string): Promise<number> {
-    return this.client.zcard(key);
+    if (!this.client) return 0;
+    try {
+      return await this.client.zcard(key);
+    } catch {
+      return 0;
+    }
   }
 
   // ============================================================================
@@ -215,7 +355,12 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
   // ============================================================================
 
   async publish(channel: string, message: string): Promise<number> {
-    return this.client.publish(channel, message);
+    if (!this.client) return 0;
+    try {
+      return await this.client.publish(channel, message);
+    } catch {
+      return 0;
+    }
   }
 
   // ============================================================================
@@ -243,13 +388,16 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
     shopId: string,
     stats: { waitingCount: number; estimatedWaitMinutes: number; nextSlot?: string },
   ): Promise<void> {
-    const key = `queue:shop:${shopId}`;
-    await this.client.hset(key, 'waitingCount', stats.waitingCount.toString());
-    await this.client.hset(key, 'estimatedWaitMinutes', stats.estimatedWaitMinutes.toString());
-    if (stats.nextSlot) {
-      await this.client.hset(key, 'nextSlot', stats.nextSlot);
-    }
-    await this.expire(key, 3600); // 1 hour TTL
+    if (!this.client) return;
+    try {
+      const key = `queue:shop:${shopId}`;
+      await this.client.hset(key, 'waitingCount', stats.waitingCount.toString());
+      await this.client.hset(key, 'estimatedWaitMinutes', stats.estimatedWaitMinutes.toString());
+      if (stats.nextSlot) {
+        await this.client.hset(key, 'nextSlot', stats.nextSlot);
+      }
+      await this.expire(key, 3600); // 1 hour TTL
+    } catch {}
   }
 
   // Cache available slots for a shop+date
