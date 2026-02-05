@@ -412,14 +412,17 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
   }
 
   async invalidateSlots(shopId: string, date?: string): Promise<void> {
-    if (date) {
-      await this.del(`slots:${shopId}:${date}`);
-    } else {
-      // Invalidate all slots for this shop (scan and delete)
-      const keys = await this.client.keys(`slots:${shopId}:*`);
-      if (keys.length > 0) {
-        await this.client.del(...keys);
+    if (!this.client) return;
+    try {
+      if (date) {
+        await this.del(`slots:${shopId}:${date}`);
+      } else {
+        // Invalidate all slots for this shop (scan and delete)
+        const keys = await this.client.keys(`slots:${shopId}:*`);
+        if (keys.length > 0) {
+          await this.client.del(...keys);
+        }
       }
-    }
+    } catch {}
   }
 }
