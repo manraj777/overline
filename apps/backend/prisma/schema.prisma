@@ -1,0 +1,511 @@
+// Prisma Schema for Overline - Multi-tenant Appointment & Queue Management System
+
+generator client {
+  provider = "prisma-client-js"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// ============================================================================
+// ENUMS
+// ============================================================================
+
+enum UserRole {
+  USER
+  OWNER
+  STAFF
+  SUPER_ADMIN
+}
+
+enum TenantType {
+  CLINIC
+  SALON
+  BARBER
+  SPA
+  OTHER
+}
+
+enum TenantPlan {
+  FREE
+  BASIC
+  PROFESSIONAL
+  ENTERPRISE
+}
+
+enum BookingStatus {
+  PENDING
+  CONFIRMED
+  IN_PROGRESS
+  COMPLETED
+  CANCELLED
+  NO_SHOW
+  REJECTED
+}
+
+enum BookingSource {
+  WEB
+  MOBILE
+  WALK_IN
+  ADMIN
+}
+
+enum PaymentStatus {
+  PENDING
+  PROCESSING
+  COMPLETED
+  FAILED
+  REFUNDED
+  CANCELLED
+}
+
+enum PaymentProvider {
+  STRIPE
+  RAZORPAY
+  CASH
+}
+
+enum NotificationChannel {
+  EMAIL
+  PUSH
+  SMS
+}
+
+enum NotificationType {
+  BOOKING_CREATED
+  BOOKING_CONFIRMED
+  BOOKING_REJECTED
+  BOOKING_CANCELLED
+  BOOKING_REMINDER
+  QUEUE_UPDATE
+  TURN_NOTIFICATION
+  PAYMENT_SUCCESS
+  PAYMENT_FAILED
+}
+
+enum NotificationStatus {
+  PENDING
+  SENT
+  FAILED
+  READ
+}
+
+enum DayOfWeek {
+  MONDAY
+  TUESDAY
+  WEDNESDAY
+  THURSDAY
+  FRIDAY
+  SATURDAY
+  SUNDAY
+}
+
+// ============================================================================
+// USER & AUTHENTICATION
+// ============================================================================
+
+model User {
+  id              String    @id @default(uuid())
+  email           String    @unique
+  phone           String?   @unique
+  hashedPassword  String    @map("hashed_password")
+  name            String
+  avatarUrl       String?   @map("avatar_url")
+  role            UserRole  @default(USER)
+  isActive        Boolean   @default(true) @map("is_active")
+  isEmailVerified Boolean   @default(false) @map("is_email_verified")
+  isPhoneVerified Boolean   @default(false) @map("is_phone_verified")
+  lastLoginAt     DateTime? @map("last_login_at")
+  createdAt       DateTime  @default(now()) @map("created_at")
+  updatedAt       DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  tenantId      String?         @map("tenant_id")
+  tenant        Tenant?         @relation(fields: [tenantId], references: [id])
+  bookings      Booking[]
+  refreshTokens RefreshToken[]
+  notifications Notification[]
+  auditLogs     AuditLog[]      @relation("AuditActor")
+  staffProfile  Staff?
+
+  @@index([email])
+  @@index([phone])
+  @@index([tenantId])
+  @@map("users")
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  token     String   @unique
+  userId    String   @map("user_id")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([userId])
+  @@index([token])
+  @@map("refresh_tokens")
+}
+
+// ============================================================================
+// TENANT & SHOP
+// ============================================================================
+
+model Tenant {
+  id        String     @id @default(uuid())
+  name      String
+  type      TenantType
+  plan      TenantPlan @default(FREE)
+  isActive  Boolean    @default(true) @map("is_active")
+  createdAt DateTime   @default(now()) @map("created_at")
+  updatedAt DateTime   @updatedAt @map("updated_at")
+
+  // Relations
+  shops Shop[]
+  users User[]
+
+  @@map("tenants")
+}
+
+model Shop {
+  id          String  @id @default(uuid())
+  tenantId    String  @map("tenant_id")
+  tenant      Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  name        String
+  slug        String  @unique
+  description String?
+  address     String
+  city        String
+  state       String?
+  postalCode  String? @map("postal_code")
+  country     String  @default("IN")
+
+  // Geo-location for nearby search
+  latitude  Decimal? @db.Decimal(10, 8)
+  longitude Decimal? @db.Decimal(11, 8)
+
+  // Contact
+  phone    String?
+  email    String?
+  website  String?
+
+  // Media
+  logoUrl   String?   @map("logo_url")
+  coverUrl  String?   @map("cover_url")
+  photoUrls String[]  @map("photo_urls")
+
+  // Settings (JSON for flexibility)
+  settings  Json      @default("{}")
+
+  // Capacity
+  maxConcurrentBookings Int @default(1) @map("max_concurrent_bookings")
+
+  // Auto-accept bookings or require manual approval
+  autoAcceptBookings Boolean @default(true) @map("auto_accept_bookings")
+
+  // Status
+  isActive  Boolean   @default(true) @map("is_active")
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  services         Service[]
+  staff            Staff[]
+  workingHours     WorkingHours[]
+  specialSchedules SpecialSchedule[]
+  bookings         Booking[]
+  queueStats       QueueStats?
+
+  @@index([tenantId])
+  @@index([slug])
+  @@index([city])
+  @@index([latitude, longitude])
+  @@map("shops")
+}
+
+// ============================================================================
+// SERVICES & STAFF
+// ============================================================================
+
+model Service {
+  id              String  @id @default(uuid())
+  shopId          String  @map("shop_id")
+  shop            Shop    @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  name            String
+  description     String?
+  durationMinutes Int     @map("duration_minutes")
+  price           Decimal @db.Decimal(10, 2)
+  currency        String  @default("INR")
+  isActive        Boolean @default(true) @map("is_active")
+  sortOrder       Int     @default(0) @map("sort_order")
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  bookingServices BookingService[]
+  staffServices   StaffService[]
+
+  @@index([shopId])
+  @@map("services")
+}
+
+model Staff {
+  id        String  @id @default(uuid())
+  shopId    String  @map("shop_id")
+  shop      Shop    @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  userId    String? @unique @map("user_id")
+  user      User?   @relation(fields: [userId], references: [id])
+  name      String
+  email     String?
+  phone     String?
+  avatarUrl String? @map("avatar_url")
+  role      String  @default("staff")
+  isActive  Boolean @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  staffServices StaffService[]
+  bookings      Booking[]
+
+  @@index([shopId])
+  @@map("staff")
+}
+
+model StaffService {
+  id        String  @id @default(uuid())
+  staffId   String  @map("staff_id")
+  staff     Staff   @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  serviceId String  @map("service_id")
+  service   Service @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+
+  @@unique([staffId, serviceId])
+  @@map("staff_services")
+}
+
+// ============================================================================
+// WORKING HOURS & SCHEDULES
+// ============================================================================
+
+model WorkingHours {
+  id         String    @id @default(uuid())
+  shopId     String    @map("shop_id")
+  shop       Shop      @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  dayOfWeek  DayOfWeek @map("day_of_week")
+  openTime   String    @map("open_time")  // Format: "09:00"
+  closeTime  String    @map("close_time") // Format: "18:00"
+  isClosed   Boolean   @default(false) @map("is_closed")
+
+  // Break windows stored as JSON array: [{"start": "13:00", "end": "14:00"}]
+  breakWindows Json @default("[]") @map("break_windows")
+
+  @@unique([shopId, dayOfWeek])
+  @@index([shopId])
+  @@map("working_hours")
+}
+
+model SpecialSchedule {
+  id        String   @id @default(uuid())
+  shopId    String   @map("shop_id")
+  shop      Shop     @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  date      DateTime @db.Date
+  isClosed  Boolean  @default(false) @map("is_closed")
+  openTime  String?  @map("open_time")
+  closeTime String?  @map("close_time")
+  reason    String?
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@unique([shopId, date])
+  @@index([shopId])
+  @@index([date])
+  @@map("special_schedules")
+}
+
+// ============================================================================
+// BOOKINGS & QUEUE
+// ============================================================================
+
+model Booking {
+  id            String        @id @default(uuid())
+  bookingNumber String        @unique @map("booking_number")
+  userId        String?       @map("user_id")
+  user          User?         @relation(fields: [userId], references: [id])
+  shopId        String        @map("shop_id")
+  shop          Shop          @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  staffId       String?       @map("staff_id")
+  staff         Staff?        @relation(fields: [staffId], references: [id])
+
+  // Time
+  startTime DateTime  @map("start_time")
+  endTime   DateTime  @map("end_time")
+
+  // Total calculated from services
+  totalDurationMinutes Int     @map("total_duration_minutes")
+  totalAmount          Decimal @db.Decimal(10, 2) @map("total_amount")
+  currency             String  @default("INR")
+
+  // Status
+  status BookingStatus @default(PENDING)
+  source BookingSource @default(WEB)
+
+  // Walk-in customer info (when userId is null)
+  customerName  String? @map("customer_name")
+  customerPhone String? @map("customer_phone")
+  customerEmail String? @map("customer_email")
+
+  // Queue position at time of booking
+  queuePosition Int? @map("queue_position")
+
+  // Notes
+  notes      String?
+  adminNotes String? @map("admin_notes")
+
+  // Timestamps
+  arrivedAt   DateTime? @map("arrived_at")
+  startedAt   DateTime? @map("started_at")
+  completedAt DateTime? @map("completed_at")
+  cancelledAt DateTime? @map("cancelled_at")
+  createdAt   DateTime  @default(now()) @map("created_at")
+  updatedAt   DateTime  @updatedAt @map("updated_at")
+
+  // Relations
+  services     BookingService[]
+  payment      Payment?
+  notifications Notification[]
+
+  @@index([userId])
+  @@index([shopId])
+  @@index([staffId])
+  @@index([startTime])
+  @@index([status])
+  @@index([bookingNumber])
+  @@map("bookings")
+}
+
+model BookingService {
+  id        String  @id @default(uuid())
+  bookingId String  @map("booking_id")
+  booking   Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  serviceId String  @map("service_id")
+  service   Service @relation(fields: [serviceId], references: [id])
+
+  // Snapshot of service details at booking time
+  serviceName      String  @map("service_name")
+  durationMinutes  Int     @map("duration_minutes")
+  price            Decimal @db.Decimal(10, 2)
+
+  @@index([bookingId])
+  @@map("booking_services")
+}
+
+model QueueStats {
+  id                    String   @id @default(uuid())
+  shopId                String   @unique @map("shop_id")
+  shop                  Shop     @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  currentWaitingCount   Int      @default(0) @map("current_waiting_count")
+  estimatedWaitMinutes  Int      @default(0) @map("estimated_wait_minutes")
+  nextAvailableSlot     DateTime? @map("next_available_slot")
+  lastUpdatedAt         DateTime @default(now()) @map("last_updated_at")
+
+  @@map("queue_stats")
+}
+
+// ============================================================================
+// PAYMENTS
+// ============================================================================
+
+model Payment {
+  id              String         @id @default(uuid())
+  bookingId       String         @unique @map("booking_id")
+  booking         Booking        @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  provider        PaymentProvider
+  amount          Decimal        @db.Decimal(10, 2)
+  currency        String         @default("INR")
+  status          PaymentStatus  @default(PENDING)
+  transactionRef  String?        @map("transaction_ref")
+  providerOrderId String?        @map("provider_order_id")
+  providerPaymentId String?      @map("provider_payment_id")
+  metadata        Json           @default("{}")
+  paidAt          DateTime?      @map("paid_at")
+  createdAt       DateTime       @default(now()) @map("created_at")
+  updatedAt       DateTime       @updatedAt @map("updated_at")
+
+  @@index([bookingId])
+  @@index([transactionRef])
+  @@map("payments")
+}
+
+// ============================================================================
+// NOTIFICATIONS
+// ============================================================================
+
+model Notification {
+  id        String             @id @default(uuid())
+  userId    String?            @map("user_id")
+  user      User?              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  bookingId String?            @map("booking_id")
+  booking   Booking?           @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  channel   NotificationChannel
+  type      NotificationType
+  title     String
+  body      String
+  data      Json               @default("{}")
+  status    NotificationStatus @default(PENDING)
+  sentAt    DateTime?          @map("sent_at")
+  readAt    DateTime?          @map("read_at")
+  createdAt DateTime           @default(now()) @map("created_at")
+
+  @@index([userId])
+  @@index([bookingId])
+  @@index([status])
+  @@map("notifications")
+}
+
+// ============================================================================
+// AUDIT LOG
+// ============================================================================
+
+model AuditLog {
+  id          String   @id @default(uuid())
+  actorUserId String?  @map("actor_user_id")
+  actor       User?    @relation("AuditActor", fields: [actorUserId], references: [id])
+  action      String
+  entityType  String   @map("entity_type")
+  entityId    String   @map("entity_id")
+  metadata    Json     @default("{}")
+  ipAddress   String?  @map("ip_address")
+  userAgent   String?  @map("user_agent")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@index([actorUserId])
+  @@index([entityType, entityId])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+// ============================================================================
+// ANALYTICS (Aggregated data for fast querying)
+// ============================================================================
+
+model DailyAnalytics {
+  id                   String   @id @default(uuid())
+  shopId               String   @map("shop_id")
+  date                 DateTime @db.Date
+  totalBookings        Int      @default(0) @map("total_bookings")
+  completedBookings    Int      @default(0) @map("completed_bookings")
+  cancelledBookings    Int      @default(0) @map("cancelled_bookings")
+  noShowBookings       Int      @default(0) @map("no_show_bookings")
+  walkInBookings       Int      @default(0) @map("walk_in_bookings")
+  totalRevenue         Decimal  @default(0) @db.Decimal(12, 2) @map("total_revenue")
+  averageWaitMinutes   Decimal  @default(0) @db.Decimal(5, 2) @map("average_wait_minutes")
+  peakHour             Int?     @map("peak_hour")
+  createdAt            DateTime @default(now()) @map("created_at")
+
+  @@unique([shopId, date])
+  @@index([shopId])
+  @@index([date])
+  @@map("daily_analytics")
+}

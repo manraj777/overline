@@ -1,0 +1,139 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: overline-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: overline
+      POSTGRES_PASSWORD: overline_dev_password
+      POSTGRES_DB: overline
+    ports:
+      - '5432:5432'
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./scripts/init-db.sql:/docker-entrypoint-initdb.d/init.sql
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U overline -d overline']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - overline-network
+
+  redis:
+    image: redis:7-alpine
+    container_name: overline-redis
+    restart: unless-stopped
+    ports:
+      - '6379:6379'
+    volumes:
+      - redis_data:/data
+    command: redis-server --appendonly yes
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - overline-network
+
+  backend:
+    build:
+      context: .
+      dockerfile: apps/backend/Dockerfile
+    container_name: overline-backend
+    restart: unless-stopped
+    ports:
+      - '3001:3001'
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://overline:overline_dev_password@postgres:5432/overline?schema=public
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      JWT_SECRET: ${JWT_SECRET:-your-super-secret-jwt-key-change-in-production}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-your-refresh-secret-key-change-in-production}
+      RAZORPAY_KEY_ID: ${RAZORPAY_KEY_ID:-}
+      RAZORPAY_SECRET: ${RAZORPAY_SECRET:-}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - overline-network
+
+  user-web:
+    build:
+      context: .
+      dockerfile: apps/user-web/Dockerfile
+    container_name: overline-user-web
+    restart: unless-stopped
+    ports:
+      - '3000:3000'
+    environment:
+      NEXT_PUBLIC_API_URL: http://backend:3001/api
+    depends_on:
+      - backend
+    networks:
+      - overline-network
+
+  admin-web:
+    build:
+      context: .
+      dockerfile: apps/admin-web/Dockerfile
+    container_name: overline-admin-web
+    restart: unless-stopped
+    ports:
+      - '3002:3002'
+    environment:
+      NEXT_PUBLIC_API_URL: http://backend:3001/api
+    depends_on:
+      - backend
+    networks:
+      - overline-network
+
+  # Optional: Redis Commander for debugging Redis
+  redis-commander:
+    image: rediscommander/redis-commander:latest
+    container_name: overline-redis-commander
+    restart: unless-stopped
+    environment:
+      - REDIS_HOSTS=local:redis:6379
+    ports:
+      - '8081:8081'
+    depends_on:
+      - redis
+    networks:
+      - overline-network
+    profiles:
+      - debug
+
+  # Optional: pgAdmin for database management
+  pgadmin:
+    image: dpage/pgadmin4:latest
+    container_name: overline-pgadmin
+    restart: unless-stopped
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@overline.app
+      PGADMIN_DEFAULT_PASSWORD: admin
+    ports:
+      - '8082:80'
+    volumes:
+      - pgadmin_data:/var/lib/pgadmin
+    depends_on:
+      - postgres
+    networks:
+      - overline-network
+    profiles:
+      - debug
+
+networks:
+  overline-network:
+    driver: bridge
+
+volumes:
+  postgres_data:
+  redis_data:
+  pgadmin_data:
