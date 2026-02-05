@@ -9,18 +9,36 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
   constructor(private configService: ConfigService) {}
 
   async onModuleInit() {
-    this.client = new Redis({
-      host: this.configService.get('redis.host'),
-      port: this.configService.get('redis.port'),
-      password: this.configService.get('redis.password') || undefined,
-      retryStrategy: (times) => {
-        if (times > 3) {
-          console.error('❌ Redis connection failed after 3 retries');
-          return null;
-        }
-        return Math.min(times * 200, 1000);
-      },
-    });
+    const redisUrl = this.configService.get('redis.url');
+    
+    if (redisUrl) {
+      // Use URL connection (for Railway/Upstash)
+      this.client = new Redis(redisUrl, {
+        retryStrategy: (times) => {
+          if (times > 3) {
+            console.error('❌ Redis connection failed after 3 retries');
+            return null;
+          }
+          return Math.min(times * 200, 1000);
+        },
+        maxRetriesPerRequest: 3,
+        lazyConnect: true,
+      });
+    } else {
+      // Use host/port connection (for local development)
+      this.client = new Redis({
+        host: this.configService.get('redis.host'),
+        port: this.configService.get('redis.port'),
+        password: this.configService.get('redis.password') || undefined,
+        retryStrategy: (times) => {
+          if (times > 3) {
+            console.error('❌ Redis connection failed after 3 retries');
+            return null;
+          }
+          return Math.min(times * 200, 1000);
+        },
+      });
+    }
 
     this.client.on('connect', () => {
       console.log('🔴 Redis connected');
