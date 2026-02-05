@@ -1,23 +1,42 @@
-import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
+import Stripe from 'stripe';
 import { PrismaService } from '@/common/prisma/prisma.service';
 import { PaymentStatus, PaymentProvider, BookingStatus } from '@prisma/client';
 import { CreatePaymentDto } from './dto/create-payment.dto';
 
 @Injectable()
 export class PaymentsService {
+  private readonly logger = new Logger(PaymentsService.name);
+  private stripe: Stripe | null = null;
+
   constructor(
     private prisma: PrismaService,
     private configService: ConfigService,
-  ) {}
+  ) {
+    const stripeKey = this.configService.get<string>('STRIPE_SECRET_KEY');
+    if (stripeKey) {
+      this.stripe = new Stripe(stripeKey, {
+        apiVersion: '2024-12-18.acacia',
+      });
+    }
+  }
 
   /**
-   * Create a payment order
+   * Create a Stripe PaymentIntent for a booking
    */
-  async createPaymentOrder(dto: CreatePaymentDto, userId: string) {
+  async createPaymentIntent(dto: CreatePaymentDto, userId: string) {
+    if (!this.stripe) {
+      throw new BadRequestException('Payment processing is not configured. Add STRIPE_SECRET_KEY to enable payments.');
+    }
+
     const booking = await this.prisma.booking.findUnique({
       where: { id: dto.bookingId },
-      include: { payment: true },
+      include: { 
+        payment: true,
+        shop: true,
+        services: true,
+      },
     });
 
     if (!booking) {
@@ -28,118 +47,208 @@ export class PaymentsService {
       throw new NotFoundException('Booking not found');
     }
 
-    if (booking.payment) {
-      if (booking.payment.status === PaymentStatus.COMPLETED) {
-        throw new BadRequestException('Payment already completed');
-      }
-      return booking.payment;
+    // Check if payment already exists and is completed
+    if (booking.payment?.status === PaymentStatus.COMPLETED) {
+      throw new BadRequestException('Payment already completed');
     }
 
-    // Create payment record
-    const payment = await this.prisma.payment.create({
-      data: {
-        bookingId: booking.id,
-        provider: dto.provider || PaymentProvider.STRIPE,
+    // Amount in smallest currency unit (paise for INR, cents for USD)
+    const amount = Math.round(booking.totalAmount.toNumber() * 100);
+    const currency = booking.currency.toLowerCase();
+
+    try {
+      // Create Stripe PaymentIntent
+      const paymentIntent = await this.stripe.paymentIntents.create({
+        amount,
+        currency,
+        metadata: {
+          bookingId: booking.id,
+          bookingNumber: booking.bookingNumber,
+          shopId: booking.shopId,
+          userId: userId,
+        },
+        description: `Booking ${booking.bookingNumber} at ${booking.shop.name}`,
+        automatic_payment_methods: {
+          enabled: true,
+        },
+      });
+
+      // Create or update payment record
+      const payment = await this.prisma.payment.upsert({
+        where: { bookingId: booking.id },
+        create: {
+          bookingId: booking.id,
+          provider: PaymentProvider.STRIPE,
+          amount: booking.totalAmount,
+          currency: booking.currency,
+          status: PaymentStatus.PENDING,
+          providerOrderId: paymentIntent.id,
+        },
+        update: {
+          providerOrderId: paymentIntent.id,
+          status: PaymentStatus.PENDING,
+        },
+      });
+
+      return {
+        paymentId: payment.id,
+        clientSecret: paymentIntent.client_secret,
+        paymentIntentId: paymentIntent.id,
         amount: booking.totalAmount,
         currency: booking.currency,
-        status: PaymentStatus.PENDING,
-      },
-    });
-
-    // In production, create order with payment provider
-    // For Stripe: create PaymentIntent
-    // For Razorpay: create Order
-
-    return {
-      payment,
-      // Include provider-specific checkout data
-      checkoutUrl: null, // Would be provider checkout URL
-      clientSecret: null, // For Stripe Elements
-    };
-  }
-
-  /**
-   * Handle payment webhook from provider
-   */
-  async handleWebhook(provider: PaymentProvider, payload: any, signature: string) {
-    // Verify webhook signature based on provider
-    // Process payment status update
-
-    const { paymentId, status, transactionRef } = this.parseWebhookPayload(provider, payload);
-
-    const payment = await this.prisma.payment.findFirst({
-      where: {
-        OR: [
-          { id: paymentId },
-          { providerOrderId: paymentId },
-        ],
-      },
-      include: { booking: true },
-    });
-
-    if (!payment) {
-      console.error('Payment not found for webhook:', paymentId);
-      return;
-    }
-
-    // Update payment status
-    await this.prisma.payment.update({
-      where: { id: payment.id },
-      data: {
-        status,
-        transactionRef,
-        paidAt: status === PaymentStatus.COMPLETED ? new Date() : null,
-      },
-    });
-
-    // Update booking status if payment successful
-    if (status === PaymentStatus.COMPLETED) {
-      await this.prisma.booking.update({
-        where: { id: payment.bookingId },
-        data: { status: BookingStatus.CONFIRMED },
-      });
+      };
+    } catch (error) {
+      this.logger.error('Failed to create PaymentIntent', error);
+      throw new BadRequestException('Failed to create payment');
     }
   }
 
   /**
-   * Get payment status
+   * Get payment details
    */
-  async getPaymentStatus(paymentId: string, userId: string) {
+  async getPayment(paymentId: string, userId: string) {
     const payment = await this.prisma.payment.findUnique({
       where: { id: paymentId },
       include: {
         booking: {
           select: {
             id: true,
-            userId: true,
             bookingNumber: true,
+            userId: true,
+            totalAmount: true,
+            shop: {
+              select: { name: true },
+            },
           },
         },
       },
     });
 
-    if (!payment) {
+    if (!payment || payment.booking.userId !== userId) {
       throw new NotFoundException('Payment not found');
     }
 
-    if (payment.booking.userId !== userId) {
-      throw new NotFoundException('Payment not found');
-    }
-
-    return {
-      id: payment.id,
-      status: payment.status,
-      amount: payment.amount,
-      currency: payment.currency,
-      paidAt: payment.paidAt,
-      bookingNumber: payment.booking.bookingNumber,
-    };
+    return payment;
   }
 
   /**
-   * Process refund
+   * Handle Stripe webhook events
    */
-  async refundPayment(paymentId: string, reason: string) {
+  async handleStripeWebhook(payload: Buffer, signature: string) {
+    if (!this.stripe) {
+      throw new BadRequestException('Stripe not configured');
+    }
+
+    const webhookSecret = this.configService.get<string>('STRIPE_WEBHOOK_SECRET');
+    
+    let event: Stripe.Event;
+    try {
+      event = this.stripe.webhooks.constructEvent(payload, signature, webhookSecret!);
+    } catch (err) {
+      this.logger.error('Webhook signature verification failed', err);
+      throw new BadRequestException('Invalid webhook signature');
+    }
+
+    this.logger.log(`Processing Stripe event: ${event.type}`);
+
+    switch (event.type) {
+      case 'payment_intent.succeeded':
+        await this.handlePaymentSuccess(event.data.object as Stripe.PaymentIntent);
+        break;
+      
+      case 'payment_intent.payment_failed':
+        await this.handlePaymentFailed(event.data.object as Stripe.PaymentIntent);
+        break;
+
+      case 'charge.refunded':
+        await this.handleRefund(event.data.object as Stripe.Charge);
+        break;
+
+      default:
+        this.logger.log(`Unhandled event type: ${event.type}`);
+    }
+
+    return { received: true };
+  }
+
+  /**
+   * Handle successful payment
+   */
+  private async handlePaymentSuccess(paymentIntent: Stripe.PaymentIntent) {
+    const bookingId = paymentIntent.metadata.bookingId;
+    
+    if (!bookingId) {
+      this.logger.warn('No bookingId in payment metadata');
+      return;
+    }
+
+    await this.prisma.$transaction(async (tx) => {
+      // Update payment status
+      await tx.payment.update({
+        where: { bookingId },
+        data: {
+          status: PaymentStatus.COMPLETED,
+          transactionRef: paymentIntent.id,
+          paidAt: new Date(),
+        },
+      });
+
+      // Update booking status to confirmed (if pending)
+      await tx.booking.update({
+        where: { id: bookingId },
+        data: {
+          status: BookingStatus.CONFIRMED,
+        },
+      });
+    });
+
+    this.logger.log(`Payment completed for booking: ${bookingId}`);
+  }
+
+  /**
+   * Handle failed payment
+   */
+  private async handlePaymentFailed(paymentIntent: Stripe.PaymentIntent) {
+    const bookingId = paymentIntent.metadata.bookingId;
+    
+    if (!bookingId) return;
+
+    await this.prisma.payment.update({
+      where: { bookingId },
+      data: {
+        status: PaymentStatus.FAILED,
+      },
+    });
+
+    this.logger.log(`Payment failed for booking: ${bookingId}`);
+  }
+
+  /**
+   * Handle refund
+   */
+  private async handleRefund(charge: Stripe.Charge) {
+    const paymentIntentId = charge.payment_intent as string;
+    
+    const payment = await this.prisma.payment.findFirst({
+      where: { providerOrderId: paymentIntentId },
+    });
+
+    if (payment) {
+      await this.prisma.payment.update({
+        where: { id: payment.id },
+        data: { status: PaymentStatus.REFUNDED },
+      });
+    }
+  }
+
+  /**
+   * Refund a payment
+   */
+  async refundPayment(paymentId: string, reason?: string) {
+    if (!this.stripe) {
+      throw new BadRequestException('Stripe not configured');
+    }
+
     const payment = await this.prisma.payment.findUnique({
       where: { id: paymentId },
     });
@@ -149,50 +258,24 @@ export class PaymentsService {
     }
 
     if (payment.status !== PaymentStatus.COMPLETED) {
-      throw new BadRequestException('Only completed payments can be refunded');
+      throw new BadRequestException('Can only refund completed payments');
     }
 
-    // In production, call payment provider refund API
+    try {
+      await this.stripe.refunds.create({
+        payment_intent: payment.providerOrderId!,
+        reason: 'requested_by_customer',
+      });
 
-    return this.prisma.payment.update({
-      where: { id: paymentId },
-      data: {
-        status: PaymentStatus.REFUNDED,
-        metadata: {
-          ...(payment.metadata as object),
-          refundReason: reason,
-          refundedAt: new Date().toISOString(),
-        },
-      },
-    });
-  }
+      await this.prisma.payment.update({
+        where: { id: paymentId },
+        data: { status: PaymentStatus.REFUNDED },
+      });
 
-  private parseWebhookPayload(
-    provider: PaymentProvider,
-    payload: any,
-  ): { paymentId: string; status: PaymentStatus; transactionRef: string } {
-    // Parse webhook payload based on provider
-    // This is a simplified implementation
-
-    if (provider === PaymentProvider.STRIPE) {
-      const event = payload;
-      if (event.type === 'payment_intent.succeeded') {
-        return {
-          paymentId: event.data.object.metadata.paymentId,
-          status: PaymentStatus.COMPLETED,
-          transactionRef: event.data.object.id,
-        };
-      }
+      return { success: true, message: 'Refund initiated' };
+    } catch (error) {
+      this.logger.error('Failed to process refund', error);
+      throw new BadRequestException('Failed to process refund');
     }
-
-    if (provider === PaymentProvider.RAZORPAY) {
-      return {
-        paymentId: payload.payload.payment.entity.notes.paymentId,
-        status: PaymentStatus.COMPLETED,
-        transactionRef: payload.payload.payment.entity.id,
-      };
-    }
-
-    throw new BadRequestException('Unknown payment provider');
   }
 }

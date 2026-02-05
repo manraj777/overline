@@ -130,6 +130,7 @@ model User {
   notifications Notification[]
   auditLogs     AuditLog[]      @relation("AuditActor")
   staffProfile  Staff?
+  reviews       Review[]
 
   @@index([email])
   @@index([phone])
@@ -218,6 +219,7 @@ model Shop {
   specialSchedules SpecialSchedule[]
   bookings         Booking[]
   queueStats       QueueStats?
+  reviews          Review[]
 
   @@index([tenantId])
   @@index([slug])
@@ -375,6 +377,7 @@ model Booking {
   services     BookingService[]
   payment      Payment?
   notifications Notification[]
+  review       Review?
 
   @@index([userId])
   @@index([shopId])
@@ -489,6 +492,30 @@ model AuditLog {
 // ============================================================================
 // ANALYTICS (Aggregated data for fast querying)
 // ============================================================================
+
+model Review {
+  id          String   @id @default(uuid())
+  bookingId   String   @unique @map("booking_id")
+  booking     Booking  @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  userId      String   @map("user_id")
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  shopId      String   @map("shop_id")
+  shop        Shop     @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  rating      Int      // 1-5 stars
+  comment     String?
+  staffRating Int?     @map("staff_rating") // 1-5 stars for staff
+  isVerified  Boolean  @default(true) @map("is_verified") // Verified purchase
+  isPublic    Boolean  @default(true) @map("is_public")
+  reply       String?  // Shop owner's reply
+  repliedAt   DateTime? @map("replied_at")
+  createdAt   DateTime @default(now()) @map("created_at")
+  updatedAt   DateTime @updatedAt @map("updated_at")
+
+  @@index([shopId])
+  @@index([userId])
+  @@index([rating])
+  @@map("reviews")
+}
 
 model DailyAnalytics {
   id                   String   @id @default(uuid())

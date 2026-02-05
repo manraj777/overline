@@ -1,26 +1,26 @@
-import { Controller, Post, Get, Body, Param, Headers, UseGuards, RawBody } from '@nestjs/common';
+import { Controller, Post, Get, Body, Param, Headers, UseGuards, Req } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiParam } from '@nestjs/swagger';
 import { PaymentsService } from './payments.service';
 import { CreatePaymentDto } from './dto/create-payment.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
 import { Public } from '../auth/decorators/public.decorator';
-import { PaymentProvider } from '@prisma/client';
+import { Request } from 'express';
 
 @ApiTags('payments')
 @Controller('payments')
 export class PaymentsController {
   constructor(private readonly paymentsService: PaymentsService) {}
 
-  @Post('create')
+  @Post('create-intent')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth('JWT-auth')
-  @ApiOperation({ summary: 'Create a payment order' })
-  async createPayment(
+  @ApiOperation({ summary: 'Create a Stripe PaymentIntent' })
+  async createPaymentIntent(
     @Body() dto: CreatePaymentDto,
     @CurrentUser('id') userId: string,
   ) {
-    return this.paymentsService.createPaymentOrder(dto, userId);
+    return this.paymentsService.createPaymentIntent(dto, userId);
   }
 
   @Get(':id')
@@ -28,32 +28,31 @@ export class PaymentsController {
   @ApiBearerAuth('JWT-auth')
   @ApiOperation({ summary: 'Get payment status' })
   @ApiParam({ name: 'id', description: 'Payment ID' })
-  async getStatus(
+  async getPayment(
     @Param('id') id: string,
     @CurrentUser('id') userId: string,
   ) {
-    return this.paymentsService.getPaymentStatus(id, userId);
+    return this.paymentsService.getPayment(id, userId);
   }
 
   @Post('webhook/stripe')
   @Public()
   @ApiOperation({ summary: 'Stripe webhook endpoint' })
   async stripeWebhook(
-    @Body() payload: any,
+    @Req() req: Request,
     @Headers('stripe-signature') signature: string,
   ) {
-    await this.paymentsService.handleWebhook(PaymentProvider.STRIPE, payload, signature);
-    return { received: true };
+    // Need raw body for signature verification
+    const payload = (req as any).rawBody || req.body;
+    return this.paymentsService.handleStripeWebhook(payload, signature);
   }
 
-  @Post('webhook/razorpay')
-  @Public()
-  @ApiOperation({ summary: 'Razorpay webhook endpoint' })
-  async razorpayWebhook(
-    @Body() payload: any,
-    @Headers('x-razorpay-signature') signature: string,
-  ) {
-    await this.paymentsService.handleWebhook(PaymentProvider.RAZORPAY, payload, signature);
-    return { received: true };
+  @Post(':id/refund')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({ summary: 'Refund a payment' })
+  @ApiParam({ name: 'id', description: 'Payment ID' })
+  async refundPayment(@Param('id') id: string) {
+    return this.paymentsService.refundPayment(id);
   }
 }
