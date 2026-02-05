@@ -63,10 +63,13 @@ async function bootstrap() {
   SwaggerModule.setup('docs', app, document);
 
   const port = process.env.PORT || 3001;
-  await app.listen(port);
+  await app.listen(port, '0.0.0.0');
   
-  console.log(`🚀 Overline API is running on: http://localhost:${port}`);
-  console.log(`📚 API Documentation: http://localhost:${port}/docs`);
+  console.log(`🚀 Overline API is running on port ${port}`);
+  console.log(`📚 API Documentation: /docs`);
 }
 
-bootstrap();
+bootstrap().catch((err) => {
+  console.error('Failed to start application:', err);
+  process.exit(1);
+});
