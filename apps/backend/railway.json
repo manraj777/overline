@@ -2,9 +2,10 @@
   "$schema": "https://railway.app/railway.schema.json",
   "build": {
     "builder": "NIXPACKS",
-    "nixpacksConfigPath": "nixpacks.toml"
+    "buildCommand": "npx prisma generate && NODE_OPTIONS='--max-old-space-size=2048' pnpm build"
   },
   "deploy": {
+    "startCommand": "node dist/main.js",
     "restartPolicyType": "ON_FAILURE",
     "restartPolicyMaxRetries": 3
   }
