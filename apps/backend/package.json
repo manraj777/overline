@@ -4,7 +4,7 @@
   "private": true,
   "description": "Overline Backend API - NestJS",
   "scripts": {
-    "build": "prisma generate && rimraf dist && nest build",
+    "build": "rimraf dist && nest build",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "start": "node dist/main",
     "dev": "nest start --watch",
