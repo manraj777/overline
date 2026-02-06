@@ -2,11 +2,11 @@
   "$schema": "https://railway.app/railway.schema.json",
   "build": {
     "builder": "NIXPACKS",
-    "buildCommand": "echo 'Build phase - dependencies installed'",
+    "buildCommand": "cd /app/apps/backend && npx prisma generate && NODE_OPTIONS='--max-old-space-size=2048' pnpm build",
     "watchPatterns": ["apps/backend/**", "packages/shared/**"]
   },
   "deploy": {
-    "startCommand": "cd /app/apps/backend && npx prisma generate && pnpm build && node dist/main.js",
+    "startCommand": "cd /app/apps/backend && node dist/main.js",
     "restartPolicyType": "ON_FAILURE",
     "restartPolicyMaxRetries": 3
   }
