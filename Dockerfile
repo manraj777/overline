@@ -11,10 +11,7 @@ COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY apps/backend/package.json ./apps/backend/
 COPY packages/shared/package.json ./packages/shared/
 
-# Copy prisma schema BEFORE install (needed for postinstall)
-COPY apps/backend/prisma ./apps/backend/prisma
-
-# Install all dependencies
+# Install all dependencies (no postinstall now)
 RUN pnpm install --frozen-lockfile
 
 # Copy source code
@@ -22,8 +19,9 @@ COPY tsconfig.base.json ./
 COPY packages/shared ./packages/shared
 COPY apps/backend ./apps/backend
 
-# Build
+# Generate Prisma client and build
 WORKDIR /app/apps/backend
+RUN npx prisma generate
 RUN NODE_OPTIONS='--max-old-space-size=2048' pnpm build
 
 # Production

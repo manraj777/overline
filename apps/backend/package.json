@@ -4,7 +4,6 @@
   "private": true,
   "description": "Overline Backend API - NestJS",
   "scripts": {
-    "postinstall": "prisma generate",
     "build": "rimraf dist && nest build",
     "format": "prettier --write \"src/**/*.ts\" \"test/**/*.ts\"",
     "start": "nest start",
