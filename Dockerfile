@@ -3,13 +3,16 @@ FROM node:20-alpine
 
 WORKDIR /app
 
-# Install pnpm
-RUN npm install -g pnpm
+# Install pnpm and openssl
+RUN npm install -g pnpm && apk add --no-cache openssl
 
 # Copy package files
 COPY package.json pnpm-lock.yaml pnpm-workspace.yaml ./
 COPY apps/backend/package.json ./apps/backend/
 COPY packages/shared/package.json ./packages/shared/
+
+# Copy prisma schema BEFORE install (needed for postinstall)
+COPY apps/backend/prisma ./apps/backend/prisma
 
 # Install all dependencies
 RUN pnpm install --frozen-lockfile
@@ -19,9 +22,8 @@ COPY tsconfig.base.json ./
 COPY packages/shared ./packages/shared
 COPY apps/backend ./apps/backend
 
-# Generate Prisma client and build
+# Build
 WORKDIR /app/apps/backend
-RUN npx prisma generate
 RUN NODE_OPTIONS='--max-old-space-size=2048' pnpm build
 
 # Production
