@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '@/lib/api';
 import { useBookingStore } from '@/stores/booking';
-import type { Booking, TimeSlot, PaginatedResponse } from '@overline/shared';
+import type { Booking, TimeSlot, PaginatedResponse } from '@/types';
 
 interface CreateBookingPayload {
   shopId: string;

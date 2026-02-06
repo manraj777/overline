@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { MapPin, Clock, Star, Users } from 'lucide-react';
 import { Card, Badge } from '@/components/ui';
 import { cn } from '@/lib/utils';
-import type { Shop } from '@overline/shared';
+import type { Shop } from '@/types';
 
 interface ShopCardProps {
   shop: Shop;

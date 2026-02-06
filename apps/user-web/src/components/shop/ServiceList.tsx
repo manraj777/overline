@@ -1,7 +1,7 @@
 import React from 'react';
 import { Check, Clock } from 'lucide-react';
 import { cn, formatPrice, formatDuration } from '@/lib/utils';
-import type { Service } from '@overline/shared';
+import type { Service } from '@/types';
 
 interface ServiceListProps {
   services: Service[];

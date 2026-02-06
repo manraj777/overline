@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '@/lib/api';
 import { useAuthStore } from '@/stores/auth';
-import type { User, AuthResponse } from '@overline/shared';
+import type { User, AuthResponse } from '@/types';
 
 interface LoginCredentials {
   email: string;

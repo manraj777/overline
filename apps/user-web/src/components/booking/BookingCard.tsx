@@ -3,8 +3,8 @@ import Link from 'next/link';
 import { Calendar, Clock, MapPin, ChevronRight } from 'lucide-react';
 import { Card, Badge } from '@/components/ui';
 import { formatDate, formatTime, formatPrice, getEndTime } from '@/lib/utils';
-import type { Booking } from '@overline/shared';
-import { BookingStatus } from '@overline/shared';
+import type { Booking } from '@/types';
+import { BookingStatus } from '@/types';
 
 interface BookingCardProps {
   booking: Booking;

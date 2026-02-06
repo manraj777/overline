@@ -1,6 +1,6 @@
 import axios, { AxiosError, AxiosInstance, InternalAxiosRequestConfig } from 'axios';
 import { useAuthStore } from '@/stores/auth';
-import type { ApiError } from '@overline/shared';
+import type { ApiError } from '@/types';
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:3001/api/v1';
 

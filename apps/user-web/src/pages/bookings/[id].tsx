@@ -16,7 +16,7 @@ import {
 import { Button, Card, Badge, Alert, Loading } from '@/components/ui';
 import { useBooking, useCancelBooking } from '@/hooks';
 import { formatDate, formatTime, formatPrice, formatDuration, getEndTime } from '@/lib/utils';
-import { BookingStatus } from '@overline/shared';
+import { BookingStatus } from '@/types';
 
 export default function BookingDetailPage() {
   const router = useRouter();

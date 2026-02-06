@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '@/lib/api';
 import { useAuthStore } from '@/stores/auth';
-import type { Service } from '@overline/shared';
+import type { Service } from '@/types';
 
 interface CreateServicePayload {
   name: string;

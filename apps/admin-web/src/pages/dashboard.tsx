@@ -15,7 +15,7 @@ import {
 import { Card, Badge, Button, StatCard, Loading } from '@/components/ui';
 import { useDashboard, useAdminBookings, useStartService, useMarkComplete } from '@/hooks';
 import { formatTime, formatPrice, cn } from '@/lib/utils';
-import { BookingStatus } from '@overline/shared';
+import { BookingStatus } from '@/types';
 
 export default function DashboardPage() {
   const { data: dashboard, isLoading: loadingDashboard } = useDashboard();

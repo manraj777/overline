@@ -1,7 +1,7 @@
 import React from 'react';
 import { cn } from '@/lib/utils';
 import { Avatar } from '@/components/ui';
-import type { Staff } from '@overline/shared';
+import type { Staff } from '@/types';
 
 interface StaffPickerProps {
   staff: Staff[];

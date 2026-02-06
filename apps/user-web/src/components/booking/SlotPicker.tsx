@@ -1,7 +1,7 @@
 import React from 'react';
 import { cn, formatTime } from '@/lib/utils';
 import { Spinner } from '@/components/ui';
-import type { TimeSlot } from '@overline/shared';
+import type { TimeSlot } from '@/types';
 
 interface SlotPickerProps {
   slots: TimeSlot[];

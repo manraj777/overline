@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import api from '@/lib/api';
-import type { Shop, ShopWithDetails, QueueStats, PaginatedResponse } from '@overline/shared';
+import type { Shop, ShopWithDetails, QueueStats, PaginatedResponse } from '@/types';
 
 interface SearchParams {
   query?: string;

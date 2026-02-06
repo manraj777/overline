@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import type { Shop, Service, Staff, TimeSlot } from '@overline/shared';
+import type { Shop, Service, Staff, TimeSlot } from '@/types';
 
 interface BookingState {
   shop: Shop | null;
