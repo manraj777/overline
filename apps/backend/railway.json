@@ -4,8 +4,7 @@
     "builder": "NIXPACKS"
   },
   "deploy": {
-    "startCommand": "npx prisma generate && npx rimraf dist && npx nest build && ls -la dist/ && node dist/main.js",
-    "restartPolicyType": "ON_FAILURE",
+    "startCommand": "npx prisma generate && node dist/main.js",    "restartPolicyType": "ON_FAILURE",
     "restartPolicyMaxRetries": 3
   }
 }
