@@ -1,0 +1,1 @@
+web: pnpm exec prisma generate && pnpm run build && node dist/main.js
