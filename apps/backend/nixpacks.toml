@@ -1,0 +1,14 @@
+[phases.setup]
+nixPkgs = ["nodejs_20", "pnpm", "openssl"]
+
+[phases.install]
+cmds = ["pnpm install"]
+
+[phases.build]
+cmds = [
+  "npx prisma generate",
+  "NODE_OPTIONS='--max-old-space-size=2048' pnpm build"
+]
+
+[start]
+cmd = "node dist/main.js"
