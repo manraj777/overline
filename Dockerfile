@@ -3,7 +3,7 @@ FROM node:20-alpine
 
 WORKDIR /app
 
-# Install dependencies
+# Install pnpm
 RUN npm install -g pnpm
 
 # Copy package files
@@ -19,12 +19,10 @@ COPY tsconfig.base.json ./
 COPY packages/shared ./packages/shared
 COPY apps/backend ./apps/backend
 
-# Generate Prisma client
+# Generate Prisma client and build
 WORKDIR /app/apps/backend
 RUN npx prisma generate
-
-# Build
-RUN pnpm build
+RUN NODE_OPTIONS='--max-old-space-size=2048' pnpm build
 
 # Production
 ENV NODE_ENV=production
