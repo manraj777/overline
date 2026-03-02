@@ -7,7 +7,7 @@ on:
     branches: [main]
 
 env:
-  NODE_VERSION: '20'
+  NODE_VERSION: '22'
   PNPM_VERSION: '9'
 
 jobs:
@@ -73,8 +73,8 @@ jobs:
       - name: Lint web apps
         run: |
           pnpm --filter "@overline/backend" lint || true
-          pnpm --filter "user-web" lint || true
-          pnpm --filter "admin-web" lint || true
+          pnpm --filter "@overline/user-web" lint || true
+          pnpm --filter "@overline/admin-web" lint || true
 
       - name: Lint mobile apps
         run: |
