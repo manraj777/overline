@@ -54,7 +54,20 @@ docs
 scripts
 BRANDING.md
 DEPLOYMENT.md
+IMPLEMENTATION_COMPLETE.md
 README.md
 .prettierrc
 .gitignore
 rimraf
+package-lock.json
+
+# Mobile apps (not needed for backend Docker build)
+apps/mobile-user
+apps/mobile-admin
+apps/user-web
+apps/admin-web
+
+# Build artifacts
+*.apk
+*.aab
+build-outputs/

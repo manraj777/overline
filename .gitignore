@@ -43,6 +43,15 @@ prisma/migrations/*.sql.bak
 # Docker
 docker-compose.override.yml
 
+# Build artifacts
+*.apk
+*.aab
+build-outputs/
+
+# Non-pnpm lockfiles
+package-lock.json
+yarn.lock
+
 # Misc
 *.tsbuildinfo
 .cache
