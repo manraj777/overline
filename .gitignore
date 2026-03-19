@@ -8,6 +8,7 @@ build
 .next
 out
 .turbo
+build-outputs/*.apk
 
 # Environment files
 .env
@@ -48,3 +49,7 @@ docker-compose.override.yml
 .cache
 tmp
 .vercel
+
+# Mobile secrets
+apps/mobile-admin/android/app/google-services.json
+apps/mobile-user/android/app/google-services.json
