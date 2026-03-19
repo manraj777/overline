@@ -15,7 +15,8 @@ import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { shopsApi } from '../../api/client';
 import { Service, RootStackParamList } from '../../types';
 import { Colors, Spacing, BorderRadius, FontSizes, FontWeights, Shadows } from '../../theme';
-import { Badge, PrimaryButton, Divider, GlassCard } from '../../components/ui';
+import { Badge, PrimaryButton, Divider } from '../../components/ui';
+import { ArrowLeft, Star, MapPin, Phone, Clock, Check, ArrowRight } from 'lucide-react-native';
 
 type RouteProps = RouteProp<RootStackParamList, 'ShopDetail'>;
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
@@ -30,6 +31,7 @@ export default function ShopDetailScreen() {
   const { data: shop, isLoading } = useQuery({
     queryKey: ['shop', shopId],
     queryFn: () => shopsApi.getBySlug(shopId).then(res => res.data),
+    retry: 2,
   });
 
   const toggleService = (serviceId: string) => {
@@ -88,7 +90,7 @@ export default function ShopDetailScreen() {
           <TouchableOpacity
             style={styles.backButton}
             onPress={() => navigation.goBack()}>
-            <Text style={styles.backArrow}>←</Text>
+            <ArrowLeft color={Colors.textPrimary} size={24} />
           </TouchableOpacity>
 
           {/* Shop name on overlay */}
@@ -96,7 +98,7 @@ export default function ShopDetailScreen() {
             <Text style={styles.heroName}>{shop.name}</Text>
             <View style={styles.heroMeta}>
               <View style={styles.heroBadge}>
-                <Text style={styles.heroStar}>★</Text>
+                <Star color={Colors.warning} size={14} fill={Colors.warning} />
                 <Text style={styles.heroRating}>
                   {shop.rating?.toFixed(1) || 'New'}
                 </Text>
@@ -116,12 +118,12 @@ export default function ShopDetailScreen() {
         {/* Info Section */}
         <View style={styles.infoSection}>
           <View style={styles.infoRow}>
-            <Text style={styles.infoIcon}>📍</Text>
+            <MapPin color={Colors.textSecondary} size={18} style={styles.infoIcon} />
             <Text style={styles.infoText}>{shop.address}</Text>
           </View>
           {shop.phone && (
             <View style={styles.infoRow}>
-              <Text style={styles.infoIcon}>📞</Text>
+              <Phone color={Colors.textSecondary} size={18} style={styles.infoIcon} />
               <Text style={styles.infoText}>{shop.phone}</Text>
             </View>
           )}
@@ -159,8 +161,9 @@ export default function ShopDetailScreen() {
                     </Text>
                   )}
                   <View style={styles.serviceMetaRow}>
+                    <Clock color={Colors.textSecondary} size={14} style={{ marginRight: 4 }} />
                     <Text style={styles.serviceDuration}>
-                      ⏱ {service.durationMinutes} min
+                      {service.durationMinutes} min
                     </Text>
                   </View>
                 </View>
@@ -174,7 +177,7 @@ export default function ShopDetailScreen() {
                       isSelected && styles.checkboxChecked,
                     ]}>
                     {isSelected && (
-                      <Text style={styles.checkmark}>✓</Text>
+                      <Check color="#fff" size={14} />
                     )}
                   </View>
                 </View>
@@ -202,7 +205,7 @@ export default function ShopDetailScreen() {
             onPress={() =>
               navigation.navigate('Booking', { shopId, selectedServices })
             }
-            icon="→"
+            icon={<ArrowRight color="#fff" size={18} />}
             size="sm"
             style={{ paddingHorizontal: 28 }}
           />
@@ -212,7 +215,7 @@ export default function ShopDetailScreen() {
   );
 }
 
-const { width, height } = Dimensions.get('window');
+const { height } = Dimensions.get('window');
 
 const styles = StyleSheet.create({
   container: {

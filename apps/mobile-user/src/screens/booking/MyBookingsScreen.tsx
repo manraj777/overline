@@ -7,6 +7,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { format, isPast } from 'date-fns';
+import { Calendar, Clock } from 'lucide-react-native';
 import { bookingsApi } from '../../api/client';
 import { RootStackParamList, Booking } from '../../types';
 import { Colors, Spacing, BorderRadius, FontSizes, FontWeights, BookingStatusConfig, Shadows } from '../../theme';
@@ -20,10 +21,12 @@ export default function MyBookingsScreen() {
   const navigation = useNavigation<NavigationProp>();
   const [activeTab, setActiveTab] = useState<TabType>('upcoming');
 
-  const { data: bookings = [], isLoading, refetch, isRefetching } = useQuery({
+  const { data: bookingsData, isLoading, refetch, isRefetching } = useQuery({
     queryKey: ['myBookings'],
     queryFn: () => bookingsApi.getMy().then(res => res.data),
   });
+
+  const bookings: Booking[] = Array.isArray(bookingsData) ? bookingsData : bookingsData?.data || [];
 
   const upcomingBookings = bookings.filter(
     (b: Booking) => !isPast(new Date(b.startTime)) && !['CANCELLED', 'COMPLETED', 'NO_SHOW'].includes(b.status),
@@ -50,11 +53,11 @@ export default function MyBookingsScreen() {
 
         <View style={styles.cardBody}>
           <View style={styles.detailRow}>
-            <Text style={styles.detailIcon}>📅</Text>
+            <Calendar color={Colors.textSecondary} size={16} style={{ marginRight: 6 }} />
             <Text style={styles.detailText}>{format(new Date(item.startTime), 'EEE, MMM d, yyyy')}</Text>
           </View>
           <View style={styles.detailRow}>
-            <Text style={styles.detailIcon}>🕐</Text>
+            <Clock color={Colors.textSecondary} size={16} style={{ marginRight: 6 }} />
             <Text style={styles.detailText}>{format(new Date(item.startTime), 'h:mm a')}</Text>
           </View>
         </View>

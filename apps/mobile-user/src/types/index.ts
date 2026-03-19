@@ -116,7 +116,7 @@ export interface WalletBalance {
 
 export interface WalletTransaction {
   id: string;
-  type: 'CREDIT' | 'DEBIT' | 'REFUND' | 'EXPIRED';
+  type: 'FREE_CASH_CREDIT' | 'FREE_CASH_DEBIT' | 'FREE_CASH_RETURN' | 'REFUND' | 'REWARD' | 'ADMIN_CREDIT' | 'ADMIN_DEBIT';
   amount: number;
   description: string;
   bookingId?: string;
@@ -141,6 +141,7 @@ export interface TimeSlot {
 // Navigation types
 export type RootStackParamList = {
   Splash: undefined;
+  Onboarding: undefined;
   Login: undefined;
   Register: undefined;
   OtpVerify: {phone: string};

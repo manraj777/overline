@@ -25,7 +25,7 @@ export interface AdminUser {
   id: string;
   name: string;
   email: string;
-  role: 'SUPER_ADMIN' | 'SHOP_OWNER' | 'SHOP_STAFF';
+  role: 'SUPER_ADMIN' | 'OWNER' | 'STAFF';
   shops?: Shop[];
 }
 
@@ -141,7 +141,7 @@ export interface Staff {
   id: string;
   name: string;
   email: string;
-  role: 'SHOP_OWNER' | 'SHOP_STAFF';
+  role: 'OWNER' | 'STAFF';
   isActive: boolean;
   createdAt: string;
 }

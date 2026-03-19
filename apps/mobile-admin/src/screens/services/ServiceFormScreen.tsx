@@ -64,6 +64,7 @@ export default function ServiceFormScreen() {
         price: data.price,
         durationMinutes: data.durationMinutes,
         description: data.description,
+        category: data.category,
       }),
     onSuccess: () => {
       queryClient.invalidateQueries({queryKey: ['adminServices']});

@@ -4,12 +4,13 @@ import { useQuery } from '@tanstack/react-query';
 import { format } from 'date-fns';
 import { walletApi } from '../../api/client';
 import { Colors, Spacing, BorderRadius, FontSizes, FontWeights, Shadows } from '../../theme';
-import { GlassCard, EmptyState, Divider } from '../../components/ui';
+import { GlassCard, EmptyState } from '../../components/ui';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Banknote, CreditCard, Clock, Gift, Sparkles } from 'lucide-react-native';
 
 interface WalletTransaction {
   id: string;
-  type: 'EARNED' | 'SPENT' | 'EXPIRED' | 'REFERRAL';
+  type: 'FREE_CASH_CREDIT' | 'FREE_CASH_DEBIT' | 'FREE_CASH_RETURN' | 'REFUND' | 'REWARD' | 'ADMIN_CREDIT' | 'ADMIN_DEBIT';
   amount: number;
   description: string;
   createdAt: string;
@@ -23,11 +24,14 @@ interface WalletData {
   transactions: WalletTransaction[];
 }
 
-const txConfig: Record<string, { icon: string; color: string; prefix: string }> = {
-  EARNED: { icon: '💰', color: Colors.success, prefix: '+' },
-  SPENT: { icon: '💳', color: Colors.error, prefix: '-' },
-  EXPIRED: { icon: '⏰', color: Colors.textTertiary, prefix: '-' },
-  REFERRAL: { icon: '🎁', color: Colors.success, prefix: '+' },
+const txConfig: Record<string, { icon: React.ReactNode; color: string; prefix: string }> = {
+  FREE_CASH_CREDIT: { icon: <Banknote color={Colors.success} size={20} />, color: Colors.success, prefix: '+' },
+  FREE_CASH_DEBIT: { icon: <CreditCard color={Colors.error} size={20} />, color: Colors.error, prefix: '-' },
+  FREE_CASH_RETURN: { icon: <Banknote color={Colors.success} size={20} />, color: Colors.success, prefix: '+' },
+  REFUND: { icon: <CreditCard color={Colors.success} size={20} />, color: Colors.success, prefix: '+' },
+  REWARD: { icon: <Gift color={Colors.success} size={20} />, color: Colors.success, prefix: '+' },
+  ADMIN_CREDIT: { icon: <Sparkles color={Colors.success} size={20} />, color: Colors.success, prefix: '+' },
+  ADMIN_DEBIT: { icon: <Clock color={Colors.error} size={20} />, color: Colors.error, prefix: '-' },
 };
 
 export default function WalletScreen() {
@@ -37,11 +41,11 @@ export default function WalletScreen() {
   });
 
   const renderTransaction = ({ item }: { item: WalletTransaction }) => {
-    const cfg = txConfig[item.type] || { icon: '💵', color: Colors.textSecondary, prefix: '' };
+    const cfg = txConfig[item.type] || { icon: <Banknote color={Colors.textSecondary} size={20} />, color: Colors.textSecondary, prefix: '' };
     return (
       <View style={styles.txCard}>
         <View style={styles.txIconWrap}>
-          <Text style={{ fontSize: 20 }}>{cfg.icon}</Text>
+          {cfg.icon}
         </View>
         <View style={styles.txDetails}>
           <Text style={styles.txDesc}>{item.description}</Text>
@@ -81,13 +85,15 @@ export default function WalletScreen() {
       <GlassCard style={{ marginHorizontal: Spacing.xl, marginBottom: Spacing.xl }}>
         <Text style={styles.howTitle}>How Free Cash Works</Text>
         {[
-          { icon: '✨', text: 'Earn 2% free cash on every booking' },
-          { icon: '🎁', text: 'Get ₹50 for every friend you refer' },
-          { icon: '💳', text: 'Use free cash on your next booking' },
-          { icon: '⏰', text: 'Free cash expires after 90 days' },
+          { icon: <Sparkles color={Colors.textSecondary} size={16} />, text: 'Earn 2% free cash on every booking' },
+          { icon: <Gift color={Colors.textSecondary} size={16} />, text: 'Get ₹50 for every friend you refer' },
+          { icon: <CreditCard color={Colors.textSecondary} size={16} />, text: 'Use free cash on your next booking' },
+          { icon: <Clock color={Colors.textSecondary} size={16} />, text: 'Free cash expires after 90 days' },
         ].map((item, i) => (
           <View key={i} style={styles.howRow}>
-            <Text style={{ fontSize: 16, width: 24 }}>{item.icon}</Text>
+            <View style={{ width: 24, alignItems: 'center', justifyContent: 'center' }}>
+              {item.icon}
+            </View>
             <Text style={styles.howText}>{item.text}</Text>
           </View>
         ))}

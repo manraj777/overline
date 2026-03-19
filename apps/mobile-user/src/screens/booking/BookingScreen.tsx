@@ -15,8 +15,9 @@ import { format, addDays, isSameDay } from 'date-fns';
 import { shopsApi, bookingsApi, queueApi } from '../../api/client';
 import { RootStackParamList, TimeSlot } from '../../types';
 import { Colors, Spacing, BorderRadius, FontSizes, FontWeights, Shadows } from '../../theme';
-import { PrimaryButton, Divider, SectionHeader } from '../../components/ui';
+import { PrimaryButton, Divider } from '../../components/ui';
 import { useAuthStore } from '../../stores/authStore';
+import { CalendarX } from 'lucide-react-native';
 
 type RouteProps = RouteProp<RootStackParamList, 'Booking'>;
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
@@ -80,7 +81,7 @@ export default function BookingScreen() {
       return;
     }
 
-    const startTime = `${format(selectedDate, 'yyyy-MM-dd')}T${selectedTime}:00.000Z`;
+    const startTime = `${format(selectedDate, 'yyyy-MM-dd')}T${selectedTime}:00`;
     createBooking.mutate({ shopId, serviceIds: selectedServices, startTime });
   };
 
@@ -151,7 +152,7 @@ export default function BookingScreen() {
             />
           ) : timeSlots.length === 0 ? (
             <View style={styles.noSlots}>
-              <Text style={styles.noSlotsIcon}>📅</Text>
+              <CalendarX color={Colors.textTertiary} size={48} />
               <Text style={styles.noSlotsText}>No available slots for this date</Text>
             </View>
           ) : (

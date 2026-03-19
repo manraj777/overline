@@ -18,8 +18,10 @@ import { shopsApi } from '../../api/client';
 import { Shop, RootStackParamList } from '../../types';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors, Spacing, BorderRadius, FontSizes, FontWeights, Shadows } from '../../theme';
-import { Badge, Chip } from '../../components/ui';
+import { Chip } from '../../components/ui';
 import { useAuthStore } from '../../stores/authStore';
+import { Search, MapPin, Star, X } from 'lucide-react-native';
+import { PermissionManager } from '../../utils/PermissionManager';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -31,6 +33,10 @@ export default function HomeScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState('All');
   const scrollY = useRef(new Animated.Value(0)).current;
+
+  React.useEffect(() => {
+    PermissionManager.requestAllRequiredPermissions();
+  }, []);
 
   const {
     data: shopsData,
@@ -88,7 +94,7 @@ export default function HomeScreen() {
 
         {/* Rating on image */}
         <View style={styles.ratingOnImage}>
-          <Text style={styles.ratingStarText}>★</Text>
+          <Star color={Colors.warning} size={14} fill={Colors.warning} />
           <Text style={styles.ratingValueText}>
             {item.rating?.toFixed(1) || 'New'}
           </Text>
@@ -101,7 +107,7 @@ export default function HomeScreen() {
           {item.name}
         </Text>
         <View style={styles.locationRow}>
-          <Text style={styles.locationPin}>📍</Text>
+          <MapPin color={Colors.textSecondary} size={14} />
           <Text style={styles.shopAddress} numberOfLines={1}>
             {item.address}
           </Text>
@@ -147,7 +153,9 @@ export default function HomeScreen() {
 
           {/* Search */}
           <View style={styles.searchContainer}>
-            <Text style={styles.searchIcon}>🔍</Text>
+            <View style={styles.searchIcon}>
+              <Search color={Colors.textTertiary} size={18} />
+            </View>
             <TextInput
               style={styles.searchInput}
               placeholder="Search salons, services..."
@@ -158,7 +166,7 @@ export default function HomeScreen() {
             {searchQuery.length > 0 && (
               <TouchableOpacity onPress={() => setSearchQuery('')}>
                 <View style={styles.clearBtn}>
-                  <Text style={styles.clearText}>✕</Text>
+                  <X color={Colors.textSecondary} size={14} />
                 </View>
               </TouchableOpacity>
             )}
@@ -206,7 +214,7 @@ export default function HomeScreen() {
             !isLoading ? (
               <View style={styles.emptyState}>
                 <View style={styles.emptyIcon}>
-                  <Text style={{ fontSize: 48 }}>🔍</Text>
+                  <Search color={Colors.textTertiary} size={48} />
                 </View>
                 <Text style={styles.emptyTitle}>No salons found</Text>
                 <Text style={styles.emptyText}>
@@ -291,7 +299,6 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.lg,
   },
   searchIcon: {
-    fontSize: 16,
     marginRight: Spacing.sm,
   },
   searchInput: {

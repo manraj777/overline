@@ -21,7 +21,7 @@ type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'Register'>;
 
 export default function RegisterScreen() {
   const navigation = useNavigation<NavigationProp>();
-  const { signup, sendOtp, isLoading, error, clearError } = useAuthStore();
+  const { signup, isLoading, error, clearError } = useAuthStore();
 
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
@@ -36,9 +36,14 @@ export default function RegisterScreen() {
       return;
     }
 
+    if (password.length < 8) {
+      Alert.alert('Error', 'Password must be at least 8 characters');
+      return;
+    }
+
     // Normalize phone to +91 format
-    const cleaned = phone.replace(/\s+/g, '').replace(/^0+/, '');
-    const normalized = cleaned.startsWith('+91')
+    const cleaned = phone.trim().replace(/\s+/g, '').replace(/^0+/, '');
+    const normalizedPhone = cleaned.startsWith('+91')
       ? cleaned
       : cleaned.startsWith('91') && cleaned.length > 10
       ? `+${cleaned}`
@@ -46,10 +51,7 @@ export default function RegisterScreen() {
 
     setIsSendingOtp(true);
     try {
-      await signup({ name: name.trim(), email: email.trim(), password, phone: normalized });
-      // Send OTP to verify the registered phone number
-      await sendOtp(normalized);
-      navigation.navigate('OtpVerify', { phone: normalized });
+      await signup({ name: name.trim(), email: email.trim(), password, phone: normalizedPhone });
     } catch {
       // Error handled in store
     } finally {

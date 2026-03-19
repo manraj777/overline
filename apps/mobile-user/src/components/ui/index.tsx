@@ -46,14 +46,20 @@ interface GlassCardProps {
 }
 
 export function GlassCard({ children, style, onPress }: GlassCardProps) {
-    const Container = onPress ? TouchableOpacity : View;
+    if (onPress) {
+        return (
+            <TouchableOpacity
+                style={[styles.glassCard, style]}
+                activeOpacity={0.85}
+                onPress={onPress}>
+                {children}
+            </TouchableOpacity>
+        );
+    }
     return (
-        <Container
-            style={[styles.glassCard, style]}
-            activeOpacity={onPress ? 0.85 : 1}
-            onPress={onPress}>
+        <View style={[styles.glassCard, style]}>
             {children}
-        </Container>
+        </View>
     );
 }
 
@@ -117,7 +123,7 @@ interface PrimaryButtonProps {
     disabled?: boolean;
     variant?: 'primary' | 'secondary' | 'ghost' | 'danger';
     size?: 'sm' | 'md' | 'lg';
-    icon?: string;
+    icon?: React.ReactNode;
     style?: ViewStyle;
 }
 
@@ -159,7 +165,9 @@ export function PrimaryButton({
                 />
             ) : (
                 <View style={styles.buttonContent}>
-                    {icon && <Text style={styles.buttonIcon}>{icon}</Text>}
+                    {icon && (
+                        typeof icon === 'string' ? <Text style={styles.buttonIcon}>{icon}</Text> : <View style={styles.buttonIconContainer}>{icon}</View>
+                    )}
                     <Text
                         style={[
                             styles.primaryButtonText,
@@ -298,7 +306,7 @@ export function EmptyState({ icon, title, subtitle, actionText, onAction }: Empt
 interface StatCardProps {
     label: string;
     value: string | number;
-    icon?: string;
+    icon?: React.ReactNode;
     color?: string;
 }
 
@@ -307,7 +315,7 @@ export function StatCard({ label, value, icon, color = Colors.primary }: StatCar
         <View style={styles.statCard}>
             {icon && (
                 <View style={[styles.statIcon, { backgroundColor: `${color}15` }]}>
-                    <Text style={{ fontSize: 20 }}>{icon}</Text>
+                    {typeof icon === 'string' ? <Text style={{ fontSize: 20 }}>{icon}</Text> : icon}
                 </View>
             )}
             <Text style={styles.statValue}>{value}</Text>
@@ -322,7 +330,7 @@ import { TextInput, TextInputProps } from 'react-native';
 interface InputFieldProps extends TextInputProps {
     label?: string;
     error?: string;
-    icon?: string;
+    icon?: React.ReactNode;
     containerStyle?: ViewStyle;
 }
 
@@ -338,7 +346,9 @@ export function InputField({
         <View style={[{ marginBottom: Spacing.xl }, containerStyle]}>
             {label && <Text style={styles.inputLabel}>{label}</Text>}
             <View style={[styles.inputContainer, error ? styles.inputError : undefined]}>
-                {icon && <Text style={styles.inputIcon}>{icon}</Text>}
+                {icon && (
+                    typeof icon === 'string' ? <Text style={styles.inputIcon}>{icon}</Text> : <View style={styles.inputIconContainer}>{icon}</View>
+                )}
                 <TextInput
                     style={[styles.input, inputStyle as TextStyle]}
                     placeholderTextColor={Colors.textTertiary}
@@ -418,6 +428,9 @@ const styles = StyleSheet.create({
     },
     buttonIcon: {
         fontSize: 18,
+    },
+    buttonIconContainer: {
+        marginRight: 2,
     },
     primaryButtonText: {
         fontSize: FontSizes.md,
@@ -545,6 +558,9 @@ const styles = StyleSheet.create({
     },
     inputIcon: {
         fontSize: 18,
+        marginRight: Spacing.md,
+    },
+    inputIconContainer: {
         marginRight: Spacing.md,
     },
     input: {

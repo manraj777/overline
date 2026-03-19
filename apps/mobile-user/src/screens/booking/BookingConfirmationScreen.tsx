@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity, Animated } from 'react-native';
+import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -8,6 +8,7 @@ import { bookingsApi } from '../../api/client';
 import { RootStackParamList } from '../../types';
 import { Colors, Spacing, BorderRadius, FontSizes, FontWeights, Shadows } from '../../theme';
 import { PrimaryButton, Divider } from '../../components/ui';
+import { Check, Sparkles } from 'lucide-react-native';
 
 type RouteProps = RouteProp<RootStackParamList, 'BookingConfirmation'>;
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
@@ -36,7 +37,7 @@ export default function BookingConfirmationScreen() {
         {/* Success Animation */}
         <View style={styles.successCircle}>
           <View style={styles.successInner}>
-            <Text style={styles.successCheck}>✓</Text>
+            <Check color="#fff" size={40} />
           </View>
         </View>
 
@@ -88,8 +89,9 @@ export default function BookingConfirmationScreen() {
 
           {Number(booking.freeCashAmount) > 0 && (
             <View style={styles.freeCashBadge}>
+              <Sparkles color={Colors.success} size={14} style={{ marginRight: 6 }} />
               <Text style={styles.freeCashText}>
-                ✨ You'll earn ₹{booking.freeCashAmount} Free Cash!
+                You'll earn ₹{booking.freeCashAmount} Free Cash!
               </Text>
             </View>
           )}
@@ -240,6 +242,7 @@ const styles = StyleSheet.create({
   },
   freeCashBadge: {
     backgroundColor: Colors.successLight,
+    flexDirection: 'row',
     padding: Spacing.md,
     borderRadius: BorderRadius.md,
     marginTop: Spacing.md,

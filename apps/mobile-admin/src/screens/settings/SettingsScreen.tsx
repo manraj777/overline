@@ -56,7 +56,7 @@ export default function SettingsScreen() {
                 <Text style={styles.roleText}>
                   {user?.role === 'SUPER_ADMIN'
                     ? 'Super Admin'
-                    : user?.role === 'SHOP_OWNER'
+                    : user?.role === 'OWNER'
                     ? 'Shop Owner'
                     : 'Staff'}
                 </Text>

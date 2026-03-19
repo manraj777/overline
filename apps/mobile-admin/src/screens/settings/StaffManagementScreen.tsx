@@ -166,7 +166,7 @@ export default function StaffManagementScreen() {
         <Text style={styles.staffEmail}>{item.email}</Text>
         <View style={styles.roleBadge}>
           <Text style={styles.roleText}>
-            {item.role === 'SHOP_OWNER' ? 'Owner' : 'Staff'}
+            {item.role === 'OWNER' ? 'Owner' : 'Staff'}
           </Text>
         </View>
       </View>
@@ -176,7 +176,7 @@ export default function StaffManagementScreen() {
           onPress={() => handleEdit(item)}>
           <Text style={styles.editButtonText}>Edit</Text>
         </TouchableOpacity>
-        {item.role !== 'SHOP_OWNER' && (
+        {item.role !== 'OWNER' && (
           <TouchableOpacity
             style={styles.deleteButton}
             onPress={() => handleDelete(item)}>

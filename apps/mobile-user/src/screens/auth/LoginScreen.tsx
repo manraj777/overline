@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -13,23 +13,75 @@ import {
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import {
+  GoogleSignin,
+  statusCodes,
+} from '@react-native-google-signin/google-signin';
 import { useAuthStore } from '../../stores/authStore';
 import { RootStackParamList } from '../../types';
 import { Colors, Spacing, BorderRadius, FontSizes, FontWeights, Shadows } from '../../theme';
 import { InputField, PrimaryButton } from '../../components/ui';
+import { Config } from '../../config';
+import { Smartphone, Lock, Shield, Mail, Key, Eye, EyeOff, ArrowRight, AlertTriangle, X } from 'lucide-react-native';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'Login'>;
 
 export default function LoginScreen() {
   const navigation = useNavigation<NavigationProp>();
-  const { login, sendOtp, isLoading, error, clearError } = useAuthStore();
+  const { login, googleLogin, sendOtp, isLoading, error, clearError } = useAuthStore();
 
-  const [loginMode, setLoginMode] = useState<'email' | 'phone'>('email');
+  const [loginMode, setLoginMode] = useState<'email' | 'phone'>('phone');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [phone, setPhone] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isSendingOtp, setIsSendingOtp] = useState(false);
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+
+  // Configure Google Sign-In on mount
+  useEffect(() => {
+    if (Config.FEATURES.GOOGLE_AUTH_ENABLED && Config.GOOGLE?.WEB_CLIENT_ID) {
+      GoogleSignin.configure({
+        webClientId: Config.GOOGLE.WEB_CLIENT_ID,
+        offlineAccess: Config.GOOGLE.OFFLINE_ACCESS,
+      });
+    }
+  }, []);
+
+  const handleGoogleLogin = async () => {
+    if (!Config.GOOGLE?.WEB_CLIENT_ID) {
+      Alert.alert('Configuration Error', 'Google Sign-In is not configured. Please contact support.');
+      return;
+    }
+
+    setIsGoogleLoading(true);
+    try {
+      await GoogleSignin.hasPlayServices();
+      const signInResult = await GoogleSignin.signIn();
+
+      // Get the ID token
+      const idToken = signInResult.data?.idToken;
+
+      if (!idToken) {
+        throw new Error('No ID token received from Google');
+      }
+
+      // Send ID token to backend
+      await googleLogin(idToken);
+    } catch (signInError: any) {
+      if (signInError.code === statusCodes.SIGN_IN_CANCELLED) {
+        // User cancelled
+      } else if (signInError.code === statusCodes.IN_PROGRESS) {
+        Alert.alert('Please Wait', 'Sign in already in progress');
+      } else if (signInError.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
+        Alert.alert('Error', 'Google Play Services is not available');
+      } else {
+        Alert.alert('Error', signInError.message || 'Google sign-in failed');
+      }
+    } finally {
+      setIsGoogleLoading(false);
+    }
+  };
 
   const handleEmailLogin = async () => {
     if (!email.trim() || !password.trim()) {
@@ -55,13 +107,20 @@ export default function LoginScreen() {
     const normalized = cleaned.startsWith('+91')
       ? cleaned
       : cleaned.startsWith('91') && cleaned.length > 10
-      ? `+${cleaned}`
-      : `+91${cleaned}`;
+        ? `+${cleaned}`
+        : `+91${cleaned}`;
 
     setIsSendingOtp(true);
     try {
-      await sendOtp(normalized);
-      navigation.navigate('OtpVerify', {phone: normalized});
+      const devOtp = await sendOtp(normalized);
+      // In dev mode, show OTP in alert for convenience
+      if (devOtp && __DEV__) {
+        Alert.alert('Dev Mode - OTP', `Your OTP is: ${devOtp}`, [
+          { text: 'OK', onPress: () => navigation.navigate('OtpVerify', { phone: normalized }) },
+        ]);
+      } else {
+        navigation.navigate('OtpVerify', { phone: normalized });
+      }
     } catch {
       // Error handled in store
     } finally {
@@ -99,23 +158,25 @@ export default function LoginScreen() {
             </Text>
           </View>
 
-          {/* Login Mode Toggle */}
-          <View style={styles.modeToggle}>
-            <TouchableOpacity
-              style={[styles.modeButton, loginMode === 'phone' && styles.modeButtonActive]}
-              onPress={() => { setLoginMode('phone'); clearError(); }}>
-              <Text style={[styles.modeText, loginMode === 'phone' && styles.modeTextActive]}>
-                Phone
-              </Text>
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={[styles.modeButton, loginMode === 'email' && styles.modeButtonActive]}
-              onPress={() => { setLoginMode('email'); clearError(); }}>
-              <Text style={[styles.modeText, loginMode === 'email' && styles.modeTextActive]}>
-                Email
-              </Text>
-            </TouchableOpacity>
-          </View>
+          {/* Login Mode Toggle - only show if both methods are enabled */}
+          {Config.FEATURES.EMAIL_AUTH_ENABLED && Config.FEATURES.OTP_AUTH_ENABLED && (
+            <View style={styles.modeToggle}>
+              <TouchableOpacity
+                style={[styles.modeButton, loginMode === 'phone' && styles.modeButtonActive]}
+                onPress={() => { setLoginMode('phone'); clearError(); }}>
+                <Text style={[styles.modeText, loginMode === 'phone' && styles.modeTextActive]}>
+                  Phone
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modeButton, loginMode === 'email' && styles.modeButtonActive]}
+                onPress={() => { setLoginMode('email'); clearError(); }}>
+                <Text style={[styles.modeText, loginMode === 'email' && styles.modeTextActive]}>
+                  Email
+                </Text>
+              </TouchableOpacity>
+            </View>
+          )}
 
           {/* Form */}
           <View style={styles.form}>
@@ -124,9 +185,9 @@ export default function LoginScreen() {
                 style={styles.errorContainer}
                 onPress={clearError}
                 activeOpacity={0.8}>
-                <Text style={styles.errorIcon}>{'⚠️'}</Text>
+                <AlertTriangle color={Colors.error} size={20} style={{ marginRight: 8 }} />
                 <Text style={styles.errorText}>{error}</Text>
-                <Text style={styles.dismissError}>{'✕'}</Text>
+                <X color={Colors.textTertiary} size={20} />
               </TouchableOpacity>
             )}
 
@@ -134,7 +195,7 @@ export default function LoginScreen() {
               <>
                 <InputField
                   label="Phone Number"
-                  icon="{'📱'}"
+                  icon={<Smartphone color={Colors.textSecondary} size={20} />}
                   placeholder="Enter your 10-digit number"
                   value={phone}
                   onChangeText={setPhone}
@@ -146,12 +207,12 @@ export default function LoginScreen() {
                   title={isSendingOtp ? 'Sending OTP...' : 'Send OTP'}
                   onPress={handlePhoneLogin}
                   loading={isSendingOtp}
-                  icon={'🔐'}
+                  icon={<Lock color="#fff" size={20} />}
                   style={{ marginTop: Spacing.md }}
                 />
 
                 <View style={styles.otpInfoBox}>
-                  <Text style={styles.otpInfoIcon}>{'🛡️'}</Text>
+                  <Shield color={Colors.primary} size={24} style={{ marginRight: 12, marginTop: 2 }} />
                   <Text style={styles.otpInfoText}>
                     We'll send a 6-digit verification code to your phone number for secure login
                   </Text>
@@ -161,7 +222,7 @@ export default function LoginScreen() {
               <>
                 <InputField
                   label="Email"
-                  icon={'✉️'}
+                  icon={<Mail color={Colors.textSecondary} size={20} />}
                   placeholder="you@example.com"
                   value={email}
                   onChangeText={setEmail}
@@ -173,7 +234,7 @@ export default function LoginScreen() {
                 <View>
                   <InputField
                     label="Password"
-                    icon={'🔑'}
+                    icon={<Key color={Colors.textSecondary} size={20} />}
                     placeholder="Enter your password"
                     value={password}
                     onChangeText={setPassword}
@@ -182,9 +243,7 @@ export default function LoginScreen() {
                   <TouchableOpacity
                     style={styles.eyeButton}
                     onPress={() => setShowPassword(!showPassword)}>
-                    <Text style={styles.eyeText}>
-                      {showPassword ? '👁️' : '👁️‍🗨️'}
-                    </Text>
+                    {showPassword ? <EyeOff color={Colors.textSecondary} size={20} /> : <Eye color={Colors.textSecondary} size={20} />}
                   </TouchableOpacity>
                 </View>
 
@@ -196,26 +255,38 @@ export default function LoginScreen() {
                   title="Sign In"
                   onPress={handleEmailLogin}
                   loading={isLoading}
-                  icon={'→'}
+                  icon={<ArrowRight color="#fff" size={20} />}
                   style={{ marginTop: Spacing.md }}
                 />
               </>
             )}
 
-            {/* Divider */}
-            <View style={styles.dividerRow}>
-              <View style={styles.dividerLine} />
-              <Text style={styles.dividerText}>or continue with</Text>
-              <View style={styles.dividerLine} />
-            </View>
-
-            {/* Social login */}
-            <View style={styles.socialRow}>
-              <TouchableOpacity style={styles.socialButton}>
-                <Text style={styles.socialIcon}>G</Text>
-                <Text style={styles.socialText}>Google</Text>
-              </TouchableOpacity>
-            </View>
+            {/* Social login - only show if Google auth is enabled */}
+            {Config.FEATURES.GOOGLE_AUTH_ENABLED && (
+              <>
+                <View style={styles.dividerRow}>
+                  <View style={styles.dividerLine} />
+                  <Text style={styles.dividerText}>or continue with</Text>
+                  <View style={styles.dividerLine} />
+                </View>
+                <View style={styles.socialRow}>
+                  <TouchableOpacity
+                    style={[styles.socialButton, isGoogleLoading && styles.socialButtonDisabled]}
+                    onPress={handleGoogleLogin}
+                    disabled={isGoogleLoading}
+                  >
+                    {isGoogleLoading ? (
+                      <ActivityIndicator size="small" color={Colors.primary} />
+                    ) : (
+                      <>
+                        <Text style={styles.socialIcon}>G</Text>
+                        <Text style={styles.socialText}>Google</Text>
+                      </>
+                    )}
+                  </TouchableOpacity>
+                </View>
+              </>
+            )}
           </View>
 
           {/* Footer */}
@@ -231,7 +302,7 @@ export default function LoginScreen() {
   );
 }
 
-const { width, height } = Dimensions.get('window');
+const { height } = Dimensions.get('window');
 
 const styles = StyleSheet.create({
   container: {
@@ -383,6 +454,9 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.border,
     gap: Spacing.sm,
+  },
+  socialButtonDisabled: {
+    opacity: 0.6,
   },
   socialIcon: {
     fontSize: 18,

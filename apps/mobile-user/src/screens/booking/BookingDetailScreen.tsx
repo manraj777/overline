@@ -7,6 +7,7 @@ import { bookingsApi } from '../../api/client';
 import { RootStackParamList } from '../../types';
 import { Colors, Spacing, BorderRadius, FontSizes, FontWeights, Shadows, BookingStatusConfig } from '../../theme';
 import { PrimaryButton, Divider, Badge, GlassCard } from '../../components/ui';
+import { Phone, Calendar, Clock, X } from 'lucide-react-native';
 
 type RouteProps = RouteProp<RootStackParamList, 'BookingDetail'>;
 
@@ -79,7 +80,8 @@ export default function BookingDetailScreen() {
           <Text style={styles.shopAddress}>{booking.shop?.address}</Text>
           {booking.shop?.phone && (
             <TouchableOpacity style={styles.callButton}>
-              <Text style={styles.callButtonText}>📞 {booking.shop.phone}</Text>
+              <Phone color={Colors.primary} size={16} style={{ marginRight: 6 }} />
+              <Text style={styles.callButtonText}>{booking.shop.phone}</Text>
             </TouchableOpacity>
           )}
         </GlassCard>
@@ -90,14 +92,14 @@ export default function BookingDetailScreen() {
         <Text style={styles.sectionTitle}>DATE & TIME</Text>
         <GlassCard>
           <View style={styles.dtRow}>
-            <Text style={{ fontSize: 24, marginRight: 12 }}>📅</Text>
+            <Calendar color={Colors.textSecondary} size={24} style={{ marginRight: 12 }} />
             <View>
               <Text style={styles.dtLabel}>Date</Text>
               <Text style={styles.dtValue}>{format(new Date(booking.startTime), 'EEEE, MMM d, yyyy')}</Text>
             </View>
           </View>
           <View style={[styles.dtRow, { marginTop: 12 }]}>
-            <Text style={{ fontSize: 24, marginRight: 12 }}>🕐</Text>
+            <Clock color={Colors.textSecondary} size={24} style={{ marginRight: 12 }} />
             <View>
               <Text style={styles.dtLabel}>Time</Text>
               <Text style={styles.dtValue}>
@@ -159,7 +161,7 @@ export default function BookingDetailScreen() {
             onPress={handleCancel}
             loading={cancelMutation.isPending}
             variant="danger"
-            icon="✕"
+            icon={<X color="#fff" size={20} />}
           />
         </View>
       )}
@@ -198,6 +200,7 @@ const styles = StyleSheet.create({
   shopName: { fontSize: FontSizes.md, fontWeight: FontWeights.bold, color: Colors.textPrimary, marginBottom: 4 },
   shopAddress: { fontSize: FontSizes.sm, color: Colors.textSecondary },
   callButton: {
+    flexDirection: 'row',
     marginTop: Spacing.md, padding: Spacing.md, backgroundColor: Colors.surfaceLight,
     borderRadius: BorderRadius.md, alignItems: 'center',
   },

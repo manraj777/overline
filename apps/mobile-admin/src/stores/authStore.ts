@@ -29,7 +29,7 @@ interface AuthState {
   completeOtpVerification: () => void;
   logout: () => Promise<void>;
   checkAuth: () => Promise<void>;
-  setSelectedShop: (shopId: string) => void;
+  setSelectedShop: (shopId: string) => Promise<void>;
 }
 
 export const useAuthStore = create<AuthState>((set, get) => ({
@@ -44,6 +44,12 @@ export const useAuthStore = create<AuthState>((set, get) => ({
     try {
       const response = await authApi.login(email, password);
       const {accessToken, refreshToken, user} = response.data;
+
+      // Validate admin role
+      const adminRoles = ['SUPER_ADMIN', 'OWNER', 'STAFF'];
+      if (!adminRoles.includes(user.role)) {
+        throw new Error('Access denied. This app is for shop owners and staff only.');
+      }
 
       await AsyncStorage.setItem('admin_token', accessToken);
       if (refreshToken) {

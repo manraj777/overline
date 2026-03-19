@@ -6,6 +6,7 @@ import { userApi } from '../../api/client';
 import { Colors, Spacing, BorderRadius, FontSizes, FontWeights, Shadows } from '../../theme';
 import { GlassCard, PrimaryButton, Divider } from '../../components/ui';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { Upload, User, Bell, MapPin, MessageSquare, HelpCircle, Star, Info, FileText, Lock, LogOut, ChevronRight } from 'lucide-react-native';
 
 interface UserProfile {
   id: string; name: string; email: string; phone: string;
@@ -81,7 +82,7 @@ export default function ProfileScreen() {
               title="Share Referral Code"
               onPress={handleShareReferral}
               variant="secondary"
-              icon="📤"
+              icon={<Upload color="#fff" size={18} />}
               style={{ backgroundColor: 'rgba(255,255,255,0.15)', borderColor: 'rgba(255,255,255,0.2)' }}
             />
           </View>
@@ -92,25 +93,25 @@ export default function ProfileScreen() {
           {
             title: 'ACCOUNT',
             items: [
-              { icon: '👤', label: 'Edit Profile' },
-              { icon: '🔔', label: 'Notifications' },
-              { icon: '📍', label: 'Saved Addresses' },
+              { icon: <User color={Colors.textSecondary} size={20} />, label: 'Edit Profile', onPress: () => Alert.alert('Coming Soon', 'Profile editing will be available in the next update.') },
+              { icon: <Bell color={Colors.textSecondary} size={20} />, label: 'Notifications', onPress: () => Alert.alert('Coming Soon', 'Notification settings will be available in the next update.') },
+              { icon: <MapPin color={Colors.textSecondary} size={20} />, label: 'Saved Addresses', onPress: () => Alert.alert('Coming Soon', 'Address management will be available in the next update.') },
             ],
           },
           {
             title: 'SUPPORT',
             items: [
-              { icon: '💬', label: 'Contact Support', onPress: () => Linking.openURL('mailto:support@overline.app') },
-              { icon: '❓', label: 'FAQs' },
-              { icon: '⭐', label: 'Rate the App' },
+              { icon: <MessageSquare color={Colors.textSecondary} size={20} />, label: 'Contact Support', onPress: () => Linking.openURL('mailto:support@overline.app') },
+              { icon: <HelpCircle color={Colors.textSecondary} size={20} />, label: 'FAQs', onPress: () => Linking.openURL('https://overline.app/faq') },
+              { icon: <Star color={Colors.textSecondary} size={20} />, label: 'Rate the App', onPress: () => Alert.alert('Thank You!', 'Rating will be available once the app is published to the Play Store.') },
             ],
           },
           {
             title: 'LEGAL',
             items: [
-              { icon: 'ℹ️', label: 'About Overline', onPress: () => Linking.openURL('https://overline.app/about') },
-              { icon: '📄', label: 'Terms of Service', onPress: () => Linking.openURL('https://overline.app/terms') },
-              { icon: '🔒', label: 'Privacy Policy', onPress: () => Linking.openURL('https://overline.app/privacy') },
+              { icon: <Info color={Colors.textSecondary} size={20} />, label: 'About Overline', onPress: () => Linking.openURL('https://overline.app/about') },
+              { icon: <FileText color={Colors.textSecondary} size={20} />, label: 'Terms of Service', onPress: () => Linking.openURL('https://overline.app/terms') },
+              { icon: <Lock color={Colors.textSecondary} size={20} />, label: 'Privacy Policy', onPress: () => Linking.openURL('https://overline.app/privacy') },
             ],
           },
         ].map((section, si) => (
@@ -118,9 +119,9 @@ export default function ProfileScreen() {
             <Text style={styles.sectionTitle}>{section.title}</Text>
             {section.items.map((item, ii) => (
               <TouchableOpacity key={ii} style={styles.menuItem} onPress={item.onPress} activeOpacity={0.7}>
-                <Text style={styles.menuIcon}>{item.icon}</Text>
+                <View style={styles.menuIconContainer}>{item.icon}</View>
                 <Text style={styles.menuText}>{item.label}</Text>
-                <Text style={styles.menuArrow}>›</Text>
+                <ChevronRight color={Colors.textTertiary} size={20} />
               </TouchableOpacity>
             ))}
           </View>
@@ -128,7 +129,7 @@ export default function ProfileScreen() {
 
         {/* Logout */}
         <View style={{ paddingHorizontal: Spacing.xl, paddingTop: Spacing.lg }}>
-          <PrimaryButton title="Logout" onPress={handleLogout} variant="danger" icon="🚪" />
+          <PrimaryButton title="Logout" onPress={handleLogout} variant="danger" icon={<LogOut color="#fff" size={20} />} />
         </View>
 
         <Text style={styles.version}>Version 1.0.0</Text>
@@ -184,7 +185,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row', alignItems: 'center', paddingHorizontal: Spacing.xl,
     paddingVertical: Spacing.lg, borderBottomWidth: 1, borderBottomColor: Colors.border,
   },
-  menuIcon: { fontSize: 20, marginRight: Spacing.md, width: 28 },
+  menuIconContainer: { marginRight: Spacing.md, width: 28, alignItems: 'center' },
   menuText: { flex: 1, fontSize: FontSizes.md, color: Colors.textPrimary },
   menuArrow: { fontSize: 20, color: Colors.textTertiary },
   version: { textAlign: 'center', color: Colors.textMuted, fontSize: FontSizes.xs, marginTop: Spacing['2xl'], letterSpacing: 1 },

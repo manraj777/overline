@@ -7,7 +7,6 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   RefreshControl,
-  Dimensions,
 } from 'react-native';
 import {useQuery} from '@tanstack/react-query';
 import {useRoute, RouteProp} from '@react-navigation/native';
@@ -89,7 +88,6 @@ export default function AnalyticsScreen() {
   });
 
   const maxRevenue = Math.max(...dailyData.map(d => d.revenue), 1);
-  const screenWidth = Dimensions.get('window').width;
 
   if (summaryLoading) {
     return (

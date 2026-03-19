@@ -1,14 +1,8 @@
-import React, {useEffect} from 'react';
+import React from 'react';
 import {View, Text, StyleSheet, ActivityIndicator} from 'react-native';
-import {useAuthStore} from '../../stores/authStore';
 
 export default function SplashScreen() {
-  const {checkAuth} = useAuthStore();
-
-  useEffect(() => {
-    checkAuth();
-  }, [checkAuth]);
-
+  // checkAuth is handled by AppContent in App.tsx
   return (
     <View style={styles.container}>
       <View style={styles.logoContainer}>

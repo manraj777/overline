@@ -21,9 +21,8 @@ import {
   FontWeights,
   Shadows,
 } from '../../theme';
-import { otpApi, authApi } from '../../api/client';
+import { otpApi } from '../../api/client';
 import { useAuthStore } from '../../stores/authStore';
-import AsyncStorage from '@react-native-async-storage/async-storage';
 import { RootStackParamList } from '../../types';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'OtpVerify'>;
@@ -108,13 +107,8 @@ export default function OtpVerifyScreen() {
       // Single-step: loginWithOtp verifies OTP and returns JWT tokens
       const { data } = await otpApi.login(phone, code);
 
-      // Store tokens and update state
-      await AsyncStorage.setItem('accessToken', data.accessToken);
-      if (data.refreshToken) {
-        await AsyncStorage.setItem('refreshToken', data.refreshToken);
-      }
-
-      completeOtpLogin(data.user);
+      // Store tokens and update auth state via store
+      await completeOtpLogin(data.user, data.accessToken, data.refreshToken);
     } catch (err: any) {
       const message =
         err.response?.data?.message || 'Invalid OTP. Please try again.';

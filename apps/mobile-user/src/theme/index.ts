@@ -2,57 +2,57 @@
 // Premium color palette inspired by modern fintech/booking apps
 
 export const Colors = {
-    // Primary brand colors
-    primary: '#6C5CE7',
-    primaryDark: '#5A4DD1',
-    primaryLight: '#A29BFE',
-    primaryGhost: 'rgba(108, 92, 231, 0.08)',
-    primaryBorder: 'rgba(108, 92, 231, 0.2)',
+    // Primary brand colors (matching web Tailwind config)
+    primary: '#0ea5e9', // primary-500
+    primaryDark: '#0284c7', // primary-600
+    primaryLight: '#bae6fd', // primary-200
+    primaryGhost: 'rgba(14, 165, 233, 0.08)',
+    primaryBorder: 'rgba(14, 165, 233, 0.2)',
 
-    // Accent colors
-    accent: '#00D2FF',
-    accentDark: '#00B4D8',
-    accentLight: '#90E0EF',
+    // Accent colors (matching web Tailwind config)
+    accent: '#d946ef', // accent-500
+    accentDark: '#c026d3', // accent-600
+    accentLight: '#f5d0fe', // accent-200
 
     // Semantic colors
-    success: '#00C48C',
-    successLight: 'rgba(0, 196, 140, 0.1)',
-    warning: '#FFB830',
-    warningLight: 'rgba(255, 184, 48, 0.1)',
-    error: '#FF6B6B',
-    errorLight: 'rgba(255, 107, 107, 0.1)',
-    info: '#4ECDC4',
+    success: '#10B981', // green-500
+    successLight: 'rgba(16, 185, 129, 0.1)',
+    warning: '#F59E0B', // yellow-500
+    warningLight: 'rgba(245, 158, 11, 0.1)',
+    error: '#EF4444', // red-500
+    errorLight: 'rgba(239, 68, 68, 0.1)',
+    info: '#3B82F6', // blue-500
 
-    // Neutral palette
-    background: '#0D0D0F',
-    surface: '#1A1A2E',
-    surfaceLight: '#222240',
-    surfaceElevated: '#2A2A4A',
-    card: '#16213E',
-    cardLight: '#1C2D50',
+    // Neutral palette (Lexo Light theme)
+    background: '#F8F9FA', // lexo-light
+    surface: '#FFFFFF',
+    surfaceLight: '#F3F4F6', // gray-100
+    surfaceElevated: '#FFFFFF',
+    card: '#FFFFFF',
+    cardLight: '#F8F9FA',
 
-    // Text
-    textPrimary: '#FFFFFF',
-    textSecondary: '#A0A3BD',
-    textTertiary: '#6E7191',
-    textMuted: '#4E4F6A',
+    // Text (Lexo theme)
+    textPrimary: '#18191F', // lexo-black
+    textSecondary: '#282D3C', // lexo-charcoal
+    textTertiary: '#8C92A4', // lexo-gray
+    textMuted: '#9CA3AF', // gray-400
 
     // Borders
-    border: 'rgba(255, 255, 255, 0.06)',
-    borderLight: 'rgba(255, 255, 255, 0.1)',
-    borderActive: 'rgba(108, 92, 231, 0.4)',
+    border: 'rgba(0, 0, 0, 0.06)',
+    borderLight: 'rgba(0, 0, 0, 0.03)',
+    borderActive: 'rgba(14, 165, 233, 0.4)',
 
     // Gradients (start, end)
-    gradientPrimary: ['#6C5CE7', '#A855F7'],
-    gradientAccent: ['#00D2FF', '#6C5CE7'],
-    gradientSuccess: ['#00C48C', '#00D2FF'],
-    gradientSurface: ['#1A1A2E', '#16213E'],
-    gradientDark: ['#0D0D0F', '#1A1A2E'],
+    gradientPrimary: ['#0ea5e9', '#d946ef'],
+    gradientAccent: ['#d946ef', '#0ea5e9'],
+    gradientSuccess: ['#10B981', '#38bdf8'],
+    gradientSurface: ['#FFFFFF', '#F8F9FA'],
+    gradientDark: ['#F8F9FA', '#FFFFFF'],
 
     // Overlays
-    overlay: 'rgba(0, 0, 0, 0.6)',
-    overlayLight: 'rgba(0, 0, 0, 0.3)',
-    shimmer: 'rgba(255, 255, 255, 0.05)',
+    overlay: 'rgba(24, 25, 31, 0.6)', // lexo-black with opacity
+    overlayLight: 'rgba(24, 25, 31, 0.2)',
+    shimmer: 'rgba(0, 0, 0, 0.05)',
 };
 
 export const Spacing = {
@@ -101,35 +101,35 @@ export const FontWeights = {
 export const Shadows = {
     sm: {
         shadowColor: '#000',
-        shadowOffset: { width: 0, height: 2 },
-        shadowOpacity: 0.15,
-        shadowRadius: 4,
+        shadowOffset: { width: 0, height: 1 },
+        shadowOpacity: 0.05,
+        shadowRadius: 2,
         elevation: 2,
     },
     md: {
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.2,
-        shadowRadius: 8,
+        shadowOpacity: 0.08,
+        shadowRadius: 10,
         elevation: 4,
     },
     lg: {
-        shadowColor: '#6C5CE7',
-        shadowOffset: { width: 0, height: 6 },
-        shadowOpacity: 0.25,
-        shadowRadius: 16,
+        shadowColor: '#000',
+        shadowOffset: { width: 0, height: 8 },
+        shadowOpacity: 0.1,
+        shadowRadius: 24,
         elevation: 8,
     },
     glow: {
-        shadowColor: '#6C5CE7',
+        shadowColor: '#0ea5e9',
         shadowOffset: { width: 0, height: 0 },
-        shadowOpacity: 0.4,
+        shadowOpacity: 0.2,
         shadowRadius: 20,
         elevation: 10,
     },
 };
 
-export const StatusBarStyle = 'light-content' as const;
+export const StatusBarStyle = 'dark-content' as const;
 
 // Booking status config
 export const BookingStatusConfig: Record<string, { color: string; bg: string; icon: string }> = {

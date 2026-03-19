@@ -2,16 +2,14 @@ import axios from 'axios';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 import DeviceInfo from '../utils/deviceInfo';
+import { Config } from '../config';
 
-// Configure API base URL
-const DEV_HOST = Platform.OS === 'android' ? '10.0.2.2' : 'localhost';
-const API_BASE_URL = __DEV__
-  ? `http://${DEV_HOST}:3001/api/v1`
-  : 'https://overline-backend.up.railway.app/api/v1';
+// Configure API base URL from centralized config
+const API_BASE_URL = Config.API_BASE_URL;
 
 export const api = axios.create({
   baseURL: API_BASE_URL,
-  timeout: 15000,
+  timeout: Config.TIMEOUTS.API_REQUEST,
   headers: { 'Content-Type': 'application/json' },
 });
 
@@ -110,6 +108,8 @@ export const authApi = {
     password: string;
     phone: string;
   }) => api.post('/auth/signup', data),
+  googleLogin: (idToken: string) =>
+    api.post('/auth/google', { idToken }),
   me: () => api.get('/users/me'),
   logout: () => api.post('/auth/logout'),
   refresh: (refreshToken: string) =>
