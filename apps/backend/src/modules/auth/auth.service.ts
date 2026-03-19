@@ -44,6 +44,7 @@ export interface TokenResponse {
     phone?: string | null;
     role: UserRole;
     tenantId?: string;
+    shopId?: string;
     isEmailVerified?: boolean;
     isPhoneVerified?: boolean;
     createdAt?: Date;
@@ -114,8 +115,20 @@ export class AuthService {
     });
   }
 
-  async sendPhoneOtp(phone: string): Promise<{ message: string; expiresInSeconds: number }> {
+  async sendPhoneOtp(
+    phone: string,
+  ): Promise<{ message: string; expiresInSeconds: number; retryAfterSeconds?: number }> {
     const normalizedPhone = this.normalizePhone(phone);
+    const rateLimitKey = `otp:rate:${normalizedPhone}`;
+    const otpRequestCount = await this.redis.increment(rateLimitKey, 3600);
+
+    if (otpRequestCount > 3) {
+      const ttl = await this.redis.ttl(rateLimitKey);
+      throw new BadRequestException(
+        `Too many OTP requests. Try again in ${Math.max(ttl, 1)} seconds.`,
+      );
+    }
+
     const otp = this.generateOtpCode();
 
     await this.redis.set(`otp:${normalizedPhone}`, otp, 300);
@@ -124,6 +137,7 @@ export class AuthService {
     return {
       message: 'OTP sent successfully',
       expiresInSeconds: 300,
+      retryAfterSeconds: 60,
     };
   }
 
@@ -794,6 +808,15 @@ export class AuthService {
     const accessExpiration = this.configService.get<string>('jwt.accessExpiration') || '15m';
     const expiresIn = this.parseExpirationToSeconds(accessExpiration);
 
+    const ownerPrimaryShop =
+      user.role === UserRole.OWNER
+        ? await this.prisma.shop.findFirst({
+            where: { tenantId: user.tenantId },
+            orderBy: { createdAt: 'asc' },
+            select: { id: true },
+          })
+        : null;
+
     return {
       accessToken,
       refreshToken,
@@ -805,6 +828,7 @@ export class AuthService {
         phone: user.phone || null,
         role: user.role,
         tenantId: user.tenantId,
+        shopId: ownerPrimaryShop?.id,
         isEmailVerified: user.isEmailVerified ?? false,
         isPhoneVerified: user.isPhoneVerified ?? false,
         createdAt: user.createdAt,

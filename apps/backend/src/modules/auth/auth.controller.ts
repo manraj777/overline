@@ -127,7 +127,12 @@ export class AuthController {
         user: JSON.stringify(tokens.user),
       });
 
-      return res.redirect(`${frontendUrl}/auth/google/callback?${redirectParams.toString()}`);
+      if (isAdmin && !tokens.user.shopId) {
+        redirectParams.set('needsShopSetup', 'true');
+      }
+
+      const callbackPath = isAdmin ? '/auth/google/callback' : '/auth/callback';
+      return res.redirect(`${frontendUrl}${callbackPath}?${redirectParams.toString()}`);
     } catch (err: any) {
       console.error('[GoogleCallback] Error:', err.message);
       console.error('[GoogleCallback] Stack:', err.stack);

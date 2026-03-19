@@ -10,13 +10,11 @@ import {
   LogOut,
   ChevronRight,
   Settings,
-  Camera,
   Calendar,
     Wallet,
   Lock,
-  Loader2,
 } from 'lucide-react';
-import { Button, Input, Card, Alert, Avatar, Loading } from '@/components/ui';
+import { Button, Input, Card, Alert, Loading, ImageUpload } from '@/components/ui';
 import { useUser, useUpdateProfile, useLogout, useMyBookings } from '@/hooks';
 import { useAuthStore } from '@/stores/auth';
 import api from '@/lib/api';
@@ -48,8 +46,6 @@ export default function ProfilePage() {
   const [isLoggingOut, setIsLoggingOut] = React.useState(false);
   const [success, setSuccess] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
-  const [avatarUploading, setAvatarUploading] = React.useState(false);
-  const avatarInputRef = React.useRef<HTMLInputElement>(null);
 
   const {
     register,
@@ -102,40 +98,20 @@ export default function ProfilePage() {
     }
   };
 
-  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    // Validate
-    if (!['image/jpeg', 'image/png', 'image/webp'].includes(file.type)) {
-      setError('Please upload a JPG, PNG or WebP image');
-      return;
-    }
-    if (file.size > 5 * 1024 * 1024) {
-      setError('Image must be less than 5MB');
-      return;
-    }
-
-    setAvatarUploading(true);
+  const handleAvatarUpload = async (file: File): Promise<string> => {
     setError(null);
 
-    try {
-      const fd = new FormData();
-      fd.append('file', file);
-      fd.append('folder', 'avatars');
-      const { data } = await api.post('/upload/image', fd, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      });
+    const fd = new FormData();
+    fd.append('file', file);
+    fd.append('folder', 'avatars');
 
-      // Update user profile with new avatar URL
-      await updateProfile.mutateAsync({ avatarUrl: data.url } as any);
-      setSuccess(true);
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to upload photo');
-    } finally {
-      setAvatarUploading(false);
-      if (avatarInputRef.current) avatarInputRef.current.value = '';
-    }
+    const { data } = await api.post('/upload', fd, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+
+    await updateProfile.mutateAsync({ avatarUrl: data.url } as any);
+    setSuccess(true);
+    return data.url;
   };
 
   const handleLogout = async () => {
@@ -203,33 +179,14 @@ export default function ProfilePage() {
 
               {/* Avatar Section */}
               <div className="flex items-center gap-5 mb-6 pb-6 border-b border-gray-100">
-                <div className="relative group">
-                  <Avatar
-                    src={user?.avatarUrl || null}
-                    name={user?.name || ''}
-                    size="xl"
-                    className="!w-20 !h-20 text-2xl"
-                  />
-                  <button
-                    type="button"
-                    onClick={() => avatarInputRef.current?.click()}
-                    disabled={avatarUploading}
-                    className="absolute inset-0 flex items-center justify-center bg-black/40 rounded-full opacity-0 group-hover:opacity-100 transition-opacity cursor-pointer"
-                  >
-                    {avatarUploading ? (
-                      <Loader2 className="w-5 h-5 text-white animate-spin" />
-                    ) : (
-                      <Camera className="w-5 h-5 text-white" />
-                    )}
-                  </button>
-                  <input
-                    ref={avatarInputRef}
-                    type="file"
-                    accept="image/jpeg,image/png,image/webp"
-                    onChange={handleAvatarUpload}
-                    className="hidden"
-                  />
-                </div>
+                <ImageUpload
+                  currentUrl={user?.avatarUrl || null}
+                  onUpload={handleAvatarUpload}
+                  label="Upload Photo"
+                  hint="JPG, PNG, WebP, GIF up to 5MB"
+                  shape="circle"
+                  size="lg"
+                />
                 <div>
                   <h3 className="text-lg font-semibold text-gray-900">{user?.name}</h3>
                   <p className="text-sm text-gray-500">{user?.email}</p>

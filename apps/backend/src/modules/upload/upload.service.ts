@@ -1,36 +1,32 @@
 import { Injectable, BadRequestException, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { randomUUID } from 'crypto';
-import { mkdir, writeFile } from 'fs/promises';
-import * as path from 'path';
-import { S3Client, PutObjectCommand } from '@aws-sdk/client-s3';
+import { v2 as cloudinary } from 'cloudinary';
 
 @Injectable()
 export class UploadService {
   private readonly logger = new Logger(UploadService.name);
-  private readonly s3Client: S3Client | null;
-  private readonly awsBucket?: string;
-  private readonly awsRegion?: string;
+  private readonly isCloudinaryConfigured: boolean;
 
   constructor(private configService: ConfigService) {
-    this.awsBucket = this.configService.get<string>('AWS_BUCKET');
-    this.awsRegion = this.configService.get<string>('AWS_REGION');
-    const accessKeyId = this.configService.get<string>('AWS_ACCESS_KEY');
-    const secretAccessKey = this.configService.get<string>('AWS_SECRET_KEY');
+    const cloudName = this.configService.get<string>('CLOUDINARY_CLOUD_NAME');
+    const apiKey = this.configService.get<string>('CLOUDINARY_API_KEY');
+    const apiSecret = this.configService.get<string>('CLOUDINARY_API_SECRET');
 
-    if (this.awsBucket && this.awsRegion && accessKeyId && secretAccessKey) {
-      this.s3Client = new S3Client({
-        region: this.awsRegion,
-        credentials: {
-          accessKeyId,
-          secretAccessKey,
-        },
+    this.isCloudinaryConfigured = Boolean(cloudName && apiKey && apiSecret);
+
+    if (this.isCloudinaryConfigured) {
+      cloudinary.config({
+        cloud_name: cloudName,
+        api_key: apiKey,
+        api_secret: apiSecret,
+        secure: true,
       });
-      this.logger.log('Upload service configured with AWS S3 storage');
-    } else {
-      this.s3Client = null;
-      this.logger.log('Upload service configured with local filesystem storage');
+      this.logger.log('Upload service configured with Cloudinary storage');
+      return;
     }
+
+    this.logger.warn('Cloudinary credentials are missing');
   }
 
   async uploadImage(
@@ -50,46 +46,44 @@ export class UploadService {
       throw new BadRequestException('File size must be under 5 MB');
     }
 
+    if (!this.isCloudinaryConfigured) {
+      throw new BadRequestException('Image upload is not configured on server');
+    }
+
     const safeFolder = folder.replace(/[^a-zA-Z0-9/_-]/g, '').replace(/^\/+|\/+$/g, '') || 'overline';
     const extension = file.originalname.includes('.')
       ? file.originalname.split('.').pop()?.toLowerCase()
       : 'jpg';
     const fileName = `${Date.now()}-${randomUUID().slice(0, 8)}.${extension}`;
-    const objectKey = `${safeFolder}/${fileName}`;
 
-    if (this.s3Client && this.awsBucket && this.awsRegion) {
-      try {
-        await this.s3Client.send(
-          new PutObjectCommand({
-            Bucket: this.awsBucket,
-            Key: objectKey,
-            Body: file.buffer,
-            ContentType: file.mimetype,
-          }),
-        );
+    try {
+      const dataUri = `data:${file.mimetype};base64,${file.buffer.toString('base64')}`;
+      const uploadResult = await cloudinary.uploader.upload(dataUri, {
+        folder: safeFolder,
+        public_id: fileName.replace(/\.[^.]+$/, ''),
+        resource_type: 'image',
+        overwrite: false,
+      });
 
-        return {
-          url: `https://${this.awsBucket}.s3.${this.awsRegion}.amazonaws.com/${objectKey}`,
-          publicId: objectKey,
-        };
-      } catch (error) {
-        this.logger.error('S3 upload failed', error as Error);
-        throw new BadRequestException('Failed to upload image to S3');
-      }
+      return {
+        url: uploadResult.secure_url,
+        publicId: uploadResult.public_id,
+      };
+    } catch (error) {
+      this.logger.error('Cloudinary upload failed', error as Error);
+      throw new BadRequestException('Failed to upload image');
     }
-
-    const uploadDir = path.join(process.cwd(), 'public', 'uploads', safeFolder);
-    await mkdir(uploadDir, { recursive: true });
-    const filePath = path.join(uploadDir, fileName);
-    await writeFile(filePath, file.buffer);
-
-    return {
-      url: `/public/uploads/${safeFolder}/${fileName}`,
-      publicId: objectKey,
-    };
   }
 
-  async deleteImage(_publicId: string): Promise<void> {
-    return;
+  async deleteImage(publicId: string): Promise<void> {
+    if (!this.isCloudinaryConfigured || !publicId) {
+      return;
+    }
+
+    try {
+      await cloudinary.uploader.destroy(publicId, { resource_type: 'image' });
+    } catch (error) {
+      this.logger.warn(`Failed to delete Cloudinary image ${publicId}: ${(error as Error).message}`);
+    }
   }
 }

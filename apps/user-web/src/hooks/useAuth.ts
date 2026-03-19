@@ -22,6 +22,20 @@ interface VerifyOtpPayload {
   otp: string;
 }
 
+async function persistSession(accessToken: string, refreshToken: string) {
+  await fetch('/api/auth/session', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ accessToken, refreshToken }),
+  });
+}
+
+async function clearSession() {
+  await fetch('/api/auth/session', {
+    method: 'DELETE',
+  });
+}
+
 export function useUser() {
   const { isAuthenticated, accessToken } = useAuthStore();
 
@@ -48,6 +62,7 @@ export function useLogin() {
     onSuccess: (data) => {
       login(data.user, data.accessToken, data.refreshToken);
       queryClient.setQueryData(['user', 'me'], data.user);
+      void persistSession(data.accessToken, data.refreshToken);
     },
   });
 }
@@ -64,6 +79,7 @@ export function useSignup() {
     onSuccess: (data) => {
       login(data.user, data.accessToken, data.refreshToken);
       queryClient.setQueryData(['user', 'me'], data.user);
+      void persistSession(data.accessToken, data.refreshToken);
     },
   });
 }
@@ -79,10 +95,12 @@ export function useLogout() {
     onSuccess: () => {
       logout();
       queryClient.clear();
+      void clearSession();
     },
     onError: () => {
       logout();
       queryClient.clear();
+      void clearSession();
     },
   });
 }
@@ -115,6 +133,7 @@ export function useGoogleLogin() {
     onSuccess: (data) => {
       login(data.user, data.accessToken, data.refreshToken);
       queryClient.setQueryData(['user', 'me'], data.user);
+      void persistSession(data.accessToken, data.refreshToken);
     },
   });
 }
@@ -140,6 +159,7 @@ export function useVerifyOtp() {
     onSuccess: (data) => {
       login(data.user, data.accessToken, data.refreshToken);
       queryClient.setQueryData(['user', 'me'], data.user);
+      void persistSession(data.accessToken, data.refreshToken);
     },
   });
 }

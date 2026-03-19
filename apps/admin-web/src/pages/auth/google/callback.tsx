@@ -12,6 +12,7 @@ export default function GoogleCallbackPage() {
     const accessToken = params.get('accessToken');
     const refreshToken = params.get('refreshToken');
     const userStr = params.get('user');
+    const needsShopSetup = params.get('needsShopSetup') === 'true';
     const error = params.get('error');
 
     if (error || !accessToken || !refreshToken || !userStr) {
@@ -23,6 +24,12 @@ export default function GoogleCallbackPage() {
       const user = JSON.parse(userStr);
       // Admin login stores shopId if available
       login(user, accessToken, refreshToken, user.shopId);
+
+      if (needsShopSetup) {
+        router.replace('/settings?setup=shop');
+        return;
+      }
+
       router.replace('/dashboard');
     } catch {
       router.replace('/login?error=google_auth_failed');
