@@ -1,15 +1,17 @@
 import React from 'react';
 import Head from 'next/head';
 import { Plus, Edit2, Mail, Phone, Users } from 'lucide-react';
-import { Card, Button, Input, Badge, Loading } from '@/components/ui';
+import { Card, Button, Input, Badge, Loading, ImageUpload } from '@/components/ui';
 import { useStaff, useCreateStaff, useUpdateStaff } from '@/hooks';
 import { cn } from '@/lib/utils';
+import api from '@/lib/api';
 
 interface StaffFormData {
   name: string;
   email: string;
   phone: string;
   role: string;
+  avatarUrl: string;
 }
 
 const emptyForm: StaffFormData = {
@@ -17,6 +19,7 @@ const emptyForm: StaffFormData = {
   email: '',
   phone: '',
   role: 'STAFF',
+  avatarUrl: '',
 };
 
 export default function StaffPage() {
@@ -43,6 +46,16 @@ export default function StaffPage() {
     }
   };
 
+  const handleUploadImage = async (file: File): Promise<string> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('folder', 'staff');
+    const { data } = await api.post('/upload', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+    return data.url;
+  };
+
   const handleEdit = (member: any) => {
     setEditingStaffId(member.id);
     setFormData({
@@ -50,6 +63,7 @@ export default function StaffPage() {
       email: member.email || '',
       phone: member.phone || '',
       role: member.role || 'STAFF',
+      avatarUrl: member.avatarUrl || '',
     });
     setShowForm(true);
   };
@@ -88,6 +102,19 @@ export default function StaffPage() {
               {editingStaffId ? 'Edit Staff Member' : 'Add Staff Member'}
             </h2>
             <form className="space-y-4" onSubmit={handleSubmit}>
+              <ImageUpload
+                currentUrl={formData.avatarUrl || null}
+                onUpload={async (file) => {
+                  const url = await handleUploadImage(file);
+                  setFormData({ ...formData, avatarUrl: url });
+                  return url;
+                }}
+                label="Upload Staff Photo"
+                hint="JPG, PNG or WebP up to 5MB"
+                shape="circle"
+                size="md"
+              />
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <Input
                   label="Full Name"

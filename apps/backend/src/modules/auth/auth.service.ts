@@ -10,7 +10,9 @@ import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcryptjs';
 import { v4 as uuidv4 } from 'uuid';
 import { OAuth2Client } from 'google-auth-library';
+import { Twilio } from 'twilio';
 import { PrismaService } from '@/common/prisma/prisma.service';
+import { RedisService } from '@/common/redis/redis.service';
 import {
   FraudDetectionService,
   LoginContext,
@@ -56,15 +58,121 @@ export interface RequestContext {
 @Injectable()
 export class AuthService {
   private googleClient: OAuth2Client;
+  private twilioClient: Twilio | null = null;
 
   constructor(
     private prisma: PrismaService,
     private jwtService: JwtService,
     private configService: ConfigService,
+    private redis: RedisService,
     private fraudDetection: FraudDetectionService,
     private googlePlaces: GooglePlacesService,
   ) {
     this.googleClient = new OAuth2Client(this.configService.get<string>('google.clientId'));
+
+    const twilioSid = this.configService.get<string>('TWILIO_ACCOUNT_SID');
+    const twilioAuthToken = this.configService.get<string>('TWILIO_AUTH_TOKEN');
+    if (twilioSid && twilioAuthToken) {
+      this.twilioClient = new Twilio(twilioSid, twilioAuthToken);
+    }
+  }
+
+  private normalizePhone(phone: string): string {
+    const cleaned = phone.replace(/\D/g, '');
+    if (cleaned.length === 10) {
+      return `+91${cleaned}`;
+    }
+    if (cleaned.length === 12 && cleaned.startsWith('91')) {
+      return `+${cleaned}`;
+    }
+    if (cleaned.startsWith('0') && cleaned.length === 11) {
+      return `+91${cleaned.slice(1)}`;
+    }
+    return phone;
+  }
+
+  private generateOtpCode(): string {
+    return Math.floor(100000 + Math.random() * 900000).toString();
+  }
+
+  private async sendOtpSms(phone: string, otp: string): Promise<void> {
+    const fromPhone =
+      this.configService.get<string>('TWILIO_PHONE') ||
+      this.configService.get<string>('TWILIO_PHONE_NUMBER');
+
+    if (!this.twilioClient || !fromPhone) {
+      if (process.env.NODE_ENV !== 'production') {
+        console.log(`[DEV OTP] ${phone}: ${otp}`);
+      }
+      return;
+    }
+
+    await this.twilioClient.messages.create({
+      body: `Your Overline OTP is ${otp}. It expires in 5 minutes.`,
+      from: fromPhone,
+      to: phone,
+    });
+  }
+
+  async sendPhoneOtp(phone: string): Promise<{ message: string; expiresInSeconds: number }> {
+    const normalizedPhone = this.normalizePhone(phone);
+    const otp = this.generateOtpCode();
+
+    await this.redis.set(`otp:${normalizedPhone}`, otp, 300);
+    await this.sendOtpSms(normalizedPhone, otp);
+
+    return {
+      message: 'OTP sent successfully',
+      expiresInSeconds: 300,
+    };
+  }
+
+  async verifyPhoneOtp(phone: string, otp: string): Promise<TokenResponse> {
+    const normalizedPhone = this.normalizePhone(phone);
+    const key = `otp:${normalizedPhone}`;
+    const cachedOtp = await this.redis.get(key);
+
+    if (!cachedOtp) {
+      throw new BadRequestException('OTP expired. Please request a new OTP.');
+    }
+
+    if (cachedOtp !== otp) {
+      throw new BadRequestException('Invalid OTP');
+    }
+
+    await this.redis.del(key);
+
+    const user = await this.prisma.$transaction(async (tx) => {
+      const existingUser = await tx.user.findUnique({
+        where: { phone: normalizedPhone },
+      });
+
+      if (existingUser) {
+        return tx.user.update({
+          where: { id: existingUser.id },
+          data: {
+            isPhoneVerified: true,
+            lastLoginAt: new Date(),
+          },
+        });
+      }
+
+      const emailPrefix = normalizedPhone.replace(/\D/g, '');
+      const generatedEmail = `${emailPrefix}.${Date.now()}@phone.overline.app`;
+      return tx.user.create({
+        data: {
+          phone: normalizedPhone,
+          isPhoneVerified: true,
+          name: `User ${normalizedPhone.slice(-4)}`,
+          email: generatedEmail,
+          role: UserRole.USER,
+          authProvider: 'phone',
+          lastLoginAt: new Date(),
+        },
+      });
+    });
+
+    return this.generateTokens(user);
   }
 
   async signup(dto: SignupDto, requestContext?: RequestContext): Promise<TokenResponse> {

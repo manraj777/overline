@@ -65,6 +65,25 @@ export class AdminController {
     return this.adminService.getBookings(shopId, tenantId, { date, status, page, limit });
   }
 
+  @Get('bookings')
+  @Roles(UserRole.OWNER, UserRole.STAFF, UserRole.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Get shop bookings by query parameter' })
+  @ApiQuery({ name: 'shopId', required: true, description: 'Shop ID' })
+  @ApiQuery({ name: 'date', required: false, description: 'Filter by date (YYYY-MM-DD)' })
+  @ApiQuery({ name: 'status', enum: BookingStatus, required: false })
+  @ApiQuery({ name: 'page', type: Number, required: false })
+  @ApiQuery({ name: 'limit', type: Number, required: false })
+  async getBookingsByQuery(
+    @Query('shopId') shopId: string,
+    @CurrentUser('tenantId') tenantId: string,
+    @Query('date') date?: string,
+    @Query('status') status?: BookingStatus,
+    @Query('page') page?: number,
+    @Query('limit') limit?: number,
+  ) {
+    return this.adminService.getBookings(shopId, tenantId, { date, status, page, limit });
+  }
+
   @Patch('bookings/:bookingId/status')
   @Roles(UserRole.OWNER, UserRole.STAFF, UserRole.SUPER_ADMIN)
   @ApiOperation({ summary: 'Update booking status' })
@@ -103,7 +122,7 @@ export class AdminController {
   @ApiParam({ name: 'shopId', description: 'Shop ID' })
   async createStaff(
     @Param('shopId') shopId: string,
-    @Body() dto: { name: string; email: string; phone?: string; role: string },
+    @Body() dto: { name: string; email: string; phone?: string; role: string; avatarUrl?: string },
     @CurrentUser('tenantId') tenantId: string,
   ) {
     return this.adminService.createStaff(shopId, dto, tenantId);
@@ -117,7 +136,7 @@ export class AdminController {
   async updateStaff(
     @Param('shopId') shopId: string,
     @Param('staffId') staffId: string,
-    @Body() dto: { name?: string; phone?: string; role?: string; isActive?: boolean },
+    @Body() dto: { name?: string; phone?: string; role?: string; isActive?: boolean; avatarUrl?: string },
     @CurrentUser('tenantId') tenantId: string,
   ) {
     return this.adminService.updateStaff(shopId, staffId, dto, tenantId);

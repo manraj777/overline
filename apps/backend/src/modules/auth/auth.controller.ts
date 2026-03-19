@@ -20,7 +20,10 @@ import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { GoogleLoginDto } from './dto/google-login.dto';
 import { RegisterShopDto } from './dto/register-shop.dto';
+import { SendOtpDto } from './dto/send-otp.dto';
+import { VerifyOtpDto } from './dto/verify-otp.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
+import { GoogleOAuthGuard } from './guards/google-oauth.guard';
 
 @ApiTags('auth')
 @Controller('auth')
@@ -75,37 +78,25 @@ export class AuthController {
   }
 
   @Get('google/redirect')
+  @UseGuards(GoogleOAuthGuard)
   @ApiOperation({ summary: 'Redirect to Google for OAuth login' })
-  async googleRedirect(@Req() req: any, @Res() res: Response, @Query('from') from?: string) {
-    const clientId = this.configService.get<string>('google.clientId');
-    if (!clientId) {
-      return res.redirect('/auth/login?error=google_not_configured');
-    }
+  async googleRedirect(@Query('from') _from?: string): Promise<void> {
+    return;
+  }
 
-    const backendUrl = this.configService.get<string>('backendUrl') || 'http://localhost:3001';
-    const redirectUri = `${backendUrl}/api/v1/auth/google/callback`;
-    const state = from || 'user';
-
-    const params = new URLSearchParams({
-      client_id: clientId,
-      redirect_uri: redirectUri,
-      response_type: 'code',
-      scope: 'openid email profile',
-      access_type: 'offline',
-      state,
-      prompt: 'consent',
-    });
-
-    const googleAuthUrl = `https://accounts.google.com/o/oauth2/v2/auth?${params.toString()}`;
-    return res.redirect(googleAuthUrl);
+  @Get('google')
+  @UseGuards(GoogleOAuthGuard)
+  @ApiOperation({ summary: 'Redirect to Google for OAuth login (preferred endpoint)' })
+  async googleAuth(@Query('from') _from?: string): Promise<void> {
+    return;
   }
 
   @Get('google/callback')
+  @UseGuards(GoogleOAuthGuard)
   @ApiOperation({ summary: 'Google OAuth callback' })
   async googleCallback(
     @Req() req: any,
     @Res() res: Response,
-    @Query('code') code?: string,
     @Query('state') state?: string,
     @Query('error') error?: string,
   ) {
@@ -115,82 +106,21 @@ export class AuthController {
       : this.configService.get<string>('frontendUrls.user') || 'http://localhost:3000';
     const loginPath = isAdmin ? '/login' : '/auth/login';
 
-    if (error || !code) {
+    if (error || !req.user) {
       return res.redirect(`${frontendUrl}${loginPath}?error=google_auth_failed`);
     }
 
     try {
-      const clientId = this.configService.get<string>('google.clientId');
-      const clientSecret = this.configService.get<string>('google.clientSecret');
-
-      if (!clientId || !clientSecret) {
-        console.error('[GoogleCallback] Missing Google OAuth credentials in environment');
-        return res.redirect(`${frontendUrl}${loginPath}?error=google_not_configured`);
-      }
-
-      const backendUrl = this.configService.get<string>('backendUrl') || 'http://localhost:3001';
-      const redirectUri = `${backendUrl}/api/v1/auth/google/callback`;
-
-      // Exchange code for tokens
-      const tokenParams = new URLSearchParams();
-      tokenParams.append('code', code);
-      tokenParams.append('client_id', clientId);
-      tokenParams.append('client_secret', clientSecret);
-      tokenParams.append('redirect_uri', redirectUri);
-      tokenParams.append('grant_type', 'authorization_code');
-
-      const tokenResponse = await fetch('https://oauth2.googleapis.com/token', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: tokenParams.toString(),
-      });
-
-      const tokenData = (await tokenResponse.json()) as {
-        access_token?: string;
-        [key: string]: any;
-      };
-
-      if (!tokenResponse.ok) {
-        console.error('[GoogleCallback] Token exchange failed:', JSON.stringify(tokenData));
-        console.error('[GoogleCallback] Status:', tokenResponse.status);
-        return res.redirect(`${frontendUrl}${loginPath}?error=google_auth_failed`);
-      }
-
-      // Get user info from Google
-      const userInfoResponse = await fetch('https://www.googleapis.com/oauth2/v2/userinfo', {
-        headers: { Authorization: `Bearer ${tokenData.access_token}` },
-      });
-
-      const userInfo = (await userInfoResponse.json()) as {
-        id: string;
-        email: string;
-        name: string;
-        picture?: string;
-        verified_email?: boolean;
-        [key: string]: any;
-      };
-
-      if (!userInfo.id || !userInfo.email) {
-        console.error('[GoogleCallback] Invalid user info:', JSON.stringify(userInfo));
-        return res.redirect(`${frontendUrl}${loginPath}?error=google_auth_failed`);
-      }
-
-      console.log('[GoogleCallback] User info retrieved:', {
-        id: userInfo.id,
-        email: userInfo.email,
-        name: userInfo.name,
-        verified: userInfo.verified_email,
-      });
-
       const tokens = await this.authService.handleGoogleUser(
-        userInfo.id,
-        userInfo.email,
-        userInfo.name,
-        userInfo.picture,
-        userInfo.verified_email,
+        req.user.googleId,
+        req.user.email,
+        req.user.name,
+        req.user.picture,
+        req.user.emailVerified,
       );
 
       const redirectParams = new URLSearchParams({
+        token: tokens.accessToken,
         accessToken: tokens.accessToken,
         refreshToken: tokens.refreshToken,
         expiresIn: String(tokens.expiresIn),
@@ -204,6 +134,20 @@ export class AuthController {
       console.error('[GoogleCallback] Full error:', JSON.stringify(err, null, 2));
       return res.redirect(`${frontendUrl}${loginPath}?error=google_auth_failed`);
     }
+  }
+
+  @Post('send-otp')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Send OTP to phone for login/signup' })
+  async sendOtp(@Body() dto: SendOtpDto) {
+    return this.authService.sendPhoneOtp(dto.phone);
+  }
+
+  @Post('verify-otp')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Verify phone OTP and login/signup user' })
+  async verifyOtp(@Body() dto: VerifyOtpDto): Promise<TokenResponse> {
+    return this.authService.verifyPhoneOtp(dto.phone, dto.otp);
   }
 
   @Post('refresh')

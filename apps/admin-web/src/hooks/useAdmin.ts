@@ -43,13 +43,16 @@ export function useAdminBookings(params: GetBookingsParams = {}) {
   return useQuery<PaginatedResponse<Booking>>({
     queryKey: ['admin', 'bookings', shopId, params],
     queryFn: async () => {
-      const { data } = await api.get(`/admin/shops/${shopId}/bookings`, {
-        params,
+      const { data } = await api.get('/admin/bookings', {
+        params: {
+          ...params,
+          shopId,
+        },
       });
       return data;
     },
     enabled: !!shopId,
-    refetchInterval: 1000 * 15, // Refresh every 15 seconds
+    refetchInterval: 1000 * 30, // Refresh every 30 seconds
   });
 }
 
@@ -155,7 +158,7 @@ export function useCreateStaff() {
   const { shopId } = useAuthStore();
 
   return useMutation({
-    mutationFn: async (payload: { name: string; email: string; phone?: string; role?: string }) => {
+    mutationFn: async (payload: { name: string; email: string; phone?: string; role?: string; avatarUrl?: string }) => {
       const { data } = await api.post(`/admin/shops/${shopId}/staff`, payload);
       return data;
     },
@@ -170,7 +173,7 @@ export function useUpdateStaff() {
   const { shopId } = useAuthStore();
 
   return useMutation({
-    mutationFn: async ({ staffId, ...payload }: { staffId: string; name?: string; email?: string; phone?: string; role?: string; isActive?: boolean }) => {
+    mutationFn: async ({ staffId, ...payload }: { staffId: string; name?: string; email?: string; phone?: string; role?: string; isActive?: boolean; avatarUrl?: string }) => {
       const { data } = await api.patch(`/admin/shops/${shopId}/staff/${staffId}`, payload);
       return data;
     },

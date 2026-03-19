@@ -32,6 +32,28 @@ export class UploadController {
   /**
    * Upload a general image (returns URL)
    */
+  @Post()
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('JWT-auth')
+  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 5 * 1024 * 1024 } }))
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        file: { type: 'string', format: 'binary' },
+        folder: { type: 'string' },
+      },
+    },
+  })
+  async uploadImageRoot(@UploadedFile() file: Express.Multer.File, @Body('folder') folder?: string) {
+    const result = await this.uploadService.uploadImage(file, folder || 'overline');
+    return { url: result.url };
+  }
+
+  /**
+   * Upload a general image (returns URL)
+   */
   @Post('image')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth('JWT-auth')
@@ -48,7 +70,7 @@ export class UploadController {
   })
   async uploadImage(@UploadedFile() file: Express.Multer.File, @Body('folder') folder?: string) {
     const result = await this.uploadService.uploadImage(file, folder || 'overline');
-    return result;
+    return { url: result.url };
   }
 
   /**

@@ -13,6 +13,15 @@ interface SignupCredentials extends LoginCredentials {
   phone?: string;
 }
 
+interface SendOtpPayload {
+  phone: string;
+}
+
+interface VerifyOtpPayload {
+  phone: string;
+  otp: string;
+}
+
 export function useUser() {
   const { isAuthenticated, accessToken } = useAuthStore();
 
@@ -101,6 +110,31 @@ export function useGoogleLogin() {
   return useMutation<AuthResponse, Error, string>({
     mutationFn: async (idToken: string) => {
       const { data } = await api.post('/auth/google', { idToken });
+      return data;
+    },
+    onSuccess: (data) => {
+      login(data.user, data.accessToken, data.refreshToken);
+      queryClient.setQueryData(['user', 'me'], data.user);
+    },
+  });
+}
+
+export function useSendOtp() {
+  return useMutation<{ message: string; expiresInSeconds: number }, Error, SendOtpPayload>({
+    mutationFn: async (payload) => {
+      const { data } = await api.post('/auth/send-otp', payload);
+      return data;
+    },
+  });
+}
+
+export function useVerifyOtp() {
+  const queryClient = useQueryClient();
+  const { login } = useAuthStore();
+
+  return useMutation<AuthResponse, Error, VerifyOtpPayload>({
+    mutationFn: async (payload) => {
+      const { data } = await api.post('/auth/verify-otp', payload);
       return data;
     },
     onSuccess: (data) => {

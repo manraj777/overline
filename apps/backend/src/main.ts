@@ -4,6 +4,7 @@ import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { IoAdapter } from '@nestjs/platform-socket.io';
 import { AppModule } from './app.module';
 import * as express from 'express';
+import * as path from 'path';
 
 async function bootstrap() {
   const app = await NestFactory.create(AppModule, {
@@ -25,6 +26,9 @@ async function bootstrap() {
 
   // Raw body middleware for Stripe webhooks
   app.use('/api/v1/payments/webhook', express.raw({ type: 'application/json' }));
+
+  // Serve local uploads when filesystem storage is enabled
+  app.use('/public', express.static(path.join(process.cwd(), 'public')));
 
   // Global prefix
   app.setGlobalPrefix('api');

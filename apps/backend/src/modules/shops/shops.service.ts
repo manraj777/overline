@@ -3,13 +3,28 @@ import { PrismaService } from '@/common/prisma/prisma.service';
 import { RedisService } from '@/common/redis/redis.service';
 import { SearchShopsDto } from './dto/search-shops.dto';
 import { Prisma } from '@prisma/client';
+import { SlotEngineService } from '../queue/slot-engine.service';
 
 @Injectable()
 export class ShopsService {
   constructor(
     private prisma: PrismaService,
     private redis: RedisService,
+    private slotEngine: SlotEngineService,
   ) {}
+
+  private maskPhone(phone?: string | null): string | undefined {
+    if (!phone) return undefined;
+    const cleaned = phone.replace(/\D/g, '');
+    if (cleaned.length < 4) return '***';
+    return `***${cleaned.slice(-2)}`;
+  }
+
+  private getSlotTime(dateTime: Date | string): string {
+    const value = typeof dateTime === 'string' ? dateTime : dateTime.toISOString();
+    const timePart = value.includes('T') ? value.split('T')[1] : value;
+    return timePart.slice(0, 5);
+  }
 
   async search(dto: SearchShopsDto) {
     const { query, city, type, page = 1, limit = 20 } = dto;
@@ -258,7 +273,7 @@ export class ShopsService {
     return shop;
   }
 
-  async getServices(shopId: string) {
+  async getServices(shopId: string, date?: string) {
     const shop = await this.prisma.shop.findUnique({
       where: { id: shopId },
     });
@@ -267,13 +282,101 @@ export class ShopsService {
       throw new NotFoundException('Shop not found');
     }
 
-    return this.prisma.service.findMany({
+    const services = await this.prisma.service.findMany({
       where: {
         shopId,
         isActive: true,
       },
       orderBy: { sortOrder: 'asc' },
     });
+
+    const slotDate = date || new Date().toISOString().slice(0, 10);
+    const servicesWithSlots = await Promise.all(
+      services.map(async (service) => {
+        const slots = await this.getServiceSlots(shopId, service.id, slotDate);
+        return {
+          ...service,
+          timeSlots: slots,
+        };
+      }),
+    );
+
+    return servicesWithSlots;
+  }
+
+  async getServiceSlots(shopId: string, serviceId: string, date: string) {
+    const [shop, service] = await Promise.all([
+      this.prisma.shop.findUnique({ where: { id: shopId } }),
+      this.prisma.service.findFirst({
+        where: {
+          id: serviceId,
+          shopId,
+          isActive: true,
+        },
+      }),
+    ]);
+
+    if (!shop) {
+      throw new NotFoundException('Shop not found');
+    }
+
+    if (!service) {
+      throw new NotFoundException('Service not found');
+    }
+
+    const slots = await this.slotEngine.getAvailableSlots({
+      shopId,
+      date,
+      serviceIds: [serviceId],
+      duration: service.durationMinutes,
+    });
+
+    const dayStart = new Date(`${date}T00:00:00.000Z`);
+    const dayEnd = new Date(`${date}T23:59:59.999Z`);
+    const bookings = await this.prisma.booking.findMany({
+      where: {
+        shopId,
+        startTime: { gte: dayStart, lte: dayEnd },
+        status: { in: ['PENDING', 'CONFIRMED', 'IN_PROGRESS'] },
+        services: {
+          some: {
+            serviceId,
+          },
+        },
+      },
+      include: {
+        user: {
+          select: {
+            phone: true,
+          },
+        },
+      },
+    });
+
+    const bookingByTime = new Map(
+      bookings.map((booking) => [this.getSlotTime(booking.startTime), booking]),
+    );
+
+    const slotStatuses = await Promise.all(
+      slots.map(async (slot) => {
+        const time = this.getSlotTime(slot.startTime);
+        const redisKey = `slot:${shopId}:${date}:${serviceId}:${time}`;
+        const redisBooked = Boolean(await this.redis.get(redisKey));
+        const bookedBooking = bookingByTime.get(time);
+        const isBooked = !slot.available || redisBooked || Boolean(bookedBooking);
+
+        return {
+          time,
+          serviceId,
+          isBooked,
+          bookedBy: isBooked
+            ? this.maskPhone(bookedBooking?.user?.phone || bookedBooking?.customerPhone)
+            : undefined,
+        };
+      }),
+    );
+
+    return slotStatuses;
   }
 
   async getQueueStats(shopId: string) {

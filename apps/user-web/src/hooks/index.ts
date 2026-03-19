@@ -1,6 +1,22 @@
 export { useLocation } from './useLocation';
-export { useUser, useLogin, useSignup, useLogout, useUpdateProfile, useGoogleLogin } from './useAuth';
-export { useShops, useNearbyShops, useShop, useShopQueueStats } from './useShops';
+export {
+  useUser,
+  useLogin,
+  useSignup,
+  useLogout,
+  useUpdateProfile,
+  useGoogleLogin,
+  useSendOtp,
+  useVerifyOtp,
+} from './useAuth';
+export {
+  useShops,
+  useNearbyShops,
+  useShop,
+  useShopQueueStats,
+  useShopServicesWithSlots,
+  useShopServiceSlots,
+} from './useShops';
 export {
   useAvailableSlots,
   useMyBookings,

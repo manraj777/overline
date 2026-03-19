@@ -52,6 +52,48 @@ export class BookingsService {
     return Math.floor(1000 + Math.random() * 9000).toString();
   }
 
+  private getSlotDateKey(date: Date): string {
+    return date.toISOString().slice(0, 10);
+  }
+
+  private getSlotTimeKey(date: Date): string {
+    return date.toISOString().slice(11, 16);
+  }
+
+  private async markBookingSlots(
+    bookingId: string,
+    shopId: string,
+    startTime: Date,
+    endTime: Date,
+    serviceIds: string[],
+  ): Promise<void> {
+    const dateKey = this.getSlotDateKey(startTime);
+    const timeKey = this.getSlotTimeKey(startTime);
+    const ttlSeconds = Math.max(Math.floor((endTime.getTime() - Date.now()) / 1000) + 7200, 300);
+
+    await Promise.all(
+      serviceIds.map((serviceId) =>
+        this.redis.set(
+          `slot:${shopId}:${dateKey}:${serviceId}:${timeKey}`,
+          JSON.stringify({ bookingId }),
+          ttlSeconds,
+        ),
+      ),
+    );
+  }
+
+  private async unmarkBookingSlots(
+    shopId: string,
+    startTime: Date,
+    serviceIds: string[],
+  ): Promise<void> {
+    const dateKey = this.getSlotDateKey(startTime);
+    const timeKey = this.getSlotTimeKey(startTime);
+    await Promise.all(
+      serviceIds.map((serviceId) => this.redis.del(`slot:${shopId}:${dateKey}:${serviceId}:${timeKey}`)),
+    );
+  }
+
   /**
    * Create a new booking with fraud detection
    */
@@ -305,6 +347,15 @@ export class BookingsService {
 
     // Invalidate slot cache
     this.queueService.invalidateSlotCache(shopId, bookingStartTime).catch(console.error);
+
+    // Mark slot as booked in Redis for quick real-time slot status lookups
+    this.markBookingSlots(
+      booking.id,
+      booking.shopId,
+      booking.startTime,
+      booking.endTime,
+      serviceIds,
+    ).catch(console.error);
 
     // Emit real-time queue update
     this.queueGateway.emitQueueUpdate(shopId).catch(console.error);
@@ -565,6 +616,12 @@ export class BookingsService {
     // Invalidate slot cache if cancelled or completed
     if (status === BookingStatus.CANCELLED || status === BookingStatus.COMPLETED) {
       this.queueService.invalidateSlotCache(booking.shopId, booking.startTime).catch(console.error);
+
+      this.prisma.bookingService
+        .findMany({ where: { bookingId }, select: { serviceId: true } })
+        .then((rows) => rows.map((row) => row.serviceId))
+        .then((serviceIds) => this.unmarkBookingSlots(booking.shopId, booking.startTime, serviceIds))
+        .catch(console.error);
     }
 
     // Emit real-time updates
@@ -648,6 +705,16 @@ export class BookingsService {
     this.queueService.invalidateSlotCache(booking.shopId, booking.startTime).catch(console.error);
     this.queueService.invalidateSlotCache(booking.shopId, newStartTime).catch(console.error);
     this.queueService.updateQueueStats(booking.shopId).catch(console.error);
+
+    const serviceIds = booking.services.map((service) => service.serviceId);
+    this.unmarkBookingSlots(booking.shopId, booking.startTime, serviceIds).catch(console.error);
+    this.markBookingSlots(
+      booking.id,
+      booking.shopId,
+      updatedBooking.startTime,
+      updatedBooking.endTime,
+      serviceIds,
+    ).catch(console.error);
 
     // Emit real-time updates
     this.queueGateway.emitQueueUpdate(booking.shopId).catch(console.error);
@@ -902,6 +969,11 @@ export class BookingsService {
     this.queueService.updateQueueStats(booking.shopId).catch(console.error);
     this.queueService.invalidateSlotCache(booking.shopId, booking.startTime).catch(console.error);
     this.queueGateway.emitQueueUpdate(booking.shopId).catch(console.error);
+    this.prisma.bookingService
+      .findMany({ where: { bookingId }, select: { serviceId: true } })
+      .then((rows) => rows.map((row) => row.serviceId))
+      .then((serviceIds) => this.unmarkBookingSlots(booking.shopId, booking.startTime, serviceIds))
+      .catch(console.error);
 
     return {
       booking: updatedBooking,

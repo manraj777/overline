@@ -267,7 +267,7 @@ export class AdminService {
    */
   async createStaff(
     shopId: string,
-    dto: { name: string; email: string; phone?: string; role: string },
+    dto: { name: string; email: string; phone?: string; role: string; avatarUrl?: string },
     tenantId: string,
   ) {
     await this.verifyShopAccess(shopId, tenantId);
@@ -278,6 +278,7 @@ export class AdminService {
         name: dto.name,
         email: dto.email,
         phone: dto.phone,
+        avatarUrl: dto.avatarUrl,
         role: dto.role || 'staff',
         isActive: true,
       },
@@ -290,7 +291,7 @@ export class AdminService {
   async updateStaff(
     shopId: string,
     staffId: string,
-    dto: { name?: string; phone?: string; role?: string; isActive?: boolean },
+    dto: { name?: string; phone?: string; role?: string; isActive?: boolean; avatarUrl?: string },
     tenantId: string,
   ) {
     await this.verifyShopAccess(shopId, tenantId);
@@ -309,6 +310,7 @@ export class AdminService {
       data: {
         ...(dto.name && { name: dto.name }),
         ...(dto.phone !== undefined && { phone: dto.phone }),
+        ...(dto.avatarUrl !== undefined && { avatarUrl: dto.avatarUrl }),
         ...(dto.role && { role: dto.role }),
         ...(dto.isActive !== undefined && { isActive: dto.isActive }),
       },

@@ -5,7 +5,7 @@ import { useRouter } from 'next/router';
 import { useForm } from 'react-hook-form';
 import { Mail, Lock, Eye, EyeOff } from 'lucide-react';
 import { Button, Input, Card, Alert } from '@/components/ui';
-import { useLogin, useGoogleLogin } from '@/hooks';
+import { useLogin, useSendOtp, useVerifyOtp } from '@/hooks';
 import { useAuthStore } from '@/stores/auth';
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL?.replace('/api/v1', '') || '';
@@ -20,11 +20,19 @@ export default function LoginPage() {
   const { redirect, error } = router.query;
   const { isAuthenticated } = useAuthStore();
   const login = useLogin();
-  const googleLogin = useGoogleLogin();
+  const sendOtp = useSendOtp();
+  const verifyOtp = useVerifyOtp();
 
   const [showPassword, setShowPassword] = React.useState(false);
   const [localError, setLocalError] = React.useState<string | null>(null);
   const [isGoogleLoading, setIsGoogleLoading] = React.useState(false);
+  const [authMode, setAuthMode] = React.useState<'email' | 'phone'>('email');
+  const [phone, setPhone] = React.useState('');
+  const [otpDigits, setOtpDigits] = React.useState(['', '', '', '', '', '']);
+  const [otpSent, setOtpSent] = React.useState(false);
+  const [resendCountdown, setResendCountdown] = React.useState(0);
+
+  const otpInputRefs = React.useRef<Array<HTMLInputElement | null>>([]);
 
   const {
     register,
@@ -64,14 +72,65 @@ export default function LoginPage() {
     setIsGoogleLoading(true);
     setLocalError(null);
     try {
-      // First try the redirect flow (more reliable)
-      // Open Google OAuth in a new window for better UX
-      const redirectUri = `${BACKEND_URL}/api/v1/auth/google/redirect`;
+      const redirectUri = `${BACKEND_URL}/api/v1/auth/google`;
       window.location.href = redirectUri;
     } catch (err: any) {
       setLocalError('Google sign-in failed. Please try again.');
     } finally {
       setIsGoogleLoading(false);
+    }
+  };
+
+  React.useEffect(() => {
+    if (resendCountdown <= 0) return;
+    const timer = setInterval(() => {
+      setResendCountdown((prev) => (prev > 0 ? prev - 1 : 0));
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [resendCountdown]);
+
+  const handleSendOtp = async () => {
+    setLocalError(null);
+    try {
+      await sendOtp.mutateAsync({ phone });
+      setOtpSent(true);
+      setResendCountdown(30);
+      setTimeout(() => otpInputRefs.current[0]?.focus(), 0);
+    } catch (err: any) {
+      setLocalError(err.response?.data?.message || 'Failed to send OTP');
+    }
+  };
+
+  const handleOtpDigitChange = (index: number, value: string) => {
+    const sanitized = value.replace(/\D/g, '').slice(0, 1);
+    const nextDigits = [...otpDigits];
+    nextDigits[index] = sanitized;
+    setOtpDigits(nextDigits);
+
+    if (sanitized && index < 5) {
+      otpInputRefs.current[index + 1]?.focus();
+    }
+  };
+
+  const handleOtpKeyDown = (index: number, event: React.KeyboardEvent<HTMLInputElement>) => {
+    if (event.key === 'Backspace' && !otpDigits[index] && index > 0) {
+      otpInputRefs.current[index - 1]?.focus();
+    }
+  };
+
+  const handleVerifyOtp = async () => {
+    setLocalError(null);
+    const otp = otpDigits.join('');
+    if (otp.length !== 6) {
+      setLocalError('Please enter a valid 6-digit OTP');
+      return;
+    }
+
+    try {
+      await verifyOtp.mutateAsync({ phone, otp });
+      router.push((redirect as string) || '/');
+    } catch (err: any) {
+      setLocalError(err.response?.data?.message || 'OTP verification failed');
     }
   };
 
@@ -106,68 +165,154 @@ export default function LoginPage() {
           )}
 
           {/* Login Form */}
-          <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
-            <Input
-              label="Email"
-              type="email"
-              placeholder="you@example.com"
-              leftIcon={
-                <Mail className="w-5 h-5" />
-              }
-              error={errors.email?.message}
-              {...register('email', {
-                required: 'Email is required',
-                pattern: {
-                  value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
-                  message: 'Invalid email address',
-                },
-              })}
-            />
+          <div className="mb-4 grid grid-cols-2 rounded-xl bg-gray-100 p-1">
+            <button
+              type="button"
+              onClick={() => setAuthMode('email')}
+              className={`rounded-lg px-3 py-2 text-sm font-semibold transition ${
+                authMode === 'email' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600'
+              }`}
+            >
+              Email
+            </button>
+            <button
+              type="button"
+              onClick={() => setAuthMode('phone')}
+              className={`rounded-lg px-3 py-2 text-sm font-semibold transition ${
+                authMode === 'phone' ? 'bg-white text-gray-900 shadow-sm' : 'text-gray-600'
+              }`}
+            >
+              Phone OTP
+            </button>
+          </div>
 
-            <Input
-              label="Password"
-              type={showPassword ? 'text' : 'password'}
-              placeholder="••••••••"
-              leftIcon={
-                <Lock className="w-5 h-5" />
-              }
-              error={errors.password?.message}
-              {...register('password', {
-                required: 'Password is required',
-                minLength: {
-                  value: 6,
-                  message: 'Password must be at least 6 characters',
-                },
-              })}
-              rightIcon={
-                <button
+          {authMode === 'email' ? (
+            <form onSubmit={handleSubmit(onSubmit)} className="space-y-4">
+              <Input
+                label="Email"
+                type="email"
+                placeholder="you@example.com"
+                leftIcon={
+                  <Mail className="w-5 h-5" />
+                }
+                error={errors.email?.message}
+                {...register('email', {
+                  required: 'Email is required',
+                  pattern: {
+                    value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
+                    message: 'Invalid email address',
+                  },
+                })}
+              />
+
+              <Input
+                label="Password"
+                type={showPassword ? 'text' : 'password'}
+                placeholder="••••••••"
+                leftIcon={
+                  <Lock className="w-5 h-5" />
+                }
+                error={errors.password?.message}
+                {...register('password', {
+                  required: 'Password is required',
+                  minLength: {
+                    value: 6,
+                    message: 'Password must be at least 6 characters',
+                  },
+                })}
+                rightIcon={
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-9 text-gray-400 hover:text-gray-600"
+                  >
+                    {showPassword ? (
+                      <EyeOff className="w-5 h-5" />
+                    ) : (
+                      <Eye className="w-5 h-5" />
+                    )}
+                  </button>
+                }
+              />
+
+              <div className="flex items-center justify-between">
+                <label className="flex items-center">
+                  <input type="checkbox" className="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500" />
+                  <span className="ml-2 text-sm text-gray-600">Remember me</span>
+                </label>
+                <a href="#" className="text-sm font-medium text-primary-600 hover:text-primary-500">
+                  Forgot password?
+                </a>
+              </div>
+
+              <Button type="submit" isLoading={isSubmitting}>
+                Sign In
+              </Button>
+            </form>
+          ) : (
+            <div className="space-y-4">
+              <Input
+                label="Phone Number"
+                type="tel"
+                placeholder="+91XXXXXXXXXX"
+                value={phone}
+                onChange={(e) => setPhone(e.target.value)}
+              />
+
+              {!otpSent ? (
+                <Button
                   type="button"
-                  onClick={() => setShowPassword(!showPassword)}
-                  className="absolute right-3 top-9 text-gray-400 hover:text-gray-600"
+                  onClick={handleSendOtp}
+                  isLoading={sendOtp.isPending}
+                  disabled={!phone}
                 >
-                  {showPassword ? (
-                    <EyeOff className="w-5 h-5" />
-                  ) : (
-                    <Eye className="w-5 h-5" />
-                  )}
-                </button>
-              }
-            />
+                  Send OTP
+                </Button>
+              ) : (
+                <>
+                  <div className="grid grid-cols-6 gap-2">
+                    {otpDigits.map((digit, index) => (
+                      <input
+                        key={index}
+                        ref={(el) => {
+                          otpInputRefs.current[index] = el;
+                        }}
+                        type="text"
+                        inputMode="numeric"
+                        maxLength={1}
+                        value={digit}
+                        onChange={(e) => handleOtpDigitChange(index, e.target.value)}
+                        onKeyDown={(e) => handleOtpKeyDown(index, e)}
+                        className="h-12 rounded-lg border border-gray-300 text-center text-lg font-semibold focus:border-primary-500 focus:outline-none focus:ring-2 focus:ring-primary-200"
+                      />
+                    ))}
+                  </div>
 
-            <div className="flex items-center justify-between">
-              <label className="flex items-center">
-                <input type="checkbox" className="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500" />
-                <span className="ml-2 text-sm text-gray-600">Remember me</span>
-              </label>
-              <a href="#" className="text-sm font-medium text-primary-600 hover:text-primary-500">
-                Forgot password?
-              </a>
+                  <Button
+                    type="button"
+                    onClick={handleVerifyOtp}
+                    isLoading={verifyOtp.isPending}
+                  >
+                    Verify OTP
+                  </Button>
+
+                  <div className="text-center text-sm text-gray-600">
+                    {resendCountdown > 0 ? (
+                      <span>Resend OTP in {resendCountdown}s</span>
+                    ) : (
+                      <button
+                        type="button"
+                        onClick={handleSendOtp}
+                        className="font-medium text-primary-600 hover:text-primary-500"
+                      >
+                        Resend OTP
+                      </button>
+                    )}
+                  </div>
+                </>
+              )}
             </div>
-
-            <Button type="submit" isLoading={isSubmitting}>
-              Sign In
-            </Button>
-          </form>
+          )}
 
           {/* Divider */}
           <div className="relative my-6">

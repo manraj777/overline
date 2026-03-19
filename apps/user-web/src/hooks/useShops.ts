@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import api from '@/lib/api';
-import type { Shop, ShopWithDetails, QueueStats, PaginatedResponse } from '@/types';
+import type { Shop, ShopWithDetails, QueueStats, PaginatedResponse, ShopSlotStatus } from '@/types';
 
 interface SearchParams {
   query?: string;
@@ -67,6 +67,35 @@ export function useShopQueueStats(shopId: string) {
       return data;
     },
     enabled: !!shopId,
+    staleTime: 1000 * 30,
+    refetchInterval: 1000 * 30,
+  });
+}
+
+export function useShopServicesWithSlots(shopId: string, date: string) {
+  return useQuery<any[]>({
+    queryKey: ['shops', shopId, 'services', date],
+    queryFn: async () => {
+      const { data } = await api.get(`/shops/${shopId}/services`, {
+        params: { date },
+      });
+      return data;
+    },
+    enabled: !!shopId && !!date,
+    staleTime: 1000 * 60,
+  });
+}
+
+export function useShopServiceSlots(shopId: string, serviceId: string, date: string) {
+  return useQuery<ShopSlotStatus[]>({
+    queryKey: ['shops', shopId, 'slots', serviceId, date],
+    queryFn: async () => {
+      const { data } = await api.get(`/shops/${shopId}/slots`, {
+        params: { serviceId, date },
+      });
+      return data;
+    },
+    enabled: !!shopId && !!serviceId && !!date,
     staleTime: 1000 * 30,
     refetchInterval: 1000 * 30,
   });

@@ -193,6 +193,13 @@ export interface TimeSlot {
   staffId?: string;
 }
 
+export interface ShopSlotStatus {
+  time: string;
+  serviceId: string;
+  isBooked: boolean;
+  bookedBy?: string;
+}
+
 // ============================================================================
 // Payment Types
 // ============================================================================

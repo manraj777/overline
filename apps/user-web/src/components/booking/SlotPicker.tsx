@@ -63,23 +63,39 @@ const SlotPicker: React.FC<SlotPickerProps> = ({
         <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-2">
           {groupSlots.map((slot) => {
             const isSelected = selectedSlot?.startTime === slot.startTime;
+            const isBooked = !slot.available;
 
             return (
-              <button
+              <div
                 key={slot.startTime}
-                onClick={() => onSelectSlot(slot)}
-                disabled={!slot.available}
                 className={cn(
-                  'py-2.5 px-3 rounded-lg text-sm font-medium transition-all',
-                  isSelected
-                    ? 'bg-primary-500 text-white'
-                    : slot.available
-                    ? 'bg-gray-100 text-gray-900 hover:bg-gray-200'
-                    : 'bg-gray-50 text-gray-300 cursor-not-allowed'
+                  'rounded-lg border p-2 text-center transition-all',
+                  isBooked
+                    ? 'border-gray-300 bg-gray-100'
+                    : isSelected
+                      ? 'border-green-500 bg-green-100'
+                      : 'border-green-200 bg-green-50'
                 )}
               >
-                {formatTime(slot.startTime)}
-              </button>
+                <div className={cn('text-sm font-semibold', isBooked ? 'text-gray-600' : 'text-green-700')}>
+                  {formatTime(slot.startTime)}
+                </div>
+                {isBooked ? (
+                  <div className="mt-1 text-xs font-medium text-gray-500">Booked</div>
+                ) : (
+                  <button
+                    onClick={() => onSelectSlot(slot)}
+                    className={cn(
+                      'mt-2 w-full rounded-md px-2 py-1 text-xs font-semibold transition',
+                      isSelected
+                        ? 'bg-green-700 text-white hover:bg-green-800'
+                        : 'bg-green-600 text-white hover:bg-green-700'
+                    )}
+                  >
+                    Book
+                  </button>
+                )}
+              </div>
             );
           })}
         </div>

@@ -1,6 +1,6 @@
 import React from 'react';
 import Head from 'next/head';
-import { Save, Upload, Bell, Clock, Globe, CreditCard, Camera, X, Loader2, Plus } from 'lucide-react';
+import { Save, Upload, Bell, Clock, Globe, CreditCard, Camera, X } from 'lucide-react';
 import { Card, Button, Input, Loading, useToast, ImageUpload } from '@/components/ui';
 import { useShopSettings, useUpdateShopSettings, useWorkingHours, useUpdateWorkingHours } from '@/hooks';
 import api from '@/lib/api';
@@ -27,10 +27,6 @@ export default function SettingsPage() {
   const [generalForm, setGeneralForm] = React.useState({
     name: '', description: '', phone: '', email: '', address: '', city: '', state: '', postalCode: '',
   });
-
-  // Gallery upload state
-  const [galleryUploading, setGalleryUploading] = React.useState(false);
-  const galleryInputRef = React.useRef<HTMLInputElement>(null);
 
   // Profile form state
   const [profileForm, setProfileForm] = React.useState({
@@ -135,7 +131,7 @@ export default function SettingsPage() {
     const fd = new FormData();
     fd.append('file', file);
     fd.append('folder', 'shops');
-    const { data } = await api.post('/upload/image', fd, {
+    const { data } = await api.post('/upload', fd, {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
     // Update shop with new cover URL
@@ -144,28 +140,18 @@ export default function SettingsPage() {
     return data.url;
   };
 
-  const handleUploadGalleryPhoto = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  const handleUploadGalleryPhoto = async (file: File): Promise<string> => {
+    const fd = new FormData();
+    fd.append('file', file);
+    fd.append('folder', 'shops');
+    const { data } = await api.post('/upload', fd, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
 
-    setGalleryUploading(true);
-    try {
-      const fd = new FormData();
-      fd.append('file', file);
-      fd.append('folder', 'shops');
-      const { data } = await api.post('/upload/image', fd, {
-        headers: { 'Content-Type': 'multipart/form-data' },
-      });
-
-      const currentPhotos = shopData?.photoUrls || [];
-      await updateSettings.mutateAsync({ photoUrls: [...currentPhotos, data.url] });
-      addToast({ type: 'success', title: 'Photo added to gallery!' });
-    } catch (err: any) {
-      addToast({ type: 'error', title: 'Upload failed', message: err.response?.data?.message || 'Try again.' });
-    } finally {
-      setGalleryUploading(false);
-      if (galleryInputRef.current) galleryInputRef.current.value = '';
-    }
+    const currentPhotos = shopData?.photoUrls || [];
+    await updateSettings.mutateAsync({ photoUrls: [...currentPhotos, data.url] });
+    addToast({ type: 'success', title: 'Photo added to gallery!' });
+    return data.url;
   };
 
   const handleRemoveGalleryPhoto = async (indexToRemove: number) => {
@@ -394,31 +380,14 @@ export default function SettingsPage() {
                       </div>
                     ))}
 
-                    {/* Add photo button */}
-                    <button
-                      type="button"
-                      onClick={() => galleryInputRef.current?.click()}
-                      disabled={galleryUploading}
-                      className="aspect-square rounded-xl border-2 border-dashed border-gray-300 flex flex-col items-center justify-center text-gray-400 hover:border-primary-400 hover:text-primary-500 transition-colors disabled:opacity-50"
-                    >
-                      {galleryUploading ? (
-                        <Loader2 className="w-8 h-8 animate-spin" />
-                      ) : (
-                        <>
-                          <Plus className="w-8 h-8 mb-1" />
-                          <span className="text-xs font-medium">Add Photo</span>
-                        </>
-                      )}
-                    </button>
+                    <ImageUpload
+                      currentUrl={null}
+                      onUpload={handleUploadGalleryPhoto}
+                      label="Add Photo"
+                      hint="JPG, PNG, WebP up to 5MB"
+                      size="sm"
+                    />
                   </div>
-
-                  <input
-                    ref={galleryInputRef}
-                    type="file"
-                    accept="image/jpeg,image/png,image/webp"
-                    onChange={handleUploadGalleryPhoto}
-                    className="hidden"
-                  />
 
                   <p className="text-xs text-gray-400 mt-3">
                     {shopData?.photoUrls?.length || 0} photo{(shopData?.photoUrls?.length || 0) !== 1 ? 's' : ''} uploaded · JPG, PNG, WebP up to 5MB each
