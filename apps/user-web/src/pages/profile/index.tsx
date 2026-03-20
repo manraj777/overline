@@ -45,6 +45,7 @@ export default function ProfilePage() {
   const { data: bookingsData } = useMyBookings();
 
   const [isEditing, setIsEditing] = React.useState(false);
+  const [isLoggingOut, setIsLoggingOut] = React.useState(false);
   const [success, setSuccess] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [avatarUploading, setAvatarUploading] = React.useState(false);
@@ -78,10 +79,10 @@ export default function ProfilePage() {
 
   // Redirect to login if not authenticated
   React.useEffect(() => {
-    if (!authLoading && !isAuthenticated) {
+    if (!authLoading && !isAuthenticated && !isLoggingOut) {
       router.push('/auth/login?redirect=/profile');
     }
-  }, [isAuthenticated, authLoading, router]);
+  }, [isAuthenticated, authLoading, router, isLoggingOut]);
 
   const onSubmit = async (data: ProfileForm) => {
     setError(null);
@@ -122,7 +123,7 @@ export default function ProfilePage() {
       const fd = new FormData();
       fd.append('file', file);
       fd.append('folder', 'avatars');
-      const { data } = await api.post('/upload', fd, {
+      const { data } = await api.post('/upload/image', fd, {
         headers: { 'Content-Type': 'multipart/form-data' },
       });
 
@@ -138,6 +139,7 @@ export default function ProfilePage() {
   };
 
   const handleLogout = async () => {
+    setIsLoggingOut(true);
     await logout.mutateAsync();
     router.push('/');
   };

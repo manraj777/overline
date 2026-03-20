@@ -101,15 +101,16 @@ const ShopCard: React.FC<ShopCardProps> = ({ shop, queueInfo, userLocation }) =>
 
           <div className="flex items-center text-gray-500 text-sm mb-2 group/address">
             <MapPin className="w-4 h-4 mr-1 flex-shrink-0 group-hover/address:text-primary-500 transition-colors" />
-            <a
-              href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${shop.address}, ${shop.city}`)}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="truncate hover:text-primary-600 hover:underline transition-all"
-              onClick={(e) => e.stopPropagation()}
+            <button
+              onClick={(e) => {
+                e.preventDefault();
+                e.stopPropagation();
+                window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${shop.address}, ${shop.city}`)}`, '_blank', 'noopener,noreferrer');
+              }}
+              className="truncate hover:text-primary-600 hover:underline transition-all text-left"
             >
               {shop.address}, {shop.city}
-            </a>
+            </button>
           </div>
 
           {/* Distance & Travel time */}

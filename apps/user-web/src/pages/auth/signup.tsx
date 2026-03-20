@@ -54,8 +54,11 @@ export default function SignupPage() {
         phone: data.phone,
       });
 
-      // Let the global AuthGuard catch them and route to /auth/verify-phone
-      router.push((redirect as string) || '/');
+      if (!res.user.isPhoneVerified) {
+        router.push('/auth/verify-phone');
+      } else {
+        router.push((redirect as string) || '/');
+      }
     } catch (err: any) {
       setError(
         err.response?.data?.message || 'Failed to create account. Please try again.'

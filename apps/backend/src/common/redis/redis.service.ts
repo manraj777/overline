@@ -7,6 +7,7 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
   private _client: Redis | null = null;
   private readonly logger = new Logger(RedisService.name);
   private isConnected = false;
+  private _lastErrorMsg: string | null = null;
 
   /**
    * Get the raw Redis client for advanced operations
@@ -24,51 +25,64 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
       const redisUrl = this.configService.get('redis.url');
 
       const redisOptions: any = {
+        // Give up retrying after 5 attempts (covers Docker cold-start time)
         retryStrategy: (times: number) => {
-          if (times > 3) {
-            this.logger.warn('Redis connection failed after 3 retries - continuing without Redis');
-            return null;
+          if (times > 5) {
+            this.logger.warn('[Redis] Connection failed after 5 retries — running without cache');
+            return null; // stop retrying
           }
-          return Math.min(times * 200, 1000);
+          return Math.min(times * 500, 3000);
         },
-        maxRetriesPerRequest: 3,
-        lazyConnect: true,
+        // Don't queue commands when offline — fail-fast, never block requests
         enableOfflineQueue: false,
+        lazyConnect: true,
+        // Silence ioredis "Connection lost" noise — we handle via 'error' event
+        showFriendlyErrorStack: false,
       };
 
       if (redisUrl) {
-        this.logger.log('Connecting to Redis via URL...');
         this._client = new Redis(redisUrl, redisOptions);
       } else {
-        this.logger.log('Connecting to Redis via host/port...');
         this._client = new Redis({
           ...redisOptions,
-          host: this.configService.get('redis.host'),
-          port: this.configService.get('redis.port'),
+          host: this.configService.get('redis.host') || 'localhost',
+          port: this.configService.get('redis.port') || 6379,
           password: this.configService.get('redis.password') || undefined,
         });
       }
 
+      // Mark connected/disconnected — never throw
       this._client.on('connect', () => {
         this.isConnected = true;
         this.logger.log('✅ Redis connected');
       });
 
-      this._client.on('error', (error) => {
-        this.isConnected = false;
-        this.logger.warn(`Redis error: ${error.message}`);
+      this._client.on('ready', () => {
+        this.isConnected = true;
       });
 
-      // Try to connect but don't block startup
-      await this._client.connect().catch((err) => {
-        this.logger.warn(
-          `Redis initial connection failed: ${err.message} - app will continue without Redis`,
-        );
+      this._client.on('close', () => {
+        this.isConnected = false;
       });
-    } catch (error) {
-      this.logger.warn(`Redis setup failed: ${error.message} - app will continue without Redis`);
+
+      this._client.on('error', (error) => {
+        // Only log once per unique message to avoid log spam
+        if (!this._lastErrorMsg || this._lastErrorMsg !== error.message) {
+          this._lastErrorMsg = error.message;
+          this.logger.warn(`[Redis] ${error.message}`);
+        }
+        this.isConnected = false;
+      });
+
+      // Try to connect — this should NOT blow up if Redis is absent
+      await this._client.connect().catch(() => {
+        this.logger.warn('[Redis] Not available on startup — continuing without cache. Run: docker compose up -d redis');
+      });
+    } catch (error: any) {
+      this.logger.warn(`[Redis] Setup failed: ${error.message} — continuing without cache`);
     }
   }
+
 
   async onModuleDestroy() {
     if (this._client) {

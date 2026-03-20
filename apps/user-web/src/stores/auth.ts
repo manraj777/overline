@@ -22,7 +22,7 @@ export const useAuthStore = create<AuthState>()(
       accessToken: null,
       refreshToken: null,
       isAuthenticated: false,
-      isLoading: true,
+      isLoading: false, // default false — we don't block render on hydration
 
       setUser: (user) => set({ user }),
 

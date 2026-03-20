@@ -1,10 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
-import { Home, Search, Calendar, User, Menu, X, ArrowRight, Clock } from 'lucide-react';
+import { Home, Search, Calendar, User, Menu, X, LogOut } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/stores/auth';
 import { Avatar, Button } from '@/components/ui';
+import { useLogout } from '@/hooks/useAuth';
 import { motion, AnimatePresence } from 'framer-motion';
 
 interface LayoutProps {
@@ -14,8 +15,22 @@ interface LayoutProps {
 const Layout: React.FC<LayoutProps> = ({ children }) => {
   const router = useRouter();
   const { user, isAuthenticated } = useAuthStore();
+  const { mutate: logoutMutate } = useLogout();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
+  const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const dropdownRef = useRef<HTMLDivElement>(null);
+
+  // Close dropdown when clicking outside
+  useEffect(() => {
+    const handler = (e: MouseEvent) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
+        setUserMenuOpen(false);
+      }
+    };
+    document.addEventListener('mousedown', handler);
+    return () => document.removeEventListener('mousedown', handler);
+  }, []);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -83,12 +98,42 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               <div className="w-px h-5 bg-gray-200 hidden lg:block mx-1" />
 
               {isAuthenticated && user ? (
-                <Link href="/profile" className="flex items-center gap-3 bg-white/40 border border-gray-200/50 pl-2 pr-4 py-1.5 rounded-full hover:bg-white/80 transition-colors">
-                  <Avatar src={user.avatarUrl || null} name={user.name} size="sm" />
-                  <span className="text-sm font-semibold">
-                    {user.name.split(' ')[0]}
-                  </span>
-                </Link>
+                <div className="relative" ref={dropdownRef}>
+                  <button
+                    onClick={() => setUserMenuOpen(!userMenuOpen)}
+                    className="flex items-center gap-3 bg-white/40 border border-gray-200/50 pl-2 pr-4 py-1.5 rounded-full hover:bg-white/80 transition-colors"
+                  >
+                    <Avatar src={user.avatarUrl || null} name={user.name} size="sm" />
+                    <span className="text-sm font-semibold">{user.name.split(' ')[0]}</span>
+                  </button>
+                  <AnimatePresence>
+                    {userMenuOpen && (
+                      <motion.div
+                        initial={{ opacity: 0, y: 8, scale: 0.95 }}
+                        animate={{ opacity: 1, y: 0, scale: 1 }}
+                        exit={{ opacity: 0, y: 8, scale: 0.95 }}
+                        transition={{ duration: 0.15 }}
+                        className="absolute right-0 top-full mt-2 w-48 bg-white rounded-2xl shadow-[0_8px_32px_rgba(0,0,0,0.12)] border border-gray-100 overflow-hidden z-50"
+                      >
+                        <Link
+                          href="/profile"
+                          onClick={() => setUserMenuOpen(false)}
+                          className="flex items-center gap-3 px-4 py-3 text-sm font-semibold hover:bg-gray-50 transition-colors"
+                        >
+                          <User className="w-4 h-4 text-gray-500" />
+                          Profile
+                        </Link>
+                        <button
+                          onClick={() => { setUserMenuOpen(false); logoutMutate(); }}
+                          className="w-full flex items-center gap-3 px-4 py-3 text-sm font-semibold text-red-600 hover:bg-red-50 transition-colors"
+                        >
+                          <LogOut className="w-4 h-4" />
+                          Sign Out
+                        </button>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
+                </div>
               ) : (
                 <div className="flex items-center gap-2">
                   <Link href="/auth/login">
@@ -147,7 +192,22 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                 </motion.div>
               ))}
 
-              {!isAuthenticated && (
+              {isAuthenticated && user ? (
+                <motion.div
+                  className="mt-8 flex flex-col gap-3"
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.4 }}
+                >
+                  <button
+                    onClick={() => { setMobileMenuOpen(false); logoutMutate(); }}
+                    className="w-full flex items-center justify-center gap-3 rounded-full py-5 text-lg font-bold border-2 border-red-200 text-red-600 hover:bg-red-50 transition-colors"
+                  >
+                    <LogOut className="w-5 h-5" />
+                    Sign Out
+                  </button>
+                </motion.div>
+              ) : (
                 <motion.div
                   className="mt-8 flex flex-col gap-3"
                   initial={{ opacity: 0 }}
@@ -209,8 +269,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               <div className="space-y-4">
                 <h4 className="text-lexo-gray font-semibold tracking-wide uppercase text-sm">Legal</h4>
                 <div className="flex flex-col gap-3">
-                  <Link href="#" className="font-semibold hover:text-indigo-400 transition-colors">Privacy Policy</Link>
-                  <Link href="#" className="font-semibold hover:text-indigo-400 transition-colors">Terms of Service</Link>
+                  <a href="#" className="font-semibold hover:text-indigo-400 transition-colors">Privacy Policy</a>
+                  <a href="#" className="font-semibold hover:text-indigo-400 transition-colors">Terms of Service</a>
                   <a href={process.env.NEXT_PUBLIC_ADMIN_URL || "https://overline-admin-web.vercel.app"} target="_blank" rel="noreferrer" className="font-semibold hover:text-indigo-400 transition-colors text-white/50">Partner Login</a>
                 </div>
               </div>

@@ -1,6 +1,8 @@
 import { Injectable, BadRequestException, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
 import { v2 as cloudinary, UploadApiResponse } from 'cloudinary';
+import * as fs from 'fs';
+import * as path from 'path';
 
 @Injectable()
 export class UploadService {
@@ -30,49 +32,36 @@ export class UploadService {
     file: Express.Multer.File,
     folder = 'overline',
   ): Promise<{ url: string; publicId: string }> {
-    if (!this.isConfigured) {
-      throw new BadRequestException('Image upload is not configured');
-    }
-
     if (!file) {
       throw new BadRequestException('No file provided');
     }
 
-    // Validate file type
     const allowedMimes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
     if (!allowedMimes.includes(file.mimetype)) {
       throw new BadRequestException('Only JPEG, PNG, WebP and GIF images are allowed');
     }
 
-    // Max 5 MB
     if (file.size > 5 * 1024 * 1024) {
       throw new BadRequestException('File size must be under 5 MB');
     }
 
     try {
-      const result: UploadApiResponse = await new Promise((resolve, reject) => {
-        const stream = cloudinary.uploader.upload_stream(
-          {
-            folder,
-            resource_type: 'image',
-            transformation: [
-              { width: 800, height: 800, crop: 'limit', quality: 'auto', fetch_format: 'auto' },
-            ],
-          },
-          (error, result) => {
-            if (error) reject(error);
-            else resolve(result!);
-          },
-        );
-        stream.end(file.buffer);
-      });
+      const uploadDir = path.join(process.cwd(), '..', 'user-web', 'public', 'uploads', folder);
+      if (!fs.existsSync(uploadDir)) {
+        fs.mkdirSync(uploadDir, { recursive: true });
+      }
 
+      const fileName = `${Date.now()}-${file.originalname.replace(/[^a-zA-Z0-9.]/g, '')}`;
+      const filePath = path.join(uploadDir, fileName);
+      
+      fs.writeFileSync(filePath, file.buffer);
+      
       return {
-        url: result.secure_url,
-        publicId: result.public_id,
+        url: `/uploads/${folder}/${fileName}`,
+        publicId: fileName,
       };
     } catch (error) {
-      this.logger.error('Cloudinary upload failed', error);
+      this.logger.error('Local upload failed', error);
       throw new BadRequestException('Failed to upload image');
     }
   }

@@ -23,16 +23,14 @@ export class OtpService {
     private redis: RedisService,
     @Inject(forwardRef(() => AuthService))
     private authService: AuthService,
-  ) {
-    this.logger.warn('[OTP] No SMS provider configured. Fixed OTP "123456" will be used for all requests.');
-  }
+  ) {}
 
   /**
-   * Fixed OTP for development/testing.
-   * TODO: Integrate an SMS provider (e.g. MSG91, AWS SNS) before going to production.
+   * Randomly generated 6-digit OTP for development/testing.
+   * Note: Twilio is actively integrated in UsersService for primary flows.
    */
   private generateOtp(): string {
-    return '123456';
+    return Math.floor(100000 + Math.random() * 900000).toString();
   }
 
   /** Send OTP to a phone number */

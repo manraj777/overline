@@ -22,38 +22,31 @@ const Avatar: React.FC<AvatarProps> = ({
     xl: 'w-16 h-16 text-lg',
   };
 
-  const colorClass = generateAvatar(name);
+  const safeName = React.useMemo(() => {
+    return encodeURIComponent(name?.trim() || 'User');
+  }, [name]);
 
-  if (src) {
-    return (
-      <div
-        className={cn(
-          'rounded-full overflow-hidden flex-shrink-0',
-          sizes[size],
-          className
-        )}
-        {...props}
-      >
-        <img
-          src={src}
-          alt={name}
-          className="w-full h-full object-cover"
-        />
-      </div>
-    );
-  }
+  const identiconUrl = `https://identicons.io/api/icon/${safeName}`;
 
   return (
     <div
       className={cn(
-        'rounded-full flex items-center justify-center text-white font-medium flex-shrink-0',
+        'rounded-full overflow-hidden flex-shrink-0 bg-gray-50 flex items-center justify-center',
         sizes[size],
-        colorClass,
         className
       )}
       {...props}
     >
-      {getInitials(name)}
+      <img
+        src={src || identiconUrl}
+        alt={name}
+        className="w-full h-full object-cover"
+        onError={(e) => {
+          if (e.currentTarget.src !== identiconUrl) {
+            e.currentTarget.src = identiconUrl;
+          }
+        }}
+      />
     </div>
   );
 };

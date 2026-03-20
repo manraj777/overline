@@ -24,6 +24,18 @@ export function useLocation(autoDetect = false): UseLocationResult {
     const [loading, setLoading] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
+    // Hydrate location state from storage safely on client mount
+    useEffect(() => {
+        if (typeof window !== 'undefined') {
+            try {
+                const cached = localStorage.getItem('user_last_location');
+                if (cached) setLocation(JSON.parse(cached));
+            } catch (e) {
+                console.error('Failed to parse cached location', e);
+            }
+        }
+    }, []);
+
     const reverseGeocode = useCallback(async (lat: number, lng: number): Promise<string | undefined> => {
         try {
             const res = await fetch(
@@ -63,7 +75,11 @@ export function useLocation(autoDetect = false): UseLocationResult {
             async (position) => {
                 const { latitude, longitude } = position.coords;
                 const address = await reverseGeocode(latitude, longitude);
-                setLocation({ lat: latitude, lng: longitude, address });
+                const newLocation = { lat: latitude, lng: longitude, address };
+                setLocation(newLocation);
+                if (typeof window !== 'undefined') {
+                    localStorage.setItem('user_last_location', JSON.stringify(newLocation));
+                }
                 setLoading(false);
             },
             (err) => {

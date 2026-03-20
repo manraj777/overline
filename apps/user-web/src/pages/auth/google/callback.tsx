@@ -22,7 +22,11 @@ export default function GoogleCallbackPage() {
     try {
       const user = JSON.parse(userStr);
       login(user, accessToken, refreshToken);
-      router.replace('/');
+      if (!user.isPhoneVerified) {
+        router.replace('/auth/verify-phone');
+      } else {
+        router.replace('/');
+      }
     } catch {
       router.replace('/auth/login?error=google_auth_failed');
     }
