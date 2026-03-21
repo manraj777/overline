@@ -116,6 +116,7 @@ export interface Staff {
   avatarUrl?: string;
   role: string;
   isActive: boolean;
+  staffServices?: Array<{ serviceId: string }>;
 }
 
 // ============================================================================

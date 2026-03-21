@@ -337,8 +337,10 @@ model Staff {
   updatedAt DateTime @updatedAt @map("updated_at")
 
   // Relations
-  staffServices StaffService[]
-  bookings      Booking[]
+  staffServices      StaffService[]
+  bookings           Booking[]
+  staffWorkingHours  StaffWorkingHours[]
+  staffTimeOffs      StaffTimeOff[]
 
   @@index([shopId])
   @@map("staff")
@@ -391,6 +393,37 @@ model SpecialSchedule {
   @@index([shopId])
   @@index([date])
   @@map("special_schedules")
+}
+
+model StaffWorkingHours {
+  id        String    @id @default(uuid())
+  staffId   String    @map("staff_id")
+  staff     Staff     @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  dayOfWeek DayOfWeek @map("day_of_week")
+  startTime String    @map("start_time") // Format: "09:00"
+  endTime   String    @map("end_time")   // Format: "18:00"
+  isOff     Boolean   @default(false) @map("is_off")
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+
+  @@unique([staffId, dayOfWeek])
+  @@index([staffId])
+  @@map("staff_working_hours")
+}
+
+model StaffTimeOff {
+  id        String   @id @default(uuid())
+  staffId   String   @map("staff_id")
+  staff     Staff    @relation(fields: [staffId], references: [id], onDelete: Cascade)
+  startTime DateTime @map("start_time")
+  endTime   DateTime @map("end_time")
+  reason    String?
+  isFullDay Boolean  @default(false) @map("is_full_day")
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@index([staffId])
+  @@index([staffId, startTime, endTime])
+  @@map("staff_time_off")
 }
 
 // ============================================================================

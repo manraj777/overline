@@ -49,11 +49,8 @@ export const LocationPicker: React.FC<LocationPickerProps> = ({
   }, []);
 
   // Sync external value changes
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   useEffect(() => {
-    if (value?.address && value.address !== input) {
-      setInput(value.address);
-    }
+    setInput(value?.address || '');
   }, [value?.address]);
 
   // Forward geocode search using Nominatim

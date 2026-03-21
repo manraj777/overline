@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
+import { Injectable, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '@/common/prisma/prisma.service';
 import { QueueService } from '../queue/queue.service';
 import { BookingsService } from '../bookings/bookings.service';
@@ -338,6 +338,136 @@ export class AdminService {
   }
 
   /**
+   * Get staff availability (weekly hours + upcoming time-off blocks)
+   */
+  async getStaffAvailability(shopId: string, staffId: string, tenantId: string) {
+    await this.verifyShopAccess(shopId, tenantId);
+    await this.verifyStaffBelongsToShop(shopId, staffId);
+
+    const [workingHours, timeOff] = await Promise.all([
+      this.prisma.staffWorkingHours.findMany({
+        where: { staffId },
+        orderBy: { dayOfWeek: 'asc' },
+      }),
+      this.prisma.staffTimeOff.findMany({
+        where: {
+          staffId,
+          endTime: { gte: new Date() },
+        },
+        orderBy: { startTime: 'asc' },
+      }),
+    ]);
+
+    return {
+      workingHours,
+      timeOff,
+    };
+  }
+
+  /**
+   * Update staff working hours for a day
+   */
+  async updateStaffWorkingHours(
+    shopId: string,
+    staffId: string,
+    dayOfWeek: DayOfWeek,
+    dto: { startTime?: string; endTime?: string; isOff?: boolean },
+    tenantId: string,
+  ) {
+    await this.verifyShopAccess(shopId, tenantId);
+    await this.verifyStaffBelongsToShop(shopId, staffId);
+
+    const isOff = dto.isOff ?? false;
+
+    if (!isOff && (!dto.startTime || !dto.endTime)) {
+      throw new BadRequestException('startTime and endTime are required when staff is not off');
+    }
+
+    if (!isOff && dto.startTime && dto.endTime && dto.startTime >= dto.endTime) {
+      throw new BadRequestException('endTime must be after startTime');
+    }
+
+    return this.prisma.staffWorkingHours.upsert({
+      where: {
+        staffId_dayOfWeek: {
+          staffId,
+          dayOfWeek,
+        },
+      },
+      update: {
+        startTime: dto.startTime || '09:00',
+        endTime: dto.endTime || '18:00',
+        isOff,
+      },
+      create: {
+        staffId,
+        dayOfWeek,
+        startTime: dto.startTime || '09:00',
+        endTime: dto.endTime || '18:00',
+        isOff,
+      },
+    });
+  }
+
+  /**
+   * Add staff time-off window
+   */
+  async addStaffTimeOff(
+    shopId: string,
+    staffId: string,
+    dto: { startTime: string; endTime: string; reason?: string; isFullDay?: boolean },
+    tenantId: string,
+  ) {
+    await this.verifyShopAccess(shopId, tenantId);
+    await this.verifyStaffBelongsToShop(shopId, staffId);
+
+    const startTime = new Date(dto.startTime);
+    const endTime = new Date(dto.endTime);
+
+    if (Number.isNaN(startTime.getTime()) || Number.isNaN(endTime.getTime())) {
+      throw new BadRequestException('Invalid startTime or endTime');
+    }
+
+    if (endTime <= startTime) {
+      throw new BadRequestException('endTime must be after startTime');
+    }
+
+    return this.prisma.staffTimeOff.create({
+      data: {
+        staffId,
+        startTime,
+        endTime,
+        reason: dto.reason,
+        isFullDay: dto.isFullDay ?? false,
+      },
+    });
+  }
+
+  /**
+   * Delete staff time-off window
+   */
+  async deleteStaffTimeOff(shopId: string, staffId: string, timeOffId: string, tenantId: string) {
+    await this.verifyShopAccess(shopId, tenantId);
+    await this.verifyStaffBelongsToShop(shopId, staffId);
+
+    const timeOff = await this.prisma.staffTimeOff.findFirst({
+      where: {
+        id: timeOffId,
+        staffId,
+      },
+      select: { id: true },
+    });
+
+    if (!timeOff) {
+      throw new NotFoundException('Staff time-off record not found');
+    }
+
+    return this.prisma.staffTimeOff.delete({
+      where: { id: timeOffId },
+    });
+  }
+
+  /**
    * Update working hours
    */
   async updateWorkingHours(
@@ -540,5 +670,21 @@ export class AdminService {
     }
 
     return shop;
+  }
+
+  private async verifyStaffBelongsToShop(shopId: string, staffId: string) {
+    const staff = await this.prisma.staff.findFirst({
+      where: {
+        id: staffId,
+        shopId,
+      },
+      select: { id: true },
+    });
+
+    if (!staff) {
+      throw new NotFoundException('Staff member not found');
+    }
+
+    return staff;
   }
 }

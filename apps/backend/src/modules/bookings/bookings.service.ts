@@ -155,6 +155,10 @@ export class BookingsService {
     const bookingStartTime = new Date(startTime);
     const bookingEndTime = new Date(bookingStartTime.getTime() + totalDuration * 60 * 1000);
 
+    if (staffId) {
+      await this.validateStaffServices(shopId, staffId, serviceIds);
+    }
+
     // Validate slot is in the future
     if (bookingStartTime <= new Date()) {
       throw new BadRequestException('Cannot book a slot in the past');
@@ -747,6 +751,40 @@ export class BookingsService {
 
     if (!allowedTransitions[currentStatus].includes(newStatus)) {
       throw new BadRequestException(`Cannot transition from ${currentStatus} to ${newStatus}`);
+    }
+  }
+
+  private async validateStaffServices(
+    shopId: string,
+    staffId: string,
+    serviceIds: string[],
+  ): Promise<void> {
+    const staff = await this.prisma.staff.findFirst({
+      where: {
+        id: staffId,
+        shopId,
+        isActive: true,
+      },
+      include: {
+        staffServices: {
+          select: {
+            serviceId: true,
+          },
+        },
+      },
+    });
+
+    if (!staff) {
+      throw new NotFoundException('Selected staff member is not available');
+    }
+
+    const assignedServiceIds = new Set(staff.staffServices.map((ss) => ss.serviceId));
+    const allServicesSupported = serviceIds.every((serviceId) => assignedServiceIds.has(serviceId));
+
+    if (!allServicesSupported) {
+      throw new BadRequestException(
+        'Selected staff member cannot perform one or more chosen services',
+      );
     }
   }
 

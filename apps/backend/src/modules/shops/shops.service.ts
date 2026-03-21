@@ -208,6 +208,11 @@ export class ShopsService {
           name: true,
           avatarUrl: true,
           role: true,
+          staffServices: {
+            select: {
+              serviceId: true,
+            },
+          },
         },
       },
       workingHours: {
@@ -261,6 +266,13 @@ export class ShopsService {
         },
         staff: {
           where: { isActive: true },
+          include: {
+            staffServices: {
+              select: {
+                serviceId: true,
+              },
+            },
+          },
         },
         workingHours: true,
       },

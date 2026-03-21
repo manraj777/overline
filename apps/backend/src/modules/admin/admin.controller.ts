@@ -155,6 +155,64 @@ export class AdminController {
     return this.adminService.deleteStaff(shopId, staffId, tenantId);
   }
 
+  @Get('shops/:shopId/staff/:staffId/availability')
+  @Roles(UserRole.OWNER, UserRole.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Get staff availability (working hours and time-off)' })
+  @ApiParam({ name: 'shopId', description: 'Shop ID' })
+  @ApiParam({ name: 'staffId', description: 'Staff ID' })
+  async getStaffAvailability(
+    @Param('shopId') shopId: string,
+    @Param('staffId') staffId: string,
+    @CurrentUser('tenantId') tenantId: string,
+  ) {
+    return this.adminService.getStaffAvailability(shopId, staffId, tenantId);
+  }
+
+  @Patch('shops/:shopId/staff/:staffId/availability/:dayOfWeek')
+  @Roles(UserRole.OWNER, UserRole.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Update staff working hours for a day' })
+  @ApiParam({ name: 'shopId', description: 'Shop ID' })
+  @ApiParam({ name: 'staffId', description: 'Staff ID' })
+  @ApiParam({ name: 'dayOfWeek', enum: DayOfWeek })
+  async updateStaffAvailability(
+    @Param('shopId') shopId: string,
+    @Param('staffId') staffId: string,
+    @Param('dayOfWeek') dayOfWeek: DayOfWeek,
+    @Body() dto: { startTime?: string; endTime?: string; isOff?: boolean },
+    @CurrentUser('tenantId') tenantId: string,
+  ) {
+    return this.adminService.updateStaffWorkingHours(shopId, staffId, dayOfWeek, dto, tenantId);
+  }
+
+  @Post('shops/:shopId/staff/:staffId/time-off')
+  @Roles(UserRole.OWNER, UserRole.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Add staff time-off block' })
+  @ApiParam({ name: 'shopId', description: 'Shop ID' })
+  @ApiParam({ name: 'staffId', description: 'Staff ID' })
+  async addStaffTimeOff(
+    @Param('shopId') shopId: string,
+    @Param('staffId') staffId: string,
+    @Body() dto: { startTime: string; endTime: string; reason?: string; isFullDay?: boolean },
+    @CurrentUser('tenantId') tenantId: string,
+  ) {
+    return this.adminService.addStaffTimeOff(shopId, staffId, dto, tenantId);
+  }
+
+  @Delete('shops/:shopId/staff/:staffId/time-off/:timeOffId')
+  @Roles(UserRole.OWNER, UserRole.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Delete staff time-off block' })
+  @ApiParam({ name: 'shopId', description: 'Shop ID' })
+  @ApiParam({ name: 'staffId', description: 'Staff ID' })
+  @ApiParam({ name: 'timeOffId', description: 'Staff time-off ID' })
+  async deleteStaffTimeOff(
+    @Param('shopId') shopId: string,
+    @Param('staffId') staffId: string,
+    @Param('timeOffId') timeOffId: string,
+    @CurrentUser('tenantId') tenantId: string,
+  ) {
+    return this.adminService.deleteStaffTimeOff(shopId, staffId, timeOffId, tenantId);
+  }
+
   @Get('shops/:shopId/working-hours')
   @Roles(UserRole.OWNER, UserRole.STAFF, UserRole.SUPER_ADMIN)
   @ApiOperation({ summary: 'Get shop working hours' })

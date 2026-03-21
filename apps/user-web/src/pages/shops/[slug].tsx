@@ -70,6 +70,22 @@ export default function ShopDetailPage() {
 
   const createBooking = useCreateBooking();
 
+  const eligibleStaff = React.useMemo(() => {
+    if (!shop?.staff || selectedServices.length === 0) {
+      return shop?.staff || [];
+    }
+
+    const selectedServiceIds = new Set(selectedServices.map((service) => service.id));
+
+    return shop.staff.filter((person: any) => {
+      const personServiceIds = new Set(
+        (person.staffServices || []).map((staffService: any) => staffService.serviceId),
+      );
+
+      return Array.from(selectedServiceIds).every((serviceId) => personServiceIds.has(serviceId));
+    });
+  }, [shop?.staff, selectedServices]);
+
   // Set shop when loaded
   React.useEffect(() => {
     if (shop) {
@@ -81,6 +97,17 @@ export default function ShopDetailPage() {
   React.useEffect(() => {
     return () => reset();
   }, [reset]);
+
+  React.useEffect(() => {
+    if (!selectedStaff) {
+      return;
+    }
+
+    const stillEligible = eligibleStaff.some((person) => person.id === selectedStaff.id);
+    if (!stillEligible) {
+      setStaff(null);
+    }
+  }, [eligibleStaff, selectedStaff, setStaff]);
 
   // Gather all photos for gallery
   const allPhotos = React.useMemo(() => {
@@ -423,9 +450,9 @@ export default function ShopDetailPage() {
                     <h2 className="text-3xl font-black text-lexo-black mb-8 tracking-tight">
                       Select Professional
                     </h2>
-                    {shop.staff && shop.staff.length > 0 ? (
+                    {eligibleStaff.length > 0 ? (
                       <StaffPicker
-                        staff={shop.staff}
+                        staff={eligibleStaff}
                         selectedStaff={selectedStaff}
                         onSelectStaff={setStaff}
                       />

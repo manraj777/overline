@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
 import { PrismaService } from '@/common/prisma/prisma.service';
 import { RedisService } from '@/common/redis/redis.service';
 import { DayOfWeek } from '@prisma/client';
@@ -97,9 +97,78 @@ export class SlotEngineService {
     }
 
     // Get open/close times
-    const openTime = specialSchedule?.openTime || workingHour.openTime;
-    const closeTime = specialSchedule?.closeTime || workingHour.closeTime;
-    const breakWindows = (workingHour.breakWindows as any[]) || [];
+    let openTime = specialSchedule?.openTime || workingHour.openTime;
+    let closeTime = specialSchedule?.closeTime || workingHour.closeTime;
+    const breakWindows = (workingHour.breakWindows as Array<{ start: string; end: string }>) || [];
+
+    if (staffId) {
+      const staff = await this.prisma.staff.findFirst({
+        where: { id: staffId, shopId, isActive: true },
+        select: {
+          id: true,
+          staffServices: {
+            select: {
+              serviceId: true,
+            },
+          },
+        },
+      });
+
+      if (!staff) {
+        throw new NotFoundException('Staff member not found');
+      }
+
+      if (serviceIds.length > 0) {
+        const staffServiceIds = new Set(staff.staffServices.map((ss) => ss.serviceId));
+        const canPerformAllServices = serviceIds.every((serviceId) => staffServiceIds.has(serviceId));
+        if (!canPerformAllServices) {
+          return [];
+        }
+      }
+
+      const staffWorkingHour = await this.prisma.staffWorkingHours.findUnique({
+        where: {
+          staffId_dayOfWeek: {
+            staffId,
+            dayOfWeek,
+          },
+        },
+      });
+
+      if (staffWorkingHour?.isOff) {
+        return [];
+      }
+
+      if (staffWorkingHour) {
+        openTime = staffWorkingHour.startTime;
+        closeTime = staffWorkingHour.endTime;
+      }
+
+      const staffTimeOffs = await this.prisma.staffTimeOff.findMany({
+        where: {
+          staffId,
+          startTime: { lt: localDateEnd },
+          endTime: { gt: localDateStart },
+        },
+      });
+
+      for (const timeOff of staffTimeOffs) {
+        if (timeOff.isFullDay) {
+          return [];
+        }
+
+        const clippedWindow = this.clipDateRangeToDay(
+          timeOff.startTime,
+          timeOff.endTime,
+          localDateStart,
+          localDateEnd,
+        );
+
+        if (clippedWindow) {
+          breakWindows.push(clippedWindow);
+        }
+      }
+    }
 
     // Get existing bookings for the date
     const dateStart = localDateStart;
@@ -262,6 +331,20 @@ export class SlotEngineService {
       return false;
     }
 
+    if (staffId) {
+      const [staff, staffDayAvailability] = await Promise.all([
+        this.prisma.staff.findFirst({
+          where: { id: staffId, shopId, isActive: true },
+          select: { id: true },
+        }),
+        this.isStaffAvailableDuringWindow(staffId, startTime, endTime),
+      ]);
+
+      if (!staff || !staffDayAvailability) {
+        return false;
+      }
+    }
+
     const whereClause: any = {
       shopId,
       status: { in: ['PENDING', 'CONFIRMED', 'IN_PROGRESS'] },
@@ -343,6 +426,75 @@ export class SlotEngineService {
       DayOfWeek.SATURDAY,
     ];
     return days[date.getDay()];
+  }
+
+  private async isStaffAvailableDuringWindow(
+    staffId: string,
+    startTime: Date,
+    endTime: Date,
+  ): Promise<boolean> {
+    const dayOfWeek = this.getDayOfWeek(startTime);
+    const staffWorkingHour = await this.prisma.staffWorkingHours.findUnique({
+      where: {
+        staffId_dayOfWeek: {
+          staffId,
+          dayOfWeek,
+        },
+      },
+    });
+
+    if (staffWorkingHour?.isOff) {
+      return false;
+    }
+
+    if (staffWorkingHour) {
+      const slotStartMinutes = startTime.getHours() * 60 + startTime.getMinutes();
+      const slotEndMinutes = endTime.getHours() * 60 + endTime.getMinutes();
+      const workingStartMinutes = this.timeToMinutes(staffWorkingHour.startTime);
+      const workingEndMinutes = this.timeToMinutes(staffWorkingHour.endTime);
+
+      if (slotStartMinutes < workingStartMinutes || slotEndMinutes > workingEndMinutes) {
+        return false;
+      }
+    }
+
+    const overlappingTimeOff = await this.prisma.staffTimeOff.findFirst({
+      where: {
+        staffId,
+        startTime: { lt: endTime },
+        endTime: { gt: startTime },
+      },
+      select: { id: true },
+    });
+
+    return !overlappingTimeOff;
+  }
+
+  private timeToMinutes(time: string): number {
+    const [hour, minute] = time.split(':').map(Number);
+    if (Number.isNaN(hour) || Number.isNaN(minute)) {
+      throw new BadRequestException(`Invalid time format: ${time}`);
+    }
+    return hour * 60 + minute;
+  }
+
+  private clipDateRangeToDay(
+    start: Date,
+    end: Date,
+    dayStart: Date,
+    dayEnd: Date,
+  ): { start: string; end: string } | null {
+    const clippedStart = new Date(Math.max(start.getTime(), dayStart.getTime()));
+    const clippedEnd = new Date(Math.min(end.getTime(), dayEnd.getTime()));
+
+    if (clippedStart >= clippedEnd) {
+      return null;
+    }
+
+    return {
+      start: `${String(clippedStart.getHours()).padStart(2, '0')}:${String(clippedStart.getMinutes()).padStart(2, '0')}`,
+      end: `${String(clippedEnd.getHours()).padStart(2, '0')}:${String(clippedEnd.getMinutes()).padStart(2, '0')}`,
+    };
   }
 
   private minutesToDateTime(date: string, minutes: number): string {
