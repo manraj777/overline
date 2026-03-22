@@ -47,7 +47,7 @@ export default function SignupPage() {
   const onSubmit = async (data: SignupForm) => {
     setError(null);
     try {
-      await signup.mutateAsync({
+      const res = await signup.mutateAsync({
         name: data.name,
         email: data.email,
         password: data.password,
