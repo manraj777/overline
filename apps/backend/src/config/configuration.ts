@@ -99,8 +99,15 @@ export default () => ({
   backendUrl: process.env.BACKEND_URL || 'http://localhost:3001',
 
   frontendUrls: {
-    user: process.env.USER_WEB_URL || process.env.USER_FRONTEND_URL || 'http://localhost:3000',
+    user:
+      process.env.USER_WEB_URL ||
+      process.env.USER_FRONTEND_URL ||
+      process.env.FRONTEND_USER_URL ||
+      'http://localhost:3000',
     admin:
-      process.env.ADMIN_WEB_URL || process.env.ADMIN_FRONTEND_URL || 'http://localhost:3002',
+      process.env.ADMIN_WEB_URL ||
+      process.env.ADMIN_FRONTEND_URL ||
+      process.env.FRONTEND_ADMIN_URL ||
+      'http://localhost:3002',
   },
 });

@@ -1,8 +1,8 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": "nextjs",
-  "installCommand": "corepack enable && corepack prepare pnpm@9.15.4 --activate && pnpm install --filter @overline/admin-web --no-frozen-lockfile",
-  "buildCommand": "pnpm --filter @overline/admin-web build",
+  "installCommand": "if [ -f pnpm-workspace.yaml ]; then corepack enable && corepack prepare pnpm@9.15.4 --activate && pnpm install --filter @overline/admin-web --no-frozen-lockfile; else cd ../.. && corepack enable && corepack prepare pnpm@9.15.4 --activate && pnpm install --filter @overline/admin-web --no-frozen-lockfile; fi",
+  "buildCommand": "if [ -f pnpm-workspace.yaml ]; then pnpm --filter @overline/admin-web build; else cd ../.. && pnpm --filter @overline/admin-web build; fi",
   "rewrites": [
     {
       "source": "/api/:path*",
