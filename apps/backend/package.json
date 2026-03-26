@@ -27,6 +27,7 @@
   },
   "dependencies": {
     "@aws-sdk/client-s3": "^3.888.0",
+    "@nestjs/bull": "^11.0.4",
     "@nestjs/cli": "^10.3.0",
     "@nestjs/common": "^10.3.0",
     "@nestjs/config": "^3.3.0",
@@ -43,6 +44,7 @@
     "@sendgrid/mail": "^8.1.6",
     "@types/bcryptjs": "^3.0.0",
     "bcryptjs": "^3.0.3",
+    "bull": "^4.16.5",
     "bullmq": "^5.1.0",
     "class-transformer": "^0.5.1",
     "class-validator": "^0.14.0",
@@ -53,6 +55,7 @@
     "passport": "^0.7.0",
     "passport-google-oauth20": "^2.0.0",
     "passport-jwt": "^4.0.1",
+    "prisma": "^6.9.0",
     "reflect-metadata": "^0.2.1",
     "rimraf": "^5.0.10",
     "rxjs": "^7.8.1",
@@ -61,13 +64,13 @@
     "tsconfig-paths": "^4.2.0",
     "twilio": "^5.12.1",
     "typescript": "^5.3.3",
-    "uuid": "^9.0.0",
-    "prisma": "^6.9.0"
+    "uuid": "^9.0.0"
   },
   "devDependencies": {
     "@nestjs/schematics": "^10.1.0",
     "@nestjs/testing": "^10.3.0",
     "@types/bcrypt": "^5.0.2",
+    "@types/bull": "^3.15.9",
     "@types/cron": "^2.4.3",
     "@types/express": "^4.17.21",
     "@types/jest": "^29.5.11",

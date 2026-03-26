@@ -3,10 +3,26 @@ import { ValidationPipe, VersioningType } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { IoAdapter } from '@nestjs/platform-socket.io';
 import { AppModule } from './app.module';
+import { SentryExceptionFilter } from './filters/sentry-exception.filter';
 import * as express from 'express';
 import * as path from 'path';
 
 async function bootstrap() {
+  // Sentry initialization (only if DSN is configured)
+  if (process.env.SENTRY_DSN) {
+    try {
+      const Sentry = require('@sentry/node');
+      Sentry.init({
+        dsn: process.env.SENTRY_DSN,
+        environment: process.env.NODE_ENV || 'development',
+        tracesSampleRate: process.env.NODE_ENV === 'production' ? 0.1 : 1.0,
+      });
+      console.log('🛡️  Sentry initialized');
+    } catch {
+      console.log('⚠️  Sentry not available — skipping error tracking');
+    }
+  }
+
   const app = await NestFactory.create(AppModule, {
     // Preserve raw body for Stripe webhook signature verification
     rawBody: true,
@@ -50,6 +66,9 @@ async function bootstrap() {
       },
     }),
   );
+
+  // Global exception filter (Sentry + structured errors)
+  app.useGlobalFilters(new SentryExceptionFilter());
 
   // Swagger API Documentation
   const config = new DocumentBuilder()

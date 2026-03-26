@@ -26,6 +26,9 @@ import { AiModule } from './modules/ai/ai.module';
 import { WalletModule } from './modules/wallet/wallet.module';
 import { OtpModule } from './modules/otp/otp.module';
 
+// Workers
+import { WorkersModule } from './workers/workers.module';
+
 // Configuration
 import configuration from './config/configuration';
 
@@ -37,12 +40,13 @@ import configuration from './config/configuration';
       load: [configuration],
     }),
 
-    // Rate Limiting
+    // Tiered Rate Limiting
     ThrottlerModule.forRoot([
-      {
-        ttl: parseInt(process.env.THROTTLE_TTL || '60') * 1000,
-        limit: parseInt(process.env.THROTTLE_LIMIT || '100'),
-      },
+      { name: 'global', ttl: 60000, limit: 100 },   // 100/min per IP
+      { name: 'auth', ttl: 60000, limit: 10 },       // 10/min per IP
+      { name: 'ai', ttl: 60000, limit: 20 },         // 20/min per user
+      { name: 'payments', ttl: 60000, limit: 15 },   // 15/min per user
+      { name: 'uploads', ttl: 60000, limit: 10 },    // 10/min per user
     ]),
 
     // Cron Jobs
@@ -70,6 +74,9 @@ import configuration from './config/configuration';
     WalletModule,
     OtpModule,
     AiModule,
+
+    // Background Workers
+    WorkersModule,
   ],
 })
 export class AppModule {}

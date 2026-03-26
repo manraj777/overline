@@ -505,6 +505,8 @@ model Booking {
   @@index([status])
   @@index([bookingNumber])
   @@index([verificationCode])
+  @@index([shopId, status, startTime])
+  @@index([userId, status])
   @@map("bookings")
 }
 
@@ -584,6 +586,7 @@ model Notification {
   @@index([userId])
   @@index([bookingId])
   @@index([status])
+  @@index([userId, readAt, createdAt])
   @@map("notifications")
 }
 
