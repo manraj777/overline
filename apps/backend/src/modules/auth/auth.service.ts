@@ -4,6 +4,8 @@ import {
   ConflictException,
   BadRequestException,
   ForbiddenException,
+  InternalServerErrorException,
+  Logger,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
@@ -58,6 +60,7 @@ export interface RequestContext {
 
 @Injectable()
 export class AuthService {
+  private readonly logger = new Logger(AuthService.name);
   private googleClient: OAuth2Client;
   private twilioClient: Twilio | null = null;
 
@@ -794,7 +797,13 @@ export class AuthService {
     };
 
     // Generate access token
-    const accessToken = this.jwtService.sign(payload);
+    let accessToken: string;
+    try {
+      accessToken = this.jwtService.sign(payload);
+    } catch (error: any) {
+      this.logger.error(`[JWT_SIGN_ERROR] ${error?.message || 'Unknown JWT signing error'}`);
+      throw new InternalServerErrorException('Failed to generate authentication token');
+    }
 
     // Generate refresh token
     const refreshToken = uuidv4();
