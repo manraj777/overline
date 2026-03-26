@@ -16,6 +16,10 @@ export class GoogleOAuthGuard extends AuthGuard('google') {
     const from = request.query?.from || request.query?.state || 'user';
     const safeState = from === 'admin' ? 'admin' : 'user';
 
+    this.logger.log(
+      `[OAuth Step 1] state received | path=${path} | rawState=${String(from)} | normalizedState=${safeState} | callback=${isCallback}`,
+    );
+
     if (isCallback) {
       return {
         scope: ['email', 'profile'],
@@ -36,7 +40,9 @@ export class GoogleOAuthGuard extends AuthGuard('google') {
       return null;
     }
     if (!user) {
-      this.logger.warn(`Google OAuth: no user returned. Info: ${JSON.stringify(info)}`);
+      this.logger.warn(
+        `[OAuth Guard] no user returned | info=${JSON.stringify(info)} | message=${info?.message || 'unknown'}`,
+      );
       return null;
     }
     this.logger.log(`Google OAuth: user authenticated - ${user.email}`);

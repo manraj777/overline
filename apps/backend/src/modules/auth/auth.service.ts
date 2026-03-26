@@ -614,12 +614,18 @@ export class AuthService {
   ): Promise<TokenResponse> {
     try {
       console.log('[handleGoogleUser] Processing:', { googleId, email, name, emailVerified });
+      console.log('[OAuth Step 3] DB lookup start:', { email, googleId });
 
       // Check if user already exists by googleId or email
       let user = await this.prisma.user.findFirst({
         where: {
           OR: [{ googleId }, { email }],
         },
+      });
+
+      console.log('[OAuth Step 3] DB lookup result:', {
+        found: !!user,
+        userId: user?.id || null,
       });
 
       if (user) {

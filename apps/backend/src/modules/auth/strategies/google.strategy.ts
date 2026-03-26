@@ -41,18 +41,25 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
     try {
       if (!accessToken) {
         console.error('[GoogleStrategy] Missing access token');
-        return done(new Error('Missing Google access token'), false);
+        return done(null, false, { message: 'Missing Google access token' });
       }
 
       if (!profile) {
         console.error('[GoogleStrategy] Missing Google profile object');
-        return done(new Error('Missing Google profile'), false);
+        return done(null, false, { message: 'Missing Google profile object' });
       }
 
       const state = req?.query?.state;
       const normalizedState = state === 'admin' ? 'admin' : 'user';
       const { id, name, emails, photos } = profile;
       const primaryEmail = Array.isArray(emails) ? emails[0]?.value : undefined;
+
+      console.log('[OAuth Step 2] profile received', {
+        state: normalizedState,
+        googleIdPresent: !!id,
+        emailPresent: !!primaryEmail,
+        provider: profile?.provider,
+      });
 
       if (!id || !primaryEmail) {
         console.error('[GoogleStrategy] Invalid profile payload', {
@@ -61,7 +68,7 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
           state: normalizedState,
           profileProvider: profile?.provider,
         });
-        return done(new Error('Google profile is missing required fields'), false);
+        return done(null, false, { message: 'Google profile missing required fields' });
       }
 
       const user = {
@@ -78,7 +85,7 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
         message: error?.message,
         stack: error?.stack,
       });
-      return done(error, false);
+      return done(null, false, { message: error?.message || 'Google strategy validation failed' });
     }
   }
 }

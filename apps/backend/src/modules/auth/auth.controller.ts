@@ -3,6 +3,7 @@ import {
   Post,
   Get,
   Body,
+  Logger,
   HttpCode,
   HttpStatus,
   UseGuards,
@@ -28,6 +29,8 @@ import { GoogleOAuthGuard } from './guards/google-oauth.guard';
 @ApiTags('auth')
 @Controller('auth')
 export class AuthController {
+  private readonly logger = new Logger(AuthController.name);
+
   constructor(
     private readonly authService: AuthService,
     private readonly configService: ConfigService,
@@ -102,22 +105,37 @@ export class AuthController {
   ) {
     const normalizedState = state === 'admin' ? 'admin' : 'user';
     const isAdmin = normalizedState === 'admin';
+    this.logger.log(
+      `[OAuth Step 1] callback received | state=${normalizedState} | queryError=${error || 'none'} | hasUser=${!!req.user}`,
+    );
+
     const frontendUrl = isAdmin
       ? this.configService.get<string>('frontendUrls.admin') || 'http://localhost:3002'
       : this.configService.get<string>('frontendUrls.user') || 'http://localhost:3000';
     const loginPath = isAdmin ? '/login' : '/auth/login';
 
     if (error || !req.user) {
+      this.logger.warn(
+        `[OAuth Callback] rejected before token exchange | state=${normalizedState} | reason=${error || 'req.user missing'}`,
+      );
       return res.redirect(`${frontendUrl}${loginPath}?error=google_auth_failed`);
     }
 
     try {
+      this.logger.log(
+        `[OAuth Step 3] DB lookup start | state=${normalizedState} | email=${req.user.email || 'unknown'}`,
+      );
+
       const tokens = await this.authService.handleGoogleUser(
         req.user.googleId,
         req.user.email,
         req.user.name,
         req.user.picture,
         req.user.emailVerified,
+      );
+
+      this.logger.log(
+        `[OAuth Step 4] auth success | state=${normalizedState} | userId=${tokens.user.id} | sessionEstablished=false | jwtRedirect=true`,
       );
 
       const redirectParams = new URLSearchParams({
@@ -135,9 +153,8 @@ export class AuthController {
       const callbackPath = isAdmin ? '/auth/google/callback' : '/auth/callback';
       return res.redirect(`${frontendUrl}${callbackPath}?${redirectParams.toString()}`);
     } catch (err: any) {
-      console.error('[GoogleCallback] Error:', err.message);
-      console.error('[GoogleCallback] Stack:', err.stack);
-      console.error('[GoogleCallback] Full error:', JSON.stringify(err, null, 2));
+      this.logger.error(`[GoogleCallback] Error: ${err.message}`, err.stack);
+      this.logger.error(`[GoogleCallback] Full error: ${JSON.stringify(err, null, 2)}`);
       return res.redirect(`${frontendUrl}${loginPath}?error=google_auth_failed`);
     }
   }
