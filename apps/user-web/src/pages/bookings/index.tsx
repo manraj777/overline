@@ -4,11 +4,12 @@ import { useRouter } from 'next/router';
 import { Calendar, Clock } from 'lucide-react';
 import { Button, Card, Loading } from '@/components/ui';
 import { BookingCard } from '@/components/booking';
+import { ReviewModal } from '@/components/reviews/ReviewModal';
 import { useMyBookings } from '@/hooks';
 import { useAuthStore } from '@/stores/auth';
 import { cn } from '@/lib/utils';
 
-type FilterTab = 'upcoming' | 'past' | 'all';
+type FilterTab = 'upcoming' | 'past' | 'cancelled' | 'all';
 
 export default function BookingsPage() {
   const router = useRouter();
@@ -33,6 +34,7 @@ export default function BookingsPage() {
   const tabs: { value: FilterTab; label: string }[] = [
     { value: 'upcoming', label: 'Upcoming' },
     { value: 'past', label: 'Past' },
+    { value: 'cancelled', label: 'Cancelled' },
     { value: 'all', label: 'All' },
   ];
 
@@ -90,6 +92,9 @@ export default function BookingsPage() {
             ))}
           </div>
         )}
+
+        {/* Auto-show Review Modal for completed bookings */}
+        <ReviewModal />
       </div>
     </>
   );

@@ -9,7 +9,7 @@ import {
 import { Button, Input } from '@/components/ui';
 import { cn } from '@/lib/utils';
 import { ShopCard, ShopMap } from '@/components/shop';
-import { useShops, useLocation } from '@/hooks';
+import { useShops, useLocation, useAiRecommendations } from '@/hooks';
 
 export default function HomePage() {
   const [searchQuery, setSearchQuery] = React.useState('');
@@ -186,6 +186,11 @@ export default function HomePage() {
       </section>
 
       {/* ========================================================================= */}
+      {/* 2.5 AI Recommendations                                                    */}
+      {/* ========================================================================= */}
+      <AiRecommendationsSection location={location} />
+
+      {/* ========================================================================= */}
       {/* 3. Bento Box Featured Shops                                               */}
       {/* ========================================================================= */}
       <section className="py-24 bg-[#F8F9FA]">
@@ -295,5 +300,48 @@ export default function HomePage() {
       </section>
 
     </>
+  );
+}
+
+function AiRecommendationsSection({ location }: { location: { lat: number; lng: number; address?: string } | null }) {
+  const { data: recommendations, isLoading } = useAiRecommendations(8);
+
+  if (!location) {
+    return (
+      <section className="py-16 bg-white border-y border-gray-100">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <Sparkles className="w-8 h-8 text-indigo-400 mx-auto mb-3" />
+          <h3 className="text-xl font-bold text-lexo-black mb-2">Personalized recommendations</h3>
+          <p className="text-lexo-gray mb-4">Enable location to get AI-powered picks just for you</p>
+        </div>
+      </section>
+    );
+  }
+
+  return (
+    <section className="py-16 bg-white border-y border-gray-100">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex items-center gap-3 mb-8">
+          <h2 className="text-3xl font-black text-lexo-black tracking-tight">
+            ✨ Picked for you
+          </h2>
+          <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-gradient-to-r from-indigo-500 to-purple-500 text-white text-xs font-bold">
+            <Sparkles className="w-3 h-3" /> AI powered
+          </span>
+        </div>
+
+        <div className="flex gap-6 overflow-x-auto pb-4 scrollbar-hide -mx-4 px-4">
+          {isLoading
+            ? Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="flex-shrink-0 w-[300px] h-[360px] rounded-2xl bg-gray-100 animate-pulse" />
+              ))
+            : (recommendations || []).slice(0, 8).map((shop: any) => (
+                <div key={shop.id} className="flex-shrink-0 w-[300px]">
+                  <ShopCard shop={shop} userLocation={location} />
+                </div>
+              ))}
+        </div>
+      </div>
+    </section>
   );
 }
