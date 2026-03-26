@@ -11,9 +11,20 @@ export class GoogleOAuthGuard extends AuthGuard('google') {
 
   getAuthenticateOptions(context: ExecutionContext) {
     const request = context.switchToHttp().getRequest();
+    const path = request.path || '';
+    const isCallback = path.endsWith('/google/callback');
     const from = request.query?.from || request.query?.state || 'user';
+    const safeState = from === 'admin' ? 'admin' : 'user';
+
+    if (isCallback) {
+      return {
+        scope: ['email', 'profile'],
+        session: false,
+      };
+    }
+
     return {
-      state: from,
+      state: safeState,
       scope: ['email', 'profile'],
       session: false,
     };

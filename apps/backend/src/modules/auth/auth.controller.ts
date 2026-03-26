@@ -100,7 +100,8 @@ export class AuthController {
     @Query('state') state?: string,
     @Query('error') error?: string,
   ) {
-    const isAdmin = state === 'admin';
+    const normalizedState = state === 'admin' ? 'admin' : 'user';
+    const isAdmin = normalizedState === 'admin';
     const frontendUrl = isAdmin
       ? this.configService.get<string>('frontendUrls.admin') || 'http://localhost:3002'
       : this.configService.get<string>('frontendUrls.user') || 'http://localhost:3000';
