@@ -3,6 +3,9 @@
   "version": "1.0.0",
   "private": true,
   "packageManager": "pnpm@9.15.4",
+  "engines": {
+    "node": ">=20.0.0"
+  },
   "description": "Multi-tenant appointment & queue management system for clinics, salons, and walk-in businesses",
   "scripts": {
     "dev": "pnpm run --parallel dev",
