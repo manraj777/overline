@@ -1,133 +1,66 @@
 import React from 'react';
 import Head from 'next/head';
+import { format, subDays } from 'date-fns';
 import {
-  Chart as ChartJS,
-  CategoryScale,
-  LinearScale,
-  BarElement,
-  LineElement,
-  PointElement,
-  Title,
+  PieChart,
+  Pie,
+  Cell,
+  ResponsiveContainer,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  CartesianGrid,
   Tooltip,
   Legend,
-  ArcElement,
-} from 'chart.js';
-import { Bar, Line, Doughnut } from 'react-chartjs-2';
-import { TrendingUp, Users, DollarSign, Calendar } from 'lucide-react';
-import { Card, StatCard, Loading } from '@/components/ui';
+} from 'recharts';
+import { Card, Loading } from '@/components/ui';
 import { useAnalytics, useDailyMetrics, usePopularServices } from '@/hooks';
-import { formatPrice, cn, getDateRange } from '@/lib/utils';
-import { format } from 'date-fns';
+import { RevenueChart } from '@/components/charts/RevenueChart';
+import { PeakHoursHeatmap } from '@/components/charts/PeakHoursHeatmap';
+import { cn, formatPrice } from '@/lib/utils';
 
-// Register ChartJS components
-ChartJS.register(
-  CategoryScale,
-  LinearScale,
-  BarElement,
-  LineElement,
-  PointElement,
-  Title,
-  Tooltip,
-  Legend,
-  ArcElement
-);
+const COLORS = ['#6366f1', '#8b5cf6', '#a78bfa', '#c4b5fd', '#ddd6fe'];
+const PIE_COLORS = ['#6366f1', '#e2e8f0'];
 
 export default function AnalyticsPage() {
-  const [period, setPeriod] = React.useState<'week' | 'month'>('week');
-
-  const dateRange = React.useMemo(() => {
-    const range = getDateRange(period);
-    return {
-      startDate: format(range.start, 'yyyy-MM-dd'),
-      endDate: format(range.end, 'yyyy-MM-dd'),
-    };
-  }, [period]);
+  const [range, setRange] = React.useState(30);
+  const startDate = format(subDays(new Date(), range), 'yyyy-MM-dd');
+  const endDate = format(new Date(), 'yyyy-MM-dd');
 
   const { data: analytics, isLoading: loadingAnalytics } = useAnalytics({
-    period,
-    startDate: dateRange.startDate,
-    endDate: dateRange.endDate,
+    startDate,
+    endDate,
   });
-  const { data: dailyData, isLoading: loadingDaily } = useDailyMetrics({
-    startDate: dateRange.startDate,
-    endDate: dateRange.endDate,
+  const { data: dailyMetrics, isLoading: loadingDaily } = useDailyMetrics({
+    startDate,
+    endDate,
   });
-  const { data: popularServices, isLoading: loadingServices } = usePopularServices();
+  const { data: topServices, isLoading: loadingServices } = usePopularServices();
 
-  if (loadingAnalytics && loadingServices) {
+  if (loadingAnalytics) {
     return <Loading text="Loading analytics..." />;
   }
 
-  // Build chart data from real daily metrics
-  const dailyMetrics = Array.isArray(dailyData) ? dailyData : [];
+  const summary = analytics?.summary || {};
+  const revenue = analytics?.revenue || {};
+  const performance = analytics?.performance || {};
+  const byDayOfWeek = analytics?.byDayOfWeek || [];
 
-  const revenueData = {
-    labels: dailyMetrics.length > 0
-      ? dailyMetrics.map((d: any) => format(new Date(d.date), 'MMM d'))
-      : ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
-    datasets: [
-      {
-        label: 'Revenue',
-        data: dailyMetrics.length > 0
-          ? dailyMetrics.map((d: any) => d.revenue || 0)
-          : [0, 0, 0, 0, 0, 0, 0],
-        backgroundColor: 'rgba(14, 165, 233, 0.8)',
-        borderRadius: 6,
-      },
-    ],
-  };
+  // Build hour counts from performance data
+  const hourCounts: Record<number, number> = {};
+  if (performance.peakHour !== null) {
+    // Simulate distribution around peak hour
+    for (let h = 7; h <= 22; h++) {
+      const dist = Math.abs(h - (performance.peakHour || 12));
+      hourCounts[h] = Math.max(1, Math.round(performance.peakHourBookings * Math.exp(-dist * 0.3)));
+    }
+  }
 
-  const bookingsData = {
-    labels: dailyMetrics.length > 0
-      ? dailyMetrics.map((d: any) => format(new Date(d.date), 'MMM d'))
-      : ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
-    datasets: [
-      {
-        label: 'Bookings',
-        data: dailyMetrics.length > 0
-          ? dailyMetrics.map((d: any) => d.bookings || d.totalBookings || 0)
-          : [0, 0, 0, 0, 0, 0, 0],
-        borderColor: 'rgb(14, 165, 233)',
-        backgroundColor: 'rgba(14, 165, 233, 0.1)',
-        fill: true,
-        tension: 0.4,
-      },
-    ],
-  };
-
-  // Build services chart data from real popular services
-  const servicesList = Array.isArray(popularServices) ? popularServices : [];
-  const topServices = servicesList.slice(0, 5);
-  const chartColors = [
-    'rgba(14, 165, 233, 0.8)',
-    'rgba(217, 70, 239, 0.8)',
-    'rgba(16, 185, 129, 0.8)',
-    'rgba(251, 146, 60, 0.8)',
-    'rgba(99, 102, 241, 0.8)',
+  const completionData = [
+    { name: 'Completed', value: summary.completedBookings || 0 },
+    { name: 'Other', value: Math.max(0, (summary.totalBookings || 0) - (summary.completedBookings || 0)) },
   ];
-
-  const servicesData = {
-    labels: topServices.length > 0
-      ? topServices.map((s: any) => s.name || s.serviceName)
-      : ['No data'],
-    datasets: [
-      {
-        data: topServices.length > 0
-          ? topServices.map((s: any) => s.bookingCount || s.count || 0)
-          : [1],
-        backgroundColor: topServices.length > 0
-          ? chartColors.slice(0, topServices.length)
-          : ['rgba(200,200,200,0.5)'],
-      },
-    ],
-  };
-
-  const stats = {
-    totalBookings: analytics?.totalBookings ?? 0,
-    totalRevenue: analytics?.totalRevenue ?? 0,
-    newCustomers: analytics?.newCustomers ?? 0,
-    avgRating: analytics?.avgRating ?? analytics?.averageRating ?? 0,
-  };
 
   return (
     <>
@@ -136,155 +69,187 @@ export default function AnalyticsPage() {
       </Head>
 
       <div>
-        {/* Header */}
         <div className="flex items-center justify-between mb-6">
           <div>
             <h1 className="text-2xl font-bold text-gray-900">Analytics</h1>
-            <p className="text-gray-500">Track your business performance</p>
+            <p className="text-gray-500">Performance insights for your shop</p>
           </div>
-
-          <div className="flex gap-2">
-            {(['week', 'month'] as const).map((p) => (
+          <div className="flex gap-1 bg-gray-100 rounded-lg p-1">
+            {[
+              { label: '7D', value: 7 },
+              { label: '30D', value: 30 },
+              { label: '90D', value: 90 },
+            ].map((r) => (
               <button
-                key={p}
-                onClick={() => setPeriod(p)}
+                key={r.value}
+                onClick={() => setRange(r.value)}
                 className={cn(
-                  'px-4 py-2 rounded-lg text-sm font-medium transition-colors',
-                  period === p
-                    ? 'bg-primary-500 text-white'
-                    : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                  'px-3 py-1.5 text-xs font-medium rounded-md transition-all',
+                  range === r.value
+                    ? 'bg-white text-gray-900 shadow-sm'
+                    : 'text-gray-500 hover:text-gray-700'
                 )}
               >
-                {p === 'week' ? 'This Week' : 'This Month'}
+                {r.label}
               </button>
             ))}
           </div>
         </div>
 
-        {/* Stats Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-          <StatCard
-            title="Total Bookings"
-            value={stats.totalBookings}
-            icon={Calendar}
-            change={{ value: 12, type: 'increase' }}
-          />
-          <StatCard
-            title="Revenue"
-            value={formatPrice(stats.totalRevenue)}
-            icon={DollarSign}
-            iconColor="bg-green-100 text-green-600"
-            change={{ value: 18, type: 'increase' }}
-          />
-          <StatCard
-            title="New Customers"
-            value={stats.newCustomers}
-            icon={Users}
-            iconColor="bg-purple-100 text-purple-600"
-            change={{ value: 8, type: 'increase' }}
-          />
-          <StatCard
-            title="Avg Rating"
-            value={stats.avgRating}
-            icon={TrendingUp}
-            iconColor="bg-amber-100 text-amber-600"
-          />
+        {/* Summary Cards */}
+        <div className="grid grid-cols-2 lg:grid-cols-5 gap-4 mb-8">
+          {[
+            { label: 'Total Bookings', value: summary.totalBookings || 0 },
+            { label: 'Completed', value: summary.completedBookings || 0 },
+            { label: 'Cancelled', value: summary.cancelledBookings || 0 },
+            { label: 'Total Revenue', value: formatPrice(revenue.total || 0) },
+            { label: 'Avg Wait', value: `${performance.averageWaitMinutes || 0}m` },
+          ].map((stat) => (
+            <div key={stat.label} className="bg-white rounded-2xl border border-gray-200 p-4">
+              <p className="text-xs font-medium text-gray-500 mb-1">{stat.label}</p>
+              <p className="text-2xl font-bold text-gray-900">{stat.value}</p>
+            </div>
+          ))}
         </div>
 
-        {/* Charts */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 mb-6">
-          {/* Revenue Chart */}
-          <Card>
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Revenue</h2>
-            <div className="h-64">
-              <Bar
-                data={revenueData}
-                options={{
-                  responsive: true,
-                  maintainAspectRatio: false,
-                  plugins: {
-                    legend: { display: false },
-                  },
-                  scales: {
-                    y: {
-                      beginAtZero: true,
-                      ticks: {
-                        callback: (value) => `₹${value}`,
-                      },
-                    },
-                  },
-                }}
-              />
-            </div>
-          </Card>
-
-          {/* Bookings Chart */}
-          <Card>
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Bookings Trend</h2>
-            <div className="h-64">
-              <Line
-                data={bookingsData}
-                options={{
-                  responsive: true,
-                  maintainAspectRatio: false,
-                  plugins: {
-                    legend: { display: false },
-                  },
-                  scales: {
-                    y: {
-                      beginAtZero: true,
-                    },
-                  },
-                }}
-              />
-            </div>
-          </Card>
+        {/* Revenue Chart */}
+        <div className="mb-8">
+          <RevenueChart data={dailyMetrics || []} isLoading={loadingDaily} />
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Popular Services */}
-          <Card>
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Popular Services</h2>
-            <div className="h-48">
-              <Doughnut
-                data={servicesData}
-                options={{
-                  responsive: true,
-                  maintainAspectRatio: false,
-                  plugins: {
-                    legend: {
-                      position: 'right',
-                    },
-                  },
-                }}
-              />
-            </div>
-          </Card>
+        {/* Two-column: Heatmap + Completion Rate */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 mb-8">
+          <div className="lg:col-span-8">
+            <PeakHoursHeatmap
+              data={byDayOfWeek}
+              hourCounts={hourCounts}
+              isLoading={loadingAnalytics}
+            />
+          </div>
 
-          {/* Top Services List */}
-          <Card className="lg:col-span-2">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">Service Performance</h2>
-            <div className="space-y-4">
-              {servicesList.length === 0 ? (
-                <p className="text-gray-500 text-center py-4">No service data available yet.</p>
-              ) : (
-                servicesList.map((service: any, i: number) => (
-                  <div key={service.id || i} className="flex items-center justify-between py-2 border-b border-gray-100 last:border-0">
-                    <div className="flex items-center gap-4">
-                      <span className="text-gray-400 text-sm w-6">#{i + 1}</span>
-                      <span className="font-medium text-gray-900">{service.name || service.serviceName}</span>
-                    </div>
-                    <div className="flex items-center gap-8 text-sm">
-                      <span className="text-gray-500">{service.bookingCount || service.count || 0} bookings</span>
-                      <span className="font-medium text-gray-900 w-20 text-right">
-                        {formatPrice(service.revenue || service.totalRevenue || 0)}
-                      </span>
-                    </div>
-                  </div>
-                ))
-              )}
+          <div className="lg:col-span-4">
+            <div className="bg-white rounded-2xl border border-gray-200 p-6 h-full">
+              <h3 className="text-lg font-semibold text-gray-900 mb-2">Completion Rate</h3>
+              <p className="text-sm text-gray-500 mb-4">
+                {(summary.completionRate || 0).toFixed(1)}% of bookings completed
+              </p>
+              <ResponsiveContainer width="100%" height={160}>
+                <PieChart>
+                  <Pie
+                    data={completionData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={45}
+                    outerRadius={65}
+                    paddingAngle={3}
+                    dataKey="value"
+                  >
+                    {completionData.map((_, i) => (
+                      <Cell key={i} fill={PIE_COLORS[i]} />
+                    ))}
+                  </Pie>
+                </PieChart>
+              </ResponsiveContainer>
+              <div className="flex justify-center gap-4 mt-2">
+                <div className="flex items-center gap-1.5">
+                  <div className="w-2.5 h-2.5 rounded-full bg-indigo-500" />
+                  <span className="text-xs text-gray-600">Completed</span>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <div className="w-2.5 h-2.5 rounded-full bg-gray-200" />
+                  <span className="text-xs text-gray-600">Other</span>
+                </div>
+              </div>
+              <div className="mt-4 pt-4 border-t border-gray-100 space-y-2">
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-500">No-show rate</span>
+                  <span className="font-medium text-gray-900">
+                    {(summary.noShowRate || 0).toFixed(1)}%
+                  </span>
+                </div>
+                <div className="flex justify-between text-sm">
+                  <span className="text-gray-500">Avg ticket</span>
+                  <span className="font-medium text-gray-900">
+                    {formatPrice(revenue.average || 0)}
+                  </span>
+                </div>
+              </div>
             </div>
-          </Card>
+          </div>
+        </div>
+
+        {/* Service Breakdown Table */}
+        <div className="bg-white rounded-2xl border border-gray-200 p-6">
+          <h3 className="text-lg font-semibold text-gray-900 mb-4">Service Performance</h3>
+          {loadingServices ? (
+            <div className="animate-pulse space-y-3">
+              {[...Array(5)].map((_, i) => (
+                <div key={i} className="h-10 bg-gray-100 rounded" />
+              ))}
+            </div>
+          ) : !topServices?.length ? (
+            <p className="text-gray-400 text-center py-8">No service data available</p>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-gray-100">
+                    <th className="text-left text-xs font-medium text-gray-500 uppercase pb-3 pr-4">Service</th>
+                    <th className="text-right text-xs font-medium text-gray-500 uppercase pb-3 px-4">Bookings</th>
+                    <th className="text-right text-xs font-medium text-gray-500 uppercase pb-3 px-4">Revenue</th>
+                    <th className="text-right text-xs font-medium text-gray-500 uppercase pb-3 pl-4">Share</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {topServices.map((service: any, i: number) => {
+                    const totalBookings = topServices.reduce(
+                      (s: number, sv: any) => s + sv.bookingCount,
+                      0
+                    );
+                    const share =
+                      totalBookings > 0
+                        ? ((service.bookingCount / totalBookings) * 100).toFixed(0)
+                        : '0';
+                    return (
+                      <tr key={service.serviceId || i} className="border-b border-gray-50 last:border-0">
+                        <td className="py-3 pr-4">
+                          <div className="flex items-center gap-2">
+                            <div
+                              className="w-2 h-2 rounded-full"
+                              style={{ backgroundColor: COLORS[i % COLORS.length] }}
+                            />
+                            <span className="text-sm font-medium text-gray-900">
+                              {service.serviceName}
+                            </span>
+                          </div>
+                        </td>
+                        <td className="text-right text-sm text-gray-700 py-3 px-4">
+                          {service.bookingCount}
+                        </td>
+                        <td className="text-right text-sm font-medium text-gray-900 py-3 px-4">
+                          {formatPrice(service.revenue)}
+                        </td>
+                        <td className="text-right py-3 pl-4">
+                          <div className="flex items-center justify-end gap-2">
+                            <div className="w-16 h-1.5 bg-gray-100 rounded-full overflow-hidden">
+                              <div
+                                className="h-full rounded-full"
+                                style={{
+                                  width: `${share}%`,
+                                  backgroundColor: COLORS[i % COLORS.length],
+                                }}
+                              />
+                            </div>
+                            <span className="text-xs text-gray-500 w-8 text-right">{share}%</span>
+                          </div>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </div>
+          )}
         </div>
       </div>
     </>

@@ -13,6 +13,9 @@ import {
   X,
   ChevronDown,
   Bell,
+  CreditCard,
+  Star,
+  ShieldAlert,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/stores/auth';
@@ -168,6 +171,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
     { name: 'Appointments', href: '/appointments', icon: Calendar },
     { name: 'Services', href: '/services', icon: Scissors },
     { name: 'Staff', href: '/staff', icon: Users },
+    { name: 'Payments', href: '/payments', icon: CreditCard },
     { name: 'Analytics', href: '/analytics', icon: BarChart3 },
     { name: 'Notifications', href: '/notifications', icon: Bell },
     { name: 'Settings', href: '/settings', icon: Settings },

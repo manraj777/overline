@@ -1,45 +1,67 @@
 import React from 'react';
 import Head from 'next/head';
-import { format } from 'date-fns';
+import { format, formatDistanceToNow } from 'date-fns';
 import {
   Calendar,
   Clock,
   Users,
   DollarSign,
   TrendingUp,
+  TrendingDown,
   UserPlus,
   Play,
   Check,
-  X,
   AlertTriangle,
+  Bell,
+  Star,
+  XCircle,
+  CreditCard,
 } from 'lucide-react';
 import { Card, Badge, Button, StatCard, Loading } from '@/components/ui';
-import { useDashboard, useAdminBookings, useStartService, useMarkComplete } from '@/hooks';
+import {
+  useDashboard,
+  useAdminBookings,
+  useStartService,
+  useMarkComplete,
+  useRevenueChart,
+  usePopularServices,
+  useRecentActivity,
+} from '@/hooks';
 import { useAuthStore } from '@/stores/auth';
 import { LiveTracking } from '@/components/dashboard/LiveTracking';
+import { RevenueChart } from '@/components/charts/RevenueChart';
+import { TopServicesChart } from '@/components/charts/TopServicesChart';
 import { formatTime, formatPrice, cn } from '@/lib/utils';
 import { BookingStatus } from '@/types';
 
-/**
- * Trust Score level indicator
- * - Danger: < 10% with > 5 bookings (blacklisted)
- * - Warning: < 40% (high risk - frequent no-shows)
- */
 function getTrustLevel(user: any): 'normal' | 'warning' | 'danger' | null {
   if (!user) return null;
   const score = user.trustScore ?? 100;
   const totalBookings = user.totalBookings ?? 0;
-  
   if (score < 10 && totalBookings > 5) return 'danger';
   if (score < 40) return 'warning';
   return 'normal';
 }
+
+const NOTIFICATION_ICONS: Record<string, { icon: any; color: string }> = {
+  NEW_BOOKING: { icon: Calendar, color: 'text-blue-500' },
+  BOOKING_CONFIRMED: { icon: Calendar, color: 'text-blue-500' },
+  BOOKING_CANCELLED: { icon: XCircle, color: 'text-gray-400' },
+  NEW_REVIEW: { icon: Star, color: 'text-yellow-500' },
+  REVIEW_SUBMITTED: { icon: Star, color: 'text-yellow-500' },
+  PAYMENT_DONE: { icon: CreditCard, color: 'text-green-500' },
+  PAYMENT_COMPLETED: { icon: CreditCard, color: 'text-green-500' },
+  QUEUE_UPDATE: { icon: Users, color: 'text-indigo-500' },
+};
 
 export default function DashboardPage() {
   const { data: dashboard, isLoading: loadingDashboard } = useDashboard();
   const { data: todayBookings, isLoading: loadingBookings } = useAdminBookings({
     date: format(new Date(), 'yyyy-MM-dd'),
   });
+  const { data: revenueData, isLoading: loadingRevenue } = useRevenueChart(90);
+  const { data: topServices, isLoading: loadingServices } = usePopularServices();
+  const { data: recentActivity } = useRecentActivity();
 
   const startService = useStartService();
   const markComplete = useMarkComplete();
@@ -80,7 +102,7 @@ export default function DashboardPage() {
           <p className="text-gray-500">{format(new Date(), 'EEEE, MMMM d, yyyy')}</p>
         </div>
 
-        {/* Stats Grid - Auto-fit for flexible desktop layout */}
+        {/* Stats Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-8">
           <StatCard
             title="Today's Appointments"
@@ -108,12 +130,24 @@ export default function DashboardPage() {
           />
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
-          {/* Today's Queue - takes 8 of 12 columns on desktop */}
-          <div className="lg:col-span-8 xl:col-span-8">
+        {/* Revenue Chart */}
+        <div className="mb-8">
+          <RevenueChart data={revenueData || []} isLoading={loadingRevenue} />
+        </div>
+
+        {/* Two-column: Queue + Top Services */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 mb-8">
+          {/* Today's Queue */}
+          <div className="lg:col-span-8">
             <Card>
               <div className="flex items-center justify-between mb-4">
-                <h2 className="text-lg font-semibold text-gray-900">Today's Queue</h2>
+                <div className="flex items-center gap-2">
+                  <h2 className="text-lg font-semibold text-gray-900">Today&apos;s Queue</h2>
+                  <span className="relative flex h-2.5 w-2.5">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
+                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500" />
+                  </span>
+                </div>
                 <Button variant="outline" size="sm">
                   <UserPlus className="w-4 h-4 mr-2" />
                   Walk-in
@@ -127,7 +161,7 @@ export default function DashboardPage() {
                 </div>
               ) : (
                 <div className="space-y-3">
-                  {todayBookings?.data.slice(0, 8).map((booking) => {
+                  {todayBookings?.data.slice(0, 10).map((booking) => {
                     const config = statusConfig[booking.status] || statusConfig.PENDING;
                     const trustLevel = getTrustLevel(booking.user);
 
@@ -135,7 +169,7 @@ export default function DashboardPage() {
                       <div
                         key={booking.id}
                         className={cn(
-                          'flex items-center justify-between p-4 rounded-lg border',
+                          'flex items-center justify-between p-4 rounded-lg border transition-all duration-200 hover:shadow-sm',
                           booking.status === 'IN_PROGRESS'
                             ? 'border-primary-200 bg-primary-50'
                             : 'border-gray-200'
@@ -150,11 +184,10 @@ export default function DashboardPage() {
                           <div>
                             <div className="flex items-center gap-2">
                               <p className="font-medium text-gray-900">
-                                {booking.user?.name || 'Walk-in'}
+                                {booking.user?.name || booking.customerName || 'Walk-in'}
                               </p>
-                              {/* Trust Score Warning */}
                               {trustLevel === 'danger' && (
-                                <span 
+                                <span
                                   className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-red-100 text-red-700 text-xs font-medium"
                                   title={`Trust Score: ${booking.user?.trustScore?.toFixed(0)}%`}
                                 >
@@ -162,16 +195,16 @@ export default function DashboardPage() {
                                 </span>
                               )}
                               {trustLevel === 'warning' && (
-                                <span 
+                                <span
                                   className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 text-xs font-medium"
-                                  title={`Trust Score: ${booking.user?.trustScore?.toFixed(0)}% - High Risk`}
+                                  title={`Trust Score: ${booking.user?.trustScore?.toFixed(0)}%`}
                                 >
                                   <AlertTriangle className="w-3 h-3" />
                                 </span>
                               )}
                             </div>
                             <p className="text-sm text-gray-500">
-                              {booking.services?.map((s) => s.serviceName).join(', ')}
+                              {booking.services?.map((s: any) => s.serviceName).join(', ')}
                             </p>
                           </div>
                         </div>
@@ -208,47 +241,45 @@ export default function DashboardPage() {
             </Card>
           </div>
 
-          {/* Quick Actions & Activity - takes 4 of 12 columns on desktop */}
-          <div className="lg:col-span-4 xl:col-span-4 space-y-6">
+          {/* Right sidebar */}
+          <div className="lg:col-span-4 space-y-6">
             {shopId && <LiveTracking shopId={shopId} />}
-            {/* Quick Actions */}
-            <Card>
-              <h2 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h2>
-              <div className="space-y-2">
-                <Button variant="outline" className="w-full justify-start">
-                  <UserPlus className="w-4 h-4 mr-2" />
-                  Add Walk-in Customer
-                </Button>
-                <Button variant="outline" className="w-full justify-start">
-                  <Calendar className="w-4 h-4 mr-2" />
-                  Block Time Slot
-                </Button>
-                <Button variant="outline" className="w-full justify-start">
-                  <TrendingUp className="w-4 h-4 mr-2" />
-                  View Analytics
-                </Button>
-              </div>
-            </Card>
 
-            {/* Recent Activity */}
+            {/* Top Services */}
+            <TopServicesChart data={topServices || []} isLoading={loadingServices} />
+
+            {/* Recent Activity - Now using real data */}
             <Card>
               <h2 className="text-lg font-semibold text-gray-900 mb-4">Recent Activity</h2>
               <div className="space-y-4">
-                {[
-                  { action: 'New booking', time: '2 min ago', user: 'John Doe' },
-                  { action: 'Service completed', time: '15 min ago', user: 'Jane Smith' },
-                  { action: 'Booking cancelled', time: '1 hour ago', user: 'Mike Johnson' },
-                ].map((activity, i) => (
-                  <div key={i} className="flex items-start gap-3">
-                    <div className="w-2 h-2 rounded-full bg-primary-500 mt-2" />
-                    <div>
-                      <p className="text-sm text-gray-900">
-                        {activity.action}: <span className="font-medium">{activity.user}</span>
-                      </p>
-                      <p className="text-xs text-gray-500">{activity.time}</p>
-                    </div>
+                {(!recentActivity || recentActivity.length === 0) ? (
+                  <div className="text-center py-6">
+                    <Bell className="w-8 h-8 text-gray-300 mx-auto mb-2" />
+                    <p className="text-sm text-gray-400">No recent activity</p>
                   </div>
-                ))}
+                ) : (
+                  recentActivity.slice(0, 5).map((activity: any) => {
+                    const iconConfig = NOTIFICATION_ICONS[activity.type] || {
+                      icon: Bell,
+                      color: 'text-gray-400',
+                    };
+                    const Icon = iconConfig.icon;
+
+                    return (
+                      <div key={activity.id} className="flex items-start gap-3">
+                        <div className={cn('mt-0.5', iconConfig.color)}>
+                          <Icon className="w-4 h-4" />
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm text-gray-900 truncate">{activity.title}</p>
+                          <p className="text-xs text-gray-500">
+                            {formatDistanceToNow(new Date(activity.createdAt), { addSuffix: true })}
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  })
+                )}
               </div>
             </Card>
           </div>
