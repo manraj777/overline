@@ -97,6 +97,17 @@ export default () => ({
     callbackUrl: process.env.GOOGLE_CALLBACK_URL,
   },
 
+  cloudinary: {
+    cloudName: process.env.CLOUDINARY_CLOUD_NAME,
+    apiKey: process.env.CLOUDINARY_API_KEY,
+    apiSecret: process.env.CLOUDINARY_API_SECRET,
+  },
+
+  ai: {
+    openaiApiKey: process.env.OPENAI_API_KEY,
+    geminiApiKey: process.env.GOOGLE_GEMINI_API_KEY,
+  },
+
   backendUrl: process.env.BACKEND_URL || 'http://localhost:3001',
 
   frontendUrls: {

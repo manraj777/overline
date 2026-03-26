@@ -1,10 +1,13 @@
 import { Module } from '@nestjs/common';
 import { PrismaModule } from '../../common/prisma/prisma.module';
 import { RedisModule } from '../../common/redis/redis.module';
-import { HealthController } from './health.controller';
+import { AiController } from './ai.controller';
+import { AiService } from './ai.service';
 
 @Module({
   imports: [PrismaModule, RedisModule],
-  controllers: [HealthController],
+  controllers: [AiController],
+  providers: [AiService],
+  exports: [AiService],
 })
-export class HealthModule {}
+export class AiModule {}

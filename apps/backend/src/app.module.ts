@@ -22,6 +22,7 @@ import { HealthModule } from './modules/health/health.module';
 import { ReviewsModule } from './modules/reviews/reviews.module';
 import { UploadModule } from './modules/upload/upload.module';
 import { FraudDetectionModule } from './modules/fraud-detection/fraud-detection.module';
+import { AiModule } from './modules/ai/ai.module';
 import { WalletModule } from './modules/wallet/wallet.module';
 import { OtpModule } from './modules/otp/otp.module';
 
@@ -68,6 +69,7 @@ import configuration from './config/configuration';
     FraudDetectionModule,
     WalletModule,
     OtpModule,
+    AiModule,
   ],
 })
 export class AppModule {}

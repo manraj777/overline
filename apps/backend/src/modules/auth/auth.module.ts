@@ -14,26 +14,32 @@ import { GoogleModule } from '../google/google.module';
 import { GoogleStrategy } from './strategies/google.strategy';
 import { OtpModule } from '../otp/otp.module';
 
-const decodeJwtSecret = (rawSecret?: string): Buffer => {
+/**
+ * Resolve JWT secret — accepts both raw strings and Base64-encoded values.
+ * If the value is valid Base64 and decodes to ≥ 32 bytes, use the decoded buffer.
+ * Otherwise treat the raw string as the secret (must be ≥ 32 chars).
+ */
+const resolveJwtSecret = (rawSecret?: string): string | Buffer => {
   const secret = rawSecret?.trim();
   if (!secret) {
-    throw new Error('MISSING_JWT_SECRET: JWT_SECRET is required and must be Base64 encoded.');
+    throw new Error('MISSING_JWT_SECRET: JWT_SECRET environment variable is required.');
   }
 
-  // Basic Base64 format validation before decoding.
+  // Try Base64 first
   const base64Pattern = /^(?:[A-Za-z0-9+/]{4})*(?:[A-Za-z0-9+/]{2}==|[A-Za-z0-9+/]{3}=)?$/;
-  if (!base64Pattern.test(secret)) {
-    throw new Error('INVALID_JWT_SECRET_FORMAT: JWT_SECRET must be valid Base64.');
+  if (base64Pattern.test(secret) && secret.length > 40) {
+    const decoded = Buffer.from(secret, 'base64');
+    if (decoded.length >= 32) {
+      return decoded;
+    }
   }
 
-  const decoded = Buffer.from(secret, 'base64');
-  if (!decoded || decoded.length < 32) {
-    throw new Error(
-      'WEAK_JWT_SECRET: decoded JWT_SECRET must be at least 32 bytes (256 bits).',
-    );
+  // Fall back to raw string — must be at least 32 chars for security
+  if (secret.length < 32) {
+    throw new Error('WEAK_JWT_SECRET: JWT_SECRET must be at least 32 characters.');
   }
 
-  return decoded;
+  return secret;
 };
 
 @Module({
@@ -43,7 +49,7 @@ const decodeJwtSecret = (rawSecret?: string): Buffer => {
     JwtModule.registerAsync({
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => ({
-        secret: decodeJwtSecret(configService.get<string>('jwt.secret')),
+        secret: resolveJwtSecret(configService.get<string>('jwt.secret')),
         signOptions: {
           expiresIn: configService.get('jwt.accessExpiration'),
         },
