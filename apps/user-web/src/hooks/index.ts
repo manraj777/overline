@@ -33,4 +33,6 @@ export {
 } from './useReviews';
 export { useCreatePaymentIntent, usePayment } from './usePayments';
 export { useQueueSocket } from './useQueueSocket'
-  export { useWallet, useWalletBalance, useWalletTransactions, useWalletRefetch } from './useWallet';;
+export { useWallet, useWalletBalance, useWalletTransactions, useWalletRefetch } from './useWallet';
+export { useAiRecommendations, useAiChat } from './useAi';
+

@@ -7,6 +7,7 @@ import { useAuthStore } from '@/stores/auth';
 import { Avatar, Button } from '@/components/ui';
 import { useLogout } from '@/hooks/useAuth';
 import { motion, AnimatePresence } from 'framer-motion';
+import { ChatWidget } from '@/components/chat/ChatWidget';
 
 interface LayoutProps {
   children: React.ReactNode;
@@ -283,6 +284,9 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           </div>
         </div>
       </footer>
+
+      {/* AI Chat Widget */}
+      <ChatWidget />
     </div>
   );
 };
