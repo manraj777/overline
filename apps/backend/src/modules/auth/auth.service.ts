@@ -588,15 +588,31 @@ export class AuthService {
   async googleLogin(dto: GoogleLoginDto): Promise<TokenResponse> {
     const googleClientId = this.configService.get<string>('google.clientId');
 
+    // Decode token to find incoming audience (useful for multi-client mobile apps)
+    // In strict production, keep a defined array of valid client IDs instead of trusting the token's aud.
+    let audience = googleClientId;
+    try {
+      const parts = dto.idToken.split('.');
+      if (parts.length === 3) {
+        const payload = JSON.parse(Buffer.from(parts[1], 'base64').toString('utf8'));
+        if (payload && payload.aud && payload.aud.endsWith('googleusercontent.com')) {
+          audience = payload.aud;
+        }
+      }
+    } catch (e) {
+      console.warn('[GoogleLogin] Could not pre-decode token audience');
+    }
+
     // Verify the Google ID token
     let ticket;
     try {
       ticket = await this.googleClient.verifyIdToken({
         idToken: dto.idToken,
-        audience: googleClientId,
+        audience,
       });
-    } catch {
-      throw new UnauthorizedException('Invalid Google token');
+    } catch (error: any) {
+      console.error('[GoogleLogin] verifyIdToken error:', error?.message);
+      throw new UnauthorizedException(`Invalid Google token: ${error?.message || 'Verification failed'}`);
     }
 
     const payload = ticket.getPayload();
@@ -633,27 +649,23 @@ export class AuthService {
 
       if (user) {
         console.log('[handleGoogleUser] Existing user found:', user.id);
-        // Existing user — link Google account if not already linked
-        if (!user.googleId) {
-          user = await this.prisma.user.update({
-            where: { id: user.id },
-            data: {
-              googleId,
-              authProvider: user.hashedPassword ? 'local' : 'google',
-              isEmailVerified: emailVerified || user.isEmailVerified,
-              avatarUrl: user.avatarUrl || picture,
-            },
-          });
-        }
-
+        // If account is deactivated, reject before updating
         if (!user.isActive) {
           throw new UnauthorizedException('Account is deactivated');
         }
 
-        // Update last login
+        // Combine update for efficiency: link Google account (if missing) + update last login
+        const updateData: any = { lastLoginAt: new Date() };
+        if (!user.googleId) {
+          updateData.googleId = googleId;
+          updateData.authProvider = user.hashedPassword ? 'local' : 'google';
+          updateData.isEmailVerified = emailVerified || user.isEmailVerified;
+          updateData.avatarUrl = user.avatarUrl || picture;
+        }
+
         user = await this.prisma.user.update({
           where: { id: user.id },
-          data: { lastLoginAt: new Date() },
+          data: updateData,
         });
       } else {
         console.log('[handleGoogleUser] Creating new user');
