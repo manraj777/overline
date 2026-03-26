@@ -121,12 +121,13 @@ export class AuthController {
       return res.redirect(`${frontendUrl}${loginPath}?error=google_auth_failed`);
     }
 
+    let tokens: TokenResponse;
     try {
       this.logger.log(
         `[OAuth Step 3] DB lookup start | state=${normalizedState} | email=${req.user.email || 'unknown'}`,
       );
 
-      const tokens = await this.authService.handleGoogleUser(
+      tokens = await this.authService.handleGoogleUser(
         req.user.googleId,
         req.user.email,
         req.user.name,
@@ -137,6 +138,27 @@ export class AuthController {
       this.logger.log(
         `[OAuth Step 4] auth success | state=${normalizedState} | userId=${tokens.user.id} | sessionEstablished=false | jwtRedirect=true`,
       );
+    } catch (err: any) {
+      this.logger.error(`[OAuth Drop-off] token issuance failed | state=${normalizedState}`);
+      this.logger.error(`[GoogleCallback] Error: ${err.message}`, err.stack);
+      this.logger.error(`[GoogleCallback] Full error: ${JSON.stringify(err, null, 2)}`);
+
+      if (!res.headersSent) {
+        return res.redirect(`${frontendUrl}${loginPath}?error=google_auth_failed`);
+      }
+      return;
+    }
+
+    try {
+      if (!tokens?.accessToken || !tokens?.refreshToken || !tokens?.user?.id) {
+        this.logger.error(
+          `[OAuth Drop-off] invalid token payload before redirect | state=${normalizedState}`,
+        );
+        if (!res.headersSent) {
+          return res.redirect(`${frontendUrl}${loginPath}?error=google_auth_failed`);
+        }
+        return;
+      }
 
       const redirectParams = new URLSearchParams({
         token: tokens.accessToken,
@@ -151,11 +173,24 @@ export class AuthController {
       }
 
       const callbackPath = isAdmin ? '/auth/google/callback' : '/auth/callback';
-      return res.redirect(`${frontendUrl}${callbackPath}?${redirectParams.toString()}`);
+      const redirectUrl = `${frontendUrl}${callbackPath}?${redirectParams.toString()}`;
+      this.logger.log(`[OAuth Redirect] redirecting to frontend | url=${redirectUrl}`);
+
+      if (!res.headersSent) {
+        return res.redirect(redirectUrl);
+      }
+
+      this.logger.warn('[OAuth Redirect] response already sent before redirect');
+      return;
     } catch (err: any) {
-      this.logger.error(`[GoogleCallback] Error: ${err.message}`, err.stack);
-      this.logger.error(`[GoogleCallback] Full error: ${JSON.stringify(err, null, 2)}`);
-      return res.redirect(`${frontendUrl}${loginPath}?error=google_auth_failed`);
+      this.logger.error(`[OAuth Drop-off] redirect phase failed | state=${normalizedState}`);
+      this.logger.error(`[GoogleCallback] Redirect Error: ${err.message}`, err.stack);
+      this.logger.error(`[GoogleCallback] Redirect Full error: ${JSON.stringify(err, null, 2)}`);
+
+      if (!res.headersSent) {
+        return res.redirect(`${frontendUrl}${loginPath}?error=google_auth_failed`);
+      }
+      return;
     }
   }
 
