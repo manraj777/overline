@@ -98,6 +98,15 @@ export class BookingsController {
     return this.bookingsService.findByUser(userId, status, page, limit);
   }
 
+  @Get('pending-review')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({ summary: 'Get first completed booking with no review (for modal trigger)' })
+  @ApiResponse({ status: 200, description: 'Pending review booking or null' })
+  async getPendingReviewBooking(@CurrentUser('id') userId: string) {
+    return this.bookingsService.getPendingReviewBooking(userId);
+  }
+
   @Get('lookup/:bookingNumber')
   @Public()
   @ApiOperation({ summary: 'Look up booking by booking number' })

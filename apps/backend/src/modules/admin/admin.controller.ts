@@ -58,11 +58,13 @@ export class AdminController {
     @Param('shopId') shopId: string,
     @CurrentUser('tenantId') tenantId: string,
     @Query('date') date?: string,
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
     @Query('status') status?: BookingStatus,
     @Query('page') page?: number,
     @Query('limit') limit?: number,
   ) {
-    return this.adminService.getBookings(shopId, tenantId, { date, status, page, limit });
+    return this.adminService.getBookings(shopId, tenantId, { date, startDate, endDate, status, page, limit });
   }
 
   @Get('bookings')
@@ -70,6 +72,8 @@ export class AdminController {
   @ApiOperation({ summary: 'Get shop bookings by query parameter' })
   @ApiQuery({ name: 'shopId', required: true, description: 'Shop ID' })
   @ApiQuery({ name: 'date', required: false, description: 'Filter by date (YYYY-MM-DD)' })
+  @ApiQuery({ name: 'startDate', required: false })
+  @ApiQuery({ name: 'endDate', required: false })
   @ApiQuery({ name: 'status', enum: BookingStatus, required: false })
   @ApiQuery({ name: 'page', type: Number, required: false })
   @ApiQuery({ name: 'limit', type: Number, required: false })
@@ -77,11 +81,13 @@ export class AdminController {
     @Query('shopId') shopId: string,
     @CurrentUser('tenantId') tenantId: string,
     @Query('date') date?: string,
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
     @Query('status') status?: BookingStatus,
     @Query('page') page?: number,
     @Query('limit') limit?: number,
   ) {
-    return this.adminService.getBookings(shopId, tenantId, { date, status, page, limit });
+    return this.adminService.getBookings(shopId, tenantId, { date, startDate, endDate, status, page, limit });
   }
 
   @Patch('bookings/:bookingId/status')
@@ -256,5 +262,22 @@ export class AdminController {
     @CurrentUser('tenantId') tenantId: string,
   ) {
     return this.adminService.updateShopSettings(shopId, tenantId, settings);
+  }
+
+  @Get('users')
+  @Roles(UserRole.OWNER, UserRole.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Get users for fraud monitoring' })
+  @ApiQuery({ name: 'fraudScore_gt', type: Number, required: false })
+  async getUsers(@Query('fraudScore_gt') fraudScore_gt?: string) {
+    // Only fetch users who booked with this tenant, or globally if superadmin
+    return this.adminService.getUsers(fraudScore_gt ? Number(fraudScore_gt) : undefined);
+  }
+
+  @Patch('users/:id/suspend')
+  @Roles(UserRole.OWNER, UserRole.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Suspend user account' })
+  @ApiParam({ name: 'id', description: 'User ID' })
+  async suspendUser(@Param('id') userId: string, @Body('isSuspended') isSuspended: boolean) {
+    return this.adminService.suspendUser(userId, isSuspended);
   }
 }

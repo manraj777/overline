@@ -37,26 +37,35 @@ export const LiveTracking = ({ shopId }: { shopId: string }) => {
     const [chatInput, setChatInput] = useState('');
     const [socket, setSocket] = useState<Socket | null>(null);
 
+    const fetchTracking = async () => {
+        try {
+            const { data } = await api.get(`/queue/tracking/${shopId}`);
+            setBookings(data || []);
+        } catch (err) {
+            console.error(err);
+        }
+    };
+
     // Fetch trackable bookings initially
     useEffect(() => {
-        const fetchTracking = async () => {
-            try {
-                const { data } = await api.get(`/queue/tracking/${shopId}`);
-                setBookings(data || []);
-            } catch (err) {
-                console.error(err);
-            }
-        };
         fetchTracking();
         const interval = setInterval(fetchTracking, 30000); // Check every 30s
         return () => clearInterval(interval);
     }, [shopId]);
 
-    // Handle WebSocket for live location & chat
+    // Listen to global queue updates to trigger a fast refetch
+    useQueueSocket({
+        shopId,
+        onQueueUpdate: fetchTracking,
+        onBookingUpdate: fetchTracking,
+        enabled: !!shopId,
+    });
+
+    // Handle WebSocket for live location & chat for selected booking
     useEffect(() => {
         if (!selectedBooking) return;
         const wsUrl = process.env.NEXT_PUBLIC_WS_URL || process.env.NEXT_PUBLIC_BACKEND_URL || 'http://127.0.0.1:3001';
-        const skt = io(`${wsUrl}/queue`);
+        const skt = io(`${wsUrl}/queue`, { transports: ['websocket', 'polling'] });
         setSocket(skt);
 
         skt.on('connect', () => {

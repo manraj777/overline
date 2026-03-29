@@ -6,6 +6,8 @@ import type { Booking, PaginatedResponse, Staff } from '@/types';
 interface GetBookingsParams {
   status?: string;
   date?: string;
+  startDate?: string;
+  endDate?: string;
   page?: number;
   limit?: number;
 }

@@ -40,6 +40,15 @@ export class ShopsController {
     return this.shopsService.getNearbyShops(latitude, longitude, radiusKm);
   }
 
+  @Get('trending')
+  @Public()
+  @ApiOperation({ summary: 'Get trending shops (most bookings in last 7 days)' })
+  @ApiQuery({ name: 'limit', type: Number, required: false })
+  @ApiResponse({ status: 200, description: 'List of trending shops' })
+  async getTrending(@Query('limit') limit?: number) {
+    return this.shopsService.getTrendingShops(limit);
+  }
+
   @Get(':slug')
   @Public()
   @ApiOperation({ summary: 'Get shop details by slug' })

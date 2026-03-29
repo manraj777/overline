@@ -493,6 +493,24 @@ export class BookingsService {
   }
 
   /**
+   * Get first completed booking with no review
+   */
+  async getPendingReviewBooking(userId: string) {
+    const booking = await this.prisma.booking.findFirst({
+      where: {
+        userId,
+        status: BookingStatus.COMPLETED,
+        review: null,
+      },
+      orderBy: { startTime: 'desc' },
+      include: {
+        shop: { select: { name: true } },
+      },
+    });
+    return booking ? { booking } : null;
+  }
+
+  /**
    * Get user's bookings
    */
   async findByUser(userId: string, status?: string, page = 1, limit = 20) {

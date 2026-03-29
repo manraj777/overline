@@ -102,6 +102,31 @@ export class ReviewsService {
   }
 
   /**
+   * Increment helpful vote count for a review
+   */
+  async incrementHelpfulCount(reviewId: string, userId: string) {
+    const existing = await this.prisma.helpfulVote.findUnique({
+      where: { userId_reviewId: { userId, reviewId } },
+    });
+
+    if (existing) {
+      throw new BadRequestException('You have already marked this review as helpful');
+    }
+
+    await this.prisma.$transaction([
+      this.prisma.helpfulVote.create({
+        data: { userId, reviewId },
+      }),
+      this.prisma.review.update({
+        where: { id: reviewId },
+        data: { helpfulCount: { increment: 1 } },
+      }),
+    ]);
+
+    return { success: true };
+  }
+
+  /**
    * Get rating statistics for a shop
    */
   async getShopRatingStats(shopId: string) {

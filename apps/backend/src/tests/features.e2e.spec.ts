@@ -7,7 +7,38 @@ import { PrismaService } from '../common/prisma/prisma.service';
 import { RedisService } from '../common/redis/redis.service';
 import { FREE_CASH_CONFIG } from '../modules/wallet/wallet.service';
 import { Decimal } from '@prisma/client/runtime/library';
-import { PaymentType, ServiceStatus, CancellationReason, BookingStatus } from '@prisma/client';
+
+const PaymentType = {
+  PREPAID: 'PREPAID',
+  PAY_LATER: 'PAY_LATER',
+} as const;
+
+const ServiceStatus = {
+  AWAITING_CODE: 'AWAITING_CODE',
+  IN_SERVICE: 'IN_SERVICE',
+  COMPLETED: 'COMPLETED',
+  DISPUTED: 'DISPUTED',
+} as const;
+
+const CancellationReason = {
+  SHOP_CLOSED: 'SHOP_CLOSED',
+  EMERGENCY: 'EMERGENCY',
+  WRONG_BOOKING: 'WRONG_BOOKING',
+  FOUND_BETTER: 'FOUND_BETTER',
+  PRICE_ISSUE: 'PRICE_ISSUE',
+  SCHEDULE_CONFLICT: 'SCHEDULE_CONFLICT',
+  OTHER: 'OTHER',
+} as const;
+
+const BookingStatus = {
+  PENDING: 'PENDING',
+  CONFIRMED: 'CONFIRMED',
+  IN_PROGRESS: 'IN_PROGRESS',
+  COMPLETED: 'COMPLETED',
+  CANCELLED: 'CANCELLED',
+  NO_SHOW: 'NO_SHOW',
+  REJECTED: 'REJECTED',
+} as const;
 
 // Mock ConfigService for testing
 const mockConfigService = {

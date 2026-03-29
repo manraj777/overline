@@ -1,5 +1,4 @@
 {
-  "$schema": "https://openapi.vercel.sh/vercel.json",
   "framework": "nextjs",
   "installCommand": "if [ -f package-lock.json ]; then npm ci; else cd apps/admin-web && npm ci; fi",
   "buildCommand": "if [ -f package.json ] && grep -q '\"name\": \"@overline/admin-web\"' package.json; then npm run build; else cd apps/admin-web && npm run build; fi",

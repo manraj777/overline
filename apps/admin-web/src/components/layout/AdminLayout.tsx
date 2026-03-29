@@ -174,6 +174,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
     { name: 'Payments', href: '/payments', icon: CreditCard },
     { name: 'Analytics', href: '/analytics', icon: BarChart3 },
     { name: 'Notifications', href: '/notifications', icon: Bell },
+    { name: 'Fraud Alerts', href: '/fraud', icon: ShieldAlert },
     { name: 'Settings', href: '/settings', icon: Settings },
   ];
 

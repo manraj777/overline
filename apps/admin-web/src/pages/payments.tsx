@@ -1,6 +1,6 @@
 import React from 'react';
 import Head from 'next/head';
-import { format } from 'date-fns';
+import { format, subDays } from 'date-fns';
 import {
   CreditCard,
   Download,
@@ -18,6 +18,7 @@ import api from '@/lib/api';
 import { formatPrice, cn } from '@/lib/utils';
 
 type PaymentFilter = 'ALL' | 'COMPLETED' | 'REFUNDED' | 'FAILED' | 'PENDING';
+type DateRange = 'TODAY' | '7D' | '30D' | 'ALL';
 
 const STATUS_CONFIG: Record<string, { label: string; variant: any; icon: any }> = {
   COMPLETED: { label: 'Paid', variant: 'success', icon: CheckCircle },
@@ -29,8 +30,22 @@ const STATUS_CONFIG: Record<string, { label: string; variant: any; icon: any }> 
 
 export default function PaymentsPage() {
   const [filter, setFilter] = React.useState<PaymentFilter>('ALL');
+  const [dateRange, setDateRange] = React.useState<DateRange>('ALL');
   const [refunding, setRefunding] = React.useState<string | null>(null);
-  const { data: bookingsData, isLoading, refetch } = useAdminBookings({ limit: 50 });
+
+  const queryParams = React.useMemo(() => {
+    const params: any = { limit: 100 };
+    if (dateRange === 'TODAY') {
+      params.date = format(new Date(), 'yyyy-MM-dd');
+    } else if (dateRange === '7D') {
+      params.startDate = format(subDays(new Date(), 7), 'yyyy-MM-dd');
+    } else if (dateRange === '30D') {
+      params.startDate = format(subDays(new Date(), 30), 'yyyy-MM-dd');
+    }
+    return params;
+  }, [dateRange]);
+
+  const { data: bookingsData, isLoading, refetch } = useAdminBookings(queryParams);
   const { shopId } = useAuthStore();
 
   // Extract payments from bookings
@@ -108,10 +123,23 @@ export default function PaymentsPage() {
             <h1 className="text-2xl font-bold text-gray-900">Payments</h1>
             <p className="text-gray-500">Track and manage all payment transactions</p>
           </div>
-          <Button variant="outline" size="sm" onClick={downloadCSV}>
-            <Download className="w-4 h-4 mr-2" />
-            Export CSV
-          </Button>
+          <div className="flex items-center gap-3">
+            <select
+              title="Date Range"
+              value={dateRange}
+              onChange={(e) => setDateRange(e.target.value as DateRange)}
+              className="px-3 py-2 border border-gray-300 rounded-lg text-sm bg-white text-gray-900 outline-none focus:border-indigo-500 transition-colors"
+            >
+              <option value="TODAY">Today</option>
+              <option value="7D">Last 7 Days</option>
+              <option value="30D">Last 30 Days</option>
+              <option value="ALL">All Time</option>
+            </select>
+            <Button variant="outline" size="sm" onClick={downloadCSV}>
+              <Download className="w-4 h-4 mr-2" />
+              Export CSV
+            </Button>
+          </div>
         </div>
 
         {/* Summary */}

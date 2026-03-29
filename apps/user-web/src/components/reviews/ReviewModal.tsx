@@ -2,7 +2,7 @@ import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { X, Star } from 'lucide-react';
 import { StarRating } from '@/components/reviews/StarRating';
-import { useCreateReview, useMyBookings } from '@/hooks';
+import { useCreateReview, usePendingReviewBooking } from '@/hooks';
 import { useToast, Button } from '@/components/ui';
 
 const DISMISS_KEY = 'overline_review_dismissed_at';
@@ -23,12 +23,12 @@ export function ReviewModal({ bookingId: propBookingId, shopName: propShopName, 
 
   const createReview = useCreateReview();
   const { addToast } = useToast();
-  const { data: bookings } = useMyBookings('past');
+  const { data: pendingReviewBooking } = usePendingReviewBooking();
 
   // Auto-detect unreviewable completed bookings
   React.useEffect(() => {
     if (propBookingId) {
-      setIsOpen(true);
+      setTriggerModal(propBookingId, propShopName || '');
       return;
     }
 
@@ -39,23 +39,20 @@ export function ReviewModal({ bookingId: propBookingId, shopName: propShopName, 
       if (elapsed < 24 * 60 * 60 * 1000) return; // 24h cooldown
     }
 
-    if (!bookings?.data?.length) return;
-
-    // Find first completed booking without a review (heuristic: no review in last 7 days)
-    const completedWithoutReview = bookings.data.find(
-      (b: any) => b.status === 'COMPLETED' && !b.review
-    );
-
-    if (completedWithoutReview) {
-      // Show after 30s delay
+    if (pendingReviewBooking) {
+      // Show after 3s delay instead of 30s so users actually see it
       const timer = setTimeout(() => {
-        setTargetBookingId(completedWithoutReview.id);
-        setTargetShopName(completedWithoutReview.shop?.name || 'your visit');
-        setIsOpen(true);
-      }, 30000);
+        setTriggerModal(pendingReviewBooking.id, pendingReviewBooking.shop?.name || 'your visit');
+      }, 3000);
       return () => clearTimeout(timer);
     }
-  }, [bookings, propBookingId]);
+  }, [pendingReviewBooking, propBookingId, propShopName]);
+
+  const setTriggerModal = (bookingId: string, shopName: string) => {
+    setTargetBookingId(bookingId);
+    setTargetShopName(shopName);
+    setIsOpen(true);
+  };
 
   const handleDismiss = () => {
     localStorage.setItem(DISMISS_KEY, Date.now().toString());

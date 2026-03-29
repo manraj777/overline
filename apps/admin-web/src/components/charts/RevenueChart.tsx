@@ -12,6 +12,8 @@ import {
   Bar,
 } from 'recharts';
 
+import { format } from 'date-fns';
+
 interface DataPoint {
   date: string;
   totalRevenue: number;
@@ -24,8 +26,11 @@ interface RevenueChartProps {
   isLoading?: boolean;
 }
 
-const formatCurrency = (val: number) =>
-  `₹${val >= 1000 ? `${(val / 1000).toFixed(1)}k` : val}`;
+const formatCurrency = (val: number) => {
+  if (val >= 1000000) return `₹${(val / 1000000).toFixed(1)}M`;
+  if (val >= 1000) return `₹${(val / 1000).toFixed(1)}k`;
+  return `₹${val}`;
+};
 
 const CustomTooltip = ({ active, payload, label }: any) => {
   if (!active || !payload?.length) return null;
@@ -55,10 +60,7 @@ export function RevenueChart({ data, isLoading }: RevenueChartProps) {
     const days = range === '7d' ? 7 : range === '30d' ? 30 : 90;
     return data.slice(-days).map((d) => ({
       ...d,
-      label: new Date(d.date).toLocaleDateString('en-IN', {
-        day: 'numeric',
-        month: 'short',
-      }),
+      label: format(new Date(d.date), 'MMM d'),
     }));
   }, [data, range]);
 

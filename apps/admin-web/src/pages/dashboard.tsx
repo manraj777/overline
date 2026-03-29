@@ -80,6 +80,23 @@ export default function DashboardPage() {
     revenue: 0,
   };
 
+  const yesterdayStats = dashboard?.yesterdayStats || {
+    total: 0,
+    revenue: 0,
+  };
+
+  const getChangeProps = (todayVal: number, yesterdayVal: number) => {
+    if (yesterdayVal === 0) {
+      if (todayVal === 0) return undefined;
+      return { value: 'New', type: 'increase' as const };
+    }
+    const val = Number((((todayVal - yesterdayVal) / yesterdayVal) * 100).toFixed(1));
+    return {
+      value: val,
+      type: val >= 0 ? ('increase' as const) : ('decrease' as const),
+    };
+  };
+
   const statusConfig: Record<string, { label: string; variant: 'success' | 'warning' | 'info' | 'error' | 'default' }> = {
     PENDING: { label: 'Pending', variant: 'warning' },
     CONFIRMED: { label: 'Confirmed', variant: 'info' },
@@ -107,6 +124,7 @@ export default function DashboardPage() {
           <StatCard
             title="Today's Appointments"
             value={todayStats.total}
+            change={getChangeProps(todayStats.total, yesterdayStats.total)}
             icon={Calendar}
             gradient="bg-gradient-to-br from-blue-500 to-indigo-600"
           />
@@ -125,6 +143,7 @@ export default function DashboardPage() {
           <StatCard
             title="Today's Revenue"
             value={formatPrice(todayStats.revenue)}
+            change={getChangeProps(todayStats.revenue, yesterdayStats.revenue)}
             icon={DollarSign}
             gradient="bg-gradient-to-br from-emerald-500 to-green-600"
           />

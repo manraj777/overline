@@ -108,7 +108,9 @@ export default function HomePage() {
                       className="border-0 focus:ring-0 text-lg h-14 bg-transparent outline-none shadow-none"
                     />
                   </div>
-                  <Link href={`/explore?q=${searchQuery}`}>
+                  <Link
+                    href={`/explore?q=${encodeURIComponent(searchQuery)}${location ? `&lat=${location.lat}&lng=${location.lng}` : ''}`}
+                  >
                     <Button className="h-full px-8 rounded-full bg-lexo-black hover:bg-lexo-dark text-white text-lg font-bold transition-all hover:scale-105 active:scale-95 shadow-md">
                       Find
                     </Button>

@@ -6,7 +6,7 @@ interface StatCardProps {
   title: string;
   value: string | number;
   change?: {
-    value: number;
+    value: number | string;
     type: 'increase' | 'decrease';
   };
   icon: LucideIcon;
@@ -48,8 +48,8 @@ const StatCard: React.FC<StatCardProps> = ({
                 ? <TrendingUp className="w-4 h-4" />
                 : <TrendingDown className="w-4 h-4" />
               }
-              <span>{Math.abs(change.value)}%</span>
-              <span className={gradient ? 'text-white/70' : 'text-gray-400'}>vs last week</span>
+              <span>{typeof change.value === 'number' ? Math.abs(change.value) : change.value}{typeof change.value === 'number' ? '%' : ''}</span>
+              <span className={gradient ? 'text-white/70' : 'text-gray-400'}>from yesterday</span>
             </p>
           )}
         </div>

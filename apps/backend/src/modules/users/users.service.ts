@@ -178,4 +178,12 @@ export class UsersService {
 
     return { success: true, message: 'Phone verified successfully' };
   }
+
+  async updateFcmToken(userId: string, token: string) {
+    await this.prisma.user.update({
+      where: { id: userId },
+      data: { fcmToken: token },
+    });
+    return { success: true };
+  }
 }

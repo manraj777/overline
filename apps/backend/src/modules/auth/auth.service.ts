@@ -26,7 +26,33 @@ import { LoginDto } from './dto/login.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { GoogleLoginDto } from './dto/google-login.dto';
 import { RegisterShopDto } from './dto/register-shop.dto';
-import { UserRole, DayOfWeek } from '@prisma/client';
+
+type UserRole = 'USER' | 'OWNER' | 'STAFF' | 'SUPER_ADMIN';
+const UserRole = {
+  USER: 'USER',
+  OWNER: 'OWNER',
+  STAFF: 'STAFF',
+  SUPER_ADMIN: 'SUPER_ADMIN',
+} as const;
+
+type DayOfWeek =
+  | 'MONDAY'
+  | 'TUESDAY'
+  | 'WEDNESDAY'
+  | 'THURSDAY'
+  | 'FRIDAY'
+  | 'SATURDAY'
+  | 'SUNDAY';
+
+const DayOfWeek = {
+  MONDAY: 'MONDAY',
+  TUESDAY: 'TUESDAY',
+  WEDNESDAY: 'WEDNESDAY',
+  THURSDAY: 'THURSDAY',
+  FRIDAY: 'FRIDAY',
+  SATURDAY: 'SATURDAY',
+  SUNDAY: 'SUNDAY',
+} as const;
 
 export interface JwtPayload {
   sub: string;

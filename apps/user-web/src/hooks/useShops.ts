@@ -100,3 +100,16 @@ export function useShopServiceSlots(shopId: string, serviceId: string, date: str
     refetchInterval: 1000 * 30,
   });
 }
+
+export function useTrendingShops(limit: number = 5) {
+  return useQuery<Shop[]>({
+    queryKey: ['shops', 'trending', limit],
+    queryFn: async () => {
+      const { data } = await api.get('/shops/trending', {
+        params: { limit },
+      });
+      return data;
+    },
+    staleTime: 1000 * 60 * 30, // cache for 30 minutes
+  });
+}

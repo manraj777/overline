@@ -15,7 +15,8 @@ import {
   Lock,
 } from 'lucide-react';
 import { Button, Input, Card, Alert, Loading, ImageUpload } from '@/components/ui';
-import { useUser, useUpdateProfile, useLogout, useMyBookings } from '@/hooks';
+import { ReviewModal } from '@/components/reviews/ReviewModal';
+import { useUser, useUpdateProfile, useLogout, useMyBookings, useTrendingShops } from '@/hooks';
 import { useAuthStore } from '@/stores/auth';
 import api from '@/lib/api';
 import { format } from 'date-fns';
@@ -41,6 +42,7 @@ export default function ProfilePage() {
   const updateProfile = useUpdateProfile();
   const logout = useLogout();
   const { data: bookingsData } = useMyBookings();
+  const { data: trendingShops } = useTrendingShops(5);
 
   const [isEditing, setIsEditing] = React.useState(false);
   const [isLoggingOut, setIsLoggingOut] = React.useState(false);
@@ -364,7 +366,7 @@ export default function ProfilePage() {
           </div>
 
           {/* Sidebar */}
-          <div className="hidden lg:block">
+          <div className="hidden lg:block space-y-6">
             <Card variant="bordered">
               <h3 className="font-semibold text-gray-900 mb-4">Quick Stats</h3>
               <div className="space-y-4">
@@ -378,9 +380,65 @@ export default function ProfilePage() {
                 </div>
               </div>
             </Card>
+
+            <Card variant="bordered" className="bg-gradient-to-br from-indigo-50/50 to-purple-50/50">
+              <h3 className="font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                <span className="text-primary-600">🔥</span> Trending Shops
+              </h3>
+              {!trendingShops ? (
+                <div className="space-y-3">
+                  {[1, 2, 3].map(i => (
+                    <div key={i} className="animate-pulse flex gap-3">
+                      <div className="w-12 h-12 bg-gray-200 rounded-lg shrink-0" />
+                      <div className="flex-1 py-1">
+                        <div className="h-4 bg-gray-200 rounded w-3/4 mb-2" />
+                        <div className="h-3 bg-gray-200 rounded w-1/2" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : trendingShops.length === 0 ? (
+                <p className="text-sm text-gray-500 text-center py-4">No trending shops currently.</p>
+              ) : (
+                <div className="space-y-3">
+                  {trendingShops.slice(0, 3).map((shop) => (
+                    <div 
+                      key={shop.id}
+                      onClick={() => router.push(`/shops/${shop.slug}`)}
+                      className="flex items-center gap-3 p-2 rounded-lg hover:bg-white cursor-pointer transition-colors border border-transparent hover:border-gray-100 hover:shadow-sm"
+                    >
+                      {shop.logoUrl ? (
+                        <img 
+                          src={shop.logoUrl} 
+                          alt={shop.name}
+                          className="w-12 h-12 rounded-lg object-cover shrink-0 border border-gray-100"
+                        />
+                      ) : (
+                        <div className="w-12 h-12 rounded-lg bg-gray-100 flex items-center justify-center shrink-0 border border-gray-200">
+                          <span className="text-gray-400 text-sm font-medium">{shop.name.substring(0,2).toUpperCase()}</span>
+                        </div>
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <h4 className="text-sm font-medium text-gray-900 truncate">{shop.name}</h4>
+                        <p className="text-xs text-gray-500 truncate">{shop.city || 'Location unavailable'}</p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+              <Button 
+                variant="outline" 
+                size="sm" 
+                className="w-full mt-4 bg-white"
+                onClick={() => router.push('/explore')}
+              >
+                Explore More
+              </Button>
+            </Card>
           </div>
         </div>
       </div>
+      <ReviewModal />
     </>
   );
 }

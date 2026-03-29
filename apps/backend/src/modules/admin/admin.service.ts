@@ -29,6 +29,31 @@ export class AdminService {
     // Get today's queue
     const todayQueue = await this.queueService.getTodayQueue(shopId);
 
+    // Get yesterday's stats for percentage change
+    const yesterday = new Date(today);
+    yesterday.setDate(yesterday.getDate() - 1);
+    const startOfYesterday = new Date(yesterday);
+    startOfYesterday.setHours(0, 0, 0, 0);
+    const endOfYesterday = new Date(yesterday);
+    endOfYesterday.setHours(23, 59, 59, 999);
+
+    const [yesterdayRevenue, yesterdayBookings] = await Promise.all([
+      this.prisma.booking.aggregate({
+        where: {
+          shopId,
+          status: BookingStatus.COMPLETED,
+          completedAt: { gte: startOfYesterday, lte: endOfYesterday },
+        },
+        _sum: { totalAmount: true },
+      }),
+      this.prisma.booking.count({
+        where: {
+          shopId,
+          startTime: { gte: startOfYesterday, lte: endOfYesterday },
+        },
+      }),
+    ]);
+
     // Get this week's stats
     const startOfWeek = new Date(today);
     startOfWeek.setDate(today.getDate() - today.getDay());
@@ -63,6 +88,10 @@ export class AdminService {
         noShow: todayQueue.stats.noShowCount,
         revenue: todayRevenue._sum.totalAmount || 0,
       },
+      yesterdayStats: {
+        total: yesterdayBookings,
+        revenue: yesterdayRevenue._sum.totalAmount || 0,
+      },
       weeklyStats: weeklyStats.reduce(
         (acc, stat) => {
           acc[stat.status] = stat._count;
@@ -81,6 +110,8 @@ export class AdminService {
     tenantId: string,
     options: {
       date?: string;
+      startDate?: string;
+      endDate?: string;
       status?: BookingStatus;
       page?: number;
       limit?: number;
@@ -88,7 +119,7 @@ export class AdminService {
   ) {
     await this.verifyShopAccess(shopId, tenantId);
 
-    const { date, status } = options;
+    const { date, startDate, endDate, status } = options;
     const page = Number(options.page) || 1;
     const limit = Number(options.limit) || 50;
     const skip = (page - 1) * limit;
@@ -99,6 +130,10 @@ export class AdminService {
       const dateStart = new Date(`${date}T00:00:00`);
       const dateEnd = new Date(`${date}T23:59:59`);
       where.startTime = { gte: dateStart, lte: dateEnd };
+    } else if (startDate || endDate) {
+      where.startTime = {};
+      if (startDate) where.startTime.gte = new Date(`${startDate}T00:00:00`);
+      if (endDate) where.startTime.lte = new Date(`${endDate}T23:59:59`);
     }
 
     if (status) {
@@ -686,5 +721,44 @@ export class AdminService {
     }
 
     return staff;
+  }
+
+  async getUsers(fraudScoreGt?: number) {
+    const where: any = {};
+    if (Object.prototype.hasOwnProperty.call({ fraudScoreGt }, 'fraudScoreGt') && fraudScoreGt !== undefined) {
+      // trustScore < (100 - fraudScoreGt) 
+      // i.e., fraudScore 50 means trustScore 50
+      // wait, let's keep it simple: fraudScore = 100 - trustScore
+      where.trustScore = { lt: 100 - fraudScoreGt };
+    }
+
+    const users = await this.prisma.user.findMany({
+      where,
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        phone: true,
+        trustScore: true,
+        isActive: true,
+        createdAt: true,
+      },
+      orderBy: { trustScore: 'asc' },
+    });
+
+    return {
+      data: users.map(u => ({
+        ...u,
+        fraudScore: 100 - u.trustScore
+      }))
+    };
+  }
+
+  async suspendUser(userId: string, isSuspended: boolean) {
+    const user = await this.prisma.user.update({
+      where: { id: userId },
+      data: { isActive: !isSuspended }
+    });
+    return user;
   }
 }

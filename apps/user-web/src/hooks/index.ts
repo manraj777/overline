@@ -16,6 +16,7 @@ export {
   useShopQueueStats,
   useShopServicesWithSlots,
   useShopServiceSlots,
+  useTrendingShops,
 } from './useShops';
 export {
   useAvailableSlots,
@@ -24,6 +25,7 @@ export {
   useCreateBooking,
   useCancelBooking,
   useRescheduleBooking,
+  usePendingReviewBooking,
 } from './useBookings';
 export {
   useShopReviews,

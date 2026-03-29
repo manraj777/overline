@@ -95,6 +95,17 @@ export function useCancelBooking() {
   });
 }
 
+export function usePendingReviewBooking() {
+  return useQuery<Booking | null>({
+    queryKey: ['bookings', 'pending-review'],
+    queryFn: async () => {
+      const { data } = await api.get('/bookings/pending-review');
+      return data;
+    },
+    staleTime: 1000 * 60 * 5,
+  });
+}
+
 export function useRescheduleBooking() {
   const queryClient = useQueryClient();
 

@@ -92,4 +92,14 @@ export class ReviewsController {
   async getUserFeedback(@Param('userId') userId: string) {
     return this.reviewsService.getUserFeedbackHistory(userId);
   }
+
+  @Post(':id/helpful')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({ summary: 'Mark a review as helpful' })
+  @ApiParam({ name: 'id', description: 'Review ID' })
+  @ApiResponse({ status: 200, description: 'Marked as helpful' })
+  async markHelpful(@Param('id') id: string, @CurrentUser() user: any) {
+    return this.reviewsService.incrementHelpfulCount(id, user.id);
+  }
 }

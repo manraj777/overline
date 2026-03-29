@@ -527,4 +527,39 @@ export class ShopsService {
   private toRad(deg: number): number {
     return deg * (Math.PI / 180);
   }
+
+  async getTrendingShops(limit: number = 10) {
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+    
+    // Group by shopId in bookings
+    const trending = await this.prisma.booking.groupBy({
+      by: ['shopId'],
+      where: {
+        createdAt: { gte: sevenDaysAgo },
+      },
+      _count: { shopId: true },
+      orderBy: { _count: { shopId: 'desc' } },
+      take: limit,
+    });
+    
+    if (trending.length === 0) return { data: [] };
+    
+    // Fetch shop details
+    const shopIds = trending.map((t) => t.shopId);
+    const shops = await this.prisma.shop.findMany({
+      where: { id: { in: shopIds } },
+      include: {
+        tenant: {
+          select: { type: true },
+        },
+        _count: { select: { reviews: true } },
+      },
+    });
+    
+    // Sort to match trending order
+    const sortedShops = shopIds.map((id) => shops.find((s) => s.id === id)).filter(Boolean);
+    
+    return { data: sortedShops };
+  }
 }

@@ -161,6 +161,9 @@ model User {
   otpCode         String?   @map("otp_code")
   otpExpiresAt    DateTime? @map("otp_expires_at")
 
+  // Push Notifications
+  fcmToken        String?   @map("fcm_token")
+
   // Trust Scoring & Statistics
   trustScore        Float     @default(100.0) @map("trust_score")
   totalBookings     Int       @default(0) @map("total_bookings")
@@ -177,6 +180,7 @@ model User {
   auditLogs     AuditLog[]      @relation("AuditActor")
   staffProfile  Staff?
   reviews       Review[]
+  helpfulVotes  HelpfulVote[]
   wallet        Wallet?
 
   @@index([email])
@@ -631,6 +635,8 @@ model Review {
   isPublic    Boolean  @default(true) @map("is_public")
   reply       String?  // Shop owner's reply
   repliedAt   DateTime? @map("replied_at")
+  helpfulCount Int     @default(0) @map("helpful_count")
+  helpfulVotes HelpfulVote[]
   createdAt   DateTime @default(now()) @map("created_at")
   updatedAt   DateTime @updatedAt @map("updated_at")
 
@@ -638,6 +644,18 @@ model Review {
   @@index([userId])
   @@index([rating])
   @@map("reviews")
+}
+
+model HelpfulVote {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  reviewId  String   @map("review_id")
+  review    Review   @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  createdAt DateTime @default(now()) @map("created_at")
+
+  @@unique([userId, reviewId])
+  @@map("helpful_votes")
 }
 
 model DailyAnalytics {
