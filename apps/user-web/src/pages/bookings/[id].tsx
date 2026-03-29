@@ -20,6 +20,7 @@ import { PaymentForm, LiveBookingTracker } from '@/components/booking';
 import { ReviewForm } from '@/components/reviews';
 import { useBooking, useCancelBooking, useCreatePaymentIntent, useQueueSocket } from '@/hooks';
 import { formatDate, formatTime, formatPrice, formatDuration, getEndTime } from '@/lib/utils';
+import { removeQueueSession } from '@/lib/queue-session';
 import { BookingStatus } from '@/types';
 
 export default function BookingDetailPage() {
@@ -53,6 +54,17 @@ export default function BookingDetailPage() {
 
   const [paymentError, setPaymentError] = React.useState<string | null>(null);
 
+  React.useEffect(() => {
+    if (!booking?.shopId) return;
+    if (
+      booking.status === BookingStatus.COMPLETED ||
+      booking.status === BookingStatus.CANCELLED ||
+      booking.status === BookingStatus.NO_SHOW
+    ) {
+      removeQueueSession(booking.shopId);
+    }
+  }, [booking?.shopId, booking?.status]);
+
   const handlePayNow = async () => {
     if (!booking) return;
     try {
@@ -78,6 +90,7 @@ export default function BookingDetailPage() {
 
     try {
       await cancelBooking.mutateAsync(booking.id);
+      removeQueueSession(booking.shopId);
       setShowCancelConfirm(false);
     } catch (err) {
       console.error('Failed to cancel booking:', err);
