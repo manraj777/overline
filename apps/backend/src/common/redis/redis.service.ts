@@ -76,13 +76,14 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
 
       // Try to connect — this should NOT blow up if Redis is absent
       await this._client.connect().catch(() => {
-        this.logger.warn('[Redis] Not available on startup — continuing without cache. Run: docker compose up -d redis');
+        this.logger.warn(
+          '[Redis] Not available on startup — continuing without cache. Run: docker compose up -d redis',
+        );
       });
     } catch (error: any) {
       this.logger.warn(`[Redis] Setup failed: ${error.message} — continuing without cache`);
     }
   }
-
 
   async onModuleDestroy() {
     if (this._client) {

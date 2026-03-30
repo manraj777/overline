@@ -25,6 +25,38 @@ interface CreateWalkInPayload {
   notes?: string;
 }
 
+interface QueueTrackingService {
+  serviceName: string;
+}
+
+export interface QueueTrackingBooking {
+  id: string;
+  bookingNumber: string;
+  status: string;
+  queuePosition?: number | null;
+  verificationCode?: string | null;
+  customerName?: string | null;
+  customerPhone?: string | null;
+  createdAt: string;
+  startTime: string;
+  user?: {
+    id: string;
+    name: string;
+    phone?: string | null;
+  } | null;
+  services?: QueueTrackingService[];
+}
+
+interface QueueStartServicePayload {
+  bookingId: string;
+  verificationCode: string;
+}
+
+interface QueueRemovePayload {
+  bookingId: string;
+  reason?: string;
+}
+
 export function useDashboard() {
   const { shopId } = useAuthStore();
 
@@ -36,6 +68,105 @@ export function useDashboard() {
     },
     enabled: !!shopId,
     refetchInterval: 1000 * 30, // Refresh every 30 seconds
+  });
+}
+
+export function useQueueTracking() {
+  const { shopId } = useAuthStore();
+
+  return useQuery<QueueTrackingBooking[]>({
+    queryKey: ['admin', 'queue-tracking', shopId],
+    queryFn: async () => {
+      const { data } = await api.get(`/queue/tracking/${shopId}`);
+      return data;
+    },
+    enabled: !!shopId,
+    refetchInterval: 1000 * 20,
+  });
+}
+
+export function useQueueCallNext() {
+  const queryClient = useQueryClient();
+  const { shopId } = useAuthStore();
+
+  return useMutation<QueueTrackingBooking, Error>({
+    mutationFn: async () => {
+      const { data } = await api.post(`/queue/${shopId}/call-next`);
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'queue-tracking'] });
+      queryClient.invalidateQueries({ queryKey: ['admin', 'bookings'] });
+      queryClient.invalidateQueries({ queryKey: ['admin', 'dashboard'] });
+    },
+  });
+}
+
+export function useQueueCheckIn() {
+  const queryClient = useQueryClient();
+
+  return useMutation<QueueTrackingBooking, Error, string>({
+    mutationFn: async (bookingId) => {
+      const { data } = await api.patch(`/queue/${bookingId}/check-in`);
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'queue-tracking'] });
+      queryClient.invalidateQueries({ queryKey: ['admin', 'bookings'] });
+      queryClient.invalidateQueries({ queryKey: ['admin', 'dashboard'] });
+    },
+  });
+}
+
+export function useQueueStartService() {
+  const queryClient = useQueryClient();
+
+  return useMutation<QueueTrackingBooking, Error, QueueStartServicePayload>({
+    mutationFn: async ({ bookingId, verificationCode }) => {
+      const { data } = await api.post(`/queue/${bookingId}/start-service`, {
+        verificationCode,
+      });
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'queue-tracking'] });
+      queryClient.invalidateQueries({ queryKey: ['admin', 'bookings'] });
+      queryClient.invalidateQueries({ queryKey: ['admin', 'dashboard'] });
+    },
+  });
+}
+
+export function useQueueMarkDone() {
+  const queryClient = useQueryClient();
+
+  return useMutation<QueueTrackingBooking, Error, string>({
+    mutationFn: async (bookingId) => {
+      const { data } = await api.post(`/queue/${bookingId}/mark-done`);
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'queue-tracking'] });
+      queryClient.invalidateQueries({ queryKey: ['admin', 'bookings'] });
+      queryClient.invalidateQueries({ queryKey: ['admin', 'dashboard'] });
+    },
+  });
+}
+
+export function useQueueRemove() {
+  const queryClient = useQueryClient();
+
+  return useMutation<QueueTrackingBooking, Error, QueueRemovePayload>({
+    mutationFn: async ({ bookingId, reason }) => {
+      const { data } = await api.delete(`/queue/${bookingId}`, {
+        data: { reason },
+      });
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'queue-tracking'] });
+      queryClient.invalidateQueries({ queryKey: ['admin', 'bookings'] });
+      queryClient.invalidateQueries({ queryKey: ['admin', 'dashboard'] });
+    },
   });
 }
 
@@ -159,7 +290,7 @@ export function useCreateStaff() {
   const queryClient = useQueryClient();
   const { shopId } = useAuthStore();
 
-  return useMutation({
+  return useMutation<Staff, Error, { name: string; email: string; phone?: string; role?: string; avatarUrl?: string }>({
     mutationFn: async (payload: { name: string; email: string; phone?: string; role?: string; avatarUrl?: string }) => {
       const { data } = await api.post(`/admin/shops/${shopId}/staff`, payload);
       return data;
@@ -174,9 +305,39 @@ export function useUpdateStaff() {
   const queryClient = useQueryClient();
   const { shopId } = useAuthStore();
 
-  return useMutation({
+  return useMutation<Staff, Error, { staffId: string; name?: string; email?: string; phone?: string; role?: string; isActive?: boolean; avatarUrl?: string }>({
     mutationFn: async ({ staffId, ...payload }: { staffId: string; name?: string; email?: string; phone?: string; role?: string; isActive?: boolean; avatarUrl?: string }) => {
       const { data } = await api.patch(`/admin/shops/${shopId}/staff/${staffId}`, payload);
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'staff'] });
+    },
+  });
+}
+
+export function useAssignServiceToStaff() {
+  const queryClient = useQueryClient();
+  const { shopId } = useAuthStore();
+
+  return useMutation({
+    mutationFn: async ({ staffId, serviceId }: { staffId: string; serviceId: string }) => {
+      const { data } = await api.post(`/admin/shops/${shopId}/staff/${staffId}/services/${serviceId}`);
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'staff'] });
+    },
+  });
+}
+
+export function useUnassignServiceFromStaff() {
+  const queryClient = useQueryClient();
+  const { shopId } = useAuthStore();
+
+  return useMutation({
+    mutationFn: async ({ staffId, serviceId }: { staffId: string; serviceId: string }) => {
+      const { data } = await api.delete(`/admin/shops/${shopId}/staff/${staffId}/services/${serviceId}`);
       return data;
     },
     onSuccess: () => {

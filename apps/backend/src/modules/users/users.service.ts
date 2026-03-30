@@ -69,7 +69,9 @@ export class UsersService {
       });
     } catch (error: any) {
       if (error.code === 'P2002' && error.meta?.target?.includes('phone')) {
-        throw new BadRequestException('This phone number is already registered to another account.');
+        throw new BadRequestException(
+          'This phone number is already registered to another account.',
+        );
       }
       throw error;
     }
@@ -127,7 +129,9 @@ export class UsersService {
     } as any);
 
     if (this.twilioClient && this.twilioPhone) {
-      const phoneToUse = user.phone.startsWith('+') ? user.phone : `+91${user.phone.replace(/\D/g, '')}`;
+      const phoneToUse = user.phone.startsWith('+')
+        ? user.phone
+        : `+91${user.phone.replace(/\D/g, '')}`;
       try {
         await this.twilioClient.messages.create({
           body: `Your Overline verification code is: ${otpCode}. Valid for 10 minutes.`,

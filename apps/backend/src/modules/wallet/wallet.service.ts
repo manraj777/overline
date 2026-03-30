@@ -56,7 +56,7 @@ export class WalletService {
    */
   async getOrCreateWallet(userId: string) {
     const wallet = await this.getOrCreateWalletInternal(userId);
-    
+
     // Transform to mobile-app compatible format
     return {
       id: wallet.id,
@@ -116,7 +116,10 @@ export class WalletService {
       balance: wallet.balance.toNumber(),
       freeCashBalance: wallet.freeCashBalance.toNumber(),
       lockedAmount: wallet.lockedAmount.toNumber(),
-      totalAvailable: wallet.balance.toNumber() + wallet.freeCashBalance.toNumber() - wallet.lockedAmount.toNumber(),
+      totalAvailable:
+        wallet.balance.toNumber() +
+        wallet.freeCashBalance.toNumber() -
+        wallet.lockedAmount.toNumber(),
       totalEarned: wallet.totalEarned.toNumber(),
       totalSpent: wallet.totalSpent.toNumber(),
     };

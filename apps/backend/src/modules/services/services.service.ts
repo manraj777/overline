@@ -1,11 +1,15 @@
 import { Injectable, NotFoundException, ForbiddenException } from '@nestjs/common';
 import { PrismaService } from '@/common/prisma/prisma.service';
+import { RedisService } from '@/common/redis/redis.service';
 import { CreateServiceDto } from './dto/create-service.dto';
 import { UpdateServiceDto } from './dto/update-service.dto';
 
 @Injectable()
 export class ServicesService {
-  constructor(private prisma: PrismaService) {}
+  constructor(
+    private prisma: PrismaService,
+    private redis: RedisService,
+  ) {}
 
   async create(shopId: string, dto: CreateServiceDto, tenantId: string) {
     // Verify shop belongs to tenant
@@ -23,7 +27,7 @@ export class ServicesService {
       _max: { sortOrder: true },
     });
 
-    return this.prisma.service.create({
+    const created = await this.prisma.service.create({
       data: {
         shopId,
         name: dto.name,
@@ -34,6 +38,9 @@ export class ServicesService {
         sortOrder: (maxSort._max.sortOrder || 0) + 1,
       },
     });
+
+    await this.redis.invalidateSlots(shopId);
+    return created;
   }
 
   async findByShop(shopId: string) {
@@ -78,7 +85,7 @@ export class ServicesService {
       throw new ForbiddenException('Not authorized to manage this service');
     }
 
-    return this.prisma.service.update({
+    const updated = await this.prisma.service.update({
       where: { id: serviceId },
       data: {
         name: dto.name,
@@ -89,6 +96,9 @@ export class ServicesService {
         sortOrder: dto.sortOrder,
       },
     });
+
+    await this.redis.invalidateSlots(service.shopId);
+    return updated;
   }
 
   async delete(serviceId: string, tenantId: string) {
@@ -106,10 +116,13 @@ export class ServicesService {
     }
 
     // Soft delete by marking inactive
-    return this.prisma.service.update({
+    const deleted = await this.prisma.service.update({
       where: { id: serviceId },
       data: { isActive: false },
     });
+
+    await this.redis.invalidateSlots(service.shopId);
+    return deleted;
   }
 
   async reorder(shopId: string, serviceIds: string[], tenantId: string) {
@@ -130,6 +143,8 @@ export class ServicesService {
         }),
       ),
     );
+
+    await this.redis.invalidateSlots(shopId);
 
     return this.findByShop(shopId);
   }

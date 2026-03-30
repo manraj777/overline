@@ -23,6 +23,7 @@ import { GoogleLoginDto } from './dto/google-login.dto';
 import { RegisterShopDto } from './dto/register-shop.dto';
 import { SendOtpDto } from './dto/send-otp.dto';
 import { VerifyOtpDto } from './dto/verify-otp.dto';
+import { FirebasePhoneLoginDto } from './dto/firebase-phone-login.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { GoogleOAuthGuard } from './guards/google-oauth.guard';
 
@@ -206,6 +207,15 @@ export class AuthController {
   @ApiOperation({ summary: 'Verify phone OTP and login/signup user' })
   async verifyOtp(@Body() dto: VerifyOtpDto): Promise<TokenResponse> {
     return this.authService.verifyPhoneOtp(dto.phone, dto.otp);
+  }
+
+  @Post('firebase/phone-login')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Exchange Firebase phone ID token for backend JWT session' })
+  @ApiResponse({ status: 200, description: 'Firebase phone login successful' })
+  @ApiResponse({ status: 401, description: 'Invalid or expired Firebase token' })
+  async firebasePhoneLogin(@Body() dto: FirebasePhoneLoginDto): Promise<TokenResponse> {
+    return this.authService.firebasePhoneLogin(dto.idToken);
   }
 
   @Post('refresh')

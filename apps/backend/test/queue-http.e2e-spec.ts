@@ -187,9 +187,7 @@ describe('Queue HTTP Lifecycle + Fraud Persistence (e2e)', () => {
     expect(redisMock.updateShopQueueStats).toHaveBeenCalled();
   });
 
-  it(
-    'executes call-next, check-in, start-service(valid), mark-done, and remove over HTTP with persisted state transitions',
-    async () => {
+  it('executes call-next, check-in, start-service(valid), mark-done, and remove over HTTP with persisted state transitions', async () => {
     const first = await joinQueue('First User', '9000000001');
     const second = await joinQueue('Second User', '9000000002');
     const third = await joinQueue('Third User', '9000000003');
@@ -205,13 +203,13 @@ describe('Queue HTTP Lifecycle + Fraud Persistence (e2e)', () => {
       .expect(201);
 
     expect(callNextResponse.body.id).toBe(first.id);
-    expect(callNextResponse.body.status).toBe('IN_PROGRESS');
-    expect(callNextResponse.body.serviceStatus).toBe('IN_SERVICE');
+    expect(callNextResponse.body.status).toBe('CONFIRMED');
+    expect(callNextResponse.body.serviceStatus).toBe('AWAITING_CODE');
 
     const persistedFirst = await prisma.booking.findUnique({ where: { id: first.id } });
-    expect(persistedFirst?.status).toBe('IN_PROGRESS');
-    expect(persistedFirst?.serviceStatus).toBe('IN_SERVICE');
-    expect(persistedFirst?.startedAt).toBeTruthy();
+    expect(persistedFirst?.status).toBe('CONFIRMED');
+    expect(persistedFirst?.serviceStatus).toBe('AWAITING_CODE');
+    expect(persistedFirst?.startedAt).toBeNull();
 
     const checkInResponse = await request(app.getHttpServer())
       .patch(`/queue/${second.id}/check-in`)
@@ -221,7 +219,9 @@ describe('Queue HTTP Lifecycle + Fraud Persistence (e2e)', () => {
     expect(checkInResponse.body.status).toBe('CONFIRMED');
     expect(checkInResponse.body.arrivedAt).toBeTruthy();
 
-    const persistedSecondAfterCheckIn = await prisma.booking.findUnique({ where: { id: second.id } });
+    const persistedSecondAfterCheckIn = await prisma.booking.findUnique({
+      where: { id: second.id },
+    });
     expect(persistedSecondAfterCheckIn?.status).toBe('CONFIRMED');
     expect(persistedSecondAfterCheckIn?.arrivedAt).toBeTruthy();
 
@@ -274,9 +274,7 @@ describe('Queue HTTP Lifecycle + Fraud Persistence (e2e)', () => {
     expect(persistedThird?.status).toBe('CANCELLED');
     expect(persistedThird?.adminNotes).toBe('Removed in e2e test');
     expect(persistedThird?.cancelledAt).toBeTruthy();
-    },
-    20000,
-  );
+  }, 20000);
 
   it('returns expected errors for call-next/check-in/mark-done/remove edge cases', async () => {
     await request(app.getHttpServer())

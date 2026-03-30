@@ -5,8 +5,14 @@ import { useRouter } from 'next/router';
 import { useForm } from 'react-hook-form';
 import { Mail, Lock, Eye, EyeOff } from 'lucide-react';
 import { Button, Input, Card, Alert } from '@/components/ui';
-import { useLogin, useSendOtp, useVerifyOtp } from '@/hooks';
+import { useLogin, useFirebasePhoneLogin } from '@/hooks';
 import { useAuthStore } from '@/stores/auth';
+import {
+  signInWithPhoneFirebase,
+  confirmPhoneOtp,
+  getFreshFirebaseIdToken,
+} from '@/lib/firebase';
+import type { ConfirmationResult } from 'firebase/auth';
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL?.replace('/api/v1', '') || '';
 
@@ -20,8 +26,7 @@ export default function LoginPage() {
   const { redirect, error } = router.query;
   const { isAuthenticated } = useAuthStore();
   const login = useLogin();
-  const sendOtp = useSendOtp();
-  const verifyOtp = useVerifyOtp();
+  const firebasePhoneLogin = useFirebasePhoneLogin();
 
   const [showPassword, setShowPassword] = React.useState(false);
   const [localError, setLocalError] = React.useState<string | null>(null);
@@ -31,6 +36,10 @@ export default function LoginPage() {
   const [otpDigits, setOtpDigits] = React.useState(['', '', '', '', '', '']);
   const [otpSent, setOtpSent] = React.useState(false);
   const [resendCountdown, setResendCountdown] = React.useState(0);
+  const [isSendingOtp, setIsSendingOtp] = React.useState(false);
+  const [confirmationResult, setConfirmationResult] = React.useState<ConfirmationResult | null>(
+    null,
+  );
 
   const otpInputRefs = React.useRef<Array<HTMLInputElement | null>>([]);
 
@@ -91,13 +100,17 @@ export default function LoginPage() {
 
   const handleSendOtp = async () => {
     setLocalError(null);
+    setIsSendingOtp(true);
     try {
-      await sendOtp.mutateAsync({ phone });
+      const result = await signInWithPhoneFirebase(phone);
+      setConfirmationResult(result);
       setOtpSent(true);
-      setResendCountdown(30);
+      setResendCountdown(60);
       setTimeout(() => otpInputRefs.current[0]?.focus(), 0);
     } catch (err: any) {
-      setLocalError(err.response?.data?.message || 'Failed to send OTP');
+      setLocalError(err?.message || err.response?.data?.message || 'Failed to send OTP');
+    } finally {
+      setIsSendingOtp(false);
     }
   };
 
@@ -127,10 +140,16 @@ export default function LoginPage() {
     }
 
     try {
-      await verifyOtp.mutateAsync({ phone, otp });
+      if (!confirmationResult) {
+        setLocalError('Please request a new OTP code.');
+        return;
+      }
+      const userCredential = await confirmPhoneOtp(confirmationResult, otp);
+      const idToken = await getFreshFirebaseIdToken(userCredential);
+      await firebasePhoneLogin.mutateAsync({ idToken });
       router.push((redirect as string) || '/');
     } catch (err: any) {
-      setLocalError(err.response?.data?.message || 'OTP verification failed');
+      setLocalError(err?.response?.data?.message || err?.message || 'OTP verification failed');
     }
   };
 
@@ -251,6 +270,7 @@ export default function LoginPage() {
             </form>
           ) : (
             <div className="space-y-4">
+              <div id="recaptcha-container" className="h-0 overflow-hidden" />
               <Input
                 label="Phone Number"
                 type="tel"
@@ -263,7 +283,7 @@ export default function LoginPage() {
                 <Button
                   type="button"
                   onClick={handleSendOtp}
-                  isLoading={sendOtp.isPending}
+                  isLoading={isSendingOtp}
                   disabled={!phone}
                 >
                   Send OTP
@@ -291,7 +311,7 @@ export default function LoginPage() {
                   <Button
                     type="button"
                     onClick={handleVerifyOtp}
-                    isLoading={verifyOtp.isPending}
+                    isLoading={firebasePhoneLogin.isPending}
                   >
                     Verify OTP
                   </Button>

@@ -8,6 +8,7 @@ export {
   useGoogleLogin,
   useSendOtp,
   useVerifyOtp,
+  useFirebasePhoneLogin,
 } from './useAuth';
 export {
   useShops,
@@ -33,7 +34,7 @@ export {
   useMyReviews,
   useCreateReview,
 } from './useReviews';
-export { useCreatePaymentIntent, usePayment } from './usePayments';
+export { useCreatePaymentIntent, usePayment, useVerifyRazorpayPayment } from './usePayments';
 export { useQueueSocket } from './useQueueSocket'
 export { useWallet, useWalletBalance, useWalletTransactions, useWalletRefetch } from './useWallet';
 export { useAiRecommendations, useAiChat } from './useAi';

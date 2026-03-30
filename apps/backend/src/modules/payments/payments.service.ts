@@ -37,10 +37,7 @@ export class PaymentsService {
   /**
    * Create a payment order — supports ONLINE (Razorpay/Stripe), WALLET, PAY_AT_SHOP
    */
-  async createOrder(
-    dto: CreatePaymentDto & { method?: PaymentMethod },
-    userId: string,
-  ) {
+  async createOrder(dto: CreatePaymentDto & { method?: PaymentMethod }, userId: string) {
     const booking = await this.prisma.booking.findUnique({
       where: { id: dto.bookingId },
       include: { payment: true, shop: true, services: true },
@@ -383,7 +380,10 @@ export class PaymentsService {
         const pi = event.data.object as Stripe.PaymentIntent;
         const bookingId = pi.metadata.bookingId;
         if (bookingId) {
-          await this.prisma.payment.update({ where: { bookingId }, data: { status: PaymentStatus.FAILED } });
+          await this.prisma.payment.update({
+            where: { bookingId },
+            data: { status: PaymentStatus.FAILED },
+          });
         }
         break;
       }
@@ -408,17 +408,20 @@ export class PaymentsService {
         throw new BadRequestException('Razorpay is not configured for refunds');
       }
       const auth = Buffer.from(`${this.razorpayKeyId}:${this.razorpaySecret}`).toString('base64');
-      const response = await fetch(`https://api.razorpay.com/v1/payments/${payment.providerPaymentId}/refund`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          Authorization: `Basic ${auth}`,
+      const response = await fetch(
+        `https://api.razorpay.com/v1/payments/${payment.providerPaymentId}/refund`,
+        {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            Authorization: `Basic ${auth}`,
+          },
+          body: JSON.stringify({
+            amount: Math.round(payment.amount.toNumber() * 100),
+            notes: { reason: reason || 'Customer requested refund' },
+          }),
         },
-        body: JSON.stringify({
-          amount: Math.round(payment.amount.toNumber() * 100),
-          notes: { reason: reason || 'Customer requested refund' },
-        }),
-      });
+      );
 
       if (!response.ok) {
         const errText = await response.text();

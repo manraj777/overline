@@ -17,9 +17,7 @@ const decodeJwtSecret = (rawSecret?: string): Buffer => {
 
   const decoded = Buffer.from(secret, 'base64');
   if (!decoded || decoded.length < 32) {
-    throw new Error(
-      'WEAK_JWT_SECRET: decoded JWT_SECRET must be at least 32 bytes (256 bits).',
-    );
+    throw new Error('WEAK_JWT_SECRET: decoded JWT_SECRET must be at least 32 bytes (256 bits).');
   }
 
   return decoded;

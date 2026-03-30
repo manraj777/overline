@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState, useCallback } from 'react';
 import { io, Socket } from 'socket.io-client';
+import { useAuthStore } from '@/stores/auth';
 
 interface QueueUpdate {
   shopId: string;
@@ -17,11 +18,13 @@ interface UseQueueSocketOptions {
 
 function getWsUrl(): string {
   if (typeof window === 'undefined') return '';
-  const backendUrl = process.env.NEXT_PUBLIC_WS_URL
-    || process.env.NEXT_PUBLIC_BACKEND_URL
-    || '';
+  const backendUrl =
+    process.env.NEXT_PUBLIC_WS_URL ||
+    process.env.NEXT_PUBLIC_API_URL?.replace(/\/api\/v1\/?$/, '') ||
+    process.env.NEXT_PUBLIC_BACKEND_URL ||
+    '';
   if (backendUrl) return backendUrl;
-  return window.location.origin.replace(/^http/, 'ws');
+  return window.location.origin;
 }
 
 export function useQueueSocket({
@@ -30,6 +33,7 @@ export function useQueueSocket({
   onBookingUpdate,
   enabled = true,
 }: UseQueueSocketOptions) {
+  const accessToken = useAuthStore((state) => state.accessToken);
   const socketRef = useRef<Socket | null>(null);
   const [connected, setConnected] = useState(false);
 
@@ -41,6 +45,7 @@ export function useQueueSocket({
 
     const socket = io(`${wsUrl}/queue`, {
       transports: ['websocket', 'polling'],
+      auth: accessToken ? { token: accessToken } : undefined,
       reconnection: true,
       reconnectionAttempts: 10,
       reconnectionDelay: 2000,
@@ -68,7 +73,7 @@ export function useQueueSocket({
       socket.disconnect();
       socketRef.current = null;
     };
-  }, [enabled, shopId, onQueueUpdate, onBookingUpdate]);
+  }, [enabled, shopId, onQueueUpdate, onBookingUpdate, accessToken]);
 
   useEffect(() => {
     const cleanup = connect();

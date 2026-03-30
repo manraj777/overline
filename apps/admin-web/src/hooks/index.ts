@@ -1,6 +1,12 @@
 export { useUser, useLogin, useRegisterShop, useLogout, useMyShops, useGoogleLogin } from './useAuth';
 export {
   useDashboard,
+  useQueueTracking,
+  useQueueCallNext,
+  useQueueCheckIn,
+  useQueueStartService,
+  useQueueMarkDone,
+  useQueueRemove,
   useAdminBookings,
   useUpdateBookingStatus,
   useCreateWalkIn,
@@ -10,6 +16,8 @@ export {
   useStaff,
   useCreateStaff,
   useUpdateStaff,
+  useAssignServiceToStaff,
+  useUnassignServiceFromStaff,
   useShopSettings,
   useUpdateShopSettings,
   useWorkingHours,

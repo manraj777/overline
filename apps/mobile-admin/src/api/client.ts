@@ -13,7 +13,7 @@ const DEV_HOST =
 const PROD_URL = 'https://overlinebackend-production.up.railway.app/api/v1';
 const BASE_URL = __DEV__
   ? `http://${DEV_HOST}:3001/api/v1`
-  : PROD_URL;
+  : PROD_URL
 
 // Create axios instance
 export const apiClient = axios.create({

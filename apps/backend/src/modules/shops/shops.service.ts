@@ -28,7 +28,7 @@ export class ShopsService {
 
   async search(dto: SearchShopsDto) {
     const { query, city, type, page = 1, limit = 20 } = dto;
-    
+
     // Explicitly cast coordinates intercepting from the URL so JS bounding box math
     // doesn't accidentally do string-concatenation and crash the Prisma Driver
     const latitude = dto.latitude !== undefined ? Number(dto.latitude) : undefined;
@@ -43,9 +43,9 @@ export class ShopsService {
     if (query) {
       andFilters.push({
         OR: [
-        { name: { contains: query, mode: 'insensitive' } },
-        { description: { contains: query, mode: 'insensitive' } },
-        { address: { contains: query, mode: 'insensitive' } },
+          { name: { contains: query, mode: 'insensitive' } },
+          { description: { contains: query, mode: 'insensitive' } },
+          { address: { contains: query, mode: 'insensitive' } },
         ],
       });
     }
@@ -531,7 +531,7 @@ export class ShopsService {
   async getTrendingShops(limit: number = 10) {
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-    
+
     // Group by shopId in bookings
     const trending = await this.prisma.booking.groupBy({
       by: ['shopId'],
@@ -542,9 +542,9 @@ export class ShopsService {
       orderBy: { _count: { shopId: 'desc' } },
       take: limit,
     });
-    
+
     if (trending.length === 0) return { data: [] };
-    
+
     // Fetch shop details
     const shopIds = trending.map((t) => t.shopId);
     const shops = await this.prisma.shop.findMany({
@@ -556,10 +556,10 @@ export class ShopsService {
         _count: { select: { reviews: true } },
       },
     });
-    
+
     // Sort to match trending order
     const sortedShops = shopIds.map((id) => shops.find((s) => s.id === id)).filter(Boolean);
-    
+
     return { data: sortedShops };
   }
 }

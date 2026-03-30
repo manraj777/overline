@@ -32,7 +32,7 @@ interface AuthState {
   setSelectedShop: (shopId: string) => Promise<void>;
 }
 
-export const useAuthStore = create<AuthState>((set, get) => ({
+export const useAuthStore = create<AuthState>((set) => ({
   user: null,
   isAuthenticated: false,
   isLoading: true,
@@ -71,7 +71,7 @@ export const useAuthStore = create<AuthState>((set, get) => ({
       // If user has a phone, require OTP verification for 2FA
       if (user.phone) {
         try {
-          await otpApi.send(user.phone);
+          await otpApi.send(user.phone, 'LOGIN');
           set({
             user: userWithShops,
             pendingOtpVerification: true,
@@ -79,8 +79,11 @@ export const useAuthStore = create<AuthState>((set, get) => ({
             selectedShopId: defaultShopId,
           });
           return;
-        } catch {
-          // If OTP send fails, log in directly (graceful fallback)
+        } catch (error: any) {
+          throw new Error(
+            error?.response?.data?.message ||
+              'Failed to send OTP for verification. Please try again.',
+          );
         }
       }
 

@@ -42,11 +42,11 @@ import configuration from './config/configuration';
 
     // Tiered Rate Limiting
     ThrottlerModule.forRoot([
-      { name: 'global', ttl: 60000, limit: 100 },   // 100/min per IP
-      { name: 'auth', ttl: 60000, limit: 10 },       // 10/min per IP
-      { name: 'ai', ttl: 60000, limit: 20 },         // 20/min per user
-      { name: 'payments', ttl: 60000, limit: 15 },   // 15/min per user
-      { name: 'uploads', ttl: 60000, limit: 10 },    // 10/min per user
+      { name: 'global', ttl: 60000, limit: 100 }, // 100/min per IP
+      { name: 'auth', ttl: 60000, limit: 10 }, // 10/min per IP
+      { name: 'ai', ttl: 60000, limit: 20 }, // 20/min per user
+      { name: 'payments', ttl: 60000, limit: 15 }, // 15/min per user
+      { name: 'uploads', ttl: 60000, limit: 10 }, // 10/min per user
     ]),
 
     // Cron Jobs

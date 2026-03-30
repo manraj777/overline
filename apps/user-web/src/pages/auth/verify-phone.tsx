@@ -5,19 +5,23 @@ import { useRouter } from 'next/router';
 import { Phone, CheckCircle, LogIn } from 'lucide-react';
 import { Button, Input, Card, Alert } from '@/components/ui';
 import { useAuthStore } from '@/stores/auth';
-import { useLogout } from '@/hooks/useAuth';
+import { useFirebasePhoneLogin, useLogout } from '@/hooks/useAuth';
+import { signInWithPhoneFirebase, confirmPhoneOtp, getFreshFirebaseIdToken } from '@/lib/firebase';
 import api from '@/lib/api';
+import type { ConfirmationResult } from 'firebase/auth';
 
 export default function VerifyPhonePage() {
   const router = useRouter();
-  const { user, setUser } = useAuthStore();
+  const { user } = useAuthStore();
   const { mutate: logoutMutate } = useLogout();
+  const firebasePhoneLogin = useFirebasePhoneLogin();
 
   const [phone, setPhone] = React.useState(user?.phone || '');
   const [otpCode, setOtpCode] = React.useState('');
   const [isOtpSent, setIsOtpSent] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [isLoading, setIsLoading] = React.useState(false);
+  const [confirmationResult, setConfirmationResult] = React.useState<ConfirmationResult | null>(null);
   // shown when the phone is already linked to another account
   const [showLoginInstead, setShowLoginInstead] = React.useState(false);
 
@@ -38,10 +42,11 @@ export default function VerifyPhonePage() {
 
     try {
       await api.patch('/users/me', { phone });
-      await api.post('/users/me/otp/send');
+      const result = await signInWithPhoneFirebase(phone);
+      setConfirmationResult(result);
       setIsOtpSent(true);
     } catch (err: any) {
-      const msg: string = err.response?.data?.message || 'Failed to send OTP';
+      const msg: string = err?.response?.data?.message || err?.message || 'Failed to send OTP';
       setError(msg);
       // If the error is about the number being taken, surface the login prompt
       if (
@@ -65,13 +70,17 @@ export default function VerifyPhonePage() {
     setIsLoading(true);
 
     try {
-      await api.post('/users/me/otp/verify', { code: otpCode });
-      if (user) {
-        setUser({ ...user, phone, isPhoneVerified: true });
+      if (!confirmationResult) {
+        setError('Please request a new OTP code.');
+        return;
       }
+
+      const userCredential = await confirmPhoneOtp(confirmationResult, otpCode);
+      const idToken = await getFreshFirebaseIdToken(userCredential);
+      await firebasePhoneLogin.mutateAsync({ idToken });
       router.replace('/');
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Invalid or expired OTP code');
+      setError(err?.response?.data?.message || err?.message || 'Invalid or expired OTP code');
     } finally {
       setIsLoading(false);
     }
@@ -135,13 +144,22 @@ export default function VerifyPhonePage() {
                   size="sm"
                   variant="outline"
                   className="flex-1"
-                  onClick={() => { setShowLoginInstead(false); setError(null); setPhone(''); }}
+                  onClick={() => {
+                    setShowLoginInstead(false);
+                    setError(null);
+                    setPhone('');
+                    setIsOtpSent(false);
+                    setConfirmationResult(null);
+                    setOtpCode('');
+                  }}
                 >
                   Use different number
                 </Button>
               </div>
             </div>
           )}
+
+          <div id="recaptcha-container" className="h-0 overflow-hidden" />
 
           {!isOtpSent ? (
             <form onSubmit={(e) => { e.preventDefault(); handleSendOtp(); }} className="space-y-4">
@@ -176,17 +194,21 @@ export default function VerifyPhonePage() {
                 type="submit"
                 className="w-full"
                 size="lg"
-                isLoading={isLoading}
+                isLoading={isLoading || firebasePhoneLogin.isPending}
               >
                 Verify &amp; Continue
               </Button>
               <Button
                 type="button"
-                onClick={() => setIsOtpSent(false)}
+                onClick={() => {
+                  setIsOtpSent(false);
+                  setConfirmationResult(null);
+                  setOtpCode('');
+                }}
                 variant="outline"
                 className="w-full"
                 size="sm"
-                disabled={isLoading}
+                disabled={isLoading || firebasePhoneLogin.isPending}
               >
                 Change Phone Number
               </Button>

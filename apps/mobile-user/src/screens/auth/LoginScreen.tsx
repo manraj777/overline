@@ -112,15 +112,8 @@ export default function LoginScreen() {
 
     setIsSendingOtp(true);
     try {
-      const devOtp = await sendOtp(normalized);
-      // In dev mode, show OTP in alert for convenience
-      if (devOtp && __DEV__) {
-        Alert.alert('Dev Mode - OTP', `Your OTP is: ${devOtp}`, [
-          { text: 'OK', onPress: () => navigation.navigate('OtpVerify', { phone: normalized }) },
-        ]);
-      } else {
-        navigation.navigate('OtpVerify', { phone: normalized });
-      }
+      await sendOtp(normalized);
+      navigation.navigate('OtpVerify', { phone: normalized });
     } catch {
       // Error handled in store
     } finally {

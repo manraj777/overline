@@ -1,5 +1,11 @@
-import { Injectable, NotFoundException, ForbiddenException, BadRequestException } from '@nestjs/common';
+import {
+  Injectable,
+  NotFoundException,
+  ForbiddenException,
+  BadRequestException,
+} from '@nestjs/common';
 import { PrismaService } from '@/common/prisma/prisma.service';
+import { RedisService } from '@/common/redis/redis.service';
 import { QueueService } from '../queue/queue.service';
 import { BookingsService } from '../bookings/bookings.service';
 import { BookingStatus, BookingSource, DayOfWeek } from '@prisma/client';
@@ -10,6 +16,7 @@ import { UpdateWorkingHoursDto } from './dto/update-working-hours.dto';
 export class AdminService {
   constructor(
     private prisma: PrismaService,
+    private redis: RedisService,
     private queueService: QueueService,
     private bookingsService: BookingsService,
   ) {}
@@ -372,6 +379,82 @@ export class AdminService {
     });
   }
 
+  async getStaffServices(shopId: string, staffId: string, tenantId: string) {
+    await this.verifyShopAccess(shopId, tenantId);
+    await this.verifyStaffBelongsToShop(shopId, staffId);
+
+    return this.prisma.staffService.findMany({
+      where: { staffId },
+      include: {
+        service: {
+          select: {
+            id: true,
+            name: true,
+            durationMinutes: true,
+            price: true,
+            isActive: true,
+          },
+        },
+      },
+      orderBy: {
+        service: {
+          sortOrder: 'asc',
+        },
+      },
+    });
+  }
+
+  async assignServiceToStaff(shopId: string, staffId: string, serviceId: string, tenantId: string) {
+    await this.verifyShopAccess(shopId, tenantId);
+    await this.verifyStaffBelongsToShop(shopId, staffId);
+
+    const service = await this.prisma.service.findFirst({
+      where: { id: serviceId, shopId },
+      select: { id: true, isActive: true },
+    });
+
+    if (!service) {
+      throw new NotFoundException('Service not found for this shop');
+    }
+
+    const relation = await this.prisma.staffService.upsert({
+      where: {
+        staffId_serviceId: {
+          staffId,
+          serviceId,
+        },
+      },
+      update: {},
+      create: {
+        staffId,
+        serviceId,
+      },
+    });
+
+    await this.invalidateSlotCache(shopId);
+    return relation;
+  }
+
+  async unassignServiceFromStaff(
+    shopId: string,
+    staffId: string,
+    serviceId: string,
+    tenantId: string,
+  ) {
+    await this.verifyShopAccess(shopId, tenantId);
+    await this.verifyStaffBelongsToShop(shopId, staffId);
+
+    await this.prisma.staffService.deleteMany({
+      where: {
+        staffId,
+        serviceId,
+      },
+    });
+
+    await this.invalidateSlotCache(shopId);
+    return { success: true };
+  }
+
   /**
    * Get staff availability (weekly hours + upcoming time-off blocks)
    */
@@ -422,7 +505,7 @@ export class AdminService {
       throw new BadRequestException('endTime must be after startTime');
     }
 
-    return this.prisma.staffWorkingHours.upsert({
+    const result = await this.prisma.staffWorkingHours.upsert({
       where: {
         staffId_dayOfWeek: {
           staffId,
@@ -442,6 +525,9 @@ export class AdminService {
         isOff,
       },
     });
+
+    await this.invalidateSlotCache(shopId);
+    return result;
   }
 
   /**
@@ -467,7 +553,7 @@ export class AdminService {
       throw new BadRequestException('endTime must be after startTime');
     }
 
-    return this.prisma.staffTimeOff.create({
+    const result = await this.prisma.staffTimeOff.create({
       data: {
         staffId,
         startTime,
@@ -476,6 +562,9 @@ export class AdminService {
         isFullDay: dto.isFullDay ?? false,
       },
     });
+
+    await this.invalidateSlotCache(shopId);
+    return result;
   }
 
   /**
@@ -497,9 +586,12 @@ export class AdminService {
       throw new NotFoundException('Staff time-off record not found');
     }
 
-    return this.prisma.staffTimeOff.delete({
+    const result = await this.prisma.staffTimeOff.delete({
       where: { id: timeOffId },
     });
+
+    await this.invalidateSlotCache(shopId);
+    return result;
   }
 
   /**
@@ -513,7 +605,7 @@ export class AdminService {
   ) {
     await this.verifyShopAccess(shopId, tenantId);
 
-    return this.prisma.workingHours.upsert({
+    const result = await this.prisma.workingHours.upsert({
       where: {
         shopId_dayOfWeek: { shopId, dayOfWeek },
       },
@@ -532,6 +624,9 @@ export class AdminService {
         breakWindows: dto.breakWindows || [],
       },
     });
+
+    await this.invalidateSlotCache(shopId);
+    return result;
   }
 
   /**
@@ -621,8 +716,14 @@ export class AdminService {
       data: updateData,
     });
 
+    await this.invalidateSlotCache(shopId);
+
     // Return full settings object
     return this.getShopSettings(shopId, tenantId);
+  }
+
+  private async invalidateSlotCache(shopId: string): Promise<void> {
+    await this.redis.invalidateSlots(shopId);
   }
 
   /**
@@ -725,8 +826,11 @@ export class AdminService {
 
   async getUsers(fraudScoreGt?: number) {
     const where: any = {};
-    if (Object.prototype.hasOwnProperty.call({ fraudScoreGt }, 'fraudScoreGt') && fraudScoreGt !== undefined) {
-      // trustScore < (100 - fraudScoreGt) 
+    if (
+      Object.prototype.hasOwnProperty.call({ fraudScoreGt }, 'fraudScoreGt') &&
+      fraudScoreGt !== undefined
+    ) {
+      // trustScore < (100 - fraudScoreGt)
       // i.e., fraudScore 50 means trustScore 50
       // wait, let's keep it simple: fraudScore = 100 - trustScore
       where.trustScore = { lt: 100 - fraudScoreGt };
@@ -747,17 +851,17 @@ export class AdminService {
     });
 
     return {
-      data: users.map(u => ({
+      data: users.map((u) => ({
         ...u,
-        fraudScore: 100 - u.trustScore
-      }))
+        fraudScore: 100 - u.trustScore,
+      })),
     };
   }
 
   async suspendUser(userId: string, isSuspended: boolean) {
     const user = await this.prisma.user.update({
       where: { id: userId },
-      data: { isActive: !isSuspended }
+      data: { isActive: !isSuspended },
     });
     return user;
   }

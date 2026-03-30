@@ -64,7 +64,14 @@ export class AdminController {
     @Query('page') page?: number,
     @Query('limit') limit?: number,
   ) {
-    return this.adminService.getBookings(shopId, tenantId, { date, startDate, endDate, status, page, limit });
+    return this.adminService.getBookings(shopId, tenantId, {
+      date,
+      startDate,
+      endDate,
+      status,
+      page,
+      limit,
+    });
   }
 
   @Get('bookings')
@@ -87,7 +94,14 @@ export class AdminController {
     @Query('page') page?: number,
     @Query('limit') limit?: number,
   ) {
-    return this.adminService.getBookings(shopId, tenantId, { date, startDate, endDate, status, page, limit });
+    return this.adminService.getBookings(shopId, tenantId, {
+      date,
+      startDate,
+      endDate,
+      status,
+      page,
+      limit,
+    });
   }
 
   @Patch('bookings/:bookingId/status')
@@ -142,7 +156,8 @@ export class AdminController {
   async updateStaff(
     @Param('shopId') shopId: string,
     @Param('staffId') staffId: string,
-    @Body() dto: { name?: string; phone?: string; role?: string; isActive?: boolean; avatarUrl?: string },
+    @Body()
+    dto: { name?: string; phone?: string; role?: string; isActive?: boolean; avatarUrl?: string },
     @CurrentUser('tenantId') tenantId: string,
   ) {
     return this.adminService.updateStaff(shopId, staffId, dto, tenantId);
@@ -159,6 +174,49 @@ export class AdminController {
     @CurrentUser('tenantId') tenantId: string,
   ) {
     return this.adminService.deleteStaff(shopId, staffId, tenantId);
+  }
+
+  @Get('shops/:shopId/staff/:staffId/services')
+  @Roles(UserRole.OWNER, UserRole.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Get services assigned to a staff member' })
+  @ApiParam({ name: 'shopId', description: 'Shop ID' })
+  @ApiParam({ name: 'staffId', description: 'Staff ID' })
+  async getStaffServices(
+    @Param('shopId') shopId: string,
+    @Param('staffId') staffId: string,
+    @CurrentUser('tenantId') tenantId: string,
+  ) {
+    return this.adminService.getStaffServices(shopId, staffId, tenantId);
+  }
+
+  @Post('shops/:shopId/staff/:staffId/services/:serviceId')
+  @Roles(UserRole.OWNER, UserRole.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Assign a service to a staff member' })
+  @ApiParam({ name: 'shopId', description: 'Shop ID' })
+  @ApiParam({ name: 'staffId', description: 'Staff ID' })
+  @ApiParam({ name: 'serviceId', description: 'Service ID' })
+  async assignServiceToStaff(
+    @Param('shopId') shopId: string,
+    @Param('staffId') staffId: string,
+    @Param('serviceId') serviceId: string,
+    @CurrentUser('tenantId') tenantId: string,
+  ) {
+    return this.adminService.assignServiceToStaff(shopId, staffId, serviceId, tenantId);
+  }
+
+  @Delete('shops/:shopId/staff/:staffId/services/:serviceId')
+  @Roles(UserRole.OWNER, UserRole.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Unassign a service from a staff member' })
+  @ApiParam({ name: 'shopId', description: 'Shop ID' })
+  @ApiParam({ name: 'staffId', description: 'Staff ID' })
+  @ApiParam({ name: 'serviceId', description: 'Service ID' })
+  async unassignServiceFromStaff(
+    @Param('shopId') shopId: string,
+    @Param('staffId') staffId: string,
+    @Param('serviceId') serviceId: string,
+    @CurrentUser('tenantId') tenantId: string,
+  ) {
+    return this.adminService.unassignServiceFromStaff(shopId, staffId, serviceId, tenantId);
   }
 
   @Get('shops/:shopId/staff/:staffId/availability')

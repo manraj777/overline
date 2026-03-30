@@ -98,19 +98,12 @@ export class AiService {
       // Calculate distance if coordinates provided
       let distance: number | undefined;
       if (lat && lng && shop.latitude && shop.longitude) {
-        distance = this.haversineDistance(
-          lat,
-          lng,
-          Number(shop.latitude),
-          Number(shop.longitude),
-        );
+        distance = this.haversineDistance(lat, lng, Number(shop.latitude), Number(shop.longitude));
       }
 
       // Check if user has previously booked at this shop's category
       const shopCategory = shop.tenant?.type || 'OTHER';
-      const categoryBooked = userBookings.some(
-        (b) => b.shop?.id === shop.id,
-      );
+      const categoryBooked = userBookings.some((b) => b.shop?.id === shop.id);
       const visitedBefore = userBookings.some((b) => b.shop?.id === shop.id);
 
       // Heuristic score: rating, review count, distance, repeat visits
@@ -130,13 +123,10 @@ export class AiService {
       if (distance !== undefined && distance < 3)
         reasons.push(`Only ${distance.toFixed(1)}km away`);
       if (visitedBefore) reasons.push("You've visited before");
-      if (shop.services.length > 3)
-        reasons.push(`${shop.services.length} services available`);
+      if (shop.services.length > 3) reasons.push(`${shop.services.length} services available`);
 
       const reasoning =
-        reasons.length > 0
-          ? reasons.join(' · ')
-          : `${shopCategory} shop in ${shop.city}`;
+        reasons.length > 0 ? reasons.join(' · ') : `${shopCategory} shop in ${shop.city}`;
 
       return {
         shopId: shop.id,
@@ -167,9 +157,7 @@ export class AiService {
     }
 
     // Sort by matchScore descending
-    const result = shopScores
-      .sort((a, b) => b.matchScore - a.matchScore)
-      .slice(0, limit);
+    const result = shopScores.sort((a, b) => b.matchScore - a.matchScore).slice(0, limit);
 
     await this.redis.set(cacheKey, JSON.stringify(result), 600);
     return result;
@@ -178,11 +166,7 @@ export class AiService {
   /**
    * AI Chat — Process chat messages and return a response
    */
-  async chat(
-    messages: ChatMessage[],
-    userId?: string,
-    shopId?: string,
-  ): Promise<string> {
+  async chat(messages: ChatMessage[], userId?: string, shopId?: string): Promise<string> {
     // Build context
     let userContext = '';
     if (userId) {
@@ -203,7 +187,10 @@ export class AiService {
         select: {
           name: true,
           address: true,
-          services: { where: { isActive: true }, select: { name: true, price: true, durationMinutes: true } },
+          services: {
+            where: { isActive: true },
+            select: { name: true, price: true, durationMinutes: true },
+          },
           queueStats: true,
         },
       });
@@ -223,10 +210,7 @@ Help users find services, understand wait times, manage bookings, and discover n
 If a user wants to book, suggest they use the booking flow in the app.
 Keep responses under 200 words.`;
 
-    const fullMessages: ChatMessage[] = [
-      { role: 'system', content: systemPrompt },
-      ...messages,
-    ];
+    const fullMessages: ChatMessage[] = [{ role: 'system', content: systemPrompt }, ...messages];
 
     // Try OpenAI first, then Gemini
     if (this.openaiApiKey && this.openaiApiKey !== 'REPLACE_ME') {
@@ -261,7 +245,10 @@ Shops: ${JSON.stringify(top5.map((s) => ({ shopId: s.shopId, name: s.name, score
 
     try {
       const response = await this.chatWithAI([
-        { role: 'system', content: 'You are a concise recommendation engine. Respond ONLY with valid JSON.' },
+        {
+          role: 'system',
+          content: 'You are a concise recommendation engine. Respond ONLY with valid JSON.',
+        },
         { role: 'user', content: prompt },
       ]);
 
@@ -331,9 +318,7 @@ Shops: ${JSON.stringify(top5.map((s) => ({ shopId: s.shopId, name: s.name, score
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           contents,
-          systemInstruction: systemMsg
-            ? { parts: [{ text: systemMsg.content }] }
-            : undefined,
+          systemInstruction: systemMsg ? { parts: [{ text: systemMsg.content }] } : undefined,
           generationConfig: {
             maxOutputTokens: 500,
             temperature: 0.7,
@@ -348,10 +333,7 @@ Shops: ${JSON.stringify(top5.map((s) => ({ shopId: s.shopId, name: s.name, score
     }
 
     const data: any = await response.json();
-    return (
-      data.candidates?.[0]?.content?.parts?.[0]?.text ||
-      'I could not generate a response.'
-    );
+    return data.candidates?.[0]?.content?.parts?.[0]?.text || 'I could not generate a response.';
   }
 
   private fallbackChat(userMessage: string): string {
@@ -382,12 +364,7 @@ Shops: ${JSON.stringify(top5.map((s) => ({ shopId: s.shopId, name: s.name, score
   /**
    * Haversine distance between two coordinates in km
    */
-  private haversineDistance(
-    lat1: number,
-    lon1: number,
-    lat2: number,
-    lon2: number,
-  ): number {
+  private haversineDistance(lat1: number, lon1: number, lat2: number, lon2: number): number {
     const R = 6371; // Earth's radius in km
     const dLat = this.toRad(lat2 - lat1);
     const dLon = this.toRad(lon2 - lon1);

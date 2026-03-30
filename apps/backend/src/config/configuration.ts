@@ -26,6 +26,24 @@ const resolveDatabaseUrl = (): string | undefined => {
   return undefined;
 };
 
+const normalizeRedisUrl = (redisUrl?: string): string | undefined => {
+  if (!redisUrl) return undefined;
+
+  try {
+    const parsed = new URL(redisUrl);
+
+    // Some providers reject AUTH with username "default" and expect password-only auth.
+    if (parsed.protocol.startsWith('redis') && parsed.username === 'default') {
+      parsed.username = '';
+      return parsed.toString();
+    }
+
+    return redisUrl;
+  } catch {
+    return redisUrl;
+  }
+};
+
 export default () => ({
   port: parseInt(process.env.PORT || '3001', 10),
   apiPrefix: process.env.API_PREFIX || 'api/v1',
@@ -36,7 +54,7 @@ export default () => ({
   },
 
   redis: {
-    url: process.env.REDIS_URL,
+    url: normalizeRedisUrl(process.env.REDIS_URL),
     host: process.env.REDIS_HOST || 'localhost',
     port: parseInt(process.env.REDIS_PORT || '6379', 10),
     password: process.env.REDIS_PASSWORD || undefined,
@@ -95,6 +113,11 @@ export default () => ({
     clientId: process.env.GOOGLE_CLIENT_ID,
     clientSecret: process.env.GOOGLE_CLIENT_SECRET,
     callbackUrl: process.env.GOOGLE_CALLBACK_URL,
+  },
+
+  firebase: {
+    projectId: process.env.FIREBASE_PROJECT_ID,
+    serviceAccountKey: process.env.FIREBASE_SERVICE_ACCOUNT_KEY,
   },
 
   cloudinary: {

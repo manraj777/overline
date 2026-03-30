@@ -120,7 +120,9 @@ export class SlotEngineService {
 
       if (serviceIds.length > 0) {
         const staffServiceIds = new Set(staff.staffServices.map((ss) => ss.serviceId));
-        const canPerformAllServices = serviceIds.every((serviceId) => staffServiceIds.has(serviceId));
+        const canPerformAllServices = serviceIds.every((serviceId) =>
+          staffServiceIds.has(serviceId),
+        );
         if (!canPerformAllServices) {
           return [];
         }

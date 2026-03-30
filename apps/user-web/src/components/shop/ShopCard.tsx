@@ -14,7 +14,7 @@ interface ShopCardProps {
 }
 
 const ShopCard: React.FC<ShopCardProps> = ({ shop, queueInfo, userLocation }) => {
-  const isOpen = true; // TODO: Calculate based on working hours
+  const isOpen = isShopOpenNow(shop);
 
   // Use server-calculated distance if available
   let distanceKm = shop.distance;
@@ -182,6 +182,63 @@ function formatTravelTime(distanceKm: number): string {
   if (minutes < 1) return '< 1 min';
   if (minutes >= 60) return `${Math.round(minutes / 60)}h ${minutes % 60}min`;
   return `${minutes} min`;
+}
+
+function parseTimeToMinutes(value: string): number {
+  const [hours, minutes] = value.split(':').map((part) => Number(part));
+  if (!Number.isFinite(hours) || !Number.isFinite(minutes)) {
+    return 0;
+  }
+  return hours * 60 + minutes;
+}
+
+function isShopOpenNow(shop: Shop): boolean {
+  if (!shop.isActive) {
+    return false;
+  }
+
+  const todaysHours = shop.workingHours;
+  if (!todaysHours || todaysHours.length === 0) {
+    return true;
+  }
+
+  const now = new Date();
+  const timezone = shop.timezone || 'Asia/Kolkata';
+  const parts = new Intl.DateTimeFormat('en-US', {
+    timeZone: timezone,
+    weekday: 'long',
+    hour: '2-digit',
+    minute: '2-digit',
+    hour12: false,
+  }).formatToParts(now);
+
+  const weekday = parts.find((part) => part.type === 'weekday')?.value;
+  const hour = Number(parts.find((part) => part.type === 'hour')?.value || '0');
+  const minute = Number(parts.find((part) => part.type === 'minute')?.value || '0');
+  const currentMinutes = hour * 60 + minute;
+
+  if (!weekday) {
+    return true;
+  }
+
+  const today = todaysHours.find((entry) => entry.dayOfWeek === weekday.toUpperCase());
+  if (!today || today.isClosed) {
+    return false;
+  }
+
+  const openMinutes = parseTimeToMinutes(today.openTime);
+  const closeMinutes = parseTimeToMinutes(today.closeTime);
+
+  if (closeMinutes === openMinutes) {
+    return true;
+  }
+
+  if (closeMinutes > openMinutes) {
+    return currentMinutes >= openMinutes && currentMinutes < closeMinutes;
+  }
+
+  // Overnight window: open before midnight and close after midnight.
+  return currentMinutes >= openMinutes || currentMinutes < closeMinutes;
 }
 
 export { ShopCard };

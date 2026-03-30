@@ -15,11 +15,17 @@ interface SignupCredentials extends LoginCredentials {
 
 interface SendOtpPayload {
   phone: string;
+  purpose?: 'LOGIN' | 'REGISTER' | 'VERIFY_PHONE';
 }
 
 interface VerifyOtpPayload {
   phone: string;
   otp: string;
+  purpose?: 'LOGIN' | 'REGISTER' | 'VERIFY_PHONE';
+}
+
+interface FirebasePhoneLoginPayload {
+  idToken: string;
 }
 
 async function persistSession(accessToken: string, refreshToken: string) {
@@ -139,9 +145,12 @@ export function useGoogleLogin() {
 }
 
 export function useSendOtp() {
-  return useMutation<{ message: string; expiresInSeconds: number }, Error, SendOtpPayload>({
+  return useMutation<{ message: string; expiresAt: string; devOtp?: string }, Error, SendOtpPayload>({
     mutationFn: async (payload) => {
-      const { data } = await api.post('/auth/send-otp', payload);
+      const { data } = await api.post('/otp/send', {
+        phone: payload.phone,
+        purpose: payload.purpose || 'LOGIN',
+      });
       return data;
     },
   });
@@ -153,7 +162,28 @@ export function useVerifyOtp() {
 
   return useMutation<AuthResponse, Error, VerifyOtpPayload>({
     mutationFn: async (payload) => {
-      const { data } = await api.post('/auth/verify-otp', payload);
+      const { data } = await api.post('/otp/login', {
+        phone: payload.phone,
+        otp: payload.otp,
+        purpose: payload.purpose || 'LOGIN',
+      });
+      return data;
+    },
+    onSuccess: (data) => {
+      login(data.user, data.accessToken, data.refreshToken);
+      queryClient.setQueryData(['user', 'me'], data.user);
+      void persistSession(data.accessToken, data.refreshToken);
+    },
+  });
+}
+
+export function useFirebasePhoneLogin() {
+  const queryClient = useQueryClient();
+  const { login } = useAuthStore();
+
+  return useMutation<AuthResponse, Error, FirebasePhoneLoginPayload>({
+    mutationFn: async ({ idToken }) => {
+      const { data } = await api.post('/auth/firebase/phone-login', { idToken });
       return data;
     },
     onSuccess: (data) => {

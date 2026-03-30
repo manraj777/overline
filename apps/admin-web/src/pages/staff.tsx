@@ -2,7 +2,14 @@ import React from 'react';
 import Head from 'next/head';
 import { Plus, Edit2, Mail, Phone, Users } from 'lucide-react';
 import { Card, Button, Input, Badge, Loading, ImageUpload } from '@/components/ui';
-import { useStaff, useCreateStaff, useUpdateStaff } from '@/hooks';
+import {
+  useStaff,
+  useCreateStaff,
+  useUpdateStaff,
+  useServices,
+  useAssignServiceToStaff,
+  useUnassignServiceFromStaff,
+} from '@/hooks';
 import { cn } from '@/lib/utils';
 import api from '@/lib/api';
 
@@ -24,23 +31,55 @@ const emptyForm: StaffFormData = {
 
 export default function StaffPage() {
   const { data: staff, isLoading } = useStaff();
+  const { data: services } = useServices();
   const createStaff = useCreateStaff();
   const updateStaff = useUpdateStaff();
+  const assignServiceToStaff = useAssignServiceToStaff();
+  const unassignServiceFromStaff = useUnassignServiceFromStaff();
   const [showForm, setShowForm] = React.useState(false);
   const [editingStaffId, setEditingStaffId] = React.useState<string | null>(null);
   const [formData, setFormData] = React.useState<StaffFormData>({ ...emptyForm });
+  const [selectedServiceIds, setSelectedServiceIds] = React.useState<string[]>([]);
+  const [initialServiceIds, setInitialServiceIds] = React.useState<string[]>([]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
+      let savedStaffId = editingStaffId;
+
       if (editingStaffId) {
         await updateStaff.mutateAsync({ staffId: editingStaffId, ...formData });
       } else {
-        await createStaff.mutateAsync(formData);
+        const created = await createStaff.mutateAsync(formData as any);
+        savedStaffId = created?.id;
       }
+
+      if (savedStaffId) {
+        const toAssign = selectedServiceIds.filter((id) => !initialServiceIds.includes(id));
+        const toUnassign = initialServiceIds.filter((id) => !selectedServiceIds.includes(id));
+
+        if (toAssign.length > 0) {
+          await Promise.all(
+            toAssign.map((serviceId) =>
+              assignServiceToStaff.mutateAsync({ staffId: savedStaffId as string, serviceId }),
+            ),
+          );
+        }
+
+        if (toUnassign.length > 0) {
+          await Promise.all(
+            toUnassign.map((serviceId) =>
+              unassignServiceFromStaff.mutateAsync({ staffId: savedStaffId as string, serviceId }),
+            ),
+          );
+        }
+      }
+
       setShowForm(false);
       setEditingStaffId(null);
       setFormData({ ...emptyForm });
+      setSelectedServiceIds([]);
+      setInitialServiceIds([]);
     } catch (err) {
       console.error('Failed to save staff:', err);
     }
@@ -65,6 +104,9 @@ export default function StaffPage() {
       role: member.role || 'STAFF',
       avatarUrl: member.avatarUrl || '',
     });
+    const assignedServiceIds = (member.staffServices || []).map((item: any) => item.serviceId);
+    setSelectedServiceIds(assignedServiceIds);
+    setInitialServiceIds(assignedServiceIds);
     setShowForm(true);
   };
 
@@ -72,6 +114,14 @@ export default function StaffPage() {
     setShowForm(false);
     setEditingStaffId(null);
     setFormData({ ...emptyForm });
+    setSelectedServiceIds([]);
+    setInitialServiceIds([]);
+  };
+
+  const toggleServiceSelection = (serviceId: string) => {
+    setSelectedServiceIds((prev) =>
+      prev.includes(serviceId) ? prev.filter((id) => id !== serviceId) : [...prev, serviceId],
+    );
   };
 
   if (isLoading) return <Loading text="Loading staff..." />;
@@ -89,7 +139,15 @@ export default function StaffPage() {
             <h1 className="text-2xl font-bold text-gray-900">Staff</h1>
             <p className="text-gray-500">Manage your team members</p>
           </div>
-          <Button onClick={() => { setEditingStaffId(null); setFormData({ ...emptyForm }); setShowForm(true); }}>
+          <Button
+            onClick={() => {
+              setEditingStaffId(null);
+              setFormData({ ...emptyForm });
+              setSelectedServiceIds([]);
+              setInitialServiceIds([]);
+              setShowForm(true);
+            }}
+          >
             <Plus className="w-4 h-4 mr-2" />
             Add Staff
           </Button>
@@ -152,9 +210,48 @@ export default function StaffPage() {
                   </select>
                 </div>
               </div>
+
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-2">Assigned Services</label>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2 rounded-lg border border-gray-200 p-3">
+                  {(services || []).map((service: any) => (
+                    <label key={service.id} className="flex items-center justify-between gap-3 rounded-md px-2 py-1.5 hover:bg-gray-50">
+                      <span className="text-sm text-gray-700">
+                        {service.name}
+                        <span className="ml-2 text-xs text-gray-500">{service.durationMinutes}m</span>
+                      </span>
+                      <input
+                        type="checkbox"
+                        className="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
+                        checked={selectedServiceIds.includes(service.id)}
+                        onChange={() => toggleServiceSelection(service.id)}
+                      />
+                    </label>
+                  ))}
+                  {(services || []).length === 0 && (
+                    <p className="text-sm text-gray-500">No services found. Add services first.</p>
+                  )}
+                </div>
+              </div>
+
               <div className="flex gap-2 pt-4">
-                <Button type="submit" disabled={createStaff.isPending || updateStaff.isPending}>
-                  {createStaff.isPending || updateStaff.isPending ? 'Saving...' : editingStaffId ? 'Update Staff' : 'Add Staff'}
+                <Button
+                  type="submit"
+                  disabled={
+                    createStaff.isPending ||
+                    updateStaff.isPending ||
+                    assignServiceToStaff.isPending ||
+                    unassignServiceFromStaff.isPending
+                  }
+                >
+                  {createStaff.isPending ||
+                  updateStaff.isPending ||
+                  assignServiceToStaff.isPending ||
+                  unassignServiceFromStaff.isPending
+                    ? 'Saving...'
+                    : editingStaffId
+                      ? 'Update Staff'
+                      : 'Add Staff'}
                 </Button>
                 <Button type="button" variant="outline" onClick={handleCancel}>
                   Cancel
@@ -213,6 +310,19 @@ export default function StaffPage() {
                     </div>
                   )}
                 </div>
+
+                {member.staffServices?.length > 0 && (
+                  <div className="mb-4 flex flex-wrap gap-1.5">
+                    {member.staffServices.map((item: any) => (
+                      <span
+                        key={item.serviceId}
+                        className="rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-700"
+                      >
+                        {item.service?.name || 'Service'}
+                      </span>
+                    ))}
+                  </div>
+                )}
 
                 <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-100">
                   <span

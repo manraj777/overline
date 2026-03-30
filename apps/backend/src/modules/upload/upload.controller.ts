@@ -46,7 +46,10 @@ export class UploadController {
       },
     },
   })
-  async uploadImageRoot(@UploadedFile() file: Express.Multer.File, @Body('folder') folder?: string) {
+  async uploadImageRoot(
+    @UploadedFile() file: Express.Multer.File,
+    @Body('folder') folder?: string,
+  ) {
     const result = await this.uploadService.uploadImage(file, folder || 'overline');
     return { url: result.url };
   }

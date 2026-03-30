@@ -63,6 +63,15 @@ export interface ShopRegistrationContext {
   userAgent: string;
 }
 
+export interface FraudEventLogInput {
+  eventType: string;
+  bookingId?: string;
+  userId?: string;
+  ipAddress?: string;
+  userAgent?: string;
+  metadata?: Record<string, any>;
+}
+
 @Injectable()
 export class FraudDetectionService {
   private readonly logger = new Logger(FraudDetectionService.name);
@@ -907,5 +916,34 @@ export class FraudDetectionService {
       recentIncidents: 0, // Would track in production
       highRiskUsers,
     };
+  }
+
+  /**
+   * Persist a fraud event for operations and audit visibility.
+   */
+  async logFraudEvent(input: FraudEventLogInput): Promise<void> {
+    const { eventType, bookingId, userId, ipAddress, userAgent, metadata } = input;
+
+    await this.prisma.auditLog.create({
+      data: {
+        actorUserId: userId,
+        action: eventType,
+        entityType: 'FRAUD',
+        entityId: bookingId || userId || 'system',
+        ipAddress,
+        userAgent,
+        metadata: {
+          ...(metadata || {}),
+          bookingId,
+          userId,
+          eventType,
+          loggedAt: new Date().toISOString(),
+        },
+      },
+    });
+
+    if (ipAddress) {
+      await this.recordSuspiciousIP(ipAddress, eventType);
+    }
   }
 }

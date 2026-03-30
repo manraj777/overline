@@ -38,7 +38,7 @@ interface AdminLayoutProps {
 
 const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
   const router = useRouter();
-  const { user, isAuthenticated, shopId } = useAuthStore();
+  const { user, isAuthenticated, shopId, pendingOtpVerification } = useAuthStore();
   const logout = useLogout();
   const [sidebarOpen, setSidebarOpen] = React.useState(false);
   const { addToast } = useToast();
@@ -168,6 +168,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
 
   const navigation = [
     { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
+    { name: 'Queue', href: '/queue', icon: Users },
     { name: 'Appointments', href: '/appointments', icon: Calendar },
     { name: 'Services', href: '/services', icon: Scissors },
     { name: 'Staff', href: '/staff', icon: Users },
@@ -179,6 +180,8 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
   ];
 
   const isActive = (href: string) => router.pathname.startsWith(href);
+  const publicRoutes = ['/login', '/register', '/auth/google/callback', '/404'];
+  const isPublicRoute = publicRoutes.some((route) => router.pathname.startsWith(route));
 
   const handleLogout = async () => {
     await logout.mutateAsync();
@@ -187,10 +190,20 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
 
   // Redirect to login if not authenticated
   React.useEffect(() => {
-    if (!isAuthenticated && router.pathname !== '/login') {
-      router.push('/login');
+    if (!isAuthenticated && !isPublicRoute) {
+      router.replace('/login');
     }
-  }, [isAuthenticated, router]);
+  }, [isAuthenticated, isPublicRoute, router]);
+
+  React.useEffect(() => {
+    if (isAuthenticated && pendingOtpVerification && router.pathname !== '/login') {
+      router.replace('/login?step=otp');
+    }
+  }, [isAuthenticated, pendingOtpVerification, router]);
+
+  if (!isAuthenticated && !isPublicRoute) {
+    return <div className="min-h-screen bg-gray-50" />;
+  }
 
   if (!isAuthenticated) {
     return <>{children}</>;

@@ -13,6 +13,7 @@ import * as bcrypt from 'bcryptjs';
 import { v4 as uuidv4 } from 'uuid';
 import { OAuth2Client } from 'google-auth-library';
 import { Twilio } from 'twilio';
+import * as admin from 'firebase-admin';
 import { PrismaService } from '@/common/prisma/prisma.service';
 import { RedisService } from '@/common/redis/redis.service';
 import {
@@ -35,14 +36,7 @@ const UserRole = {
   SUPER_ADMIN: 'SUPER_ADMIN',
 } as const;
 
-type DayOfWeek =
-  | 'MONDAY'
-  | 'TUESDAY'
-  | 'WEDNESDAY'
-  | 'THURSDAY'
-  | 'FRIDAY'
-  | 'SATURDAY'
-  | 'SUNDAY';
+type DayOfWeek = 'MONDAY' | 'TUESDAY' | 'WEDNESDAY' | 'THURSDAY' | 'FRIDAY' | 'SATURDAY' | 'SUNDAY';
 
 const DayOfWeek = {
   MONDAY: 'MONDAY',
@@ -89,6 +83,7 @@ export class AuthService {
   private readonly logger = new Logger(AuthService.name);
   private googleClient: OAuth2Client;
   private twilioClient: Twilio | null = null;
+  private firebaseAuth: admin.auth.Auth | null = null;
 
   constructor(
     private prisma: PrismaService,
@@ -119,6 +114,63 @@ export class AuthService {
       return `+91${cleaned.slice(1)}`;
     }
     return phone;
+  }
+
+  private initializeFirebaseAuth(): admin.auth.Auth {
+    if (this.firebaseAuth) {
+      return this.firebaseAuth;
+    }
+
+    const projectId = this.configService.get<string>('firebase.projectId');
+    const serviceAccountKey = this.configService.get<string>('firebase.serviceAccountKey');
+
+    if (!projectId || !serviceAccountKey) {
+      throw new InternalServerErrorException(
+        'Firebase phone login is not configured on the server.',
+      );
+    }
+
+    const serviceAccount = this.parseFirebaseServiceAccount(serviceAccountKey, projectId);
+    const appName = `overline-backend-${projectId}`;
+    const existingApp = admin.apps.find((app) => app.name === appName);
+    const firebaseApp =
+      existingApp ||
+      admin.initializeApp(
+        {
+          credential: admin.credential.cert(serviceAccount),
+          projectId,
+        },
+        appName,
+      );
+
+    this.firebaseAuth = firebaseApp.auth();
+    return this.firebaseAuth;
+  }
+
+  private parseFirebaseServiceAccount(serviceAccountKey: string, projectId: string) {
+    const trimmed = serviceAccountKey.trim();
+    const maybeJson = trimmed.startsWith('{');
+
+    try {
+      if (maybeJson) {
+        const parsed = JSON.parse(trimmed) as admin.ServiceAccount;
+        return {
+          ...parsed,
+          privateKey: parsed.privateKey?.replace(/\\n/g, '\n'),
+          projectId: parsed.projectId || projectId,
+        };
+      }
+
+      const decoded = Buffer.from(trimmed, 'base64').toString('utf8');
+      const parsed = JSON.parse(decoded) as admin.ServiceAccount;
+      return {
+        ...parsed,
+        privateKey: parsed.privateKey?.replace(/\\n/g, '\n'),
+        projectId: parsed.projectId || projectId,
+      };
+    } catch {
+      throw new InternalServerErrorException('Invalid Firebase service account key configuration.');
+    }
   }
 
   private generateOtpCode(): string {
@@ -210,6 +262,77 @@ export class AuthService {
           email: generatedEmail,
           role: UserRole.USER,
           authProvider: 'phone',
+          lastLoginAt: new Date(),
+        },
+      });
+    });
+
+    return this.generateTokens(user);
+  }
+
+  async firebasePhoneLogin(idToken: string): Promise<TokenResponse> {
+    const token = idToken?.trim();
+    if (!token) {
+      throw new BadRequestException('Firebase ID token is required');
+    }
+
+    let decodedToken: admin.auth.DecodedIdToken;
+    try {
+      const firebaseAuth = this.initializeFirebaseAuth();
+      decodedToken = await firebaseAuth.verifyIdToken(token, true);
+    } catch (error: any) {
+      const code = error?.code as string | undefined;
+      if (code === 'auth/id-token-expired') {
+        throw new UnauthorizedException('Firebase token expired. Please retry phone verification.');
+      }
+      if (code === 'auth/argument-error' || code === 'auth/invalid-id-token') {
+        throw new UnauthorizedException('Invalid Firebase token. Please retry phone verification.');
+      }
+      if (error instanceof InternalServerErrorException) {
+        throw error;
+      }
+      this.logger.error(
+        `[firebasePhoneLogin] Failed to verify Firebase token: ${error?.message || 'unknown error'}`,
+      );
+      throw new UnauthorizedException('Unable to verify Firebase token.');
+    }
+
+    const normalizedPhone = this.normalizePhone(decodedToken.phone_number || '');
+    if (!normalizedPhone) {
+      throw new BadRequestException('Firebase token does not include a phone number');
+    }
+
+    const user = await this.prisma.$transaction(async (tx) => {
+      const existingUser = await tx.user.findUnique({
+        where: { phone: normalizedPhone },
+      });
+
+      if (existingUser) {
+        return tx.user.update({
+          where: { id: existingUser.id },
+          data: {
+            isPhoneVerified: true,
+            lastLoginAt: new Date(),
+            authProvider:
+              existingUser.authProvider === 'local' && existingUser.hashedPassword
+                ? existingUser.authProvider
+                : 'firebase',
+          },
+        });
+      }
+
+      const emailPrefix = normalizedPhone.replace(/\D/g, '');
+      const generatedEmail = `${emailPrefix}.${Date.now()}@phone.overline.app`;
+      const name = decodedToken.name?.trim() || `User ${normalizedPhone.slice(-4)}`;
+
+      return tx.user.create({
+        data: {
+          phone: normalizedPhone,
+          isPhoneVerified: true,
+          name,
+          email: generatedEmail,
+          role: UserRole.USER,
+          authProvider: 'firebase',
           lastLoginAt: new Date(),
         },
       });
@@ -638,7 +761,9 @@ export class AuthService {
       });
     } catch (error: any) {
       console.error('[GoogleLogin] verifyIdToken error:', error?.message);
-      throw new UnauthorizedException(`Invalid Google token: ${error?.message || 'Verification failed'}`);
+      throw new UnauthorizedException(
+        `Invalid Google token: ${error?.message || 'Verification failed'}`,
+      );
     }
 
     const payload = ticket.getPayload();

@@ -12,4 +12,4 @@ import { AuthModule } from '../auth/auth.module';
   providers: [OtpService],
   exports: [OtpService],
 })
-export class OtpModule { }
+export class OtpModule {}

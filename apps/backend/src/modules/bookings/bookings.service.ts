@@ -90,7 +90,9 @@ export class BookingsService {
     const dateKey = this.getSlotDateKey(startTime);
     const timeKey = this.getSlotTimeKey(startTime);
     await Promise.all(
-      serviceIds.map((serviceId) => this.redis.del(`slot:${shopId}:${dateKey}:${serviceId}:${timeKey}`)),
+      serviceIds.map((serviceId) =>
+        this.redis.del(`slot:${shopId}:${dateKey}:${serviceId}:${timeKey}`),
+      ),
     );
   }
 
@@ -288,7 +290,7 @@ export class BookingsService {
       const status = shop.autoAcceptBookings ? BookingStatus.CONFIRMED : BookingStatus.PENDING;
 
       // Get queue position
-      const queuePosition = await this.queueService.getQueuePosition(shopId);
+      const queuePosition = await this.queueService.getNextQueuePosition(shopId);
 
       // Create booking with new fields
       const newBooking = await tx.booking.create({
@@ -642,7 +644,9 @@ export class BookingsService {
       this.prisma.bookingService
         .findMany({ where: { bookingId }, select: { serviceId: true } })
         .then((rows) => rows.map((row) => row.serviceId))
-        .then((serviceIds) => this.unmarkBookingSlots(booking.shopId, booking.startTime, serviceIds))
+        .then((serviceIds) =>
+          this.unmarkBookingSlots(booking.shopId, booking.startTime, serviceIds),
+        )
         .catch(console.error);
     }
 

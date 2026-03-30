@@ -19,9 +19,7 @@ import {
   BorderRadius,
   FontSizes,
   FontWeights,
-  Shadows,
 } from '../../theme';
-import { otpApi } from '../../api/client';
 import { useAuthStore } from '../../stores/authStore';
 import { RootStackParamList } from '../../types';
 
@@ -34,7 +32,7 @@ export default function OtpVerifyScreen() {
   const navigation = useNavigation<NavigationProp>();
   const route = useRoute<RouteProps>();
   const { phone } = route.params;
-  const { completeOtpLogin } = useAuthStore();
+  const { verifyOtpCode, sendOtp } = useAuthStore();
 
   const [otp, setOtp] = useState<string[]>(Array(OTP_LENGTH).fill(''));
   const [isVerifying, setIsVerifying] = useState(false);
@@ -104,11 +102,7 @@ export default function OtpVerifyScreen() {
     setError('');
 
     try {
-      // Single-step: loginWithOtp verifies OTP and returns JWT tokens
-      const { data } = await otpApi.login(phone, code);
-
-      // Store tokens and update auth state via store
-      await completeOtpLogin(data.user, data.accessToken, data.refreshToken);
+      await verifyOtpCode(code);
     } catch (err: any) {
       const message =
         err.response?.data?.message || 'Invalid OTP. Please try again.';
@@ -125,7 +119,7 @@ export default function OtpVerifyScreen() {
 
     setIsResending(true);
     try {
-      await otpApi.send(phone, 'LOGIN');
+      await sendOtp(phone);
       setCountdown(60);
       setOtp(Array(OTP_LENGTH).fill(''));
       setError('');

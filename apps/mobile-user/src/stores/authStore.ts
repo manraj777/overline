@@ -1,6 +1,7 @@
 import { create } from 'zustand';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import { authApi, otpApi } from '../api/client';
+import auth, { FirebaseAuthTypes } from '@react-native-firebase/auth';
+import { authApi } from '../api/client';
 
 export interface User {
   id: string;
@@ -21,6 +22,7 @@ interface AuthState {
   // OTP state
   otpPhone: string | null;
   otpSent: boolean;
+  otpConfirmation: FirebaseAuthTypes.ConfirmationResult | null;
 
   // Actions
   login: (email: string, password: string) => Promise<void>;
@@ -32,6 +34,7 @@ interface AuthState {
     phone: string;
   }) => Promise<void>;
   sendOtp: (phone: string) => Promise<string | undefined>;
+  verifyOtpCode: (otp: string) => Promise<void>;
   completeOtpLogin: (user: User, accessToken?: string, refreshToken?: string) => Promise<void>;
   logout: () => Promise<void>;
   checkAuth: () => Promise<void>;
@@ -45,6 +48,7 @@ export const useAuthStore = create<AuthState>((set, _get) => ({
   error: null,
   otpPhone: null,
   otpSent: false,
+  otpConfirmation: null,
 
   login: async (email, password) => {
     try {
@@ -100,13 +104,35 @@ export const useAuthStore = create<AuthState>((set, _get) => ({
   sendOtp: async (phone: string) => {
     try {
       set({ error: null });
-      const { data } = await otpApi.send(phone, 'LOGIN');
-      set({ otpPhone: phone, otpSent: true });
-      // Return devOtp if available (dev mode only)
-      return data.devOtp;
+      const confirmation = await auth().signInWithPhoneNumber(phone);
+      set({ otpPhone: phone, otpSent: true, otpConfirmation: confirmation });
+      return undefined;
     } catch (error: any) {
       const message =
         error.response?.data?.message || 'Failed to send OTP. Please try again.';
+      set({ error: message });
+      throw error;
+    }
+  },
+
+  verifyOtpCode: async (otp: string) => {
+    const state = _get();
+    if (!state.otpConfirmation) {
+      throw new Error('OTP session expired. Please request a new code.');
+    }
+
+    try {
+      set({ error: null });
+      const credential = await state.otpConfirmation.confirm(otp);
+      if (!credential) {
+        throw new Error('OTP confirmation failed. Please request a new code.');
+      }
+      const idToken = await credential.user.getIdToken(true);
+      const { data } = await authApi.firebasePhoneLogin(idToken);
+      await state.completeOtpLogin(data.user, data.accessToken, data.refreshToken);
+    } catch (error: any) {
+      const message =
+        error.response?.data?.message || error.message || 'Invalid OTP. Please try again.';
       set({ error: message });
       throw error;
     }
@@ -126,6 +152,7 @@ export const useAuthStore = create<AuthState>((set, _get) => ({
       error: null,
       otpPhone: null,
       otpSent: false,
+      otpConfirmation: null,
     });
   },
 
@@ -143,6 +170,7 @@ export const useAuthStore = create<AuthState>((set, _get) => ({
       error: null,
       otpPhone: null,
       otpSent: false,
+      otpConfirmation: null,
     });
   },
 

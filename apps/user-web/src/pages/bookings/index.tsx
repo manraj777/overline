@@ -206,7 +206,7 @@ export default function BookingsPage() {
                       </p>
                     </div>
                     <Link
-                      href={`/shop/${session.shopId}`}
+                      href={`/bookings/${session.bookingId}`}
                       className="inline-flex rounded-lg bg-primary-600 px-3 py-2 text-xs font-semibold text-white hover:bg-primary-700"
                     >
                       Resume Tracking

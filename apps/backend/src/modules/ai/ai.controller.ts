@@ -66,11 +66,7 @@ export class AiController {
     const userId = req.user?.id;
     this.logger.log(`AI chat request from user ${userId || 'anonymous'}`);
 
-    const response = await this.aiService.chat(
-      dto.messages as any[],
-      userId,
-      dto.shopId,
-    );
+    const response = await this.aiService.chat(dto.messages as any[], userId, dto.shopId);
 
     return { role: 'assistant', content: response };
   }
@@ -84,9 +80,7 @@ export class AiController {
     const userId = req.user?.id;
     this.logger.log(`AI chat stream request from user ${userId || 'anonymous'}`);
 
-    return from(
-      this.aiService.chat(dto.messages as any[], userId, dto.shopId),
-    ).pipe(
+    return from(this.aiService.chat(dto.messages as any[], userId, dto.shopId)).pipe(
       map((response) => {
         // Simulate streaming by chunking the response
         return { data: JSON.stringify({ role: 'assistant', content: response, done: true }) };

@@ -13,6 +13,7 @@ import { useShop, useShopQueueStats, useAvailableSlots, useCreateBooking, useSho
 import { useBookingStore } from '@/stores/booking';
 import { useAuthStore } from '@/stores/auth';
 import { format } from 'date-fns';
+import { saveQueueSession } from '@/lib/queue-session';
 
 type BookingStep = 'services' | 'staff' | 'datetime' | 'confirm';
 
@@ -161,6 +162,14 @@ export default function ShopDetailPage() {
           customerPhone: customerPhone || undefined,
         } : {}),
       });
+
+      if (booking?.id && booking?.bookingNumber) {
+        saveQueueSession({
+          shopId: shop.id,
+          bookingId: booking.id,
+          tokenCode: booking.bookingNumber,
+        });
+      }
 
       router.push(`/bookings/${booking.id}?success=true`);
     } catch (err: any) {
@@ -458,7 +467,11 @@ export default function ShopDetailPage() {
                       />
                     ) : (
                       <div className="p-12 text-center bg-gray-50 rounded-3xl border border-dashed border-gray-200">
-                        <p className="text-lg text-lexo-gray font-medium">No specific professionals available for request.</p>
+                        <p className="text-lg text-lexo-gray font-medium">
+                          {selectedServices.length > 0
+                            ? 'No professionals are currently mapped for the selected service(s). Please change services or try later.'
+                            : 'No specific professionals available for request.'}
+                        </p>
                       </div>
                     )}
                   </div>

@@ -40,13 +40,25 @@ export class AnalyticsWorker {
             where: { shopId: shop.id, startTime: { gte: today, lt: tomorrow } },
           }),
           this.prisma.booking.count({
-            where: { shopId: shop.id, status: 'COMPLETED', startTime: { gte: today, lt: tomorrow } },
+            where: {
+              shopId: shop.id,
+              status: 'COMPLETED',
+              startTime: { gte: today, lt: tomorrow },
+            },
           }),
           this.prisma.booking.count({
-            where: { shopId: shop.id, status: { in: ['PENDING', 'CONFIRMED'] }, startTime: { gte: today, lt: tomorrow } },
+            where: {
+              shopId: shop.id,
+              status: { in: ['PENDING', 'CONFIRMED'] },
+              startTime: { gte: today, lt: tomorrow },
+            },
           }),
           this.prisma.booking.count({
-            where: { shopId: shop.id, status: 'IN_PROGRESS', startTime: { gte: today, lt: tomorrow } },
+            where: {
+              shopId: shop.id,
+              status: 'IN_PROGRESS',
+              startTime: { gte: today, lt: tomorrow },
+            },
           }),
           this.prisma.booking.count({
             where: { shopId: shop.id, status: 'NO_SHOW', startTime: { gte: today, lt: tomorrow } },

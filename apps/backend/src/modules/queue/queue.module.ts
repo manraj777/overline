@@ -5,11 +5,13 @@ import { QueueController } from './queue.controller';
 import { QueueService } from './queue.service';
 import { QueueGateway } from './queue.gateway';
 import { SlotEngineService } from './slot-engine.service';
+import { NotificationsModule } from '../notifications/notifications.module';
+import { FraudDetectionModule } from '../fraud-detection/fraud-detection.module';
 
 import { QueueTrackingService } from './queue-tracking.service';
 
 @Module({
-  imports: [PrismaModule, RedisModule],
+  imports: [PrismaModule, RedisModule, NotificationsModule, FraudDetectionModule],
   controllers: [QueueController],
   providers: [QueueService, QueueGateway, SlotEngineService, QueueTrackingService],
   exports: [QueueService, QueueGateway, SlotEngineService, QueueTrackingService],

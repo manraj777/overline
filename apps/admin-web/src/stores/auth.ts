@@ -7,11 +7,15 @@ interface AuthState {
   accessToken: string | null;
   refreshToken: string | null;
   shopId: string | null;
+  otpPhone: string | null;
+  pendingOtpVerification: boolean;
   isAuthenticated: boolean;
   isLoading: boolean;
   setUser: (user: User) => void;
   setTokens: (accessToken: string, refreshToken: string) => void;
   setShopId: (shopId: string) => void;
+  setOtpPending: (phone: string) => void;
+  clearOtpPending: () => void;
   login: (user: User, accessToken: string, refreshToken: string, shopId?: string) => void;
   logout: () => void;
   setLoading: (loading: boolean) => void;
@@ -24,6 +28,8 @@ export const useAuthStore = create<AuthState>()(
       accessToken: null,
       refreshToken: null,
       shopId: null,
+      otpPhone: null,
+      pendingOtpVerification: false,
       isAuthenticated: false,
       isLoading: true,
 
@@ -34,12 +40,26 @@ export const useAuthStore = create<AuthState>()(
 
       setShopId: (shopId) => set({ shopId }),
 
+      setOtpPending: (phone) =>
+        set({
+          otpPhone: phone,
+          pendingOtpVerification: true,
+        }),
+
+      clearOtpPending: () =>
+        set({
+          otpPhone: null,
+          pendingOtpVerification: false,
+        }),
+
       login: (user, accessToken, refreshToken, shopId) =>
         set({
           user,
           accessToken,
           refreshToken,
           shopId,
+          otpPhone: null,
+          pendingOtpVerification: false,
           isAuthenticated: true,
           isLoading: false,
         }),
@@ -50,6 +70,8 @@ export const useAuthStore = create<AuthState>()(
           accessToken: null,
           refreshToken: null,
           shopId: null,
+          otpPhone: null,
+          pendingOtpVerification: false,
           isAuthenticated: false,
           isLoading: false,
         }),
@@ -63,6 +85,8 @@ export const useAuthStore = create<AuthState>()(
         accessToken: state.accessToken,
         refreshToken: state.refreshToken,
         shopId: state.shopId,
+        otpPhone: state.otpPhone,
+        pendingOtpVerification: state.pendingOtpVerification,
         isAuthenticated: state.isAuthenticated,
       }),
     }

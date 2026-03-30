@@ -50,7 +50,8 @@ export class UploadService {
       throw new BadRequestException('Image upload is not configured on server');
     }
 
-    const safeFolder = folder.replace(/[^a-zA-Z0-9/_-]/g, '').replace(/^\/+|\/+$/g, '') || 'overline';
+    const safeFolder =
+      folder.replace(/[^a-zA-Z0-9/_-]/g, '').replace(/^\/+|\/+$/g, '') || 'overline';
     const extension = file.originalname.includes('.')
       ? file.originalname.split('.').pop()?.toLowerCase()
       : 'jpg';
@@ -83,7 +84,9 @@ export class UploadService {
     try {
       await cloudinary.uploader.destroy(publicId, { resource_type: 'image' });
     } catch (error) {
-      this.logger.warn(`Failed to delete Cloudinary image ${publicId}: ${(error as Error).message}`);
+      this.logger.warn(
+        `Failed to delete Cloudinary image ${publicId}: ${(error as Error).message}`,
+      );
     }
   }
 }

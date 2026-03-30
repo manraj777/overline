@@ -394,6 +394,55 @@ curl http://localhost:3000/health
 - [ ] Free cash system operational
 - [ ] Feedback system working
 
+### Firebase Phone Auth Rollout (March 30, 2026)
+
+#### Required Environment Variables
+
+Backend (`apps/backend`):
+```env
+FIREBASE_PROJECT_ID=teak-serenity-488010-f3
+FIREBASE_SERVICE_ACCOUNT_KEY=<raw JSON or base64-encoded service account JSON>
+```
+
+Web apps (`apps/user-web`, `apps/admin-web`):
+```env
+NEXT_PUBLIC_FIREBASE_API_KEY=...
+NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN=...
+NEXT_PUBLIC_FIREBASE_PROJECT_ID=...
+NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=...
+NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=...
+NEXT_PUBLIC_FIREBASE_APP_ID=...
+```
+
+#### Rollout Sequence
+1. Deploy backend with Firebase Admin env keys.
+2. Verify backend route `/auth/firebase/phone-login` in staging with valid and invalid Firebase ID tokens.
+3. Deploy `user-web` with Firebase public config and verify phone login + verify-phone flows.
+4. Validate `mobile-user` Firebase OTP flow on device/emulator (send, verify, resend, invalid OTP).
+5. Run admin sanity checks (`admin-web` and `mobile-admin`) for login/session and dashboard access.
+6. Promote to production only after staged smoke matrix is green.
+
+#### Focused Smoke Matrix (Current Status)
+- [x] Backend Firebase exchange unit tests pass (`AuthService firebasePhoneLogin`).
+- [x] Backend production build passes.
+- [x] user-web production build passes with migrated verify-phone flow and Razorpay checkout integration.
+- [x] user-web booking card working-hours state now uses schedule + timezone data (no hardcoded open state).
+- [x] admin-web production build passes with auth guard/session bootstrap hardening and queue socket token-aware reconnect updates (one existing lint warning in `LiveTracking.tsx`).
+- [ ] mobile-user device/emulator OTP smoke (manual) pending.
+- [ ] mobile-admin device/emulator sanity smoke (manual) pending.
+- [ ] mobile-user Jest in this workspace (still blocked by React Native Jest ESM transform setup under pnpm hoisted modules after config attempts).
+- [ ] mobile-admin Jest in this workspace (still blocked by React Native Jest ESM transform setup under pnpm hoisted modules after config attempts).
+
+#### Rollback Triggers
+- Any increase in OTP verification failure rate after release.
+- Any sustained spike in `401` responses from `/auth/firebase/phone-login`.
+- Frontend inability to initialize Firebase due to missing `NEXT_PUBLIC_FIREBASE_*` keys.
+
+#### Rollback Actions
+1. Roll back `user-web` release to previous stable build.
+2. Keep backend deployed (legacy OTP endpoints remain available) or roll back backend if exchange route causes auth regressions.
+3. Re-validate login on both email/password and legacy OTP paths before re-attempting rollout.
+
 ---
 
 ## Performance Metrics
@@ -445,7 +494,7 @@ curl http://localhost:3000/health
 
 ### Current Limitations
 1. SMS provider needs to be configured (OTP sends logged in dev mode)
-2. Payment gateway (Stripe/Razorpay) needs full integration
+2. Razorpay web checkout is integrated, but final go-live requires production key rotation + manual payment smoke on real devices.
 3. Android app not yet developed
 
 ### Future Enhancements

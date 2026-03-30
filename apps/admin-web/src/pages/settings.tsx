@@ -2,7 +2,7 @@ import React from 'react';
 import Head from 'next/head';
 import { Save, Upload, Bell, Clock, Globe, CreditCard, Camera, X } from 'lucide-react';
 import { Card, Button, Input, Loading, useToast, ImageUpload } from '@/components/ui';
-import { useShopSettings, useUpdateShopSettings, useWorkingHours, useUpdateWorkingHours } from '@/hooks';
+import { useShopSettings, useUpdateShopSettings, useWorkingHours, useUpdateWorkingHours, useUser } from '@/hooks';
 import api from '@/lib/api';
 
 const DAY_NAMES = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY'];
@@ -18,6 +18,7 @@ export default function SettingsPage() {
   // Shop settings
   const { data: shopData, isLoading: loadingSettings } = useShopSettings();
   const updateSettings = useUpdateShopSettings();
+  const { data: userData } = useUser();
 
   // Working hours
   const { data: workingHoursData, isLoading: loadingHours } = useWorkingHours();
@@ -88,6 +89,16 @@ export default function SettingsPage() {
       setHoursForm(map);
     }
   }, [workingHoursData]);
+
+  React.useEffect(() => {
+    if (!userData) return;
+
+    setProfileForm({
+      name: userData.name || '',
+      phone: userData.phone || '',
+      avatarUrl: userData.avatarUrl || '',
+    });
+  }, [userData]);
 
   const handleSaveGeneral = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -184,6 +195,7 @@ export default function SettingsPage() {
       await api.patch('/users/me', {
         name: profileForm.name,
         phone: profileForm.phone,
+        avatarUrl: profileForm.avatarUrl,
       });
       addToast({ type: 'success', title: 'Profile updated!' });
     } catch (err: any) {

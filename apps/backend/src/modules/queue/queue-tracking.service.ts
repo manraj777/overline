@@ -14,15 +14,24 @@ export class QueueTrackingService {
    */
   async getTrackableBookings(shopId: string) {
     const now = new Date();
+    const startOfDay = new Date(now);
+    startOfDay.setHours(0, 0, 0, 0);
     const limitDate = new Date(now.getTime() + 20 * 60000);
 
     // Get bookings that are pending/confirmed, for today, start <= 20 mins OR in progress
     const bookings = await this.prisma.booking.findMany({
       where: {
         shopId,
-        status: { in: ['CONFIRMED', 'PENDING', 'IN_PROGRESS'] },
-        startTime: { lte: limitDate },
-        // To be safe, ensure we only look at today's or recent
+        OR: [
+          {
+            status: { in: ['CONFIRMED', 'PENDING'] },
+            startTime: { gte: startOfDay, lte: limitDate },
+          },
+          {
+            status: 'IN_PROGRESS',
+            startTime: { gte: startOfDay },
+          },
+        ],
       },
       include: {
         user: {

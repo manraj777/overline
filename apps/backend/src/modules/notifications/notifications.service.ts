@@ -361,4 +361,94 @@ export class NotificationsService {
       phone: booking.customerPhone || undefined,
     });
   }
+
+  /**
+   * Notify user that booking was cancelled by shop/admin action.
+   */
+  async sendBookingCancellationNotice(bookingId: string, reason?: string): Promise<void> {
+    const booking = await this.prisma.booking.findUnique({
+      where: { id: bookingId },
+      include: {
+        user: true,
+        shop: true,
+      },
+    });
+
+    if (!booking) return;
+
+    const reasonText = reason ? `\nReason: ${reason}` : '';
+    const message =
+      `Your booking at ${booking.shop.name} has been cancelled.${reasonText}\n` +
+      `Booking #: ${booking.bookingNumber}`;
+
+    await this.send({
+      userId: booking.userId || undefined,
+      bookingId: booking.id,
+      type: NotificationType.BOOKING_CANCELLED,
+      title: 'Booking Cancelled',
+      body: message,
+      channels: [NotificationChannel.SMS, NotificationChannel.PUSH],
+      email: booking.customerEmail || undefined,
+      phone: booking.customerPhone || undefined,
+    });
+  }
+
+  /**
+   * Notify customer that check-in has been recorded.
+   */
+  async sendCheckInAcknowledgement(bookingId: string): Promise<void> {
+    const booking = await this.prisma.booking.findUnique({
+      where: { id: bookingId },
+      include: {
+        user: true,
+        shop: true,
+      },
+    });
+
+    if (!booking) return;
+
+    const message =
+      `You're checked in at ${booking.shop.name}.\n` +
+      `We'll notify you when your turn is up. Booking #: ${booking.bookingNumber}`;
+
+    await this.send({
+      userId: booking.userId || undefined,
+      bookingId: booking.id,
+      type: NotificationType.QUEUE_UPDATE,
+      title: 'Check-in Confirmed',
+      body: message,
+      channels: [NotificationChannel.SMS, NotificationChannel.PUSH],
+      phone: booking.customerPhone || undefined,
+    });
+  }
+
+  /**
+   * Notify customer when turn is approaching.
+   */
+  async sendTurnApproaching(bookingId: string, position: number): Promise<void> {
+    const booking = await this.prisma.booking.findUnique({
+      where: { id: bookingId },
+      include: {
+        user: true,
+        shop: true,
+      },
+    });
+
+    if (!booking) return;
+
+    const message =
+      position <= 1
+        ? `It's your turn at ${booking.shop.name}. Please proceed to the service desk.`
+        : `Only ${position - 1} customer(s) ahead of you at ${booking.shop.name}. Please be ready.`;
+
+    await this.send({
+      userId: booking.userId || undefined,
+      bookingId: booking.id,
+      type: NotificationType.TURN_NOTIFICATION,
+      title: 'Your Turn Is Approaching',
+      body: message,
+      channels: [NotificationChannel.SMS, NotificationChannel.PUSH],
+      phone: booking.customerPhone || undefined,
+    });
+  }
 }

@@ -11,6 +11,7 @@ import {
   ActivityIndicator,
 } from 'react-native';
 import {useRoute, RouteProp} from '@react-navigation/native';
+import {useNavigation} from '@react-navigation/native';
 import {otpApi} from '../../api/client';
 import {useAuthStore} from '../../stores/authStore';
 import {RootStackParamList} from '../../types';
@@ -20,9 +21,10 @@ type RouteProps = RouteProp<RootStackParamList, 'OtpVerify'>;
 const OTP_LENGTH = 6;
 
 export default function OtpVerifyScreen() {
+  const navigation = useNavigation<any>();
   const route = useRoute<RouteProps>();
   const {phone} = route.params;
-  const {completeOtpVerification} = useAuthStore();
+  const {completeOtpVerification, logout} = useAuthStore();
 
   const [otp, setOtp] = useState<string[]>(Array(OTP_LENGTH).fill(''));
   const [isVerifying, setIsVerifying] = useState(false);
@@ -86,7 +88,7 @@ export default function OtpVerifyScreen() {
     setError('');
 
     try {
-      await otpApi.verify(phone, code);
+      await otpApi.verify(phone, code, 'LOGIN');
       completeOtpVerification();
     } catch (err: any) {
       const message =
@@ -103,7 +105,7 @@ export default function OtpVerifyScreen() {
     if (countdown > 0) return;
     setIsResending(true);
     try {
-      await otpApi.send(phone);
+      await otpApi.send(phone, 'LOGIN');
       setCountdown(60);
       setOtp(Array(OTP_LENGTH).fill(''));
       setError('');
@@ -120,6 +122,14 @@ export default function OtpVerifyScreen() {
       return `+91 ${p.slice(3, 8)} ${p.slice(8)}`;
     }
     return p;
+  };
+
+  const handleBackToLogin = async () => {
+    await logout();
+    navigation.reset({
+      index: 0,
+      routes: [{name: 'Login'}],
+    });
   };
 
   return (
@@ -205,6 +215,9 @@ export default function OtpVerifyScreen() {
           </Text>
         </View>
       </View>
+      <TouchableOpacity style={styles.backButton} onPress={handleBackToLogin}>
+        <Text style={styles.backButtonText}>Back to Login</Text>
+      </TouchableOpacity>
     </KeyboardAvoidingView>
   );
 }
@@ -334,5 +347,14 @@ const styles = StyleSheet.create({
     color: '#6B7280',
     fontSize: 13,
     lineHeight: 20,
+  },
+  backButton: {
+    alignItems: 'center',
+    marginBottom: 20,
+  },
+  backButtonText: {
+    color: '#374151',
+    fontSize: 14,
+    fontWeight: '600',
   },
 });

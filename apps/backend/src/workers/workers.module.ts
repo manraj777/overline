@@ -40,11 +40,7 @@ import { ReviewRemindersWorker } from './review-reminders.worker';
     RedisModule,
     NotificationsModule,
   ],
-  providers: [
-    NotificationsWorker,
-    AnalyticsWorker,
-    ReviewRemindersWorker,
-  ],
+  providers: [NotificationsWorker, AnalyticsWorker, ReviewRemindersWorker],
   exports: [BullModule],
 })
 export class WorkersModule {}

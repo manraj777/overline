@@ -23,6 +23,15 @@ import { formatDate, formatTime, formatPrice, formatDuration, getEndTime } from 
 import { removeQueueSession } from '@/lib/queue-session';
 import { BookingStatus } from '@/types';
 
+interface RazorpayPaymentData {
+  orderId: string;
+  amount: number;
+  currency: string;
+  keyId: string;
+  bookingNumber: string;
+  shopName?: string;
+}
+
 export default function BookingDetailPage() {
   const router = useRouter();
   const { id, success } = router.query;
@@ -35,11 +44,7 @@ export default function BookingDetailPage() {
   const [showReviewForm, setShowReviewForm] = React.useState(false);
   const [reviewSubmitted, setReviewSubmitted] = React.useState(false);
   const [showPayment, setShowPayment] = React.useState(false);
-  const [paymentData, setPaymentData] = React.useState<{
-    clientSecret: string;
-    amount: number;
-    currency: string;
-  } | null>(null);
+  const [paymentData, setPaymentData] = React.useState<RazorpayPaymentData | null>(null);
 
   // Real-time booking status tracking
   const [queuePosition, setQueuePosition] = React.useState<number | null>(null);
@@ -72,15 +77,26 @@ export default function BookingDetailPage() {
       const data = await createPaymentIntent.mutateAsync({
         bookingId: booking.id,
       });
+
+      if (data.method !== 'RAZORPAY') {
+        setPaymentError(
+          'Online Razorpay checkout is not configured for this booking. Please pay at the counter.',
+        );
+        return;
+      }
+
       setPaymentData({
-        clientSecret: data.clientSecret,
+        orderId: data.orderId,
         amount: data.amount,
         currency: data.currency,
+        keyId: data.keyId,
+        bookingNumber: data.bookingNumber,
+        shopName: data.shopName,
       });
       setShowPayment(true);
     } catch (err: any) {
       console.error('Failed to create payment intent:', err);
-      // Ensure we display the error from the backend (like Stripe missing configuration)
+      // Surface backend provider/config errors directly for easier troubleshooting.
       setPaymentError(err.response?.data?.message || err.message || 'Failed to initialize payment');
     }
   };
@@ -398,7 +414,7 @@ export default function BookingDetailPage() {
                     <div>
                       <h3 className="font-semibold text-gray-900">Pay Online</h3>
                       <p className="text-sm text-gray-500">
-                        Secure payment via Stripe
+                        Secure payment via Razorpay
                       </p>
                     </div>
                   </div>
@@ -411,9 +427,12 @@ export default function BookingDetailPage() {
 
                   {showPayment && paymentData ? (
                     <PaymentForm
-                      clientSecret={paymentData.clientSecret}
+                      orderId={paymentData.orderId}
+                      keyId={paymentData.keyId}
                       amount={paymentData.amount}
                       currency={paymentData.currency}
+                      bookingNumber={paymentData.bookingNumber}
+                      shopName={paymentData.shopName}
                       onSuccess={() => {
                         setShowPayment(false);
                         refetch();

@@ -57,10 +57,7 @@ export class UsersController {
 
   @Post('fcm-token')
   @ApiOperation({ summary: 'Update push notification token for user' })
-  async updateFcmToken(
-    @CurrentUser('id') userId: string,
-    @Body('token') token: string,
-  ) {
+  async updateFcmToken(@CurrentUser('id') userId: string, @Body('token') token: string) {
     return this.usersService.updateFcmToken(userId, token);
   }
 }

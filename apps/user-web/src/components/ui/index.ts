@@ -8,5 +8,6 @@ export { Alert } from './Alert';
 export { ToastProvider, useToast } from './Toast';
 export type { ToastType } from './Toast';
 export { ImageUpload } from './ImageUpload';
+export { ConfirmModal } from './ConfirmModal';
 
 export { LocationPicker } from './LocationPicker';

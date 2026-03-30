@@ -147,6 +147,13 @@ docker compose -f docker-compose.prod.yml up -d
 | `JWT_REFRESH_SECRET` | Refresh token secret |
 | `RAZORPAY_KEY_ID` | Razorpay API key |
 | `RAZORPAY_SECRET` | Razorpay secret |
+| `NEXT_PUBLIC_API_URL` | Public API base URL for web apps |
+| `NEXT_PUBLIC_FIREBASE_API_KEY` | Firebase web app API key |
+| `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN` | Firebase auth domain |
+| `NEXT_PUBLIC_FIREBASE_PROJECT_ID` | Firebase project ID |
+| `NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET` | Firebase storage bucket |
+| `NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID` | Firebase messaging sender ID |
+| `NEXT_PUBLIC_FIREBASE_APP_ID` | Firebase app ID |
 
 ## 🧪 Testing
 

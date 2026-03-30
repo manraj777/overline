@@ -1,9 +1,26 @@
-import { Controller, Get, Param, Query, Post, Body } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Param,
+  Query,
+  Post,
+  Body,
+  Patch,
+  Delete,
+  BadRequestException,
+  NotFoundException,
+  UseGuards,
+} from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiQuery } from '@nestjs/swagger';
 import { QueueService } from './queue.service';
 import { SlotEngineService } from './slot-engine.service';
 import { QueueTrackingService } from './queue-tracking.service';
 import { Public } from '../auth/decorators/public.decorator';
+import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
+import { QueueGateway } from './queue.gateway';
+import { NotificationsService } from '../notifications/notifications.service';
+import { FraudDetectionService } from '../fraud-detection/fraud-detection.service';
 
 @ApiTags('queue')
 @Controller('queue')
@@ -12,6 +29,9 @@ export class QueueController {
     private readonly queueService: QueueService,
     private readonly slotEngine: SlotEngineService,
     private readonly queueTrackingService: QueueTrackingService,
+    private readonly queueGateway: QueueGateway,
+    private readonly notificationsService: NotificationsService,
+    private readonly fraudDetectionService: FraudDetectionService,
   ) {}
 
   @Get('slots/:shopId')
@@ -63,6 +83,177 @@ export class QueueController {
   async getPosition(@Param('bookingId') bookingId: string) {
     const position = await this.queueService.getQueuePosition(bookingId);
     return { position };
+  }
+
+  @Post('join')
+  @Public()
+  @ApiOperation({ summary: 'Join shop queue as walk-in' })
+  async joinQueue(
+    @Body()
+    body: {
+      shopId: string;
+      userId?: string;
+      customerName?: string;
+      customerPhone?: string;
+      serviceId?: string;
+    },
+  ) {
+    try {
+      const booking = await this.queueService.joinQueue(body);
+      await Promise.all([
+        this.queueGateway.emitQueueUpdate(body.shopId),
+        this.notificationsService.sendBookingConfirmation(booking.id),
+      ]);
+      return booking;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unable to join queue';
+      if (message.toLowerCase().includes('not found')) {
+        throw new NotFoundException(message);
+      }
+      throw new BadRequestException(message);
+    }
+  }
+
+  @Post(':shopId/call-next')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'Call next customer in queue' })
+  async callNextCustomer(@Param('shopId') shopId: string, @CurrentUser('id') userId: string) {
+    try {
+      const booking = await this.queueService.callNextCustomer(shopId, userId);
+      await Promise.all([
+        this.queueGateway.emitQueueUpdate(shopId),
+        this.queueGateway.emitBookingUpdate(booking.id, {
+          status: booking.status,
+          serviceStatus: booking.serviceStatus,
+        }),
+      ]);
+
+      const position = await this.queueService.getQueuePosition(booking.id).catch(() => 1);
+      await this.notificationsService.sendTurnApproaching(booking.id, position);
+      return booking;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unable to call next customer';
+      if (message.toLowerCase().includes('not found')) {
+        throw new NotFoundException(message);
+      }
+      throw new BadRequestException(message);
+    }
+  }
+
+  @Patch(':bookingId/check-in')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'Mark booking checked-in' })
+  async checkIn(@Param('bookingId') bookingId: string) {
+    try {
+      const booking = await this.queueService.markCheckedIn(bookingId);
+      await Promise.all([
+        this.queueGateway.emitQueueUpdate(booking.shopId),
+        this.queueGateway.emitBookingUpdate(booking.id, {
+          status: booking.status,
+          serviceStatus: booking.serviceStatus,
+        }),
+        this.notificationsService.sendCheckInAcknowledgement(booking.id),
+      ]);
+      return booking;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unable to check in booking';
+      if (message.toLowerCase().includes('not found')) {
+        throw new NotFoundException(message);
+      }
+      throw new BadRequestException(message);
+    }
+  }
+
+  @Post(':bookingId/start-service')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'Start service after token verification' })
+  async startService(
+    @Param('bookingId') bookingId: string,
+    @Body() body: { verificationCode: string },
+    @CurrentUser('id') userId: string,
+  ) {
+    try {
+      const booking = await this.queueService.startService(
+        bookingId,
+        body.verificationCode,
+        userId,
+      );
+      await Promise.all([
+        this.queueGateway.emitQueueUpdate(booking.shopId),
+        this.queueGateway.emitBookingUpdate(booking.id, {
+          status: booking.status,
+          serviceStatus: booking.serviceStatus,
+        }),
+      ]);
+      return booking;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unable to start service';
+
+      if (message.toLowerCase().includes('invalid verification code')) {
+        await this.fraudDetectionService.logFraudEvent({
+          eventType: 'TOKEN_MISMATCH',
+          bookingId,
+          userId,
+          metadata: {
+            attemptedCode: body.verificationCode,
+            endpoint: 'queue/start-service',
+          },
+        });
+      }
+
+      if (message.toLowerCase().includes('not found')) {
+        throw new NotFoundException(message);
+      }
+      throw new BadRequestException(message);
+    }
+  }
+
+  @Post(':bookingId/mark-done')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'Mark service as completed' })
+  async markDone(@Param('bookingId') bookingId: string, @CurrentUser('id') userId: string) {
+    try {
+      const booking = await this.queueService.markServiceDone(bookingId, userId);
+      await Promise.all([
+        this.queueGateway.emitQueueUpdate(booking.shopId),
+        this.queueGateway.emitBookingUpdate(booking.id, {
+          status: booking.status,
+          serviceStatus: booking.serviceStatus,
+        }),
+      ]);
+      return booking;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unable to complete service';
+      if (message.toLowerCase().includes('not found')) {
+        throw new NotFoundException(message);
+      }
+      throw new BadRequestException(message);
+    }
+  }
+
+  @Delete(':bookingId')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'Remove booking from queue' })
+  async removeFromQueue(@Param('bookingId') bookingId: string, @Body() body: { reason?: string }) {
+    try {
+      const booking = await this.queueService.removeFromQueue(bookingId, body?.reason);
+      await Promise.all([
+        this.queueGateway.emitQueueUpdate(booking.shopId),
+        this.queueGateway.emitBookingUpdate(booking.id, {
+          status: booking.status,
+          serviceStatus: booking.serviceStatus,
+        }),
+        this.notificationsService.sendBookingCancellationNotice(booking.id, body?.reason),
+      ]);
+      return booking;
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : 'Unable to remove booking from queue';
+      if (message.toLowerCase().includes('not found')) {
+        throw new NotFoundException(message);
+      }
+      throw new BadRequestException(message);
+    }
   }
 
   // --- Tracking & Chat Endpoints ---
