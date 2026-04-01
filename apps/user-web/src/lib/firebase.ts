@@ -23,6 +23,8 @@ const missingFirebaseKeys = Object.entries(firebaseConfig)
   .map(([key]) => key);
 
 const hasFirebaseConfig = Object.values(firebaseConfig).every(Boolean);
+const shouldWarnMissingFirebaseConfig =
+  typeof window !== 'undefined' && process.env.NODE_ENV !== 'production';
 
 let app: FirebaseApp | null = null;
 let auth: Auth | null = null;
@@ -33,7 +35,7 @@ if (hasFirebaseConfig) {
   app = getApps().length ? getApps()[0] : initializeApp(firebaseConfig);
   auth = getAuth(app);
   db = getFirestore(app);
-} else if (missingFirebaseKeys.length > 0) {
+} else if (missingFirebaseKeys.length > 0 && shouldWarnMissingFirebaseConfig) {
   const warnFlag = '__overlineUserFirebaseConfigWarned';
   const globalScope = globalThis as typeof globalThis & Record<string, boolean>;
   if (!globalScope[warnFlag]) {
