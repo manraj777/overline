@@ -1,4 +1,4 @@
-import { PrismaClient, UserRole, TenantType, DayOfWeek } from '@prisma/client';
+import { PrismaClient, UserRole, TenantType, DayOfWeek, PaymentMethod } from '@prisma/client';
 import * as bcrypt from 'bcryptjs';
 
 const prisma = new PrismaClient();
@@ -77,6 +77,21 @@ async function main() {
     },
   });
   console.log('✅ Salon Owner created:', salonOwner.email);
+
+  const salonStaffUser = await prisma.user.upsert({
+    where: { email: 'staff@stylecuts.in' },
+    update: {},
+    create: {
+      email: 'staff@stylecuts.in',
+      name: 'Amit Kumar',
+      phone: '+91 98765 11111',
+      hashedPassword,
+      role: UserRole.STAFF,
+      tenantId: salonTenant.id,
+      isEmailVerified: true,
+    },
+  });
+  console.log('✅ Salon Staff User created:', salonStaffUser.email);
 
   // Create Salon Services
   const salonServices = await Promise.all([
@@ -217,6 +232,89 @@ async function main() {
   ]);
   console.log('✅ Staff created:', staff.length);
 
+  const ownerProfile = await prisma.staffProfile.upsert({
+    where: { userId: salonOwner.id },
+    update: {
+      displayName: 'Rahul Sharma',
+      shopId: salon.id,
+    },
+    create: {
+      userId: salonOwner.id,
+      shopId: salon.id,
+      displayName: 'Rahul Sharma',
+      bio: 'Owner and lead stylist',
+      isActive: true,
+      notifReminderMins: 30,
+      notifCallAheadMins: 15,
+    },
+  });
+
+  const staffProfile = await prisma.staffProfile.upsert({
+    where: { userId: salonStaffUser.id },
+    update: {
+      displayName: 'Amit Kumar',
+      shopId: salon.id,
+    },
+    create: {
+      userId: salonStaffUser.id,
+      shopId: salon.id,
+      displayName: 'Amit Kumar',
+      bio: 'Senior stylist',
+      isActive: true,
+      notifReminderMins: 30,
+      notifCallAheadMins: 15,
+    },
+  });
+
+  await prisma.staffSchedule.upsert({
+    where: {
+      staffProfileId_dayOfWeek: {
+        staffProfileId: staffProfile.id,
+        dayOfWeek: 1,
+      },
+    },
+    update: {
+      startTime: '10:00',
+      endTime: '19:00',
+      isWorking: true,
+    },
+    create: {
+      staffProfileId: staffProfile.id,
+      dayOfWeek: 1,
+      startTime: '10:00',
+      endTime: '19:00',
+      isWorking: true,
+    },
+  });
+
+  const mondaySchedule = await prisma.staffSchedule.findUnique({
+    where: {
+      staffProfileId_dayOfWeek: {
+        staffProfileId: staffProfile.id,
+        dayOfWeek: 1,
+      },
+    },
+  });
+
+  if (mondaySchedule) {
+    await prisma.staffBreak.upsert({
+      where: { id: `${mondaySchedule.id}-lunch` },
+      update: {
+        startTime: '14:00',
+        endTime: '14:30',
+        label: 'Lunch',
+      },
+      create: {
+        id: `${mondaySchedule.id}-lunch`,
+        scheduleId: mondaySchedule.id,
+        startTime: '14:00',
+        endTime: '14:30',
+        label: 'Lunch',
+      },
+    });
+  }
+  console.log('✅ Staff Profiles and Schedules seeded');
+
   // Create Demo Tenant - Clinic
   const clinicTenant = await prisma.tenant.upsert({
     where: { id: 'demo-clinic-tenant' },
@@ -352,12 +450,20 @@ async function main() {
       bookingNumber: 'SLN-' + Math.floor(1000 + Math.random() * 9000),
       userId: demoUser.id,
       shopId: salon.id,
+      staffProfileId: staffProfile.id,
+      serviceId: salonServices[0].id,
       status: 'CONFIRMED',
       source: 'WEB',
       startTime: salonStartTime,
       endTime: salonEndTime,
+      slotDate: salonStartTime,
+      slotTime: '10:30',
+      slotEndTime: '11:00',
+      tokenNumber: '#A14',
       totalDurationMinutes: 30,
       totalAmount: 400,
+      amount: 40000,
+      paymentMethod: PaymentMethod.CASH,
       services: {
         create: {
           serviceId: salonServices[0].id,
@@ -375,9 +481,43 @@ async function main() {
       bookingId: trackableSalonBooking.id,
       senderId: salonOwner.id,
       senderType: 'SHOP',
+      senderRole: 'STAFF',
       content: 'Hello! I see your appointment is coming up soon. Let me know if you need any directions.'
     }
   });
+
+  const chatSession = await prisma.chatSession.create({
+    data: {
+      bookingId: trackableSalonBooking.id,
+      staffProfileId: ownerProfile.id,
+      userId: demoUser.id,
+    },
+  });
+
+  await prisma.chatMessage.create({
+    data: {
+      bookingId: trackableSalonBooking.id,
+      sessionId: chatSession.id,
+      senderId: demoUser.id,
+      senderType: 'USER',
+      senderRole: 'USER',
+      content: 'Thanks! I am 10 minutes away.',
+    },
+  });
+
+  await prisma.earning.create({
+    data: {
+      shopId: salon.id,
+      staffProfileId: staffProfile.id,
+      bookingId: trackableSalonBooking.id,
+      amount: 40000,
+      platformFee: 2000,
+      netAmount: 38000,
+      paymentMethod: PaymentMethod.CASH,
+    },
+  });
+
+  console.log('✅ Staff chat and earning ledger seeded');
   console.log('✅ Tracking-enabled Salon Booking created:', trackableSalonBooking.bookingNumber);
 
   console.log('\n🎉 Database seeding completed!');
