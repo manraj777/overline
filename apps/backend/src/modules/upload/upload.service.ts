@@ -10,9 +10,25 @@ export class UploadService {
   private readonly uploadTimeoutMs = 30000;
 
   constructor(private configService: ConfigService) {
-    const cloudName = this.configService.get<string>('CLOUDINARY_CLOUD_NAME');
-    const apiKey = this.configService.get<string>('CLOUDINARY_API_KEY');
-    const apiSecret = this.configService.get<string>('CLOUDINARY_API_SECRET');
+    let cloudName = this.configService.get<string>('CLOUDINARY_CLOUD_NAME');
+    let apiKey = this.configService.get<string>('CLOUDINARY_API_KEY');
+    let apiSecret = this.configService.get<string>('CLOUDINARY_API_SECRET');
+
+    if (!cloudName || !apiKey || !apiSecret) {
+      const cloudinaryUrl = this.configService.get<string>('CLOUDINARY_URL');
+      if (cloudinaryUrl) {
+        try {
+          const parsed = new URL(cloudinaryUrl);
+          if (parsed.protocol === 'cloudinary:') {
+            apiKey = apiKey || parsed.username;
+            apiSecret = apiSecret || decodeURIComponent(parsed.password);
+            cloudName = cloudName || parsed.hostname;
+          }
+        } catch {
+          this.logger.warn('Invalid CLOUDINARY_URL format');
+        }
+      }
+    }
 
     this.isCloudinaryConfigured = Boolean(cloudName && apiKey && apiSecret);
 
@@ -30,7 +46,7 @@ export class UploadService {
     const requireCloudinary = process.env.REQUIRE_CLOUDINARY === 'true';
     if (process.env.NODE_ENV === 'production' && requireCloudinary) {
       throw new Error(
-        'Cloudinary credentials are missing. Set CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET.',
+        'Cloudinary credentials are missing. Set CLOUDINARY_CLOUD_NAME/CLOUDINARY_API_KEY/CLOUDINARY_API_SECRET or CLOUDINARY_URL.',
       );
     }
 

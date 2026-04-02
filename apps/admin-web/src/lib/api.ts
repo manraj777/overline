@@ -6,6 +6,7 @@ const API_URL = process.env.NEXT_PUBLIC_API_URL || '/api/v1';
 
 export const api: AxiosInstance = axios.create({
   baseURL: API_URL,
+  withCredentials: true,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -39,9 +40,13 @@ api.interceptors.response.use(
           return Promise.reject(error);
         }
 
-        const response = await axios.post(`${API_URL}/auth/refresh`, {
-          refreshToken,
-        });
+        const response = await axios.post(
+          `${API_URL}/auth/refresh`,
+          {
+            refreshToken,
+          },
+          { withCredentials: true },
+        );
 
         const { accessToken, refreshToken: newRefreshToken } = response.data;
         useAuthStore.getState().setTokens(accessToken, newRefreshToken);

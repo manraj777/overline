@@ -28,12 +28,30 @@ async function bootstrap() {
     rawBody: true,
   });
 
-  const configuredOrigins = process.env.CORS_ORIGIN?.split(',')
-    .map((origin) => origin.trim())
-    .filter(Boolean);
+  const expandOrigin = (origin: string): string[] => {
+    const normalized = origin.trim().replace(/\/$/, '');
+    if (!normalized) return [];
+
+    // Keep localhost/http dev origins exactly as provided.
+    if (normalized.includes('localhost') || normalized.includes('127.0.0.1')) {
+      return [normalized];
+    }
+
+    // For production domains, tolerate accidental http:// entries by also allowing https://.
+    if (normalized.startsWith('http://')) {
+      return [normalized, normalized.replace(/^http:\/\//, 'https://')];
+    }
+
+    return [normalized];
+  };
+
+  const configuredOrigins =
+    process.env.CORS_ORIGIN?.split(',')
+      .flatMap((origin) => expandOrigin(origin))
+      .filter(Boolean) || [];
 
   const allowedOrigins =
-    configuredOrigins && configuredOrigins.length > 0
+    configuredOrigins.length > 0
       ? configuredOrigins
       : [
           'http://localhost:3000',
