@@ -27,13 +27,16 @@ export class UploadService {
       return;
     }
 
-    if (process.env.NODE_ENV === 'production') {
+    const requireCloudinary = process.env.REQUIRE_CLOUDINARY === 'true';
+    if (process.env.NODE_ENV === 'production' && requireCloudinary) {
       throw new Error(
         'Cloudinary credentials are missing. Set CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET.',
       );
     }
 
-    this.logger.warn('Cloudinary credentials are missing');
+    this.logger.warn(
+      'Cloudinary credentials are missing. Upload endpoints are disabled until CLOUDINARY_* variables are set.',
+    );
   }
 
   private async delay(ms: number): Promise<void> {
