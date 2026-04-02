@@ -12,7 +12,7 @@ import type { ConfirmationResult } from 'firebase/auth';
 
 export default function VerifyPhonePage() {
   const router = useRouter();
-  const { user } = useAuthStore();
+  const { user, isAuthenticated } = useAuthStore();
   const { mutate: logoutMutate } = useLogout();
   const firebasePhoneLogin = useFirebasePhoneLogin();
 
@@ -26,13 +26,14 @@ export default function VerifyPhonePage() {
   const [showLoginInstead, setShowLoginInstead] = React.useState(false);
 
   React.useEffect(() => {
-    if (user?.isPhoneVerified) {
+    if (user?.isPhoneVerified && !firebasePhoneLogin.isPending) {
       router.replace('/');
     }
-  }, [user, router]);
+  }, [user, router, firebasePhoneLogin.isPending]);
 
   const handleSendOtp = async () => {
-    if (!phone || phone.length < 10) {
+    const normalizedPhone = phone.replace(/\D/g, '');
+    if (!normalizedPhone || normalizedPhone.length < 10) {
       setError('Please enter a valid phone number');
       return;
     }
@@ -41,7 +42,25 @@ export default function VerifyPhonePage() {
     setIsLoading(true);
 
     try {
-      await api.patch('/users/me', { phone });
+      if (isAuthenticated && user) {
+        try {
+          await api.patch('/users/me', { phone });
+        } catch (err: any) {
+          const status = err?.response?.status;
+          const msg = err?.response?.data?.message || '';
+          if (
+            status === 409 ||
+            String(msg).toLowerCase().includes('already') ||
+            String(msg).toLowerCase().includes('registered') ||
+            String(msg).toLowerCase().includes('in use')
+          ) {
+            setError('This phone number is already registered. Please log in to that account.');
+            setShowLoginInstead(true);
+            return;
+          }
+        }
+      }
+
       const result = await signInWithPhoneFirebase(phone);
       setConfirmationResult(result);
       setIsOtpSent(true);

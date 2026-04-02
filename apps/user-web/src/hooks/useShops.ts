@@ -4,6 +4,7 @@ import type { Shop, ShopWithDetails, QueueStats, PaginatedResponse, ShopSlotStat
 
 interface SearchParams {
   query?: string;
+  city?: string;
   type?: 'SALON' | 'CLINIC';
   latitude?: number;
   longitude?: number;
@@ -19,6 +20,7 @@ export function useShops(params: SearchParams = {}) {
       // Only send non-empty params
       const queryParams: Record<string, string | number> = {};
       if (params.query) queryParams.query = params.query;
+      if (params.city) queryParams.city = params.city;
       if (params.type) queryParams.type = params.type;
       if (params.latitude) queryParams.latitude = params.latitude;
       if (params.longitude) queryParams.longitude = params.longitude;

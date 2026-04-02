@@ -7,6 +7,7 @@ import { v2 as cloudinary } from 'cloudinary';
 export class UploadService {
   private readonly logger = new Logger(UploadService.name);
   private readonly isCloudinaryConfigured: boolean;
+  private readonly uploadTimeoutMs = 30000;
 
   constructor(private configService: ConfigService) {
     const cloudName = this.configService.get<string>('CLOUDINARY_CLOUD_NAME');
@@ -26,7 +27,17 @@ export class UploadService {
       return;
     }
 
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error(
+        'Cloudinary credentials are missing. Set CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, and CLOUDINARY_API_SECRET.',
+      );
+    }
+
     this.logger.warn('Cloudinary credentials are missing');
+  }
+
+  private async delay(ms: number): Promise<void> {
+    await new Promise((resolve) => setTimeout(resolve, ms));
   }
 
   async uploadImage(
@@ -59,20 +70,45 @@ export class UploadService {
 
     try {
       const dataUri = `data:${file.mimetype};base64,${file.buffer.toString('base64')}`;
-      const uploadResult = await cloudinary.uploader.upload(dataUri, {
-        folder: safeFolder,
-        public_id: fileName.replace(/\.[^.]+$/, ''),
-        resource_type: 'image',
-        overwrite: false,
-      });
+      let uploadResult: { secure_url: string; public_id: string } | null = null;
+      let lastError: unknown;
+
+      for (let attempt = 1; attempt <= 3; attempt += 1) {
+        try {
+          uploadResult = (await Promise.race([
+            cloudinary.uploader.upload(dataUri, {
+              folder: safeFolder,
+              public_id: fileName.replace(/\.[^.]+$/, ''),
+              resource_type: 'image',
+              overwrite: false,
+            }),
+            new Promise<never>((_, reject) => {
+              setTimeout(() => reject(new Error('Upload timeout')), this.uploadTimeoutMs);
+            }),
+          ])) as { secure_url: string; public_id: string };
+          break;
+        } catch (error) {
+          lastError = error;
+          if (attempt < 3) {
+            await this.delay(250 * attempt);
+          }
+        }
+      }
+
+      if (!uploadResult) {
+        throw lastError;
+      }
 
       return {
         url: uploadResult.secure_url,
         publicId: uploadResult.public_id,
       };
     } catch (error) {
-      this.logger.error('Cloudinary upload failed', error as Error);
-      throw new BadRequestException('Failed to upload image');
+      const message = error instanceof Error ? error.message : 'Unknown upload error';
+      this.logger.error(`Cloudinary upload failed: ${message}`, error as Error);
+      throw new BadRequestException(
+        message === 'Upload timeout' ? 'Upload timed out. Please try again.' : 'Failed to upload image',
+      );
     }
   }
 

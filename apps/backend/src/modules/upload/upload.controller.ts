@@ -8,9 +8,12 @@ import {
   Patch,
   Body,
   NotFoundException,
+  InternalServerErrorException,
+  Logger,
 } from '@nestjs/common';
 import { FileInterceptor } from '@nestjs/platform-express';
 import { ApiTags, ApiBearerAuth, ApiConsumes, ApiBody } from '@nestjs/swagger';
+import { Throttle } from '@nestjs/throttler';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { UploadService } from './upload.service';
 import { PrismaService } from '../../common/prisma/prisma.service';
@@ -24,6 +27,8 @@ export const CurrentUser = createParamDecorator((data: string, ctx: ExecutionCon
 @ApiTags('upload')
 @Controller({ path: 'upload', version: '1' })
 export class UploadController {
+  private readonly logger = new Logger(UploadController.name);
+
   constructor(
     private readonly uploadService: UploadService,
     private readonly prisma: PrismaService,
@@ -33,6 +38,7 @@ export class UploadController {
    * Upload a general image (returns URL)
    */
   @Post()
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth('JWT-auth')
   @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 5 * 1024 * 1024 } }))
@@ -58,6 +64,7 @@ export class UploadController {
    * Upload a general image (returns URL)
    */
   @Post('image')
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth('JWT-auth')
   @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 5 * 1024 * 1024 } }))
@@ -80,6 +87,7 @@ export class UploadController {
    * Upload shop logo
    */
   @Patch('shop/:shopId/logo')
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth('JWT-auth')
   @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 5 * 1024 * 1024 } }))
@@ -89,11 +97,16 @@ export class UploadController {
     if (!shop) throw new NotFoundException('Shop not found');
 
     const result = await this.uploadService.uploadImage(file, 'overline/shops/logos');
-
-    await this.prisma.shop.update({
-      where: { id: shopId },
-      data: { logoUrl: result.url },
-    });
+    try {
+      await this.prisma.shop.update({
+        where: { id: shopId },
+        data: { logoUrl: result.url },
+      });
+    } catch (error) {
+      await this.uploadService.deleteImage(result.publicId);
+      this.logger.error(`Failed to persist uploaded shop logo for ${shopId}`, error as Error);
+      throw new InternalServerErrorException('Failed to save uploaded shop logo');
+    }
 
     return { logoUrl: result.url };
   }
@@ -102,6 +115,7 @@ export class UploadController {
    * Upload shop cover image
    */
   @Patch('shop/:shopId/cover')
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth('JWT-auth')
   @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 5 * 1024 * 1024 } }))
@@ -114,11 +128,16 @@ export class UploadController {
     if (!shop) throw new NotFoundException('Shop not found');
 
     const result = await this.uploadService.uploadImage(file, 'overline/shops/covers');
-
-    await this.prisma.shop.update({
-      where: { id: shopId },
-      data: { coverUrl: result.url },
-    });
+    try {
+      await this.prisma.shop.update({
+        where: { id: shopId },
+        data: { coverUrl: result.url },
+      });
+    } catch (error) {
+      await this.uploadService.deleteImage(result.publicId);
+      this.logger.error(`Failed to persist uploaded shop cover for ${shopId}`, error as Error);
+      throw new InternalServerErrorException('Failed to save uploaded shop cover');
+    }
 
     return { coverUrl: result.url };
   }
@@ -127,6 +146,7 @@ export class UploadController {
    * Upload user avatar image
    */
   @Patch('user/avatar')
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth('JWT-auth')
   @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 5 * 1024 * 1024 } }))
@@ -139,11 +159,16 @@ export class UploadController {
     if (!user) throw new NotFoundException('User not found');
 
     const result = await this.uploadService.uploadImage(file, 'overline/users/avatars');
-
-    await this.prisma.user.update({
-      where: { id: userId },
-      data: { avatarUrl: result.url },
-    });
+    try {
+      await this.prisma.user.update({
+        where: { id: userId },
+        data: { avatarUrl: result.url },
+      });
+    } catch (error) {
+      await this.uploadService.deleteImage(result.publicId);
+      this.logger.error(`Failed to persist uploaded avatar for user ${userId}`, error as Error);
+      throw new InternalServerErrorException('Failed to save uploaded avatar');
+    }
 
     return { avatarUrl: result.url };
   }

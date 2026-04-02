@@ -10,16 +10,42 @@ import { cn } from '@/lib/utils';
 
 export default function ExplorePage() {
   const router = useRouter();
-  const { q, type } = router.query;
+  const { q, type, city } = router.query;
 
   const [searchQuery, setSearchQuery] = React.useState((q as string) || '');
   const [selectedType, setSelectedType] = React.useState<string | undefined>(type as string);
+  const [selectedCity, setSelectedCity] = React.useState((city as string) || '');
   const [showFilters, setShowFilters] = React.useState(false);
   const [viewMode, setViewMode] = React.useState<'list' | 'map'>('list');
   const [location, setLocation] = React.useState<{ lat: number; lng: number; address?: string } | undefined>();
 
-  const { data: shops, isLoading } = useShops({
+  const extractCityFromAddress = React.useCallback((address?: string) => {
+    if (!address) return '';
+    const parts = address
+      .split(',')
+      .map((part) => part.trim())
+      .filter(Boolean);
+
+    if (parts.length === 0) return '';
+    if (parts.length === 1) return parts[0];
+    if (parts.length >= 3) return parts[parts.length - 2];
+    return parts[0];
+  }, []);
+
+  React.useEffect(() => {
+    setSelectedCity((city as string) || '');
+  }, [city]);
+
+  React.useEffect(() => {
+    const cityFromLocation = extractCityFromAddress(location?.address);
+    if (cityFromLocation && cityFromLocation.toLowerCase() !== 'current location') {
+      setSelectedCity(cityFromLocation);
+    }
+  }, [location?.address, extractCityFromAddress]);
+
+  const { data: shops, isLoading, error } = useShops({
     query: searchQuery,
+    city: selectedCity || undefined,
     type: selectedType as 'SALON' | 'CLINIC' | undefined,
     limit: 20,
     latitude: location?.lat || undefined,
@@ -33,6 +59,7 @@ export default function ExplorePage() {
       query: {
         ...(searchQuery && { q: searchQuery }),
         ...(selectedType && { type: selectedType }),
+        ...(selectedCity && { city: selectedCity }),
         ...(location && location.address && { address: location.address }),
       },
     });
@@ -41,6 +68,7 @@ export default function ExplorePage() {
   const clearFilters = () => {
     setSearchQuery('');
     setSelectedType(undefined);
+    setSelectedCity('');
     setLocation(undefined);
     router.push('/explore');
   };
@@ -105,9 +133,18 @@ export default function ExplorePage() {
             </form>
 
             {/* Filter Tags */}
-            {(selectedType || searchQuery || (location && location.address)) && (
+            {(selectedType || selectedCity || searchQuery || (location && location.address)) && (
               <div className="flex items-center gap-2 mt-3 flex-wrap">
                 <span className="text-sm text-gray-500">Active filters:</span>
+                {selectedCity && (
+                  <button
+                    onClick={() => setSelectedCity('')}
+                    className="inline-flex items-center gap-1 px-2 py-1 bg-indigo-100 text-indigo-700 rounded-full text-sm"
+                  >
+                    {selectedCity}
+                    <X className="w-3 h-3" />
+                  </button>
+                )}
                 {selectedType && (
                   <button
                     onClick={() => setSelectedType(undefined)}
@@ -128,7 +165,10 @@ export default function ExplorePage() {
                 )}
                 {location && location.address && (
                   <button
-                    onClick={() => setLocation(undefined)}
+                    onClick={() => {
+                      setLocation(undefined);
+                      setSelectedCity('');
+                    }}
                     className="inline-flex items-center gap-1 px-2 py-1 bg-emerald-100 text-emerald-700 rounded-full text-sm"
                   >
                     <Navigation className="w-3 h-3" />
@@ -179,12 +219,18 @@ export default function ExplorePage() {
           <div className="mb-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
             <div>
               <h1 className="text-2xl font-bold text-gray-900">
-                {searchQuery ? `Results for "${searchQuery}"` : location?.address ? `Shops near ${location.address}` : 'All Shops'}
+                {searchQuery
+                  ? `Results for "${searchQuery}"`
+                  : selectedCity
+                    ? `Shops in ${selectedCity}`
+                    : location?.address
+                      ? `Shops near ${location.address}`
+                      : 'All Shops'}
               </h1>
               {shops && (
                 <p className="text-gray-500 mt-1">
                   {shops.meta.total} {shops.meta.total === 1 ? 'result' : 'results'}
-                  {location?.address && ` near ${location.address}`}
+                  {selectedCity ? ` in ${selectedCity}` : location?.address ? ` near ${location.address}` : ''}
                 </p>
               )}
             </div>
@@ -207,6 +253,14 @@ export default function ExplorePage() {
 
           {isLoading ? (
             <Loading text="Finding shops..." />
+          ) : error ? (
+            <Card variant="bordered" className="text-center py-12">
+              <h3 className="text-lg font-medium text-gray-900 mb-2">Could not load shops</h3>
+              <p className="text-gray-500 mb-4">Please try again. If this keeps happening, check your network connection.</p>
+              <Button variant="outline" onClick={() => router.replace(router.asPath)}>
+                Retry
+              </Button>
+            </Card>
           ) : shops?.data.length === 0 ? (
             <Card variant="bordered" className="text-center py-12">
               <MapPin className="w-12 h-12 text-gray-300 mx-auto mb-4" />

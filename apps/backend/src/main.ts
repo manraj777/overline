@@ -28,13 +28,26 @@ async function bootstrap() {
     rawBody: true,
   });
 
+  const configuredOrigins = process.env.CORS_ORIGIN?.split(',')
+    .map((origin) => origin.trim())
+    .filter(Boolean);
+
+  const allowedOrigins =
+    configuredOrigins && configuredOrigins.length > 0
+      ? configuredOrigins
+      : [
+          'http://localhost:3000',
+          'http://localhost:3002',
+          'https://overline-user-web.vercel.app',
+          'https://overline-admin-web.vercel.app',
+        ];
+
   // Enable CORS
   app.enableCors({
-    origin: process.env.CORS_ORIGIN?.split(',') || [
-      'http://localhost:3000',
-      'http://localhost:3002',
-    ],
+    origin: allowedOrigins,
     credentials: true,
+    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
+    allowedHeaders: ['Content-Type', 'Authorization'],
   });
 
   // WebSocket adapter (Socket.IO)
