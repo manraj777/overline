@@ -130,6 +130,7 @@ export default function ProfilePage() {
   const memberSince = user?.createdAt
     ? format(new Date(user.createdAt), 'MMM yyyy')
     : '—';
+  const safeTrendingShops = Array.isArray(trendingShops) ? trendingShops : [];
 
   const menuItems = [
     { icon: Calendar, label: 'My Bookings', href: '/bookings' },
@@ -397,11 +398,11 @@ export default function ProfilePage() {
                     </div>
                   ))}
                 </div>
-              ) : trendingShops.length === 0 ? (
+              ) : safeTrendingShops.length === 0 ? (
                 <p className="text-sm text-gray-500 text-center py-4">No trending shops currently.</p>
               ) : (
                 <div className="space-y-3">
-                  {trendingShops.slice(0, 3).map((shop) => (
+                  {safeTrendingShops.slice(0, 3).map((shop) => (
                     <div 
                       key={shop.id}
                       onClick={() => router.push(`/shops/${shop.slug}`)}
@@ -415,7 +416,7 @@ export default function ProfilePage() {
                         />
                       ) : (
                         <div className="w-12 h-12 rounded-lg bg-gray-100 flex items-center justify-center shrink-0 border border-gray-200">
-                          <span className="text-gray-400 text-sm font-medium">{shop.name.substring(0,2).toUpperCase()}</span>
+                          <span className="text-gray-400 text-sm font-medium">{(shop.name || 'NA').substring(0, 2).toUpperCase()}</span>
                         </div>
                       )}
                       <div className="flex-1 min-w-0">

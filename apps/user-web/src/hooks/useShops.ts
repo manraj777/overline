@@ -110,7 +110,17 @@ export function useTrendingShops(limit: number = 5) {
       const { data } = await api.get('/shops/trending', {
         params: { limit },
       });
-      return data;
+
+      // Backward/forward compatible with either array payloads or { data: Shop[] } payloads.
+      if (Array.isArray(data)) {
+        return data;
+      }
+
+      if (Array.isArray(data?.data)) {
+        return data.data;
+      }
+
+      return [];
     },
     staleTime: 1000 * 60 * 30, // cache for 30 minutes
   });
