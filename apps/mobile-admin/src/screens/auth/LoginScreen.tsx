@@ -10,8 +10,12 @@ import {
   Alert,
   ActivityIndicator,
   ScrollView,
+  Image,
 } from 'react-native';
 import {useAuthStore} from '../../stores/authStore';
+import {Colors, FontSize, FontWeight, Radius, Spacing} from '../../theme';
+
+const BRAND_LOGO = require('../../../assets/branding/overline-logo.png');
 
 export default function LoginScreen() {
   const [email, setEmail] = useState('');
@@ -64,7 +68,7 @@ export default function LoginScreen() {
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled">
         <View style={styles.header}>
-          <Text style={styles.logo}>Overline</Text>
+          <Image source={BRAND_LOGO} style={styles.logoImage} resizeMode="contain" />
           <Text style={styles.subtitle}>Admin Panel</Text>
           <Text style={styles.description}>
             Manage your shop, bookings, and services
@@ -127,83 +131,83 @@ export default function LoginScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: Colors.background,
   },
   scrollContent: {
     flexGrow: 1,
     justifyContent: 'center',
-    padding: 24,
+    padding: Spacing.xxl,
   },
   header: {
     alignItems: 'center',
-    marginBottom: 48,
+    marginBottom: Spacing.xxxxxl,
   },
-  logo: {
-    fontSize: 42,
-    fontWeight: 'bold',
-    color: '#4F46E5',
-    marginBottom: 4,
+  logoImage: {
+    width: 170,
+    height: 170,
+    borderRadius: Radius.lg,
+    marginBottom: Spacing.sm,
   },
   subtitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#111827',
-    marginBottom: 8,
+    fontSize: FontSize.h3,
+    fontWeight: FontWeight.semibold,
+    color: Colors.textPrimary,
+    marginBottom: Spacing.sm,
   },
   description: {
-    fontSize: 14,
-    color: '#6B7280',
+    fontSize: FontSize.body,
+    color: Colors.textSecondary,
     textAlign: 'center',
   },
   form: {
-    marginBottom: 24,
+    marginBottom: Spacing.xxl,
   },
   inputGroup: {
-    marginBottom: 20,
+    marginBottom: Spacing.xl,
   },
   label: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#374151',
-    marginBottom: 8,
+    fontSize: FontSize.body,
+    fontWeight: FontWeight.medium,
+    color: Colors.textSecondary,
+    marginBottom: Spacing.sm,
   },
   input: {
     borderWidth: 1,
-    borderColor: '#D1D5DB',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
+    borderColor: Colors.gray200,
+    borderRadius: Radius.md,
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.md,
     fontSize: 16,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: Colors.gray50,
   },
   inputError: {
-    borderColor: '#EF4444',
+    borderColor: Colors.danger500,
   },
   errorText: {
-    color: '#EF4444',
-    fontSize: 12,
+    color: Colors.danger500,
+    fontSize: FontSize.label,
     marginTop: 4,
   },
   button: {
-    backgroundColor: '#4F46E5',
-    borderRadius: 12,
-    paddingVertical: 16,
+    backgroundColor: Colors.primary,
+    borderRadius: Radius.md,
+    paddingVertical: Spacing.lg,
     alignItems: 'center',
-    marginTop: 8,
+    marginTop: Spacing.sm,
   },
   buttonDisabled: {
     opacity: 0.7,
   },
   buttonText: {
-    color: '#fff',
+    color: Colors.white,
     fontSize: 16,
-    fontWeight: '600',
+    fontWeight: FontWeight.semibold,
   },
   footer: {
     alignItems: 'center',
   },
   footerText: {
-    color: '#9CA3AF',
+    color: Colors.textMuted,
     fontSize: 13,
   },
 });

@@ -150,12 +150,13 @@ export type RootStackParamList = {
   Booking: {shopId: string; selectedServices?: string[]};
   BookingDetail: {bookingId: string};
   BookingConfirmation: {bookingId: string};
+  EditProfile: undefined;
   PhoneVerification: undefined;
 };
 
 export type MainTabParamList = {
   Home: undefined;
   MyBookings: undefined;
-  Wallet: undefined;
+  Chat: undefined;
   Profile: undefined;
 };

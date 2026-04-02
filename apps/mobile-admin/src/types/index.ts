@@ -11,13 +11,15 @@ export type RootStackParamList = {
   WorkingHours: {shopId: string};
   StaffManagement: {shopId: string};
   Analytics: {shopId: string};
+  PayoutDetails: {shopId: string};
 };
 
 export type MainTabParamList = {
   Dashboard: undefined;
+  Queue: undefined;
   Bookings: undefined;
-  Services: undefined;
-  Settings: undefined;
+  AnalyticsTab: undefined;
+  Profile: undefined;
 };
 
 // Data Types

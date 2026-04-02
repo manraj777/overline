@@ -14,6 +14,7 @@ import {useRoute, RouteProp} from '@react-navigation/native';
 import {format} from 'date-fns';
 import {bookingsApi} from '../../api/client';
 import {RootStackParamList, Booking} from '../../types';
+import {CalendarDays, Check, Clock3, Phone, Play} from 'lucide-react-native';
 
 type RouteProps = RouteProp<RootStackParamList, 'BookingDetail'>;
 
@@ -214,7 +215,8 @@ export default function BookingDetailScreen() {
           </View>
           {booking.user?.phone && (
             <TouchableOpacity style={styles.callButton} onPress={handleCall}>
-              <Text style={styles.callButtonText}>📞 Call Customer</Text>
+              <Phone size={16} color="#4F46E5" />
+              <Text style={styles.callButtonText}>Call Customer</Text>
             </TouchableOpacity>
           )}
         </View>
@@ -225,7 +227,7 @@ export default function BookingDetailScreen() {
         <Text style={styles.sectionTitle}>Appointment</Text>
         <View style={styles.card}>
           <View style={styles.detailRow}>
-            <Text style={styles.detailIcon}>📅</Text>
+            <CalendarDays size={20} color="#6B7280" style={styles.detailIcon} />
             <View>
               <Text style={styles.detailLabel}>Date</Text>
               <Text style={styles.detailValue}>
@@ -234,7 +236,7 @@ export default function BookingDetailScreen() {
             </View>
           </View>
           <View style={styles.detailRow}>
-            <Text style={styles.detailIcon}>🕐</Text>
+            <Clock3 size={20} color="#6B7280" style={styles.detailIcon} />
             <View>
               <Text style={styles.detailLabel}>Time</Text>
               <Text style={styles.detailValue}>
@@ -284,7 +286,7 @@ export default function BookingDetailScreen() {
             <Text style={styles.totalValue}>₹{booking.displayAmount}</Text>
           </View>
           <Text style={styles.paymentType}>
-            {booking.paymentType === 'PAY_LATER' ? '💵 Pay at Store' : '💳 Online Payment'}
+            {booking.paymentType === 'PAY_LATER' ? 'Pay at Store' : 'Online Payment'}
           </Text>
         </View>
       </View>
@@ -309,7 +311,10 @@ export default function BookingDetailScreen() {
             {startMutation.isPending ? (
               <ActivityIndicator color="#fff" />
             ) : (
-              <Text style={styles.startButtonText}>▶ Start Service</Text>
+              <View style={styles.actionButtonInner}>
+                <Play size={14} color="#fff" />
+                <Text style={styles.startButtonText}>Start Service</Text>
+              </View>
             )}
           </TouchableOpacity>
         )}
@@ -322,7 +327,10 @@ export default function BookingDetailScreen() {
             {completeMutation.isPending ? (
               <ActivityIndicator color="#fff" />
             ) : (
-              <Text style={styles.completeButtonText}>✓ Complete Service</Text>
+              <View style={styles.actionButtonInner}>
+                <Check size={14} color="#fff" />
+                <Text style={styles.completeButtonText}>Complete Service</Text>
+              </View>
             )}
           </TouchableOpacity>
         )}
@@ -461,7 +469,10 @@ const styles = StyleSheet.create({
     backgroundColor: '#EEF2FF',
     padding: 12,
     borderRadius: 8,
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
   },
   callButtonText: {
     color: '#4F46E5',
@@ -474,7 +485,6 @@ const styles = StyleSheet.create({
     marginBottom: 16,
   },
   detailIcon: {
-    fontSize: 24,
     marginRight: 12,
   },
   detailLabel: {
@@ -578,6 +588,11 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
+  },
+  actionButtonInner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
   },
   secondaryActions: {
     flexDirection: 'row',

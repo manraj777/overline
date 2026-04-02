@@ -1,10 +1,19 @@
 import React from 'react';
-import {Text} from 'react-native';
+import {View, StyleSheet} from 'react-native';
 import {NavigationContainer} from '@react-navigation/native';
 import {createNativeStackNavigator} from '@react-navigation/native-stack';
 import {createBottomTabNavigator} from '@react-navigation/bottom-tabs';
+import {DefaultTheme} from '@react-navigation/native';
 import {useAuthStore} from '../stores/authStore';
 import {RootStackParamList, MainTabParamList} from '../types';
+import {Colors, FontSize, FontWeight} from '../theme';
+import {
+  BarChart3,
+  Calendar,
+  ChartColumn,
+  Clock3,
+  UserRound,
+} from 'lucide-react-native';
 
 // Screens
 import SplashScreen from '../screens/auth/SplashScreen';
@@ -12,47 +21,77 @@ import LoginScreen from '../screens/auth/LoginScreen';
 import OtpVerifyScreen from '../screens/auth/OtpVerifyScreen';
 import DashboardScreen from '../screens/dashboard/DashboardScreen';
 import BookingsScreen from '../screens/bookings/BookingsScreen';
+import QueueScreen from '../screens/queue/QueueScreen';
 import BookingDetailScreen from '../screens/bookings/BookingDetailScreen';
 import VerifyCodeScreen from '../screens/bookings/VerifyCodeScreen';
-import ServicesScreen from '../screens/services/ServicesScreen';
 import ServiceFormScreen from '../screens/services/ServiceFormScreen';
 import SettingsScreen from '../screens/settings/SettingsScreen';
 import ShopSettingsScreen from '../screens/settings/ShopSettingsScreen';
 import WorkingHoursScreen from '../screens/settings/WorkingHoursScreen';
 import StaffManagementScreen from '../screens/settings/StaffManagementScreen';
 import AnalyticsScreen from '../screens/settings/AnalyticsScreen';
+import AnalyticsTabScreen from '../screens/analytics/AnalyticsTabScreen';
+import PayoutDetailsScreen from '../screens/settings/PayoutDetailsScreen.tsx';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 const Tab = createBottomTabNavigator<MainTabParamList>();
 
-// Tab icon component with emoji
-function TabIcon({name}: {name: string; color: string; size: number}) {
-  const icons: Record<string, string> = {
-    dashboard: '📊',
-    bookings: '📅',
-    services: '✂️',
-    settings: '⚙️',
-  };
-  return <Text style={{fontSize: 24}}>{icons[name] || '•'}</Text>;
+function TabIcon({
+  name,
+  color,
+  size,
+  focused,
+}: {
+  name: string;
+  color: string;
+  size: number;
+  focused: boolean;
+}) {
+  const IconComponent = {
+    dashboard: BarChart3,
+    queue: Clock3,
+    bookings: Calendar,
+    analytics: ChartColumn,
+    profile: UserRound,
+  }[name] || BarChart3;
+
+  return (
+    <View style={[styles.tabIconWrap, focused && styles.tabIconWrapActive]}>
+      <IconComponent color={color} size={size - 1} />
+    </View>
+  );
 }
+
+const AppTheme = {
+  ...DefaultTheme,
+  colors: {
+    ...DefaultTheme.colors,
+    primary: Colors.primary,
+    background: Colors.background,
+    card: Colors.surface,
+    text: Colors.textPrimary,
+    border: Colors.border,
+    notification: Colors.primary,
+  },
+};
 
 function MainTabs() {
   return (
     <Tab.Navigator
       screenOptions={{
-        tabBarActiveTintColor: '#4F46E5',
-        tabBarInactiveTintColor: '#9CA3AF',
+        tabBarActiveTintColor: Colors.primary,
+        tabBarInactiveTintColor: Colors.gray400,
         tabBarStyle: {
-          backgroundColor: '#fff',
+          backgroundColor: Colors.surface,
           borderTopWidth: 1,
-          borderTopColor: '#E5E7EB',
+          borderTopColor: Colors.border,
           paddingBottom: 8,
           paddingTop: 8,
-          height: 60,
+          height: 64,
         },
         tabBarLabelStyle: {
-          fontSize: 12,
-          fontWeight: '500',
+          fontSize: FontSize.label,
+          fontWeight: FontWeight.medium,
         },
         headerShown: false,
       }}>
@@ -61,8 +100,18 @@ function MainTabs() {
         component={DashboardScreen}
         options={{
           tabBarLabel: 'Dashboard',
-          tabBarIcon: ({color, size}) => (
-            <TabIcon name="dashboard" color={color} size={size} />
+          tabBarIcon: ({color, size, focused}) => (
+            <TabIcon name="dashboard" color={color} size={size} focused={focused} />
+          ),
+        }}
+      />
+      <Tab.Screen
+        name="Queue"
+        component={QueueScreen}
+        options={{
+          tabBarLabel: 'Queue',
+          tabBarIcon: ({color, size, focused}) => (
+            <TabIcon name="queue" color={color} size={size} focused={focused} />
           ),
         }}
       />
@@ -71,28 +120,28 @@ function MainTabs() {
         component={BookingsScreen}
         options={{
           tabBarLabel: 'Bookings',
-          tabBarIcon: ({color, size}) => (
-            <TabIcon name="bookings" color={color} size={size} />
+          tabBarIcon: ({color, size, focused}) => (
+            <TabIcon name="bookings" color={color} size={size} focused={focused} />
           ),
         }}
       />
       <Tab.Screen
-        name="Services"
-        component={ServicesScreen}
+        name="AnalyticsTab"
+        component={AnalyticsTabScreen}
         options={{
-          tabBarLabel: 'Services',
-          tabBarIcon: ({color, size}) => (
-            <TabIcon name="services" color={color} size={size} />
+          tabBarLabel: 'Analytics',
+          tabBarIcon: ({color, size, focused}) => (
+            <TabIcon name="analytics" color={color} size={size} focused={focused} />
           ),
         }}
       />
       <Tab.Screen
-        name="Settings"
+        name="Profile"
         component={SettingsScreen}
         options={{
-          tabBarLabel: 'Settings',
-          tabBarIcon: ({color, size}) => (
-            <TabIcon name="settings" color={color} size={size} />
+          tabBarLabel: 'Profile',
+          tabBarIcon: ({color, size, focused}) => (
+            <TabIcon name="profile" color={color} size={size} focused={focused} />
           ),
         }}
       />
@@ -106,7 +155,7 @@ export default function RootNavigator() {
 
   if (isLoading) {
     return (
-      <NavigationContainer>
+      <NavigationContainer theme={AppTheme}>
         <Stack.Navigator screenOptions={{headerShown: false}}>
           <Stack.Screen name="Splash" component={SplashScreen} />
         </Stack.Navigator>
@@ -115,7 +164,7 @@ export default function RootNavigator() {
   }
 
   return (
-    <NavigationContainer>
+    <NavigationContainer theme={AppTheme}>
       <Stack.Navigator screenOptions={{headerShown: false}}>
         {!isAuthenticated && !pendingOtpVerification ? (
           <Stack.Screen name="Login" component={LoginScreen} />
@@ -168,9 +217,27 @@ export default function RootNavigator() {
               component={AnalyticsScreen}
               options={{headerShown: true, title: 'Analytics'}}
             />
+            <Stack.Screen
+              name="PayoutDetails"
+              component={PayoutDetailsScreen}
+              options={{headerShown: true, title: 'Payout Details'}}
+            />
           </>
         )}
       </Stack.Navigator>
     </NavigationContainer>
   );
 }
+
+const styles = StyleSheet.create({
+  tabIconWrap: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  tabIconWrapActive: {
+    backgroundColor: Colors.primary100,
+  },
+});

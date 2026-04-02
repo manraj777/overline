@@ -722,6 +722,52 @@ export class AdminService {
     return this.getShopSettings(shopId, tenantId);
   }
 
+  async getPayoutDetails(shopId: string, tenantId: string) {
+    const shop = await this.verifyShopAccess(shopId, tenantId);
+    const settings = (shop.settings as Record<string, any>) || {};
+
+    return {
+      shopId: shop.id,
+      payoutDetails: settings.payoutDetails || null,
+    };
+  }
+
+  async updatePayoutDetails(
+    shopId: string,
+    tenantId: string,
+    payoutDetails: {
+      accountHolderName?: string;
+      bankName?: string;
+      accountNumber?: string;
+      ifscCode?: string;
+      upiId?: string;
+    },
+  ) {
+    const shop = await this.verifyShopAccess(shopId, tenantId);
+    const currentSettings = (shop.settings as Record<string, any>) || {};
+
+    const mergedPayoutDetails = {
+      ...(currentSettings.payoutDetails || {}),
+      ...payoutDetails,
+      updatedAt: new Date().toISOString(),
+    };
+
+    await this.prisma.shop.update({
+      where: { id: shopId },
+      data: {
+        settings: {
+          ...currentSettings,
+          payoutDetails: mergedPayoutDetails,
+        },
+      },
+    });
+
+    return {
+      shopId,
+      payoutDetails: mergedPayoutDetails,
+    };
+  }
+
   private async invalidateSlotCache(shopId: string): Promise<void> {
     await this.redis.invalidateSlots(shopId);
   }

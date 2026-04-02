@@ -49,7 +49,23 @@ export default function HomeScreen() {
       shopsApi.list({ search: searchQuery || undefined }).then(res => res.data),
   });
 
-  const shops: Shop[] = shopsData?.data || [];
+  const shops: Shop[] = React.useMemo(() => {
+    const fetchedShops = (shopsData?.data || []) as Shop[];
+    if (activeCategory === 'All') {
+      return fetchedShops;
+    }
+
+    const category = activeCategory.toLowerCase();
+    return fetchedShops.filter(shop => {
+      const byName = shop.name.toLowerCase().includes(category);
+      const byDescription = shop.description?.toLowerCase().includes(category);
+      const byService = (shop.services || []).some(service =>
+        service.name.toLowerCase().includes(category),
+      );
+
+      return byName || Boolean(byDescription) || byService;
+    });
+  }, [shopsData?.data, activeCategory]);
 
   const headerOpacity = scrollY.interpolate({
     inputRange: [0, 80],

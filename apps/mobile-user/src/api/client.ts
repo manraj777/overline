@@ -225,5 +225,15 @@ export const otpApi = {
 export const paymentsApi = {
   createIntent: (data: { bookingId: string; amount: number }) =>
     api.post('/payments/create-intent', data),
+  createOrder: (data: {
+    bookingId: string;
+    amount?: number;
+    method?: 'ONLINE' | 'WALLET' | 'PAY_AT_SHOP';
+  }) => api.post('/payments/create-order', data),
+  verifyRazorpay: (data: {
+    razorpay_order_id: string;
+    razorpay_payment_id: string;
+    razorpay_signature: string;
+  }) => api.post('/payments/verify', data),
   getStatus: (id: string) => api.get(`/payments/${id}`),
 };

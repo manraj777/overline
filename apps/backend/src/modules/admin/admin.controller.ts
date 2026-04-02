@@ -322,6 +322,29 @@ export class AdminController {
     return this.adminService.updateShopSettings(shopId, tenantId, settings);
   }
 
+  @Get('shops/:shopId/payout-details')
+  @Roles(UserRole.OWNER, UserRole.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Get shop payout details' })
+  @ApiParam({ name: 'shopId', description: 'Shop ID' })
+  async getPayoutDetails(
+    @Param('shopId') shopId: string,
+    @CurrentUser('tenantId') tenantId: string,
+  ) {
+    return this.adminService.getPayoutDetails(shopId, tenantId);
+  }
+
+  @Patch('shops/:shopId/payout-details')
+  @Roles(UserRole.OWNER, UserRole.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Update shop payout details' })
+  @ApiParam({ name: 'shopId', description: 'Shop ID' })
+  async updatePayoutDetails(
+    @Param('shopId') shopId: string,
+    @Body() payoutDetails: any,
+    @CurrentUser('tenantId') tenantId: string,
+  ) {
+    return this.adminService.updatePayoutDetails(shopId, tenantId, payoutDetails);
+  }
+
   @Get('users')
   @Roles(UserRole.OWNER, UserRole.SUPER_ADMIN)
   @ApiOperation({ summary: 'Get users for fraud monitoring' })

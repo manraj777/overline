@@ -10,6 +10,7 @@ import {
   Alert,
   ActivityIndicator,
 } from 'react-native';
+import {LockKeyhole, ShieldCheck} from 'lucide-react-native';
 import {useRoute, RouteProp} from '@react-navigation/native';
 import {useNavigation} from '@react-navigation/native';
 import {otpApi} from '../../api/client';
@@ -140,7 +141,7 @@ export default function OtpVerifyScreen() {
         {/* Header */}
         <View style={styles.header}>
           <View style={styles.iconCircle}>
-            <Text style={styles.iconText}>{'🔐'}</Text>
+            <LockKeyhole size={34} color="#4F46E5" />
           </View>
           <Text style={styles.title}>Verify Identity</Text>
           <Text style={styles.subtitle}>
@@ -208,7 +209,7 @@ export default function OtpVerifyScreen() {
 
         {/* Security info */}
         <View style={styles.securityNote}>
-          <Text style={styles.securityIcon}>{'🛡️'}</Text>
+          <ShieldCheck size={18} color="#4B5563" style={styles.securityIcon} />
           <Text style={styles.securityText}>
             This verification protects your admin account. The code expires in
             10 minutes.
@@ -244,9 +245,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 20,
-  },
-  iconText: {
-    fontSize: 36,
   },
   title: {
     fontSize: 28,
@@ -340,7 +338,7 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   securityIcon: {
-    fontSize: 18,
+    marginTop: 1,
   },
   securityText: {
     flex: 1,

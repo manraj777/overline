@@ -15,6 +15,7 @@ import {format} from 'date-fns';
 import {bookingsApi} from '../../api/client';
 import {useAuthStore} from '../../stores/authStore';
 import {RootStackParamList, Booking, BookingStatus} from '../../types';
+import {CalendarDays, CircleCheck, Clock3, ClipboardList, Scissors} from 'lucide-react-native';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -79,20 +80,20 @@ export default function BookingsScreen() {
 
       <View style={styles.cardBody}>
         <View style={styles.infoRow}>
-          <Text style={styles.infoIcon}>📅</Text>
+          <CalendarDays size={16} color="#6B7280" style={styles.infoIcon} />
           <Text style={styles.infoText}>
             {format(new Date(item.startTime), 'EEE, MMM d, yyyy')}
           </Text>
         </View>
         <View style={styles.infoRow}>
-          <Text style={styles.infoIcon}>🕐</Text>
+          <Clock3 size={16} color="#6B7280" style={styles.infoIcon} />
           <Text style={styles.infoText}>
             {format(new Date(item.startTime), 'h:mm a')} -{' '}
             {format(new Date(item.endTime), 'h:mm a')}
           </Text>
         </View>
         <View style={styles.infoRow}>
-          <Text style={styles.infoIcon}>✂️</Text>
+          <Scissors size={16} color="#6B7280" style={styles.infoIcon} />
           <Text style={styles.infoText}>
             {item.services?.map(s => s.serviceName).join(', ')}
           </Text>
@@ -111,7 +112,7 @@ export default function BookingsScreen() {
 
   const renderEmpty = () => (
     <View style={styles.emptyContainer}>
-      <Text style={styles.emptyIcon}>📋</Text>
+      <ClipboardList size={34} color="#9CA3AF" style={styles.emptyIcon} />
       <Text style={styles.emptyTitle}>No Bookings Found</Text>
       <Text style={styles.emptySubtitle}>
         {statusFilter === 'ALL'
@@ -137,7 +138,8 @@ export default function BookingsScreen() {
         <TouchableOpacity
           style={styles.verifyButton}
           onPress={() => navigation.navigate('VerifyCode')}>
-          <Text style={styles.verifyButtonText}>✓ Verify</Text>
+          <CircleCheck size={14} color="#fff" />
+          <Text style={styles.verifyButtonText}>Verify</Text>
         </TouchableOpacity>
       </View>
 
@@ -218,6 +220,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderRadius: 8,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
   },
   verifyButtonText: {
     color: '#fff',
@@ -300,7 +305,6 @@ const styles = StyleSheet.create({
     marginBottom: 6,
   },
   infoIcon: {
-    fontSize: 14,
     marginRight: 8,
     width: 20,
   },
@@ -346,7 +350,6 @@ const styles = StyleSheet.create({
     paddingTop: 60,
   },
   emptyIcon: {
-    fontSize: 48,
     marginBottom: 16,
   },
   emptyTitle: {

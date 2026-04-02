@@ -11,6 +11,18 @@ import {useNavigation} from '@react-navigation/native';
 import {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import {useAuthStore} from '../../stores/authStore';
 import {RootStackParamList} from '../../types';
+import {
+  Bell,
+  ChartColumn,
+  ChevronRight,
+  CircleCheck,
+  CircleHelp,
+  Clock3,
+  CreditCard,
+  FileText,
+  Store,
+  Users,
+} from 'lucide-react-native';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -36,7 +48,7 @@ export default function SettingsScreen() {
     <View style={styles.container}>
       {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Settings</Text>
+        <Text style={styles.headerTitle}>Profile</Text>
       </View>
 
       <ScrollView showsVerticalScrollIndicator={false}>
@@ -107,7 +119,7 @@ export default function SettingsScreen() {
                   {shop.name}
                 </Text>
                 {shop.id === selectedShopId && (
-                  <Text style={styles.checkmark}>✓</Text>
+                  <CircleCheck size={18} color="#4F46E5" />
                 )}
               </TouchableOpacity>
             ))}
@@ -122,18 +134,18 @@ export default function SettingsScreen() {
             onPress={() =>
               navigation.navigate('ShopSettings', {shopId: selectedShopId || ''})
             }>
-            <Text style={styles.menuIcon}>🏪</Text>
+            <Store size={20} color="#6B7280" style={styles.menuIcon} />
             <Text style={styles.menuText}>Shop Details</Text>
-            <Text style={styles.menuArrow}>›</Text>
+            <ChevronRight size={18} color="#9CA3AF" />
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.menuItem}
             onPress={() =>
               navigation.navigate('WorkingHours', {shopId: selectedShopId || ''})
             }>
-            <Text style={styles.menuIcon}>🕐</Text>
+            <Clock3 size={20} color="#6B7280" style={styles.menuIcon} />
             <Text style={styles.menuText}>Working Hours</Text>
-            <Text style={styles.menuArrow}>›</Text>
+            <ChevronRight size={18} color="#9CA3AF" />
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.menuItem}
@@ -142,9 +154,9 @@ export default function SettingsScreen() {
                 shopId: selectedShopId || '',
               })
             }>
-            <Text style={styles.menuIcon}>👥</Text>
+            <Users size={20} color="#6B7280" style={styles.menuIcon} />
             <Text style={styles.menuText}>Staff Management</Text>
-            <Text style={styles.menuArrow}>›</Text>
+            <ChevronRight size={18} color="#9CA3AF" />
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.menuItem}
@@ -153,9 +165,20 @@ export default function SettingsScreen() {
                 shopId: selectedShopId || '',
               })
             }>
-            <Text style={styles.menuIcon}>📊</Text>
+            <ChartColumn size={20} color="#6B7280" style={styles.menuIcon} />
             <Text style={styles.menuText}>Analytics</Text>
-            <Text style={styles.menuArrow}>›</Text>
+            <ChevronRight size={18} color="#9CA3AF" />
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={styles.menuItem}
+            onPress={() =>
+              navigation.navigate('PayoutDetails', {
+                shopId: selectedShopId || '',
+              })
+            }>
+            <CreditCard size={20} color="#6B7280" style={styles.menuIcon} />
+            <Text style={styles.menuText}>Payout Details</Text>
+            <ChevronRight size={18} color="#9CA3AF" />
           </TouchableOpacity>
         </View>
 
@@ -163,19 +186,19 @@ export default function SettingsScreen() {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>App</Text>
           <TouchableOpacity style={styles.menuItem}>
-            <Text style={styles.menuIcon}>🔔</Text>
+            <Bell size={20} color="#6B7280" style={styles.menuIcon} />
             <Text style={styles.menuText}>Notifications</Text>
-            <Text style={styles.menuArrow}>›</Text>
+            <ChevronRight size={18} color="#9CA3AF" />
           </TouchableOpacity>
           <TouchableOpacity style={styles.menuItem}>
-            <Text style={styles.menuIcon}>❓</Text>
+            <CircleHelp size={20} color="#6B7280" style={styles.menuIcon} />
             <Text style={styles.menuText}>Help & Support</Text>
-            <Text style={styles.menuArrow}>›</Text>
+            <ChevronRight size={18} color="#9CA3AF" />
           </TouchableOpacity>
           <TouchableOpacity style={styles.menuItem}>
-            <Text style={styles.menuIcon}>📄</Text>
+            <FileText size={20} color="#6B7280" style={styles.menuIcon} />
             <Text style={styles.menuText}>Terms & Privacy</Text>
-            <Text style={styles.menuArrow}>›</Text>
+            <ChevronRight size={18} color="#9CA3AF" />
           </TouchableOpacity>
         </View>
 
@@ -317,11 +340,6 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#4F46E5',
   },
-  checkmark: {
-    fontSize: 18,
-    color: '#4F46E5',
-    fontWeight: 'bold',
-  },
   menuItem: {
     backgroundColor: '#fff',
     flexDirection: 'row',
@@ -332,7 +350,6 @@ const styles = StyleSheet.create({
     borderBottomColor: '#F3F4F6',
   },
   menuIcon: {
-    fontSize: 20,
     marginRight: 12,
     width: 28,
   },
@@ -340,10 +357,6 @@ const styles = StyleSheet.create({
     flex: 1,
     fontSize: 15,
     color: '#111827',
-  },
-  menuArrow: {
-    fontSize: 20,
-    color: '#9CA3AF',
   },
   logoutButton: {
     marginHorizontal: 20,

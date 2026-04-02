@@ -15,6 +15,7 @@ import {format} from 'date-fns';
 import {dashboardApi} from '../../api/client';
 import {useAuthStore} from '../../stores/authStore';
 import {RootStackParamList, DashboardStats, Booking} from '../../types';
+import {CalendarDays, CircleCheck, Cog, Scissors, Store} from 'lucide-react-native';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
@@ -92,7 +93,7 @@ export default function DashboardScreen() {
       {/* Shop Selector */}
       {selectedShop && (
         <View style={styles.shopBadge}>
-          <Text style={styles.shopBadgeIcon}>🏪</Text>
+          <Store size={18} color="#4F46E5" style={styles.shopBadgeIcon} />
           <Text style={styles.shopBadgeName}>{selectedShop.name}</Text>
         </View>
       )}
@@ -173,7 +174,7 @@ export default function DashboardScreen() {
 
           {todayBookings.length === 0 ? (
             <View style={styles.emptyState}>
-              <Text style={styles.emptyIcon}>📅</Text>
+              <CalendarDays size={34} color="#9CA3AF" style={styles.emptyIcon} />
               <Text style={styles.emptyText}>No bookings for today</Text>
             </View>
           ) : (
@@ -229,16 +230,16 @@ export default function DashboardScreen() {
             <TouchableOpacity
               style={styles.actionCard}
               onPress={() => navigation.navigate('VerifyCode')}>
-              <Text style={styles.actionIcon}>✓</Text>
+              <CircleCheck size={20} color="#4F46E5" style={styles.actionIcon} />
               <Text style={styles.actionLabel}>Verify Code</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.actionCard}
               onPress={() =>
-                navigation.navigate('Main' as any, {screen: 'Services'})
+                navigation.navigate('Main' as any, {screen: 'Queue'})
               }>
-              <Text style={styles.actionIcon}>✂️</Text>
-              <Text style={styles.actionLabel}>Services</Text>
+              <Scissors size={20} color="#4F46E5" style={styles.actionIcon} />
+              <Text style={styles.actionLabel}>Queue</Text>
             </TouchableOpacity>
             <TouchableOpacity
               style={styles.actionCard}
@@ -247,7 +248,7 @@ export default function DashboardScreen() {
                   shopId: selectedShopId || '',
                 })
               }>
-              <Text style={styles.actionIcon}>⚙️</Text>
+              <Cog size={20} color="#4F46E5" style={styles.actionIcon} />
               <Text style={styles.actionLabel}>Settings</Text>
             </TouchableOpacity>
           </View>
@@ -311,7 +312,6 @@ const styles = StyleSheet.create({
     borderRadius: 8,
   },
   shopBadgeIcon: {
-    fontSize: 18,
     marginRight: 8,
   },
   shopBadgeName: {
@@ -488,7 +488,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   actionIcon: {
-    fontSize: 28,
     marginBottom: 8,
   },
   actionLabel: {

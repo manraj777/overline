@@ -1,15 +1,18 @@
 import React from 'react';
-import {View, Text, StyleSheet, ActivityIndicator} from 'react-native';
+import {View, Text, StyleSheet, ActivityIndicator, Image} from 'react-native';
+import {Colors, FontSize, FontWeight, Radius, Spacing} from '../../theme';
+
+const BRAND_LOGO = require('../../../assets/branding/overline-logo.png');
 
 export default function SplashScreen() {
   // checkAuth is handled by AppContent in App.tsx
   return (
     <View style={styles.container}>
       <View style={styles.logoContainer}>
-        <Text style={styles.logo}>Overline</Text>
+        <Image source={BRAND_LOGO} style={styles.logoImage} resizeMode="contain" />
         <Text style={styles.subtitle}>Admin</Text>
       </View>
-      <ActivityIndicator size="large" color="#4F46E5" style={styles.loader} />
+      <ActivityIndicator size="large" color={Colors.primary} style={styles.loader} />
     </View>
   );
 }
@@ -19,24 +22,24 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#fff',
+    backgroundColor: Colors.background,
   },
   logoContainer: {
     alignItems: 'center',
-    marginBottom: 40,
+    marginBottom: Spacing.xxxxl,
   },
-  logo: {
-    fontSize: 42,
-    fontWeight: 'bold',
-    color: '#4F46E5',
-    marginBottom: 4,
+  logoImage: {
+    width: 190,
+    height: 190,
+    borderRadius: Radius.lg,
+    marginBottom: Spacing.md,
   },
   subtitle: {
-    fontSize: 18,
-    color: '#6B7280',
-    fontWeight: '500',
+    fontSize: FontSize.h3,
+    color: Colors.textSecondary,
+    fontWeight: FontWeight.medium,
   },
   loader: {
-    marginTop: 20,
+    marginTop: Spacing.xl,
   },
 });

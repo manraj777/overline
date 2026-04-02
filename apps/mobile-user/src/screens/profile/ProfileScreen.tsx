@@ -1,19 +1,25 @@
 import React from 'react';
 import { View, Text, ScrollView, StyleSheet, TouchableOpacity, Alert, ActivityIndicator, Share, Linking } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useAuthStore } from '../../stores/authStore';
 import { userApi } from '../../api/client';
 import { Colors, Spacing, BorderRadius, FontSizes, FontWeights, Shadows } from '../../theme';
-import { GlassCard, PrimaryButton, Divider } from '../../components/ui';
+import { PrimaryButton } from '../../components/ui';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { Upload, User, Bell, MapPin, MessageSquare, HelpCircle, Star, Info, FileText, Lock, LogOut, ChevronRight } from 'lucide-react-native';
+import { RootStackParamList } from '../../types';
 
 interface UserProfile {
   id: string; name: string; email: string; phone: string;
   referralCode: string; walletBalance: number; totalBookings: number; createdAt: string;
 }
 
+type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
+
 export default function ProfileScreen() {
+  const navigation = useNavigation<NavigationProp>();
   const { user, logout } = useAuthStore();
   const { data: profile, isLoading } = useQuery<UserProfile>({
     queryKey: ['profile'],
@@ -93,7 +99,7 @@ export default function ProfileScreen() {
           {
             title: 'ACCOUNT',
             items: [
-              { icon: <User color={Colors.textSecondary} size={20} />, label: 'Edit Profile', onPress: () => Alert.alert('Coming Soon', 'Profile editing will be available in the next update.') },
+              { icon: <User color={Colors.textSecondary} size={20} />, label: 'Edit Profile', onPress: () => navigation.navigate('EditProfile') },
               { icon: <Bell color={Colors.textSecondary} size={20} />, label: 'Notifications', onPress: () => Alert.alert('Coming Soon', 'Notification settings will be available in the next update.') },
               { icon: <MapPin color={Colors.textSecondary} size={20} />, label: 'Saved Addresses', onPress: () => Alert.alert('Coming Soon', 'Address management will be available in the next update.') },
             ],

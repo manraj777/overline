@@ -44,6 +44,7 @@ export const Config = {
     EMAIL_AUTH_ENABLED: false, // Disabled - OTP is primary auth method
     GOOGLE_AUTH_ENABLED: true, // Enabled - Google OAuth
     PAYMENTS_ENABLED: true,
+    BOOKING_ONLINE_ONLY: true, // Mandatory online payment flow for APK demo
     WALLET_ENABLED: true,
   },
 

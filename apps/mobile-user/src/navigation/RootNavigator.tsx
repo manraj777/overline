@@ -6,8 +6,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuthStore } from '../stores/authStore';
 import { RootStackParamList, MainTabParamList } from '../types';
 import { Colors, FontWeights, Shadows } from '../theme';
-import { View, Text, StyleSheet } from 'react-native';
-import { Home, Calendar, Wallet, User } from 'lucide-react-native';
+import { View, StyleSheet } from 'react-native';
+import { Home, Calendar, MessageCircle, User } from 'lucide-react-native';
 
 // Screens
 import SplashScreen from '../screens/auth/SplashScreen';
@@ -21,8 +21,9 @@ import BookingScreen from '../screens/booking/BookingScreen';
 import BookingDetailScreen from '../screens/booking/BookingDetailScreen';
 import BookingConfirmationScreen from '../screens/booking/BookingConfirmationScreen';
 import MyBookingsScreen from '../screens/booking/MyBookingsScreen';
-import WalletScreen from '../screens/wallet/WalletScreen';
+import ChatScreen from '../screens/chat/ChatScreen';
 import ProfileScreen from '../screens/profile/ProfileScreen';
+import EditProfileScreen from '../screens/profile/EditProfileScreen';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 const Tab = createBottomTabNavigator<MainTabParamList>();
@@ -47,7 +48,7 @@ function TabIcon({ name, focused, color, size }: { name: string; focused: boolea
   const IconComponent = {
     home: Home,
     calendar: Calendar,
-    wallet: Wallet,
+    chat: MessageCircle,
     user: User,
   }[name] || Home;
 
@@ -101,12 +102,12 @@ function MainTabs() {
         }}
       />
       <Tab.Screen
-        name="Wallet"
-        component={WalletScreen}
+        name="Chat"
+        component={ChatScreen}
         options={{
-          tabBarLabel: 'Wallet',
+          tabBarLabel: 'Chat',
           tabBarIcon: ({ color, size, focused }) => (
-            <TabIcon name="wallet" color={color} size={size} focused={focused} />
+            <TabIcon name="chat" color={color} size={size} focused={focused} />
           ),
         }}
       />
@@ -205,6 +206,14 @@ export default function RootNavigator() {
                 headerShown: false,
                 presentation: 'modal',
                 animation: 'slide_from_bottom',
+              }}
+            />
+            <Stack.Screen
+              name="EditProfile"
+              component={EditProfileScreen}
+              options={{
+                headerShown: true,
+                title: 'Edit Profile',
               }}
             />
           </>

@@ -45,33 +45,22 @@ async function bootstrap() {
     return [normalized];
   };
 
-  const configuredOrigins =
-    process.env.CORS_ORIGIN?.split(',')
-      .flatMap((origin) => expandOrigin(origin))
-      .filter(Boolean) || [];
-
-  // Always include production Vercel domains + localhost dev origins
-  const requiredOrigins = [
-    'http://localhost:3000',
-    'http://localhost:3002',
-    'https://overline-user-web.vercel.app',
-    'https://overline-admin-web.vercel.app',
-  ];
-
-  const allowedOrigins = [
-    ...new Set([...requiredOrigins, ...configuredOrigins]),
-  ];
-
-  // Enable CORS
-  app.enableCors({
-    origin: allowedOrigins,
-    credentials: true,
-    methods: ['GET', 'POST', 'PUT', 'PATCH', 'DELETE', 'OPTIONS'],
-    allowedHeaders: ['Content-Type', 'Authorization'],
+  // Completely bulletproof Custom Express CORS Middleware to bypass edge/proxy bugs
+  app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
+    // Dynamically reflect the origin, or default to wildcard
+    const origin = req.headers.origin || '*';
+    res.setHeader('Access-Control-Allow-Origin', origin);
+    res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, PUT, PATCH, POST, DELETE, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Accept, Authorization, X-Requested-With');
+    res.setHeader('Access-Control-Allow-Credentials', 'true');
+    
+    // Explicitly handle preflight OPTIONS checks to immediately return 204
+    if (req.method === 'OPTIONS') {
+      res.status(204).end();
+      return;
+    }
+    next();
   });
-
-  // WebSocket adapter (Socket.IO)
-  app.useWebSocketAdapter(new IoAdapter(app));
 
   // Raw body middleware for Stripe webhooks
   app.use('/api/v1/payments/webhook', express.raw({ type: 'application/json' }));

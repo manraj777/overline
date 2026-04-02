@@ -13,6 +13,7 @@ import {
 import {useQuery, useMutation, useQueryClient} from '@tanstack/react-query';
 import {useNavigation} from '@react-navigation/native';
 import {NativeStackNavigationProp} from '@react-navigation/native-stack';
+import {Scissors} from 'lucide-react-native';
 import {servicesApi} from '../../api/client';
 import {useAuthStore} from '../../stores/authStore';
 import {RootStackParamList, Service} from '../../types';
@@ -142,7 +143,7 @@ export default function ServicesScreen() {
 
   const renderEmpty = () => (
     <View style={styles.emptyContainer}>
-      <Text style={styles.emptyIcon}>✂️</Text>
+      <Scissors size={56} color="#9CA3AF" style={styles.emptyIcon} />
       <Text style={styles.emptyTitle}>No Services Yet</Text>
       <Text style={styles.emptySubtitle}>
         Add services that customers can book
@@ -318,7 +319,6 @@ const styles = StyleSheet.create({
     paddingTop: 80,
   },
   emptyIcon: {
-    fontSize: 64,
     marginBottom: 16,
   },
   emptyTitle: {

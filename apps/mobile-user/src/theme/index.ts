@@ -2,57 +2,86 @@
 // Premium color palette inspired by modern fintech/booking apps
 
 export const Colors = {
-    // Primary brand colors (matching web Tailwind config)
-    primary: '#0ea5e9', // primary-500
-    primaryDark: '#0284c7', // primary-600
-    primaryLight: '#bae6fd', // primary-200
-    primaryGhost: 'rgba(14, 165, 233, 0.08)',
-    primaryBorder: 'rgba(14, 165, 233, 0.2)',
+    // Figma palette: primary
+    primary50: '#f0f4ff',
+    primary100: '#e0e7ff',
+    primary200: '#c7d2fe',
+    primary400: '#818cf8',
+    primary500: '#6366f1',
+    primary600: '#4f46e5',
+    primary700: '#4338ca',
 
-    // Accent colors (matching web Tailwind config)
-    accent: '#d946ef', // accent-500
-    accentDark: '#c026d3', // accent-600
-    accentLight: '#f5d0fe', // accent-200
+    // Figma palette: accent
+    accent100: '#ede9fe',
+    accent500: '#8b5cf6',
+    accent600: '#7c3aed',
+    accent700: '#6d28d9',
 
-    // Semantic colors
-    success: '#10B981', // green-500
-    successLight: 'rgba(16, 185, 129, 0.1)',
-    warning: '#F59E0B', // yellow-500
-    warningLight: 'rgba(245, 158, 11, 0.1)',
-    error: '#EF4444', // red-500
-    errorLight: 'rgba(239, 68, 68, 0.1)',
-    info: '#3B82F6', // blue-500
+    // Figma palette: semantic
+    success50: '#d1fae5',
+    success500: '#10b981',
+    success700: '#065f46',
+    warning50: '#fef3c7',
+    warning500: '#f59e0b',
+    warning700: '#92400e',
+    danger50: '#fee2e2',
+    danger500: '#ef4444',
+    danger700: '#b91c1c',
 
-    // Neutral palette (Lexo Light theme)
-    background: '#F8F9FA', // lexo-light
-    surface: '#FFFFFF',
-    surfaceLight: '#F3F4F6', // gray-100
-    surfaceElevated: '#FFFFFF',
-    card: '#FFFFFF',
-    cardLight: '#F8F9FA',
+    // Figma palette: neutral
+    white: '#ffffff',
+    gray50: '#f9fafb',
+    gray100: '#f3f4f6',
+    gray200: '#e5e7eb',
+    gray400: '#9ca3af',
+    gray500: '#6b7280',
+    gray600: '#4b5563',
+    gray800: '#1f2937',
+    gray900: '#111827',
+    black: '#000000',
 
-    // Text (Lexo theme)
-    textPrimary: '#18191F', // lexo-black
-    textSecondary: '#282D3C', // lexo-charcoal
-    textTertiary: '#8C92A4', // lexo-gray
-    textMuted: '#9CA3AF', // gray-400
+    // Backward compatible aliases used in current screens/components
+    primary: '#6366f1',
+    primaryDark: '#4f46e5',
+    primaryLight: '#c7d2fe',
+    primaryGhost: 'rgba(99, 102, 241, 0.1)',
+    primaryBorder: 'rgba(99, 102, 241, 0.25)',
+    accent: '#8b5cf6',
+    accentDark: '#7c3aed',
+    accentLight: '#ede9fe',
+    success: '#10b981',
+    successLight: 'rgba(16, 185, 129, 0.14)',
+    warning: '#f59e0b',
+    warningLight: 'rgba(245, 158, 11, 0.14)',
+    error: '#ef4444',
+    errorLight: 'rgba(239, 68, 68, 0.14)',
+    info: '#6366f1',
 
-    // Borders
-    border: 'rgba(0, 0, 0, 0.06)',
-    borderLight: 'rgba(0, 0, 0, 0.03)',
-    borderActive: 'rgba(14, 165, 233, 0.4)',
+    background: '#f9fafb',
+    surface: '#ffffff',
+    surfaceLight: '#f3f4f6',
+    surfaceElevated: '#ffffff',
+    card: '#ffffff',
+    cardLight: '#f9fafb',
 
-    // Gradients (start, end)
-    gradientPrimary: ['#0ea5e9', '#d946ef'],
-    gradientAccent: ['#d946ef', '#0ea5e9'],
-    gradientSuccess: ['#10B981', '#38bdf8'],
-    gradientSurface: ['#FFFFFF', '#F8F9FA'],
-    gradientDark: ['#F8F9FA', '#FFFFFF'],
+    textPrimary: '#111827',
+    textSecondary: '#4b5563',
+    textTertiary: '#6b7280',
+    textMuted: '#9ca3af',
 
-    // Overlays
-    overlay: 'rgba(24, 25, 31, 0.6)', // lexo-black with opacity
-    overlayLight: 'rgba(24, 25, 31, 0.2)',
-    shimmer: 'rgba(0, 0, 0, 0.05)',
+    border: '#e5e7eb',
+    borderLight: '#f3f4f6',
+    borderActive: 'rgba(99, 102, 241, 0.45)',
+
+    gradientPrimary: ['#6366f1', '#8b5cf6'],
+    gradientAccent: ['#8b5cf6', '#6366f1'],
+    gradientSuccess: ['#10b981', '#34d399'],
+    gradientSurface: ['#ffffff', '#f9fafb'],
+    gradientDark: ['#f9fafb', '#ffffff'],
+
+    overlay: 'rgba(17, 24, 39, 0.62)',
+    overlayLight: 'rgba(17, 24, 39, 0.22)',
+    shimmer: 'rgba(156, 163, 175, 0.35)',
 };
 
 export const Spacing = {
@@ -80,9 +109,9 @@ export const BorderRadius = {
 
 export const FontSizes = {
     xs: 11,
-    sm: 13,
-    md: 15,
-    lg: 17,
+    sm: 12,
+    md: 14,
+    lg: 16,
     xl: 20,
     '2xl': 24,
     '3xl': 30,
@@ -102,7 +131,7 @@ export const Shadows = {
     sm: {
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 1 },
-        shadowOpacity: 0.05,
+        shadowOpacity: 0.06,
         shadowRadius: 2,
         elevation: 2,
     },
@@ -110,21 +139,21 @@ export const Shadows = {
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 4 },
         shadowOpacity: 0.08,
-        shadowRadius: 10,
+        shadowRadius: 12,
         elevation: 4,
     },
     lg: {
         shadowColor: '#000',
         shadowOffset: { width: 0, height: 8 },
-        shadowOpacity: 0.1,
+        shadowOpacity: 0.12,
         shadowRadius: 24,
         elevation: 8,
     },
     glow: {
-        shadowColor: '#0ea5e9',
+        shadowColor: '#6366f1',
         shadowOffset: { width: 0, height: 0 },
-        shadowOpacity: 0.2,
-        shadowRadius: 20,
+        shadowOpacity: 0.15,
+        shadowRadius: 16,
         elevation: 10,
     },
 };
@@ -133,10 +162,12 @@ export const StatusBarStyle = 'dark-content' as const;
 
 // Booking status config
 export const BookingStatusConfig: Record<string, { color: string; bg: string; icon: string }> = {
-    PENDING: { color: '#FFB830', bg: 'rgba(255, 184, 48, 0.15)', icon: '⏳' },
-    CONFIRMED: { color: '#00C48C', bg: 'rgba(0, 196, 140, 0.15)', icon: '✓' },
-    IN_PROGRESS: { color: '#00D2FF', bg: 'rgba(0, 210, 255, 0.15)', icon: '▶' },
-    COMPLETED: { color: '#00C48C', bg: 'rgba(0, 196, 140, 0.15)', icon: '✓' },
-    CANCELLED: { color: '#FF6B6B', bg: 'rgba(255, 107, 107, 0.15)', icon: '✕' },
-    NO_SHOW: { color: '#6E7191', bg: 'rgba(110, 113, 145, 0.15)', icon: '!' },
+    PENDING: { color: '#92400e', bg: '#fef3c7', icon: '⏳' },
+    UPCOMING: { color: '#4338ca', bg: '#e0e7ff', icon: '⏳' },
+    CONFIRMED: { color: '#065f46', bg: '#d1fae5', icon: '✓' },
+    IN_PROGRESS: { color: '#7c3aed', bg: '#ede9fe', icon: '▶' },
+    IN_SERVICE: { color: '#7c3aed', bg: '#ede9fe', icon: '▶' },
+    COMPLETED: { color: '#4b5563', bg: '#f3f4f6', icon: '✓' },
+    CANCELLED: { color: '#b91c1c', bg: '#fee2e2', icon: '✕' },
+    NO_SHOW: { color: '#92400e', bg: '#fef3c7', icon: '!' },
 };

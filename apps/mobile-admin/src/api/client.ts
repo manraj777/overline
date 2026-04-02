@@ -211,6 +211,10 @@ export const shopApi = {
       `/admin/shops/${shopId}/working-hours/${dayOfWeek}`,
       data,
     ),
+  getPayoutDetails: (shopId: string) =>
+    apiClient.get(`/admin/shops/${shopId}/payout-details`),
+  updatePayoutDetails: (shopId: string, data: any) =>
+    apiClient.patch(`/admin/shops/${shopId}/payout-details`, data),
 };
 
 // Staff APIs

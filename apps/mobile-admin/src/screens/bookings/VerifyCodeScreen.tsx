@@ -15,6 +15,7 @@ import {bookingsApi, dashboardApi} from '../../api/client';
 import {useAuthStore} from '../../stores/authStore';
 import {Booking} from '../../types';
 import {format} from 'date-fns';
+import {CircleCheck, Play} from 'lucide-react-native';
 
 export default function VerifyCodeScreen() {
   const navigation = useNavigation();
@@ -178,7 +179,7 @@ export default function VerifyCodeScreen() {
           {/* Booking Found */}
           <View style={styles.successHeader}>
             <View style={styles.successIcon}>
-              <Text style={styles.successIconText}>✓</Text>
+              <CircleCheck size={34} color="#fff" />
             </View>
             <Text style={styles.successTitle}>Code Verified!</Text>
           </View>
@@ -252,7 +253,7 @@ export default function VerifyCodeScreen() {
           <View style={styles.actions}>
             {verifiedBooking.status === 'IN_PROGRESS' ? (
               <View style={styles.inProgressNote}>
-                <Text style={styles.inProgressIcon}>▶</Text>
+                <Play size={15} color="#3B82F6" style={styles.inProgressIcon} />
                 <Text style={styles.inProgressText}>
                   Service is already in progress
                 </Text>
@@ -265,7 +266,10 @@ export default function VerifyCodeScreen() {
                 {startMutation.isPending ? (
                   <ActivityIndicator color="#fff" />
                 ) : (
-                  <Text style={styles.startButtonText}>▶ Start Service</Text>
+                  <View style={styles.startButtonContent}>
+                    <Play size={15} color="#fff" />
+                    <Text style={styles.startButtonText}>Start Service</Text>
+                  </View>
                 )}
               </TouchableOpacity>
             )}
@@ -351,10 +355,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: 16,
-  },
-  successIconText: {
-    fontSize: 36,
-    color: '#fff',
   },
   successTitle: {
     fontSize: 24,
@@ -471,6 +471,11 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: '600',
   },
+  startButtonContent: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
   scanAgainButton: {
     padding: 14,
     borderRadius: 12,
@@ -490,8 +495,6 @@ const styles = StyleSheet.create({
     borderRadius: 12,
   },
   inProgressIcon: {
-    fontSize: 16,
-    color: '#3B82F6',
     marginRight: 8,
   },
   inProgressText: {

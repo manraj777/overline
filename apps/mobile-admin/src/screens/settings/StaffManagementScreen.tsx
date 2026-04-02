@@ -13,6 +13,7 @@ import {
   Platform,
   RefreshControl,
 } from 'react-native';
+import {UsersRound, X} from 'lucide-react-native';
 import {useQuery, useMutation, useQueryClient} from '@tanstack/react-query';
 import {useRoute, RouteProp} from '@react-navigation/native';
 import {staffApi} from '../../api/client';
@@ -217,7 +218,7 @@ export default function StaffManagementScreen() {
         }
         ListEmptyComponent={
           <View style={styles.emptyState}>
-            <Text style={styles.emptyIcon}>👥</Text>
+            <UsersRound size={46} color="#9CA3AF" style={styles.emptyIcon} />
             <Text style={styles.emptyTitle}>No Staff Members</Text>
             <Text style={styles.emptySubtitle}>
               Add staff to help manage your shop
@@ -245,7 +246,7 @@ export default function StaffManagementScreen() {
                   setEditingStaff(null);
                   setErrors({});
                 }}>
-                <Text style={styles.modalClose}>✕</Text>
+                <X size={20} color="#6B7280" style={styles.modalClose} />
               </TouchableOpacity>
             </View>
 
@@ -438,7 +439,6 @@ const styles = StyleSheet.create({
     padding: 48,
   },
   emptyIcon: {
-    fontSize: 48,
     marginBottom: 16,
   },
   emptyTitle: {
@@ -489,8 +489,6 @@ const styles = StyleSheet.create({
     color: '#111827',
   },
   modalClose: {
-    fontSize: 20,
-    color: '#6B7280',
     padding: 4,
   },
   modalForm: {

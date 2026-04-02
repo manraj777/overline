@@ -8,6 +8,8 @@ import {
 } from 'react-native';
 import { Colors, FontSizes, FontWeights, Shadows } from '../../theme';
 
+const BRAND_LOGO = require('../../../assets/branding/overline-logo.png');
+
 export default function SplashScreen() {
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const scaleAnim = useRef(new Animated.Value(0.8)).current;
@@ -61,15 +63,15 @@ export default function SplashScreen() {
             transform: [{ scale: scaleAnim }],
           },
         ]}>
-        {/* Logo */}
-        <Animated.View
+        <Animated.Image
+          source={BRAND_LOGO}
           style={[
-            styles.logoDot,
+            styles.logoImage,
             { transform: [{ scale: pulseAnim }] },
           ]}
+          resizeMode="contain"
         />
-        <Text style={styles.logoText}>overline</Text>
-        <Text style={styles.tagline}>BOOK · ARRIVE · SHINE</Text>
+        <Text style={styles.tagline}>Queue free life</Text>
       </Animated.View>
 
       {/* Bottom loading */}
@@ -127,25 +129,17 @@ const styles = StyleSheet.create({
   content: {
     alignItems: 'center',
   },
-  logoDot: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: Colors.primary,
-    marginBottom: 20,
+  logoImage: {
+    width: 220,
+    height: 220,
+    marginBottom: 16,
+    borderRadius: 20,
     ...Shadows.glow,
   },
-  logoText: {
-    fontSize: 42,
-    fontWeight: FontWeights.extrabold,
-    color: Colors.textPrimary,
-    letterSpacing: 4,
-    marginBottom: 12,
-  },
   tagline: {
-    fontSize: FontSizes.xs,
+    fontSize: FontSizes.sm,
     color: Colors.textTertiary,
-    letterSpacing: 6,
+    letterSpacing: 1,
     fontWeight: FontWeights.medium,
   },
   loadingContainer: {

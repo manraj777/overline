@@ -16,5 +16,9 @@ export {default as MyBookingsScreen} from './booking/MyBookingsScreen';
 // Wallet Screen
 export {default as WalletScreen} from './wallet/WalletScreen';
 
+// Chat Screen
+export {default as ChatScreen} from './chat/ChatScreen';
+
 // Profile Screen
 export {default as ProfileScreen} from './profile/ProfileScreen';
+export {default as EditProfileScreen} from './profile/EditProfileScreen';

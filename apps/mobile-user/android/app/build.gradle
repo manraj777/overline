@@ -120,6 +120,12 @@ dependencies {
     }
 }
 dependencies {
+    // Import the Firebase BoM
+    implementation platform('com.google.firebase:firebase-bom:34.11.0')
+
+    // Add Firebase Analytics
+    implementation 'com.google.firebase:firebase-analytics'
+
     // Firebase Core
     implementation 'com.google.firebase:firebase-core:21.1.1'
     

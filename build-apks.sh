@@ -1,24 +1,42 @@
-#!/bin/bash
+#!/usr/bin/env bash
 
-# Ensure script halts on any error
-set -e
+set -euo pipefail
 
-echo "🔨 Building Release APKs for Overline Apps..."
-echo "This will create standalone APKs connected to the Production Backend that can run on any network."
+MODE="${1:-debug}"
+ROOT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
-# 1. Build Mobile Admin APK
-echo "\n📱 Building Admin App (mobile-admin)..."
-cd apps/mobile-admin/android
-./gradlew clean assembleRelease
-cd ../../../
+if [[ "$MODE" != "debug" && "$MODE" != "release" ]]; then
+	echo "Usage: bash build-apks.sh [debug|release]"
+	exit 1
+fi
 
-# 2. Build Mobile User APK
-echo "\n📱 Building User App (mobile-user)..."
-cd apps/mobile-user/android
-./gradlew clean assembleRelease
-cd ../../../
+if [[ "$MODE" == "release" ]]; then
+	TASK="assembleRelease"
+	APK_DIR="release"
+else
+	TASK="assembleDebug"
+	APK_DIR="debug"
+fi
 
-echo "\n✅ Build completed successfully!"
-echo "You can find your APKs at the following locations:"
-echo "➡️  User App:  apps/mobile-user/android/app/build/outputs/apk/release/app-release.apk"
-echo "➡️  Admin App: apps/mobile-admin/android/app/build/outputs/apk/release/app-release.apk"
+echo "Building $MODE APKs for Overline apps..."
+
+# mobile-user requires google-services.json for Google Sign-In/Firebase plugin.
+if [[ ! -f "$ROOT_DIR/apps/mobile-user/android/app/google-services.json" ]]; then
+	echo "ERROR: Missing file apps/mobile-user/android/app/google-services.json"
+	echo "Google login APK cannot be built without Firebase Android config."
+	exit 1
+fi
+
+echo "\nBuilding Admin App (mobile-admin)..."
+cd "$ROOT_DIR/apps/mobile-admin/android"
+./gradlew clean "$TASK"
+
+echo "\nBuilding User App (mobile-user)..."
+cd "$ROOT_DIR/apps/mobile-user/android"
+./gradlew clean "$TASK"
+
+cd "$ROOT_DIR"
+
+echo "\nBuild completed successfully."
+echo "User App APK:  apps/mobile-user/android/app/build/outputs/apk/$APK_DIR/app-$APK_DIR.apk"
+echo "Admin App APK: apps/mobile-admin/android/app/build/outputs/apk/$APK_DIR/app-$APK_DIR.apk"

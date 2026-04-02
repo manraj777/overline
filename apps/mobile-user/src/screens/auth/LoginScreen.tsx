@@ -10,6 +10,7 @@ import {
   Alert,
   Dimensions,
   ActivityIndicator,
+  Image,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -25,6 +26,7 @@ import { Config } from '../../config';
 import { Smartphone, Lock, Shield, Mail, Key, Eye, EyeOff, ArrowRight, AlertTriangle, X } from 'lucide-react-native';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'Login'>;
+const BRAND_LOGO = require('../../../assets/branding/overline-logo.png');
 
 export default function LoginScreen() {
   const navigation = useNavigation<NavigationProp>();
@@ -136,10 +138,7 @@ export default function LoginScreen() {
 
           {/* Brand Header */}
           <View style={styles.header}>
-            <View style={styles.logoContainer}>
-              <View style={styles.logoDot} />
-              <Text style={styles.logoText}>overline</Text>
-            </View>
+            <Image source={BRAND_LOGO} style={styles.logoImage} resizeMode="contain" />
             <Text style={styles.tagline}>Book. Arrive. Shine.</Text>
           </View>
 
@@ -333,6 +332,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     marginBottom: Spacing.sm,
+  },
+  logoImage: {
+    width: 170,
+    height: 170,
+    borderRadius: BorderRadius.lg,
+    marginBottom: Spacing.md,
   },
   logoDot: {
     width: 10,
