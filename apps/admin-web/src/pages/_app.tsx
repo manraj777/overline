@@ -25,18 +25,22 @@ function AuthBootstrap() {
     const validateSession = async () => {
       try {
         await api.get('/users/me');
-      } catch {
-        if (!cancelled) {
+      } catch (err: any) {
+        // Only logout on definitive 401/403 — NOT on network/CORS errors
+        const status = err?.response?.status;
+        if (!cancelled && (status === 401 || status === 403)) {
           logout();
           router.replace('/login');
         }
       }
     };
 
-    validateSession();
+    // Small delay to allow hydration to complete before validating
+    const timer = setTimeout(validateSession, 500);
 
     return () => {
       cancelled = true;
+      clearTimeout(timer);
     };
   }, [accessToken, isAuthenticated, logout, router]);
 

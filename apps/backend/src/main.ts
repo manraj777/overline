@@ -50,15 +50,17 @@ async function bootstrap() {
       .flatMap((origin) => expandOrigin(origin))
       .filter(Boolean) || [];
 
-  const allowedOrigins =
-    configuredOrigins.length > 0
-      ? configuredOrigins
-      : [
-          'http://localhost:3000',
-          'http://localhost:3002',
-          'https://overline-user-web.vercel.app',
-          'https://overline-admin-web.vercel.app',
-        ];
+  // Always include production Vercel domains + localhost dev origins
+  const requiredOrigins = [
+    'http://localhost:3000',
+    'http://localhost:3002',
+    'https://overline-user-web.vercel.app',
+    'https://overline-admin-web.vercel.app',
+  ];
+
+  const allowedOrigins = [
+    ...new Set([...requiredOrigins, ...configuredOrigins]),
+  ];
 
   // Enable CORS
   app.enableCors({

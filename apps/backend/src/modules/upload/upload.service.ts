@@ -15,7 +15,7 @@ export class UploadService {
     let apiSecret = this.configService.get<string>('CLOUDINARY_API_SECRET');
 
     if (!cloudName || !apiKey || !apiSecret) {
-      const cloudinaryUrl = this.configService.get<string>('CLOUDINARY_URL');
+      const cloudinaryUrl = this.configService.get<string>('CLOUDINARY_URL') || process.env.CLOUDINARY_URL;
       if (cloudinaryUrl) {
         try {
           const parsed = new URL(cloudinaryUrl);
