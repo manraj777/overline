@@ -345,7 +345,7 @@ model Service {
 
   // Relations
   bookingServices BookingService[]
-  primaryBookings Booking[]        @relation("PrimaryServiceBooking")
+  bookings        Booking[]
   staffServices   StaffService[]
 
   @@index([shopId])
@@ -574,7 +574,7 @@ model Booking {
   staffProfileId String?       @map("staff_profile_id")
   staffProfile   StaffProfile? @relation("BookingStaffProfile", fields: [staffProfileId], references: [id])
   serviceId      String?       @map("service_id")
-  service        Service?      @relation("PrimaryServiceBooking", fields: [serviceId], references: [id])
+  service        Service?      @relation(fields: [serviceId], references: [id])
 
   // Time
   startTime   DateTime  @map("start_time")
@@ -629,6 +629,7 @@ model Booking {
 
   // Prompt-aligned payment snapshots (paise)
   paymentMethod PaymentMethod? @map("payment_method")
+  paymentStatus PaymentStatus  @default(PENDING) @map("payment_status")
   paymentId     String?        @map("payment_id")
   amount        Int?           @map("amount")
   platformFee   Int?           @map("platform_fee")
