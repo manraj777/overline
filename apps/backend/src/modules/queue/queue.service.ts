@@ -78,6 +78,41 @@ export class QueueService {
     return Math.floor(1000 + Math.random() * 9000).toString();
   }
 
+  private async promoteNextWaitlisted(
+    staffProfileId?: string | null,
+    slotDate?: string | Date | null,
+    slotTime?: string | Date | null,
+  ): Promise<void> {
+    if (!staffProfileId || !slotDate || !slotTime) {
+      return;
+    }
+
+    const normalizedSlotTime =
+      slotTime instanceof Date ? slotTime.toISOString().slice(11, 16) : slotTime;
+
+    const nextWaitlisted = await this.prisma.booking.findFirst({
+      where: {
+        staffProfileId,
+        slotDate,
+        slotTime: normalizedSlotTime,
+        status: BookingStatus.WAITLISTED,
+      },
+      orderBy: [{ queuePosition: 'asc' }, { startTime: 'asc' }],
+    });
+
+    if (!nextWaitlisted) {
+      return;
+    }
+
+    await this.prisma.booking.update({
+      where: { id: nextWaitlisted.id },
+      data: {
+        status: BookingStatus.PENDING_APPROVAL,
+        queuePosition: null,
+      },
+    });
+  }
+
   /**
    * Get queue position for a booking
    */
@@ -301,6 +336,8 @@ export class QueueService {
       },
     });
 
+    await this.promoteNextWaitlisted(booking.staffProfileId, booking.slotDate, booking.slotTime);
+
     await this.updateQueueStats(booking.shopId);
     return updated;
   }
@@ -400,6 +437,8 @@ export class QueueService {
       },
     });
 
+    await this.promoteNextWaitlisted(booking.staffProfileId, booking.slotDate, booking.slotTime);
+
     await this.updateQueueStats(shopId);
     return updated;
   }
@@ -420,6 +459,8 @@ export class QueueService {
       select: {
         id: true,
         shopId: true,
+        staffId: true,
+        staffProfileId: true,
         startTime: true,
         endTime: true,
         queuePosition: true,
@@ -456,6 +497,8 @@ export class QueueService {
       const impacted = await tx.booking.findMany({
         where: {
           shopId,
+          ...(booking.staffId ? { staffId: booking.staffId } : {}),
+          ...(booking.staffProfileId ? { staffProfileId: booking.staffProfileId } : {}),
           id: { not: booking.id },
           startTime: { gte: dayStart, lte: dayEnd, gt: booking.startTime },
           status: {
