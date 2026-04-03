@@ -37,6 +37,38 @@ export class QueueController {
     private readonly fraudDetectionService: FraudDetectionService,
   ) {}
 
+  @Get('slots')
+  @Public()
+  @ApiOperation({ summary: 'Get available time slots for booking (query-based alias)' })
+  @ApiQuery({ name: 'shopId', required: true, description: 'Shop ID' })
+  @ApiQuery({ name: 'date', required: true, description: 'Date in YYYY-MM-DD format' })
+  @ApiQuery({ name: 'serviceIds', required: false, description: 'Comma-separated service IDs' })
+  @ApiQuery({ name: 'duration', required: false, description: 'Duration in minutes (used if no serviceIds)' })
+  @ApiQuery({ name: 'staffId', required: false, description: 'Optional specific staff member' })
+  async getSlotsByQuery(
+    @Query('shopId') shopId: string,
+    @Query('date') date: string,
+    @Query('serviceIds') serviceIds?: string,
+    @Query('duration') duration?: number,
+    @Query('staffId') staffId?: string,
+  ) {
+    if (!shopId) {
+      throw new BadRequestException('shopId is required');
+    }
+    if (!date) {
+      throw new BadRequestException('date is required');
+    }
+
+    const serviceIdArray = serviceIds ? serviceIds.split(',').filter(Boolean) : [];
+    return this.slotEngine.getAvailableSlots({
+      shopId,
+      date,
+      serviceIds: serviceIdArray,
+      duration: duration || 30,
+      staffId,
+    });
+  }
+
   @Get('slots/:shopId')
   @Public()
   @ApiOperation({ summary: 'Get available time slots for booking' })

@@ -11,6 +11,7 @@ import { PrismaService } from '@/common/prisma/prisma.service';
 import { RedisService } from '@/common/redis/redis.service';
 import { QueueService } from '../queue/queue.service';
 import { QueueGateway } from '../queue/queue.gateway';
+import { QueueTrackingService } from '../queue/queue-tracking.service';
 import { SlotEngineService } from '../queue/slot-engine.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { TrustScoreService } from '../users/trust-score.service';
@@ -38,6 +39,7 @@ export class BookingsService {
     private queueService: QueueService,
     @Inject(forwardRef(() => QueueGateway))
     private queueGateway: QueueGateway,
+    private queueTrackingService: QueueTrackingService,
     private slotEngine: SlotEngineService,
     private notificationsService: NotificationsService,
     private trustScoreService: TrustScoreService,
@@ -50,6 +52,118 @@ export class BookingsService {
    */
   private generateVerificationCode(): string {
     return Math.floor(1000 + Math.random() * 9000).toString();
+  }
+
+  async handleCallAheadReply(
+    bookingId: string,
+    userId: string,
+    reply: 'COMING' | 'NOT_COMING' | 'LATER',
+  ) {
+    const booking = await this.prisma.booking.findFirst({
+      where: { id: bookingId, userId },
+      select: {
+        id: true,
+        shopId: true,
+        staffProfileId: true,
+        slotDate: true,
+        slotTime: true,
+      },
+    });
+
+    if (!booking) {
+      throw new NotFoundException('Booking not found');
+    }
+
+    const nextStatus =
+      reply === 'NOT_COMING' || reply === 'LATER' ? BookingStatus.SKIPPED : undefined;
+
+    const updated = await this.prisma.booking.update({
+      where: { id: booking.id },
+      data: {
+        callAheadReply: reply,
+        ...(nextStatus ? { status: nextStatus } : {}),
+      },
+    });
+
+    if (nextStatus && booking.staffProfileId && booking.slotDate && booking.slotTime) {
+      const nextWaitlisted = await this.prisma.booking.findFirst({
+        where: {
+          staffProfileId: booking.staffProfileId,
+          slotDate: booking.slotDate,
+          slotTime: booking.slotTime,
+          status: BookingStatus.WAITLISTED,
+        },
+        orderBy: { queuePosition: 'asc' },
+      });
+
+      if (nextWaitlisted) {
+        await this.prisma.booking.update({
+          where: { id: nextWaitlisted.id },
+          data: {
+            status: BookingStatus.PENDING_APPROVAL,
+            queuePosition: null,
+          },
+        });
+      }
+    }
+
+    await this.queueService.updateQueueStats(updated.shopId);
+    return updated;
+  }
+
+  async shareLocation(bookingId: string, userId: string, lat: number, lng: number) {
+    if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+      throw new BadRequestException('lat and lng must be valid numbers');
+    }
+
+    const booking = await this.prisma.booking.findFirst({
+      where: { id: bookingId, userId },
+      select: {
+        id: true,
+        shopId: true,
+        status: true,
+        startTime: true,
+      },
+    });
+
+    if (!booking) {
+      throw new NotFoundException('Booking not found');
+    }
+
+    const windowStart = new Date(booking.startTime.getTime() - 2 * 60 * 60 * 1000);
+    if (new Date() < windowStart) {
+      throw new BadRequestException('Location sharing opens 2h before slot');
+    }
+
+    if (booking.status === BookingStatus.IN_PROGRESS || booking.status === BookingStatus.IN_SERVICE) {
+      throw new BadRequestException('Service already started');
+    }
+
+    const updated = await this.prisma.booking.update({
+      where: { id: booking.id },
+      data: {
+        userLat: lat,
+        userLng: lng,
+        locationSharedAt: new Date(),
+      },
+      select: {
+        id: true,
+        shopId: true,
+        userLat: true,
+        userLng: true,
+        locationSharedAt: true,
+      },
+    });
+
+    await this.queueTrackingService.saveLocation(booking.id, { lat, lng });
+
+    return {
+      bookingId: updated.id,
+      shopId: updated.shopId,
+      lat: updated.userLat,
+      lng: updated.userLng,
+      locationSharedAt: updated.locationSharedAt,
+    };
   }
 
   private getSlotDateKey(date: Date): string {

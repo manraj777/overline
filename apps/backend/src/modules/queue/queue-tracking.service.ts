@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '@/common/prisma/prisma.service';
 import { RedisService } from '@/common/redis/redis.service';
 
@@ -95,6 +95,49 @@ export class QueueTrackingService {
         bookingId,
         senderId,
         senderType,
+        content,
+      },
+    });
+  }
+
+  async getMessagesBySessionId(sessionId: string) {
+    const session = await this.prisma.chatSession.findUnique({
+      where: { id: sessionId },
+      select: { id: true },
+    });
+
+    if (!session) {
+      throw new NotFoundException('Chat session not found');
+    }
+
+    return this.prisma.chatMessage.findMany({
+      where: { sessionId: session.id },
+      orderBy: { createdAt: 'asc' },
+    });
+  }
+
+  async createMessageBySessionId(
+    sessionId: string,
+    senderId: string,
+    senderType: 'USER' | 'SHOP',
+    content: string,
+  ) {
+    const session = await this.prisma.chatSession.findUnique({
+      where: { id: sessionId },
+      select: { id: true, bookingId: true },
+    });
+
+    if (!session) {
+      throw new NotFoundException('Chat session not found');
+    }
+
+    return this.prisma.chatMessage.create({
+      data: {
+        sessionId: session.id,
+        bookingId: session.bookingId,
+        senderId,
+        senderType,
+        senderRole: senderType === 'SHOP' ? 'STAFF' : 'USER',
         content,
       },
     });

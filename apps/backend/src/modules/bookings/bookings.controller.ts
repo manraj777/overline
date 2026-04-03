@@ -1,4 +1,15 @@
-import { Controller, Get, Post, Patch, Body, Param, Query, UseGuards, Req } from '@nestjs/common';
+import {
+  Controller,
+  Get,
+  Post,
+  Patch,
+  Body,
+  Param,
+  Query,
+  UseGuards,
+  Req,
+  BadRequestException,
+} from '@nestjs/common';
 import {
   ApiTags,
   ApiOperation,
@@ -38,6 +49,16 @@ class OwnerCancellationDecisionDto {
   @IsOptional()
   @IsString()
   ownerNote?: string;
+}
+
+class CallAheadReplyDto {
+  @IsString()
+  reply: 'COMING' | 'NOT_COMING' | 'LATER';
+}
+
+class ShareLocationDto {
+  lat: number;
+  lng: number;
 }
 
 @ApiTags('bookings')
@@ -201,5 +222,34 @@ export class BookingsController {
       dto.ownerNote,
       ownerId,
     );
+  }
+
+  @Post(':id/call-ahead-reply')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({ summary: 'User replies to call-ahead ping' })
+  @ApiParam({ name: 'id', description: 'Booking ID' })
+  async callAheadReply(
+    @Param('id') id: string,
+    @Body() dto: CallAheadReplyDto,
+    @CurrentUser('id') userId: string,
+  ) {
+    if (!['COMING', 'NOT_COMING', 'LATER'].includes(dto.reply)) {
+      throw new BadRequestException('reply must be COMING, NOT_COMING, or LATER');
+    }
+    return this.bookingsService.handleCallAheadReply(id, userId, dto.reply);
+  }
+
+  @Post(':id/share-location')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({ summary: 'User shares location for booking' })
+  @ApiParam({ name: 'id', description: 'Booking ID' })
+  async shareLocation(
+    @Param('id') id: string,
+    @Body() dto: ShareLocationDto,
+    @CurrentUser('id') userId: string,
+  ) {
+    return this.bookingsService.shareLocation(id, userId, dto.lat, dto.lng);
   }
 }
