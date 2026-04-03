@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useCallback, useEffect, useState } from 'react';
 import { MapPin, Phone, MessageCircle, User, Send } from 'lucide-react';
 import { Card, Badge, Button, Input } from '@/components/ui';
 import { useAuthStore } from '@/stores/auth';
@@ -37,21 +37,21 @@ export const LiveTracking = ({ shopId }: { shopId: string }) => {
     const [chatInput, setChatInput] = useState('');
     const [socket, setSocket] = useState<Socket | null>(null);
 
-    const fetchTracking = async () => {
+    const fetchTracking = useCallback(async () => {
         try {
             const { data } = await api.get(`/queue/tracking/${shopId}`);
             setBookings(data || []);
         } catch (err) {
             console.error(err);
         }
-    };
+    }, [shopId]);
 
     // Fetch trackable bookings initially
     useEffect(() => {
         fetchTracking();
         const interval = setInterval(fetchTracking, 30000); // Check every 30s
         return () => clearInterval(interval);
-    }, [shopId]);
+    }, [fetchTracking]);
 
     // Listen to global queue updates to trigger a fast refetch
     useQueueSocket({
@@ -102,7 +102,7 @@ export const LiveTracking = ({ shopId }: { shopId: string }) => {
             senderId: shopId,
             senderType: 'SHOP',
             content: chatInput,
-        }).then(({ data }) => {
+        }).then(() => {
             // Socket will broadcast it to us as well, or we can just emit it
             socket.emit('sendMessage', {
                 bookingId: selectedBooking.id,
