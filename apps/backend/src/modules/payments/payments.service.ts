@@ -3,10 +3,10 @@ import { ConfigService } from '@nestjs/config';
 import Stripe from 'stripe';
 import * as crypto from 'crypto';
 import { PrismaService } from '@/common/prisma/prisma.service';
-import { PaymentStatus, PaymentProvider, BookingStatus } from '@prisma/client';
+import { PaymentStatus, PaymentProvider, BookingStatus, PaymentMethod } from '@prisma/client';
 import { CreatePaymentDto } from './dto/create-payment.dto';
 
-export type PaymentMethod = 'ONLINE' | 'WALLET' | 'PAY_AT_SHOP';
+export type PaymentOrderMethod = 'ONLINE' | 'WALLET' | 'PAY_AT_SHOP';
 
 @Injectable()
 export class PaymentsService {
@@ -14,6 +14,9 @@ export class PaymentsService {
   private stripe: Stripe | null = null;
   private razorpayKeyId: string | null = null;
   private razorpaySecret: string | null = null;
+  private razorpayRouteEnabled = false;
+  private razorpayAccountNumber: string | null = null;
+  private platformFeePercent = 2;
 
   constructor(
     private prisma: PrismaService,
@@ -29,6 +32,12 @@ export class PaymentsService {
     // Razorpay setup
     this.razorpayKeyId = this.configService.get<string>('payments.razorpay.keyId') || null;
     this.razorpaySecret = this.configService.get<string>('payments.razorpay.keySecret') || null;
+    this.razorpayRouteEnabled =
+      this.configService.get<boolean>('payments.razorpay.routeEnabled') || false;
+    this.razorpayAccountNumber =
+      this.configService.get<string>('payments.razorpay.accountNumber') || null;
+    this.platformFeePercent =
+      this.configService.get<number>('payments.fees.platformFeePercent') || 2;
     if (this.razorpayKeyId && this.razorpayKeyId !== 'REPLACE_ME') {
       this.logger.log('Razorpay payment provider configured');
     }
@@ -37,10 +46,10 @@ export class PaymentsService {
   /**
    * Create a payment order — supports ONLINE (Razorpay/Stripe), WALLET, PAY_AT_SHOP
    */
-  async createOrder(dto: CreatePaymentDto & { method?: PaymentMethod }, userId: string) {
+  async createOrder(dto: CreatePaymentDto & { method?: PaymentOrderMethod }, userId: string) {
     const booking = await this.prisma.booking.findUnique({
       where: { id: dto.bookingId },
-      include: { payment: true, shop: true, services: true },
+      include: { payment: true, shop: true, services: true, staffProfile: true },
     });
 
     if (!booking) throw new NotFoundException('Booking not found');
@@ -258,6 +267,8 @@ export class PaymentsService {
 
     this.logger.log(`Razorpay payment verified: ${razorpay_payment_id}`);
 
+    await this.processStaffPayoutForOnlinePayment(payment.bookingId, razorpay_payment_id);
+
     return {
       status: 'success',
       message: 'Payment verified and booking confirmed',
@@ -444,5 +455,257 @@ export class PaymentsService {
     });
 
     return { success: true, message: 'Refund initiated' };
+  }
+
+  private toPaise(amountInMajorUnits: number): number {
+    return Math.max(0, Math.round(amountInMajorUnits * 100));
+  }
+
+  private async processStaffPayoutForOnlinePayment(
+    bookingId: string,
+    razorpayPaymentId: string,
+  ): Promise<void> {
+    const booking = await this.prisma.booking.findUnique({
+      where: { id: bookingId },
+      include: {
+        staffProfile: {
+          include: {
+            user: {
+              select: { id: true, name: true, email: true, phone: true },
+            },
+          },
+        },
+      },
+    });
+
+    if (!booking || !booking.staffProfileId) {
+      return;
+    }
+
+    const serviceAmount =
+      typeof booking.serviceAmount?.toNumber === 'function'
+        ? booking.serviceAmount.toNumber()
+        : booking.totalAmount.toNumber();
+
+    const grossPaise = this.toPaise(serviceAmount);
+    const platformFeePaise = Math.round((grossPaise * this.platformFeePercent) / 100);
+    const netPaise = Math.max(0, grossPaise - platformFeePaise);
+
+    await this.prisma.earning.upsert({
+      where: { bookingId: booking.id },
+      create: {
+        shopId: booking.shopId,
+        staffProfileId: booking.staffProfileId,
+        bookingId: booking.id,
+        amount: grossPaise,
+        platformFee: platformFeePaise,
+        netAmount: netPaise,
+        paymentMethod: PaymentMethod.RAZORPAY,
+      },
+      update: {
+        amount: grossPaise,
+        platformFee: platformFeePaise,
+        netAmount: netPaise,
+        paymentMethod: PaymentMethod.RAZORPAY,
+      },
+    });
+
+    await this.prisma.booking.update({
+      where: { id: booking.id },
+      data: {
+        paymentMethod: PaymentMethod.RAZORPAY,
+        paymentStatus: PaymentStatus.COMPLETED,
+        paymentId: razorpayPaymentId,
+        amount: grossPaise,
+        platformFee: platformFeePaise,
+        staffEarning: netPaise,
+      },
+    });
+
+    if (!this.razorpayRouteEnabled || !this.razorpayKeyId || !this.razorpaySecret) {
+      return;
+    }
+
+    const fundAccountId = await this.ensureStaffFundAccount(booking.staffProfileId);
+    if (!fundAccountId) {
+      return;
+    }
+
+    const transferId = await this.createRazorpayPayout(
+      fundAccountId,
+      netPaise,
+      booking.bookingNumber,
+      razorpayPaymentId,
+    );
+
+    if (!transferId) {
+      return;
+    }
+
+    await this.prisma.earning.update({
+      where: { bookingId: booking.id },
+      data: {
+        settledAt: new Date(),
+        razorpayTransferId: transferId,
+      },
+    });
+  }
+
+  private async ensureStaffFundAccount(staffProfileId: string): Promise<string | null> {
+    const profile = await this.prisma.staffProfile.findUnique({
+      where: { id: staffProfileId },
+      include: {
+        user: {
+          select: { name: true, email: true, phone: true },
+        },
+      },
+    });
+
+    if (!profile?.upiId) {
+      return null;
+    }
+
+    if (profile.fundAccountId) {
+      return profile.fundAccountId;
+    }
+
+    const auth = Buffer.from(`${this.razorpayKeyId}:${this.razorpaySecret}`).toString('base64');
+
+    let contactId = profile.razorpayContactId;
+    if (!contactId) {
+      const contactResponse = await fetch('https://api.razorpay.com/v1/contacts', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Basic ${auth}`,
+        },
+        body: JSON.stringify({
+          name: profile.user.name || profile.displayName || `staff-${profile.id}`,
+          email: profile.user.email || undefined,
+          contact: profile.user.phone || undefined,
+          type: 'employee',
+          reference_id: profile.id,
+          notes: {
+            staffProfileId: profile.id,
+            source: 'overline_phase9',
+          },
+        }),
+      });
+
+      if (!contactResponse.ok) {
+        const errorText = await contactResponse.text();
+        this.logger.warn(`Unable to create Razorpay contact for staff ${profile.id}: ${errorText}`);
+        return null;
+      }
+
+      const contactPayload: any = await contactResponse.json();
+      contactId = contactPayload.id;
+    }
+
+    const fundAccountResponse = await fetch('https://api.razorpay.com/v1/fund_accounts', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Basic ${auth}`,
+      },
+      body: JSON.stringify({
+        contact_id: contactId,
+        account_type: 'vpa',
+        vpa: {
+          address: profile.upiId,
+        },
+      }),
+    });
+
+    if (!fundAccountResponse.ok) {
+      const errorText = await fundAccountResponse.text();
+      this.logger.warn(`Unable to create fund account for staff ${profile.id}: ${errorText}`);
+      await this.prisma.staffProfile.update({
+        where: { id: profile.id },
+        data: {
+          razorpayContactId: contactId,
+          upiVerificationStatus: 'FAILED',
+          payoutPreference: 'UPI',
+        },
+      });
+      return null;
+    }
+
+    const fundAccountPayload: any = await fundAccountResponse.json();
+    const fundAccountId = fundAccountPayload.id as string;
+
+    const verificationStatus = this.razorpayAccountNumber ? 'PENDING' : 'UNAVAILABLE';
+    await this.prisma.staffProfile.update({
+      where: { id: profile.id },
+      data: {
+        razorpayContactId: contactId,
+        fundAccountId,
+        payoutPreference: 'UPI',
+        upiVerificationStatus: verificationStatus,
+        contactMetadata: {
+          contactCreatedAt: new Date().toISOString(),
+          fundAccountCreatedAt: new Date().toISOString(),
+        },
+      },
+    });
+
+    if (this.razorpayAccountNumber) {
+      const pennyTransferId = await this.createRazorpayPayout(
+        fundAccountId,
+        100,
+        `verify-${profile.id}`,
+        'penny-drop',
+      );
+
+      await this.prisma.staffProfile.update({
+        where: { id: profile.id },
+        data: {
+          upiVerified: Boolean(pennyTransferId),
+          upiVerificationStatus: pennyTransferId ? 'VERIFIED' : 'FAILED',
+        },
+      });
+    }
+
+    return fundAccountId;
+  }
+
+  private async createRazorpayPayout(
+    fundAccountId: string,
+    amountInPaise: number,
+    bookingReference: string,
+    sourceReference: string,
+  ): Promise<string | null> {
+    if (!this.razorpayAccountNumber || !this.razorpayKeyId || !this.razorpaySecret) {
+      return null;
+    }
+
+    const auth = Buffer.from(`${this.razorpayKeyId}:${this.razorpaySecret}`).toString('base64');
+    const payoutResponse = await fetch('https://api.razorpay.com/v1/payouts', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        Authorization: `Basic ${auth}`,
+      },
+      body: JSON.stringify({
+        account_number: this.razorpayAccountNumber,
+        fund_account_id: fundAccountId,
+        amount: amountInPaise,
+        currency: 'INR',
+        mode: 'UPI',
+        purpose: 'payout',
+        queue_if_low_balance: true,
+        reference_id: `${bookingReference}-${Date.now()}`,
+        narration: `Overline payout ${sourceReference}`,
+      }),
+    });
+
+    if (!payoutResponse.ok) {
+      const errorText = await payoutResponse.text();
+      this.logger.warn(`Razorpay payout failed: ${errorText}`);
+      return null;
+    }
+
+    const payoutPayload: any = await payoutResponse.json();
+    return payoutPayload.id || null;
   }
 }

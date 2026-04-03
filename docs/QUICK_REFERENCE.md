@@ -64,6 +64,11 @@ GOOGLE_PLACES_API_KEY=<your_api_key>
 # Google OAuth (already configured if you did login)
 GOOGLE_CLIENT_ID=<your_client_id>
 GOOGLE_CLIENT_SECRET=<your_client_secret>
+
+# Razorpay Route + platform fee
+RAZORPAY_ROUTE_ENABLED=true
+RAZORPAY_ACCOUNT_NUMBER=<your_platform_account_number>
+PLATFORM_FEE_PERCENT=2
 ```
 
 ---

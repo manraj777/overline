@@ -1,6 +1,6 @@
 import { Controller, Post, Get, Body, Param, Headers, UseGuards, Req } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiParam } from '@nestjs/swagger';
-import { PaymentsService, PaymentMethod } from './payments.service';
+import { PaymentsService, PaymentOrderMethod } from './payments.service';
 import { CreatePaymentDto } from './dto/create-payment.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
@@ -16,7 +16,7 @@ class CreateOrderDto extends CreatePaymentDto {
   })
   @IsOptional()
   @IsEnum(['ONLINE', 'WALLET', 'PAY_AT_SHOP'] as const)
-  method?: PaymentMethod;
+  method?: PaymentOrderMethod;
 }
 
 class VerifyRazorpayDto {

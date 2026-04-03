@@ -87,9 +87,14 @@ export default () => ({
       secretKey: process.env.STRIPE_SECRET_KEY,
       webhookSecret: process.env.STRIPE_WEBHOOK_SECRET,
     },
+    fees: {
+      platformFeePercent: parseFloat(process.env.PLATFORM_FEE_PERCENT || '2'),
+    },
     razorpay: {
       keyId: process.env.RAZORPAY_KEY_ID,
       keySecret: process.env.RAZORPAY_KEY_SECRET || process.env.RAZORPAY_SECRET,
+      routeEnabled: process.env.RAZORPAY_ROUTE_ENABLED === 'true',
+      accountNumber: process.env.RAZORPAY_ACCOUNT_NUMBER,
     },
   },
 

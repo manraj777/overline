@@ -282,6 +282,11 @@ TWILIO_AUTH_TOKEN=...
 # Stripe (Optional, for prepaid payments)
 STRIPE_SECRET_KEY=sk_test_...
 STRIPE_PUBLISHABLE_KEY=pk_test_...
+
+# Razorpay Route + Payout Controls
+RAZORPAY_ROUTE_ENABLED=true
+RAZORPAY_ACCOUNT_NUMBER=your_platform_account_number
+PLATFORM_FEE_PERCENT=2
 ```
 
 ### Verified in `.env`
