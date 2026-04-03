@@ -124,12 +124,12 @@ jobs:
       - name: Build user-web
         run: cd apps/user-web && pnpm build
         env:
-          NEXT_PUBLIC_API_URL: ${{ vars.NEXT_PUBLIC_API_URL || 'http://localhost:3001' }}
+          NEXT_PUBLIC_API_URL: http://localhost:3001
 
       - name: Build admin-web
         run: cd apps/admin-web && pnpm build
         env:
-          NEXT_PUBLIC_API_URL: ${{ vars.NEXT_PUBLIC_API_URL || 'http://localhost:3001' }}
+          NEXT_PUBLIC_API_URL: http://localhost:3001
 
   # Backend tests
   test-backend:
@@ -239,7 +239,7 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
           build-args: |
-            NEXT_PUBLIC_API_URL=${{ vars.NEXT_PUBLIC_API_URL || 'https://overline-backend-production.up.railway.app' }}
+            NEXT_PUBLIC_API_URL=https://overline-backend-production.up.railway.app
 
       - name: Build and push admin-web
         uses: docker/build-push-action@v5
@@ -251,7 +251,7 @@ jobs:
           cache-from: type=gha
           cache-to: type=gha,mode=max
           build-args: |
-            NEXT_PUBLIC_API_URL=${{ vars.NEXT_PUBLIC_API_URL || 'https://overline-backend-production.up.railway.app' }}
+            NEXT_PUBLIC_API_URL=https://overline-backend-production.up.railway.app
 
   # Build Android APKs (only on main branch)
   build-android:
