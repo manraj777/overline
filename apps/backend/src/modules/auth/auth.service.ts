@@ -28,12 +28,13 @@ import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { GoogleLoginDto } from './dto/google-login.dto';
 import { RegisterShopDto } from './dto/register-shop.dto';
 
-type UserRole = 'USER' | 'OWNER' | 'STAFF' | 'SUPER_ADMIN';
+type UserRole = 'USER' | 'OWNER' | 'STAFF' | 'SUPER_ADMIN' | 'SUPERADMIN';
 const UserRole = {
   USER: 'USER',
   OWNER: 'OWNER',
   STAFF: 'STAFF',
   SUPER_ADMIN: 'SUPER_ADMIN',
+  SUPERADMIN: 'SUPERADMIN',
 } as const;
 
 type DayOfWeek = 'MONDAY' | 'TUESDAY' | 'WEDNESDAY' | 'THURSDAY' | 'FRIDAY' | 'SATURDAY' | 'SUNDAY';
@@ -53,6 +54,9 @@ export interface JwtPayload {
   email: string;
   role: UserRole;
   tenantId?: string;
+  shopId?: string;
+  shopIds?: string[];
+  staffProfileId?: string;
 }
 
 export interface TokenResponse {
@@ -67,6 +71,8 @@ export interface TokenResponse {
     role: UserRole;
     tenantId?: string;
     shopId?: string;
+    shopIds?: string[];
+    staffProfileId?: string;
     isEmailVerified?: boolean;
     isPhoneVerified?: boolean;
     createdAt?: Date;
@@ -899,8 +905,12 @@ export class AuthService {
         id: true,
         email: true,
         name: true,
+        phone: true,
         role: true,
         tenantId: true,
+        isEmailVerified: true,
+        isPhoneVerified: true,
+        createdAt: true,
         isActive: true,
       },
     });
@@ -909,7 +919,50 @@ export class AuthService {
       throw new UnauthorizedException();
     }
 
-    return user;
+    const result: {
+      id: string;
+      email: string;
+      name: string;
+      phone: string | null;
+      role: UserRole;
+      tenantId: string | null;
+      isEmailVerified: boolean;
+      isPhoneVerified: boolean;
+      createdAt: Date;
+      shopId?: string;
+      shopIds?: string[];
+      staffProfileId?: string;
+      isActive: boolean;
+    } = {
+      ...user,
+      phone: user.phone || null,
+    };
+
+    if (user.role === UserRole.OWNER) {
+      const ownerShops = await this.prisma.shop.findMany({
+        where: { ownerId: user.id, isActive: true },
+        select: { id: true },
+        orderBy: { createdAt: 'asc' },
+      });
+      result.shopIds = ownerShops.map((shop) => shop.id);
+      result.shopId = result.shopIds[0];
+    }
+
+    if (user.role === UserRole.STAFF) {
+      const profile = await this.prisma.staffProfile.findFirst({
+        where: { userId: user.id, isActive: true, isSuspended: false },
+        select: { id: true, shopId: true },
+        orderBy: { createdAt: 'asc' },
+      });
+
+      if (profile) {
+        result.staffProfileId = profile.id;
+        result.shopId = profile.shopId;
+        result.shopIds = [profile.shopId];
+      }
+    }
+
+    return result;
   }
 
   async changePassword(
@@ -952,11 +1005,40 @@ export class AuthService {
   }
 
   async generateTokens(user: any): Promise<TokenResponse> {
+    let shopIds: string[] = [];
+    let staffProfileId: string | undefined;
+
+    if (user.role === UserRole.OWNER) {
+      const ownerShops = await this.prisma.shop.findMany({
+        where: { ownerId: user.id, isActive: true },
+        orderBy: { createdAt: 'asc' },
+        select: { id: true },
+      });
+      shopIds = ownerShops.map((shop) => shop.id);
+    }
+
+    if (user.role === UserRole.STAFF) {
+      const profile = await this.prisma.staffProfile.findFirst({
+        where: { userId: user.id, isActive: true, isSuspended: false },
+        orderBy: { createdAt: 'asc' },
+        select: { id: true, shopId: true },
+      });
+      if (profile) {
+        staffProfileId = profile.id;
+        shopIds = [profile.shopId];
+      }
+    }
+
+    const primaryShopId = shopIds[0];
+
     const payload: JwtPayload = {
       sub: user.id,
       email: user.email,
       role: user.role,
       tenantId: user.tenantId || undefined,
+      shopId: primaryShopId,
+      shopIds,
+      staffProfileId,
     };
 
     // Generate access token
@@ -986,15 +1068,6 @@ export class AuthService {
     const accessExpiration = this.configService.get<string>('jwt.accessExpiration') || '15m';
     const expiresIn = this.parseExpirationToSeconds(accessExpiration);
 
-    const ownerPrimaryShop =
-      user.role === UserRole.OWNER
-        ? await this.prisma.shop.findFirst({
-            where: { tenantId: user.tenantId },
-            orderBy: { createdAt: 'asc' },
-            select: { id: true },
-          })
-        : null;
-
     return {
       accessToken,
       refreshToken,
@@ -1006,7 +1079,9 @@ export class AuthService {
         phone: user.phone || null,
         role: user.role,
         tenantId: user.tenantId,
-        shopId: ownerPrimaryShop?.id,
+        shopId: primaryShopId,
+        shopIds,
+        staffProfileId,
         isEmailVerified: user.isEmailVerified ?? false,
         isPhoneVerified: user.isPhoneVerified ?? false,
         createdAt: user.createdAt,

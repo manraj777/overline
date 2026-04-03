@@ -18,6 +18,14 @@ enum UserRole {
   OWNER
   STAFF
   SUPER_ADMIN
+  SUPERADMIN
+}
+
+enum StaffRole {
+  OWNER
+  MANAGER
+  SUPERVISOR
+  TECHNICIAN
 }
 
 enum TenantType {
@@ -52,6 +60,7 @@ enum BookingStatus {
 enum PaymentMethod {
   CASH
   ONLINE
+  PAY_AT_SHOP
   UPI
   CARD
   RAZORPAY
@@ -395,6 +404,7 @@ model StaffProfile {
   user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
   shopId             String   @map("shop_id")
   shop               Shop     @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  staffRole          StaffRole @default(TECHNICIAN) @map("staff_role")
   displayName        String   @map("display_name")
   bio                String?
   avatar             String?
@@ -422,6 +432,7 @@ model StaffProfile {
   chatSessions ChatSession[]
 
   @@index([shopId])
+  @@index([shopId, staffRole])
   @@map("staff_profiles")
 }
 
