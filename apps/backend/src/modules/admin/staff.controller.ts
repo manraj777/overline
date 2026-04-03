@@ -564,38 +564,38 @@ export class StaffController {
   @Post('me/payment/upi')
   @ApiOperation({ summary: 'Save UPI for payouts' })
   async saveUpi(@CurrentUser('id') userId: string, @Body() dto: UpiDto) {
-    return this.adminService.updateStaffBankDetails(userId, {
+    const bankDetails = await this.adminService.updateStaffBankDetails(userId, {
       upiId: dto.upiId,
     } as UpdateStaffBankDetailsDto);
+
+    const verification = await this.adminService.verifyStaffUpiForPayout(userId);
+
+    return {
+      bankDetails,
+      verification,
+    };
+  }
+
+  @Post('me/payment/verify-upi')
+  @ApiOperation({ summary: 'Trigger UPI verification state refresh' })
+  async verifyUpi(@CurrentUser('id') userId: string) {
+    return this.adminService.verifyStaffUpiForPayout(userId);
   }
 
   @Get('me/payment')
   @ApiOperation({ summary: 'Payment status' })
   async getPaymentStatus(@CurrentUser('id') userId: string) {
-    const profile = await this.prisma.staffProfile.findFirst({
-      where: { userId, isActive: true },
-      select: {
-        id: true,
-        upiId: true,
-        upiVerified: true,
-        bankAccountNo: true,
-        bankIfsc: true,
-      },
-    });
+    return this.adminService.getStaffPayoutStatus(userId);
+  }
 
-    if (!profile) {
-      throw new NotFoundException('Staff profile not found');
-    }
-
-    return {
-      id: profile.id,
-      upiId: profile.upiId,
-      upiVerified: profile.upiVerified,
-      bankAccountNo: profile.bankAccountNo
-        ? `${'*'.repeat(Math.max(profile.bankAccountNo.length - 4, 0))}${profile.bankAccountNo.slice(-4)}`
-        : null,
-      bankIfsc: profile.bankIfsc,
-    };
+  @Get('me/payment/payout-history')
+  @ApiOperation({ summary: 'Own payout history' })
+  async getPayoutHistory(
+    @CurrentUser('id') userId: string,
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+  ) {
+    return this.adminService.getStaffPayoutHistory(userId, { startDate, endDate });
   }
 
   private async assertOwnService(userId: string, serviceId: string) {

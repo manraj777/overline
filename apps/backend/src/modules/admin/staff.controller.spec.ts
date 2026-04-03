@@ -20,6 +20,9 @@ describe('StaffController', () => {
     getStaffOwnEarnings: jest.fn(),
     getStaffOwnReviews: jest.fn(),
     updateStaffBankDetails: jest.fn(),
+    verifyStaffUpiForPayout: jest.fn(),
+    getStaffPayoutStatus: jest.fn(),
+    getStaffPayoutHistory: jest.fn(),
   };
 
   const prismaMock = {
@@ -216,34 +219,58 @@ describe('StaffController', () => {
     );
   });
 
-  it('saveUpi delegates to staff bank details update', async () => {
+  it('saveUpi delegates to bank details update and verification', async () => {
     adminServiceMock.updateStaffBankDetails.mockResolvedValue({ id: 'profile-1', upiId: 'a@upi' });
+    adminServiceMock.verifyStaffUpiForPayout.mockResolvedValue({
+      verified: false,
+      status: 'PENDING',
+    });
 
     const result = await controller.saveUpi('user-1', { upiId: 'a@upi' });
 
     expect(adminServiceMock.updateStaffBankDetails).toHaveBeenCalledWith('user-1', {
       upiId: 'a@upi',
     });
-    expect(result).toEqual({ id: 'profile-1', upiId: 'a@upi' });
+    expect(adminServiceMock.verifyStaffUpiForPayout).toHaveBeenCalledWith('user-1');
+    expect(result).toEqual({
+      bankDetails: { id: 'profile-1', upiId: 'a@upi' },
+      verification: { verified: false, status: 'PENDING' },
+    });
   });
 
-  it('getPaymentStatus returns masked account data', async () => {
-    prismaMock.staffProfile.findFirst.mockResolvedValue({
-      id: 'profile-1',
-      upiId: 'staff@upi',
-      upiVerified: true,
-      bankAccountNo: '1234567890',
-      bankIfsc: 'IFSC0001',
+  it('getPaymentStatus delegates to payout status service', async () => {
+    adminServiceMock.getStaffPayoutStatus.mockResolvedValue({
+      profileId: 'profile-1',
+      payouts: { pendingAmount: 1000 },
     });
 
     const result = await controller.getPaymentStatus('user-1');
 
-    expect(result).toEqual({
-      id: 'profile-1',
-      upiId: 'staff@upi',
-      upiVerified: true,
-      bankAccountNo: '******7890',
-      bankIfsc: 'IFSC0001',
+    expect(adminServiceMock.getStaffPayoutStatus).toHaveBeenCalledWith('user-1');
+    expect(result).toEqual({ profileId: 'profile-1', payouts: { pendingAmount: 1000 } });
+  });
+
+  it('verifyUpi delegates to verification service', async () => {
+    adminServiceMock.verifyStaffUpiForPayout.mockResolvedValue({
+      verified: true,
+      status: 'VERIFIED',
     });
+
+    const result = await controller.verifyUpi('user-1');
+
+    expect(adminServiceMock.verifyStaffUpiForPayout).toHaveBeenCalledWith('user-1');
+    expect(result).toEqual({ verified: true, status: 'VERIFIED' });
+  });
+
+  it('getPayoutHistory delegates to payout history service', async () => {
+    adminServiceMock.getStaffPayoutHistory.mockResolvedValue({ data: [] });
+
+    const result = await controller.getPayoutHistory('user-1', '2026-04-01', '2026-04-03');
+
+    expect(adminServiceMock.getStaffPayoutHistory).toHaveBeenCalledWith('user-1', {
+      startDate: '2026-04-01',
+      endDate: '2026-04-03',
+    });
+    expect(result).toEqual({ data: [] });
   });
 });

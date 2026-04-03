@@ -1232,25 +1232,46 @@ export class AdminService {
   async updateStaffBankDetails(staffUserId: string, dto: UpdateStaffBankDetailsDto) {
     const profile = await this.prisma.staffProfile.findFirst({
       where: { userId: staffUserId, isActive: true, isSuspended: false },
-      select: { id: true },
+      select: { id: true, upiId: true, payoutPreference: true },
     });
 
     if (!profile) {
       throw new NotFoundException('Staff profile not found');
     }
 
+    const nextUpiId = dto.upiId !== undefined ? dto.upiId.trim() : undefined;
+    const upiChanged = nextUpiId !== undefined && nextUpiId !== (profile.upiId || undefined);
+
     const updated = await this.prisma.staffProfile.update({
       where: { id: profile.id },
       data: {
-        ...(dto.upiId !== undefined ? { upiId: dto.upiId } : {}),
+        ...(nextUpiId !== undefined ? { upiId: nextUpiId } : {}),
         ...(dto.bankAccountNo !== undefined ? { bankAccountNo: dto.bankAccountNo } : {}),
         ...(dto.bankIfsc !== undefined ? { bankIfsc: dto.bankIfsc } : {}),
+        ...(nextUpiId !== undefined ? { payoutPreference: 'UPI' } : {}),
+        ...(dto.bankAccountNo !== undefined || dto.bankIfsc !== undefined
+          ? { bankVerificationStatus: 'PENDING' }
+          : {}),
+        ...(upiChanged
+          ? {
+              upiVerified: false,
+              upiVerificationStatus: 'PENDING',
+              fundAccountId: null,
+              payoutPreference: 'UPI',
+            }
+          : {}),
       },
       select: {
         id: true,
         upiId: true,
+        upiVerified: true,
+        upiVerificationStatus: true,
         bankAccountNo: true,
         bankIfsc: true,
+        bankVerificationStatus: true,
+        payoutPreference: true,
+        razorpayContactId: true,
+        fundAccountId: true,
       },
     });
 
@@ -1258,6 +1279,129 @@ export class AdminService {
       ...updated,
       bankAccountNo: updated.bankAccountNo ? this.maskAccountNumber(updated.bankAccountNo) : null,
       bankAccountHolder: dto.bankAccountHolder || null,
+    };
+  }
+
+  async verifyStaffUpiForPayout(staffUserId: string) {
+    const profile = await this.prisma.staffProfile.findFirst({
+      where: { userId: staffUserId, isActive: true, isSuspended: false },
+      select: { id: true, upiId: true, fundAccountId: true },
+    });
+
+    if (!profile) {
+      throw new NotFoundException('Staff profile not found');
+    }
+
+    if (!profile.upiId) {
+      throw new BadRequestException('UPI ID is required before verification');
+    }
+
+    const isValidUpi = /^[A-Za-z0-9._-]{2,256}@[A-Za-z]{2,64}$/.test(profile.upiId);
+    if (!isValidUpi) {
+      await this.prisma.staffProfile.update({
+        where: { id: profile.id },
+        data: {
+          upiVerified: false,
+          upiVerificationStatus: 'FAILED',
+        },
+      });
+      return {
+        verified: false,
+        status: 'FAILED',
+        reason: 'INVALID_UPI_FORMAT',
+      };
+    }
+
+    const status = profile.fundAccountId ? 'VERIFIED' : 'PENDING';
+    const verified = profile.fundAccountId ? true : false;
+
+    await this.prisma.staffProfile.update({
+      where: { id: profile.id },
+      data: {
+        upiVerified: verified,
+        upiVerificationStatus: status,
+      },
+    });
+
+    return {
+      verified,
+      status,
+      reason: verified ? 'FUND_ACCOUNT_LINKED' : 'PAYOUT_LINK_PENDING',
+    };
+  }
+
+  async getStaffPayoutStatus(staffUserId: string) {
+    const profile = await this.prisma.staffProfile.findFirst({
+      where: { userId: staffUserId, isActive: true },
+      select: {
+        id: true,
+        upiId: true,
+        upiVerified: true,
+        upiVerificationStatus: true,
+        bankAccountNo: true,
+        bankIfsc: true,
+        bankVerificationStatus: true,
+        payoutPreference: true,
+        razorpayContactId: true,
+        fundAccountId: true,
+      },
+    });
+
+    if (!profile) {
+      throw new NotFoundException('Staff profile not found');
+    }
+
+    const earnings = await this.prisma.earning.findMany({
+      where: { staffProfileId: profile.id },
+      orderBy: { earnedAt: 'desc' },
+      take: 20,
+      select: {
+        id: true,
+        netAmount: true,
+        earnedAt: true,
+        settledAt: true,
+        razorpayTransferId: true,
+      },
+    });
+
+    const pendingAmount = earnings
+      .filter((item) => !item.settledAt)
+      .reduce((sum, item) => sum + Number(item.netAmount || 0), 0);
+    const settledAmount = earnings
+      .filter((item) => !!item.settledAt)
+      .reduce((sum, item) => sum + Number(item.netAmount || 0), 0);
+
+    return {
+      profileId: profile.id,
+      payoutPreference: profile.payoutPreference || 'UPI',
+      onboarding: {
+        hasUpi: !!profile.upiId,
+        upiId: profile.upiId,
+        upiVerified: profile.upiVerified,
+        upiVerificationStatus: profile.upiVerificationStatus || 'PENDING',
+        bankAccountNo: profile.bankAccountNo
+          ? this.maskAccountNumber(profile.bankAccountNo)
+          : null,
+        bankIfsc: profile.bankIfsc,
+        bankVerificationStatus: profile.bankVerificationStatus || 'PENDING',
+        razorpayContactLinked: !!profile.razorpayContactId,
+        fundAccountLinked: !!profile.fundAccountId,
+        routeEligible: !!profile.fundAccountId && profile.upiVerified,
+      },
+      payouts: {
+        pendingAmount,
+        settledAmount,
+        pendingCount: earnings.filter((item) => !item.settledAt).length,
+        settledCount: earnings.filter((item) => !!item.settledAt).length,
+      },
+      recent: earnings.map((item) => ({
+        id: item.id,
+        amount: Number(item.netAmount || 0),
+        status: item.settledAt ? 'settled' : 'pending',
+        earnedAt: item.earnedAt.toISOString(),
+        settledAt: item.settledAt?.toISOString() || null,
+        reference: item.razorpayTransferId,
+      })),
     };
   }
 
