@@ -23,9 +23,7 @@
       "@/*": ["src/*"],
       "@modules/*": ["src/modules/*"],
       "@common/*": ["src/common/*"],
-      "@config/*": ["src/config/*"],
-      "@prisma/client": ["node_modules/.prisma/client"],
-      "@prisma/client/*": ["node_modules/.prisma/client/*"]
+      "@config/*": ["src/config/*"]
     }
   },
   "include": ["src/**/*", "test/**/*"],

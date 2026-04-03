@@ -21,6 +21,9 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { QueueGateway } from './queue.gateway';
 import { NotificationsService } from '../notifications/notifications.service';
 import { FraudDetectionService } from '../fraud-detection/fraud-detection.service';
+import { CallAheadDto } from './dto/call-ahead.dto';
+import { SkipCustomerDto } from './dto/skip-customer.dto';
+import { HandleOverrunDto } from './dto/handle-overrun.dto';
 
 @ApiTags('queue')
 @Controller('queue')
@@ -133,6 +136,109 @@ export class QueueController {
       return booking;
     } catch (error) {
       const message = error instanceof Error ? error.message : 'Unable to call next customer';
+      if (message.toLowerCase().includes('not found')) {
+        throw new NotFoundException(message);
+      }
+      throw new BadRequestException(message);
+    }
+  }
+
+  @Post(':shopId/call-ahead')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'Call ahead a specific customer in queue' })
+  async callAheadCustomer(
+    @Param('shopId') shopId: string,
+    @Body() dto: CallAheadDto,
+    @CurrentUser('id') userId: string,
+  ) {
+    try {
+      const booking = await this.queueService.callAheadCustomer(
+        shopId,
+        dto.bookingId,
+        userId,
+        dto.message,
+      );
+
+      await Promise.all([
+        this.queueGateway.emitQueueUpdate(shopId),
+        this.queueGateway.emitBookingUpdate(booking.id, {
+          status: booking.status,
+          serviceStatus: booking.serviceStatus,
+        }),
+        this.notificationsService.sendTurnApproaching(booking.id, 1),
+      ]);
+
+      return booking;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unable to call ahead customer';
+      if (message.toLowerCase().includes('not found')) {
+        throw new NotFoundException(message);
+      }
+      throw new BadRequestException(message);
+    }
+  }
+
+  @Post(':shopId/skip')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'Skip a customer in queue' })
+  async skipCustomer(
+    @Param('shopId') shopId: string,
+    @Body() dto: SkipCustomerDto,
+    @CurrentUser('id') userId: string,
+  ) {
+    try {
+      const booking = await this.queueService.skipCustomer(shopId, dto.bookingId, userId, dto.reason);
+
+      await Promise.all([
+        this.queueGateway.emitQueueUpdate(shopId),
+        this.queueGateway.emitBookingUpdate(booking.id, {
+          status: booking.status,
+          serviceStatus: booking.serviceStatus,
+        }),
+      ]);
+
+      return booking;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unable to skip customer';
+      if (message.toLowerCase().includes('not found')) {
+        throw new NotFoundException(message);
+      }
+      throw new BadRequestException(message);
+    }
+  }
+
+  @Post(':shopId/overrun')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'Handle queue overrun by extending a booking and shifting upcoming slots' })
+  async handleOverrun(
+    @Param('shopId') shopId: string,
+    @Body() dto: HandleOverrunDto,
+    @CurrentUser('id') userId: string,
+  ) {
+    try {
+      const booking = await this.queueService.handleOverrun(
+        shopId,
+        dto.bookingId,
+        userId,
+        dto.extraMinutes,
+        dto.note,
+      );
+
+      if (!booking) {
+        throw new NotFoundException('Booking not found after overrun update');
+      }
+
+      await Promise.all([
+        this.queueGateway.emitQueueUpdate(shopId),
+        this.queueGateway.emitBookingUpdate(booking.id, {
+          status: booking.status,
+          serviceStatus: booking.serviceStatus,
+        }),
+      ]);
+
+      return booking;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unable to handle overrun';
       if (message.toLowerCase().includes('not found')) {
         throw new NotFoundException(message);
       }

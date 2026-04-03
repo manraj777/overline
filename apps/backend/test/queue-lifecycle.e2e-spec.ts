@@ -14,6 +14,9 @@ describe('Queue Lifecycle + Fraud Logging (e2e)', () => {
   const queueServiceMock = {
     joinQueue: jest.fn(),
     callNextCustomer: jest.fn(),
+    callAheadCustomer: jest.fn(),
+    skipCustomer: jest.fn(),
+    handleOverrun: jest.fn(),
     getQueuePosition: jest.fn(),
     markCheckedIn: jest.fn(),
     startService: jest.fn(),
@@ -161,5 +164,77 @@ describe('Queue Lifecycle + Fraud Logging (e2e)', () => {
         endpoint: 'queue/start-service',
       },
     });
+  });
+
+  it('executes call-ahead/skip/overrun actions and emits realtime queue updates', async () => {
+    const shopId = 'shop-2';
+    const bookingId = 'booking-2';
+    const userId = 'staff-2';
+
+    const confirmed = {
+      id: bookingId,
+      shopId,
+      status: 'CONFIRMED',
+      serviceStatus: 'AWAITING_CODE',
+      adminNotes: 'Call-ahead by staff-2',
+    };
+    const skipped = {
+      ...confirmed,
+      status: 'SKIPPED',
+      serviceStatus: 'COMPLETED',
+      adminNotes: 'Skipped by staff-2',
+    };
+    const overrun = {
+      ...confirmed,
+      endTime: new Date('2026-01-01T10:45:00.000Z'),
+      adminNotes: 'Overrun +10m by staff-2',
+    };
+
+    queueServiceMock.callAheadCustomer.mockResolvedValue(confirmed);
+    queueServiceMock.skipCustomer.mockResolvedValue(skipped);
+    queueServiceMock.handleOverrun.mockResolvedValue(overrun);
+
+    const callAheadResult = await controller.callAheadCustomer(
+      shopId,
+      {bookingId, message: 'Please be ready'},
+      userId,
+    );
+    const skipResult = await controller.skipCustomer(
+      shopId,
+      {bookingId, reason: 'Customer unavailable'},
+      userId,
+    );
+    const overrunResult = await controller.handleOverrun(
+      shopId,
+      {bookingId, extraMinutes: 10, note: 'Service extension'},
+      userId,
+    );
+
+    expect(callAheadResult.status).toBe('CONFIRMED');
+    expect(skipResult.status).toBe('SKIPPED');
+    expect(overrunResult.adminNotes).toContain('Overrun +10m');
+
+    expect(queueServiceMock.callAheadCustomer).toHaveBeenCalledWith(
+      shopId,
+      bookingId,
+      userId,
+      'Please be ready',
+    );
+    expect(queueServiceMock.skipCustomer).toHaveBeenCalledWith(
+      shopId,
+      bookingId,
+      userId,
+      'Customer unavailable',
+    );
+    expect(queueServiceMock.handleOverrun).toHaveBeenCalledWith(
+      shopId,
+      bookingId,
+      userId,
+      10,
+      'Service extension',
+    );
+
+    expect(queueGatewayMock.emitQueueUpdate).toHaveBeenCalledTimes(3);
+    expect(queueGatewayMock.emitBookingUpdate).toHaveBeenCalledTimes(3);
   });
 });

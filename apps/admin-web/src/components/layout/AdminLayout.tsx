@@ -16,12 +16,18 @@ import {
   CreditCard,
   Star,
   ShieldAlert,
+  Briefcase,
+  Clock3,
+  Wallet,
+  User,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/stores/auth';
 import { useLogout, useUnreadNotificationsCount, useQueueSocket, useUpdateBookingStatus } from '@/hooks';
 import { useToast, BookingApprovalModal } from '@/components/ui';
 import { useQueryClient } from '@tanstack/react-query';
+import { UserRole } from '@/types';
+import { getDefaultRouteForRole, isPublicRoute } from '@/lib/role-routing';
 
 interface PendingBooking {
   id: string;
@@ -36,6 +42,17 @@ interface AdminLayoutProps {
   children: React.ReactNode;
 }
 
+interface NavigationItem {
+  name: string;
+  href: string;
+  icon: React.ComponentType<{ className?: string }>;
+}
+
+interface NavigationSection {
+  title: string;
+  items: NavigationItem[];
+}
+
 const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
   const router = useRouter();
   const { user, isAuthenticated, shopId, pendingOtpVerification } = useAuthStore();
@@ -44,6 +61,9 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
   const { addToast } = useToast();
   const queryClient = useQueryClient();
   const prevQueueLengthRef = React.useRef<number | null>(null);
+  const userRole = (user?.role as UserRole) || UserRole.USER;
+  const isStaff = userRole === UserRole.STAFF;
+  const isOwnerLike = userRole === UserRole.OWNER || userRole === UserRole.SUPER_ADMIN;
 
   // Pending booking approval modal state
   const [pendingBookings, setPendingBookings] = React.useState<PendingBooking[]>([]);
@@ -56,7 +76,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
   // Global socket listener for new bookings
   useQueueSocket({
     shopId: shopId || undefined,
-    enabled: isAuthenticated && !!shopId,
+    enabled: isAuthenticated && !!shopId && isOwnerLike,
     onQueueUpdate: React.useCallback(
       (update: any) => {
         // Invalidate queries so the dashboard refreshes automatically
@@ -166,22 +186,115 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
     setPendingBookings((prev) => prev.filter((b) => b.id !== bookingId));
   }, []);
 
-  const navigation = [
-    { name: 'Dashboard', href: '/dashboard', icon: LayoutDashboard },
-    { name: 'Queue', href: '/queue', icon: Users },
-    { name: 'Appointments', href: '/appointments', icon: Calendar },
-    { name: 'Services', href: '/services', icon: Scissors },
-    { name: 'Staff', href: '/staff', icon: Users },
-    { name: 'Payments', href: '/payments', icon: CreditCard },
-    { name: 'Analytics', href: '/analytics', icon: BarChart3 },
-    { name: 'Notifications', href: '/notifications', icon: Bell },
-    { name: 'Fraud Alerts', href: '/fraud', icon: ShieldAlert },
-    { name: 'Settings', href: '/settings', icon: Settings },
-  ];
+  const navigationByRole: Record<UserRole, NavigationSection[]> = {
+    [UserRole.OWNER]: [
+      {
+        title: 'Shop',
+        items: [
+          { name: 'Dashboard', href: '/owner/dashboard', icon: LayoutDashboard },
+          { name: 'All Bookings', href: '/owner/bookings', icon: Calendar },
+          { name: 'Live Queue', href: '/owner/queue', icon: Users },
+        ],
+      },
+      {
+        title: 'Team',
+        items: [
+          { name: 'My Staff', href: '/owner/staff', icon: Users },
+          { name: 'Staff Earnings', href: '/owner/earnings/staff', icon: CreditCard },
+        ],
+      },
+      {
+        title: 'Shop Config',
+        items: [
+          { name: 'Services', href: '/owner/services', icon: Scissors },
+          { name: 'Shop Settings', href: '/owner/settings', icon: Settings },
+          { name: 'Payments Setup', href: '/owner/payments', icon: CreditCard },
+        ],
+      },
+      {
+        title: 'Analytics',
+        items: [
+          { name: 'Revenue Report', href: '/owner/analytics/revenue', icon: BarChart3 },
+          { name: 'Reviews (all)', href: '/owner/analytics/reviews', icon: Star },
+          { name: 'Fraud Alerts', href: '/owner/analytics/fraud', icon: ShieldAlert },
+        ],
+      },
+    ],
+    [UserRole.STAFF]: [
+      {
+        title: 'My Day',
+        items: [
+          { name: 'Dashboard', href: '/staff/dashboard', icon: LayoutDashboard },
+          { name: 'My Queue', href: '/staff/queue', icon: Users },
+          { name: 'My Bookings', href: '/staff/bookings', icon: Calendar },
+        ],
+      },
+      {
+        title: 'My Work',
+        items: [
+          { name: 'My Services', href: '/staff/services', icon: Briefcase },
+          { name: 'My Schedule', href: '/staff/schedule', icon: Clock3 },
+        ],
+      },
+      {
+        title: 'My Money',
+        items: [
+          { name: 'Earnings', href: '/staff/earnings', icon: Wallet },
+          { name: 'Payments (UPI)', href: '/staff/payments', icon: CreditCard },
+        ],
+      },
+      {
+        title: 'Reputation',
+        items: [
+          { name: 'My Reviews', href: '/staff/reviews', icon: Star },
+        ],
+      },
+      {
+        title: 'Settings',
+        items: [
+          { name: 'Notifications', href: '/staff/notifications', icon: Bell },
+          { name: 'Profile', href: '/staff/profile', icon: User },
+        ],
+      },
+    ],
+    [UserRole.SUPER_ADMIN]: [
+      {
+        title: 'Platform',
+        items: [
+          { name: 'Dashboard', href: '/platform/dashboard', icon: LayoutDashboard },
+        ],
+      },
+    ],
+    [UserRole.USER]: [],
+  };
+
+  const roleSections = navigationByRole[userRole] || [];
+  const staffTheme = {
+    sidebarBg: 'bg-[#0f4c75]',
+    border: 'border-[#2f6f99]',
+    sectionTitle: 'text-cyan-100/90',
+    navActive: 'bg-cyan-50 text-cyan-900',
+    navIdle: 'text-cyan-100 hover:bg-[#1b5f8f] hover:text-white',
+    userSubtext: 'text-cyan-100',
+    userCard: 'bg-[#1b5f8f]/80 text-cyan-100',
+    buttonIdle: 'text-cyan-100 hover:bg-[#1b5f8f] hover:text-white',
+    closeButton: 'text-cyan-100 hover:text-white',
+  };
+  const ownerTheme = {
+    sidebarBg: 'bg-[#312e81]',
+    border: 'border-indigo-700/80',
+    sectionTitle: 'text-indigo-200/90',
+    navActive: 'bg-indigo-100 text-indigo-900',
+    navIdle: 'text-indigo-100 hover:bg-indigo-700/80 hover:text-white',
+    userSubtext: 'text-indigo-200',
+    userCard: 'bg-indigo-700/50 text-indigo-100',
+    buttonIdle: 'text-indigo-100 hover:bg-indigo-700/80 hover:text-white',
+    closeButton: 'text-indigo-200 hover:text-white',
+  };
+  const sidebarTheme = isStaff ? staffTheme : ownerTheme;
 
   const isActive = (href: string) => router.pathname.startsWith(href);
-  const publicRoutes = ['/login', '/register', '/auth/google/callback', '/404'];
-  const isPublicRoute = publicRoutes.some((route) => router.pathname.startsWith(route));
+  const publicRoute = isPublicRoute(router.pathname);
 
   const handleLogout = async () => {
     await logout.mutateAsync();
@@ -190,10 +303,10 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
 
   // Redirect to login if not authenticated
   React.useEffect(() => {
-    if (!isAuthenticated && !isPublicRoute) {
+    if (!isAuthenticated && !publicRoute) {
       router.replace('/login');
     }
-  }, [isAuthenticated, isPublicRoute, router]);
+  }, [isAuthenticated, publicRoute, router]);
 
   React.useEffect(() => {
     if (isAuthenticated && pendingOtpVerification && router.pathname !== '/login') {
@@ -201,7 +314,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
     }
   }, [isAuthenticated, pendingOtpVerification, router]);
 
-  if (!isAuthenticated && !isPublicRoute) {
+  if (!isAuthenticated && !publicRoute) {
     return <div className="min-h-screen bg-gray-50" />;
   }
 
@@ -214,65 +327,92 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
       {/* Sidebar */}
       <aside
         className={cn(
-          'fixed inset-y-0 left-0 z-50 w-64 bg-sidebar transform transition-transform duration-300 lg:translate-x-0',
+          'fixed inset-y-0 left-0 z-50 w-16 lg:w-[240px] transform transition-transform duration-300 lg:translate-x-0',
+          sidebarTheme.sidebarBg,
           sidebarOpen ? 'translate-x-0' : '-translate-x-full'
         )}
       >
         {/* Logo */}
-        <div className="flex items-center justify-between h-16 px-6 border-b border-gray-700">
-          <Link href="/dashboard" className="flex items-center gap-2">
+        <div className={cn('flex items-center justify-between h-16 px-3 lg:px-6 border-b', sidebarTheme.border)}>
+          <Link href={getDefaultRouteForRole(user?.role as UserRole)} className="flex items-center gap-2">
             <div className="w-8 h-8 bg-primary-500 rounded-lg flex items-center justify-center">
               <span className="text-white font-bold">O</span>
             </div>
-            <span className="text-lg font-bold text-white">Overline</span>
+            <span className="hidden lg:inline text-lg font-bold text-white">Overline</span>
           </Link>
           <button
             onClick={() => setSidebarOpen(false)}
-            className="lg:hidden text-gray-400 hover:text-white"
+            className={cn('lg:hidden', sidebarTheme.closeButton)}
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 px-3 py-4 space-y-1">
-          {navigation.map((item) => (
-            <Link
-              key={item.name}
-              href={item.href}
-              onClick={() => setSidebarOpen(false)}
-              className={cn(
-                'flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
-                isActive(item.href)
-                  ? 'bg-primary-500 text-white'
-                  : 'text-gray-300 hover:bg-sidebar-hover hover:text-white'
-              )}
-            >
-              <item.icon className="w-5 h-5" />
-              {item.name}
-            </Link>
+        <nav className="flex-1 px-2 lg:px-3 py-4 space-y-4 overflow-y-auto">
+          {roleSections.map((section) => (
+            <div key={section.title}>
+              <p className={cn('hidden lg:block px-3 mb-2 text-[11px] uppercase tracking-wide', sidebarTheme.sectionTitle)}>
+                {section.title}
+              </p>
+              <div className="space-y-1">
+                {section.items.map((item) => (
+                  <Link
+                    key={item.name}
+                    href={item.href}
+                    onClick={() => setSidebarOpen(false)}
+                    className={cn(
+                      'flex items-center justify-center lg:justify-start gap-3 px-2 lg:px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
+                      isActive(item.href)
+                        ? sidebarTheme.navActive
+                        : sidebarTheme.navIdle
+                    )}
+                    title={item.name}
+                  >
+                    <item.icon className="w-5 h-5" />
+                    <span className="hidden lg:inline">{item.name}</span>
+                  </Link>
+                ))}
+              </div>
+            </div>
           ))}
         </nav>
 
         {/* User Section */}
-        <div className="p-3 border-t border-gray-700">
-          <div className="flex items-center gap-3 px-3 py-2">
+        <div className={cn('p-2 lg:p-3 border-t', sidebarTheme.border)}>
+          <div className="flex items-center justify-center lg:justify-start gap-3 px-2 lg:px-3 py-2">
             <div className="w-9 h-9 rounded-full bg-primary-500 flex items-center justify-center text-white font-medium text-sm">
               {user?.name?.charAt(0) || 'A'}
             </div>
-            <div className="flex-1 min-w-0">
+            <div className="hidden lg:block flex-1 min-w-0">
               <p className="text-sm font-medium text-white truncate">
                 {user?.name}
               </p>
-              <p className="text-xs text-gray-400 truncate">{user?.role}</p>
+              <p className={cn('text-xs truncate', sidebarTheme.userSubtext)}>{user?.role}</p>
             </div>
           </div>
+          {user?.role === UserRole.OWNER && (
+            <div className={cn('hidden lg:block mt-1 px-3 py-2 rounded-lg text-xs', sidebarTheme.userCard)}>
+              <p className="font-semibold truncate">{shopId || 'Current Shop'}</p>
+              <button
+                type="button"
+                className="mt-1 hover:text-white underline underline-offset-2"
+                onClick={() => router.push('/owner/dashboard')}
+              >
+                Switch to customer →
+              </button>
+            </div>
+          )}
           <button
             onClick={handleLogout}
-            className="flex items-center gap-3 w-full px-3 py-2.5 mt-2 rounded-lg text-sm font-medium text-gray-300 hover:bg-sidebar-hover hover:text-white transition-colors"
+            className={cn(
+              'flex items-center justify-center lg:justify-start gap-3 w-full px-2 lg:px-3 py-2.5 mt-2 rounded-lg text-sm font-medium transition-colors',
+              sidebarTheme.buttonIdle
+            )}
+            title="Sign Out"
           >
             <LogOut className="w-5 h-5" />
-            Sign Out
+            <span className="hidden lg:inline">Sign Out</span>
           </button>
         </div>
       </aside>
@@ -286,7 +426,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
       )}
 
       {/* Main Content */}
-      <div className="lg:pl-64">
+      <div className="lg:pl-[240px]">
         {/* Top Header */}
         <header className="sticky top-0 z-30 bg-white border-b border-gray-200">
           <div className="flex items-center justify-between h-16 px-4 sm:px-6">
@@ -302,7 +442,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
             <div className="flex items-center gap-3">
               {/* Notifications */}
               <button
-                onClick={() => router.push('/notifications')}
+                onClick={() => router.push(isStaff ? '/staff/notifications' : '/notifications')}
                 className="relative p-2 rounded-lg hover:bg-gray-100 transition-colors"
                 title="Notifications"
               >
@@ -330,7 +470,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
       </div>
 
       {/* Booking Approval Modal - show one at a time */}
-      {pendingBookings.length > 0 && (
+      {isOwnerLike && pendingBookings.length > 0 && (
         <BookingApprovalModal
           booking={pendingBookings[0]}
           onApprove={handleApproveBooking}

@@ -2,6 +2,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '@/lib/api';
 import { useAuthStore } from '@/stores/auth';
 import type { User, AuthResponse } from '@/types';
+import { getDefaultRouteForRole, isAdminRole } from '@/lib/role-routing';
 
 interface LoginCredentials {
   email: string;
@@ -29,8 +30,7 @@ export function useLogin() {
   return useMutation<AuthResponse, Error, LoginCredentials>({
     mutationFn: async (credentials) => {
       const { data } = await api.post('/auth/login', credentials);
-      // Check if user is OWNER, STAFF, or SUPER_ADMIN
-      if (data.user.role !== 'OWNER' && data.user.role !== 'STAFF' && data.user.role !== 'SUPER_ADMIN') {
+      if (!isAdminRole(data.user.role)) {
         throw new Error('Access denied. Admin access only.');
       }
       return data;
@@ -61,7 +61,7 @@ export function useRegisterShop() {
   return useMutation<AuthResponse, Error, any>({
     mutationFn: async (payload) => {
       const { data } = await api.post('/auth/register-shop', payload);
-      if (data.user.role !== 'OWNER' && data.user.role !== 'STAFF' && data.user.role !== 'SUPER_ADMIN') {
+      if (!isAdminRole(data.user.role)) {
         throw new Error('Access denied. Admin access only.');
       }
       return data;
@@ -123,8 +123,7 @@ export function useGoogleLogin() {
   return useMutation<AuthResponse, Error, string>({
     mutationFn: async (idToken: string) => {
       const { data } = await api.post('/auth/google', { idToken });
-      // Check if user is OWNER, STAFF, or SUPER_ADMIN
-      if (data.user.role !== 'OWNER' && data.user.role !== 'STAFF' && data.user.role !== 'SUPER_ADMIN') {
+      if (!isAdminRole(data.user.role)) {
         throw new Error('Access denied. Admin access only.');
       }
       return data;
@@ -145,4 +144,8 @@ export function useGoogleLogin() {
       }
     },
   });
+}
+
+export function getPostLoginRedirect(role?: User['role']) {
+  return getDefaultRouteForRole(role);
 }

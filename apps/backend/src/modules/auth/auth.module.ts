@@ -8,6 +8,9 @@ import { AuthService } from './auth.service';
 import { JwtStrategy } from './strategies/jwt.strategy';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { RolesGuard } from './guards/roles.guard';
+import { ShopOwnerGuard } from './guards/shop-owner.guard';
+import { StaffGuard } from './guards/staff.guard';
+import { ShopMemberGuard } from './guards/shop-member.guard';
 import { GoogleOAuthGuard } from './guards/google-oauth.guard';
 import { FraudDetectionModule } from '../fraud-detection/fraud-detection.module';
 import { GoogleModule } from '../google/google.module';
@@ -60,7 +63,17 @@ const resolveJwtSecret = (rawSecret?: string): string | Buffer => {
     forwardRef(() => OtpModule),
   ],
   controllers: [AuthController],
-  providers: [AuthService, JwtStrategy, GoogleStrategy, JwtAuthGuard, RolesGuard, GoogleOAuthGuard],
-  exports: [AuthService, JwtAuthGuard, RolesGuard],
+  providers: [
+    AuthService,
+    JwtStrategy,
+    GoogleStrategy,
+    JwtAuthGuard,
+    RolesGuard,
+    ShopOwnerGuard,
+    StaffGuard,
+    ShopMemberGuard,
+    GoogleOAuthGuard,
+  ],
+  exports: [AuthService, JwtAuthGuard, RolesGuard, ShopOwnerGuard, StaffGuard, ShopMemberGuard],
 })
 export class AuthModule {}

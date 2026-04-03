@@ -6,6 +6,7 @@ import { Button, Input, Card } from '@/components/ui';
 import { useLogin } from '@/hooks';
 import { useAuthStore } from '@/stores/auth';
 import api from '@/lib/api';
+import { getDefaultRouteForRole } from '@/lib/role-routing';
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL?.replace('/api/v1', '') || '';
 
@@ -44,7 +45,7 @@ export default function LoginPage() {
 
   React.useEffect(() => {
     if (isAuthenticated && !pendingOtpVerification) {
-      router.replace('/dashboard');
+      router.replace(getDefaultRouteForRole(useAuthStore.getState().user?.role));
     }
   }, [isAuthenticated, pendingOtpVerification, router]);
 
@@ -69,9 +70,10 @@ export default function LoginPage() {
     try {
       const auth = await login.mutateAsync(data);
       const phone = auth?.user?.phone;
+      const nextRoute = getDefaultRouteForRole(auth?.user?.role);
 
       if (!phone) {
-        router.push('/dashboard');
+        router.push(nextRoute);
         return;
       }
 
@@ -99,7 +101,7 @@ export default function LoginPage() {
         purpose: 'LOGIN',
       });
       clearOtpPending();
-      router.push('/dashboard');
+      router.push(getDefaultRouteForRole(useAuthStore.getState().user?.role));
     } catch (err: any) {
       setError(err.response?.data?.message || 'OTP verification failed');
     } finally {

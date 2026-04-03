@@ -13,12 +13,26 @@ import { ApiTags, ApiOperation, ApiBearerAuth, ApiParam, ApiQuery } from '@nestj
 import { AdminService } from './admin.service';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
-import { Roles } from '../auth/decorators/roles.decorator';
+import { Roles, ShopIdParam } from '../auth/decorators/roles.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { ShopMemberGuard } from '../auth/guards/shop-member.guard';
+import { ShopOwnerGuard } from '../auth/guards/shop-owner.guard';
 import { UserRole, BookingStatus, DayOfWeek } from '@prisma/client';
 import { CreateWalkInDto } from './dto/create-walk-in.dto';
 import { UpdateWorkingHoursDto } from './dto/update-working-hours.dto';
 import { UpdateBookingStatusDto } from './dto/update-booking-status.dto';
+import { UpdateOwnerShopSettingsDto } from './dto/update-owner-shop-settings.dto';
+import { UpdateOwnerPayoutDto } from './dto/update-owner-payout.dto';
+import { CreateStaffHierarchyDto } from './dto/create-staff-hierarchy.dto';
+import { UpdateStaffRoleDto } from './dto/update-staff-role.dto';
+import { ReassignStaffManagerDto } from './dto/reassign-staff-manager.dto';
+import { SetStaffCommissionDto } from './dto/set-staff-commission.dto';
+import { UpdateStaffProfileDto } from './dto/update-staff-profile.dto';
+import { UpdateStaffBankDetailsDto } from './dto/update-staff-bank-details.dto';
+import { UpdateStaffOwnScheduleDto } from './dto/update-staff-own-schedule.dto';
+import { RequestStaffTimeOffDto } from './dto/request-staff-time-off.dto';
+import { UpdateStaffTimeOffDto } from './dto/update-staff-time-off.dto';
+import { UpdateOwnBookingStatusDto } from './dto/update-own-booking-status.dto';
 
 @ApiTags('admin')
 @Controller('admin')
@@ -39,6 +53,8 @@ export class AdminController {
   }
 
   @Get('shops/:shopId/dashboard')
+  @UseGuards(ShopMemberGuard)
+  @ShopIdParam('shopId')
   @Roles(UserRole.OWNER, UserRole.STAFF, UserRole.SUPER_ADMIN)
   @ApiOperation({ summary: 'Get shop dashboard data' })
   @ApiParam({ name: 'shopId', description: 'Shop ID' })
@@ -47,6 +63,8 @@ export class AdminController {
   }
 
   @Get('shops/:shopId/bookings')
+  @UseGuards(ShopMemberGuard)
+  @ShopIdParam('shopId')
   @Roles(UserRole.OWNER, UserRole.STAFF, UserRole.SUPER_ADMIN)
   @ApiOperation({ summary: 'Get shop bookings' })
   @ApiParam({ name: 'shopId', description: 'Shop ID' })
@@ -75,6 +93,8 @@ export class AdminController {
   }
 
   @Get('bookings')
+  @UseGuards(ShopMemberGuard)
+  @ShopIdParam('shopId')
   @Roles(UserRole.OWNER, UserRole.STAFF, UserRole.SUPER_ADMIN)
   @ApiOperation({ summary: 'Get shop bookings by query parameter' })
   @ApiQuery({ name: 'shopId', required: true, description: 'Shop ID' })
@@ -117,6 +137,8 @@ export class AdminController {
   }
 
   @Post('shops/:shopId/walk-in')
+  @UseGuards(ShopMemberGuard)
+  @ShopIdParam('shopId')
   @Roles(UserRole.OWNER, UserRole.STAFF, UserRole.SUPER_ADMIN)
   @ApiOperation({ summary: 'Create a walk-in booking' })
   @ApiParam({ name: 'shopId', description: 'Shop ID' })
@@ -129,6 +151,8 @@ export class AdminController {
   }
 
   @Get('shops/:shopId/staff')
+  @UseGuards(ShopOwnerGuard)
+  @ShopIdParam('shopId')
   @Roles(UserRole.OWNER, UserRole.SUPER_ADMIN)
   @ApiOperation({ summary: 'Get shop staff' })
   @ApiParam({ name: 'shopId', description: 'Shop ID' })
@@ -137,6 +161,8 @@ export class AdminController {
   }
 
   @Post('shops/:shopId/staff')
+  @UseGuards(ShopOwnerGuard)
+  @ShopIdParam('shopId')
   @Roles(UserRole.OWNER, UserRole.SUPER_ADMIN)
   @ApiOperation({ summary: 'Create staff member' })
   @ApiParam({ name: 'shopId', description: 'Shop ID' })
@@ -149,6 +175,8 @@ export class AdminController {
   }
 
   @Patch('shops/:shopId/staff/:staffId')
+  @UseGuards(ShopOwnerGuard)
+  @ShopIdParam('shopId')
   @Roles(UserRole.OWNER, UserRole.SUPER_ADMIN)
   @ApiOperation({ summary: 'Update staff member' })
   @ApiParam({ name: 'shopId', description: 'Shop ID' })
@@ -164,6 +192,8 @@ export class AdminController {
   }
 
   @Delete('shops/:shopId/staff/:staffId')
+  @UseGuards(ShopOwnerGuard)
+  @ShopIdParam('shopId')
   @Roles(UserRole.OWNER, UserRole.SUPER_ADMIN)
   @ApiOperation({ summary: 'Delete staff member' })
   @ApiParam({ name: 'shopId', description: 'Shop ID' })
@@ -177,6 +207,8 @@ export class AdminController {
   }
 
   @Get('shops/:shopId/staff/:staffId/services')
+  @UseGuards(ShopOwnerGuard)
+  @ShopIdParam('shopId')
   @Roles(UserRole.OWNER, UserRole.SUPER_ADMIN)
   @ApiOperation({ summary: 'Get services assigned to a staff member' })
   @ApiParam({ name: 'shopId', description: 'Shop ID' })
@@ -190,6 +222,8 @@ export class AdminController {
   }
 
   @Post('shops/:shopId/staff/:staffId/services/:serviceId')
+  @UseGuards(ShopOwnerGuard)
+  @ShopIdParam('shopId')
   @Roles(UserRole.OWNER, UserRole.SUPER_ADMIN)
   @ApiOperation({ summary: 'Assign a service to a staff member' })
   @ApiParam({ name: 'shopId', description: 'Shop ID' })
@@ -205,6 +239,8 @@ export class AdminController {
   }
 
   @Delete('shops/:shopId/staff/:staffId/services/:serviceId')
+  @UseGuards(ShopOwnerGuard)
+  @ShopIdParam('shopId')
   @Roles(UserRole.OWNER, UserRole.SUPER_ADMIN)
   @ApiOperation({ summary: 'Unassign a service from a staff member' })
   @ApiParam({ name: 'shopId', description: 'Shop ID' })
@@ -220,6 +256,8 @@ export class AdminController {
   }
 
   @Get('shops/:shopId/staff/:staffId/availability')
+  @UseGuards(ShopOwnerGuard)
+  @ShopIdParam('shopId')
   @Roles(UserRole.OWNER, UserRole.SUPER_ADMIN)
   @ApiOperation({ summary: 'Get staff availability (working hours and time-off)' })
   @ApiParam({ name: 'shopId', description: 'Shop ID' })
@@ -233,6 +271,8 @@ export class AdminController {
   }
 
   @Patch('shops/:shopId/staff/:staffId/availability/:dayOfWeek')
+  @UseGuards(ShopOwnerGuard)
+  @ShopIdParam('shopId')
   @Roles(UserRole.OWNER, UserRole.SUPER_ADMIN)
   @ApiOperation({ summary: 'Update staff working hours for a day' })
   @ApiParam({ name: 'shopId', description: 'Shop ID' })
@@ -249,6 +289,8 @@ export class AdminController {
   }
 
   @Post('shops/:shopId/staff/:staffId/time-off')
+  @UseGuards(ShopOwnerGuard)
+  @ShopIdParam('shopId')
   @Roles(UserRole.OWNER, UserRole.SUPER_ADMIN)
   @ApiOperation({ summary: 'Add staff time-off block' })
   @ApiParam({ name: 'shopId', description: 'Shop ID' })
@@ -263,6 +305,8 @@ export class AdminController {
   }
 
   @Delete('shops/:shopId/staff/:staffId/time-off/:timeOffId')
+  @UseGuards(ShopOwnerGuard)
+  @ShopIdParam('shopId')
   @Roles(UserRole.OWNER, UserRole.SUPER_ADMIN)
   @ApiOperation({ summary: 'Delete staff time-off block' })
   @ApiParam({ name: 'shopId', description: 'Shop ID' })
@@ -278,6 +322,8 @@ export class AdminController {
   }
 
   @Get('shops/:shopId/working-hours')
+  @UseGuards(ShopMemberGuard)
+  @ShopIdParam('shopId')
   @Roles(UserRole.OWNER, UserRole.STAFF, UserRole.SUPER_ADMIN)
   @ApiOperation({ summary: 'Get shop working hours' })
   @ApiParam({ name: 'shopId', description: 'Shop ID' })
@@ -289,6 +335,8 @@ export class AdminController {
   }
 
   @Patch('shops/:shopId/working-hours/:dayOfWeek')
+  @UseGuards(ShopOwnerGuard)
+  @ShopIdParam('shopId')
   @Roles(UserRole.OWNER, UserRole.SUPER_ADMIN)
   @ApiOperation({ summary: 'Update working hours for a day' })
   @ApiParam({ name: 'shopId', description: 'Shop ID' })
@@ -303,6 +351,8 @@ export class AdminController {
   }
 
   @Get('shops/:shopId/settings')
+  @UseGuards(ShopOwnerGuard)
+  @ShopIdParam('shopId')
   @Roles(UserRole.OWNER, UserRole.SUPER_ADMIN)
   @ApiOperation({ summary: 'Get shop settings' })
   @ApiParam({ name: 'shopId', description: 'Shop ID' })
@@ -311,6 +361,8 @@ export class AdminController {
   }
 
   @Patch('shops/:shopId/settings')
+  @UseGuards(ShopOwnerGuard)
+  @ShopIdParam('shopId')
   @Roles(UserRole.OWNER, UserRole.SUPER_ADMIN)
   @ApiOperation({ summary: 'Update shop settings' })
   @ApiParam({ name: 'shopId', description: 'Shop ID' })
@@ -323,6 +375,8 @@ export class AdminController {
   }
 
   @Get('shops/:shopId/payout-details')
+  @UseGuards(ShopOwnerGuard)
+  @ShopIdParam('shopId')
   @Roles(UserRole.OWNER, UserRole.SUPER_ADMIN)
   @ApiOperation({ summary: 'Get shop payout details' })
   @ApiParam({ name: 'shopId', description: 'Shop ID' })
@@ -334,6 +388,8 @@ export class AdminController {
   }
 
   @Patch('shops/:shopId/payout-details')
+  @UseGuards(ShopOwnerGuard)
+  @ShopIdParam('shopId')
   @Roles(UserRole.OWNER, UserRole.SUPER_ADMIN)
   @ApiOperation({ summary: 'Update shop payout details' })
   @ApiParam({ name: 'shopId', description: 'Shop ID' })
@@ -343,6 +399,297 @@ export class AdminController {
     @CurrentUser('tenantId') tenantId: string,
   ) {
     return this.adminService.updatePayoutDetails(shopId, tenantId, payoutDetails);
+  }
+
+  @Patch('owners/shops/:shopId/settings')
+  @UseGuards(ShopOwnerGuard)
+  @ShopIdParam('shopId')
+  @Roles(UserRole.OWNER)
+  @ApiOperation({ summary: 'Owner: update shop settings' })
+  async updateOwnerShopSettings(
+    @Param('shopId') shopId: string,
+    @CurrentUser('id') ownerId: string,
+    @Body() dto: UpdateOwnerShopSettingsDto,
+  ) {
+    return this.adminService.updateOwnerShopSettings(shopId, ownerId, dto);
+  }
+
+  @Patch('owners/shops/:shopId/payout-settings')
+  @UseGuards(ShopOwnerGuard)
+  @ShopIdParam('shopId')
+  @Roles(UserRole.OWNER)
+  @ApiOperation({ summary: 'Owner: update payout settings' })
+  async updateOwnerPayoutSettings(
+    @Param('shopId') shopId: string,
+    @CurrentUser('id') ownerId: string,
+    @Body() dto: UpdateOwnerPayoutDto,
+  ) {
+    return this.adminService.updateOwnerPayoutSettings(shopId, ownerId, dto);
+  }
+
+  @Get('owners/shops/:shopId/financials')
+  @UseGuards(ShopOwnerGuard)
+  @ShopIdParam('shopId')
+  @Roles(UserRole.OWNER)
+  @ApiOperation({ summary: 'Owner: get shop financials' })
+  async getOwnerFinancials(
+    @Param('shopId') shopId: string,
+    @CurrentUser('id') ownerId: string,
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+    @Query('breakdown') breakdown?: string,
+  ) {
+    return this.adminService.getShopFinancials(shopId, ownerId, { startDate, endDate, breakdown });
+  }
+
+  @Post('owners/shops/:shopId/staff-hierarchy')
+  @UseGuards(ShopOwnerGuard)
+  @ShopIdParam('shopId')
+  @Roles(UserRole.OWNER)
+  @ApiOperation({ summary: 'Owner: create/update staff hierarchy' })
+  async createStaffHierarchy(
+    @Param('shopId') shopId: string,
+    @CurrentUser('id') ownerId: string,
+    @Body() dto: CreateStaffHierarchyDto,
+  ) {
+    return this.adminService.createStaffHierarchy(shopId, ownerId, dto);
+  }
+
+  @Patch('owners/shops/:shopId/staff/:staffId/role')
+  @UseGuards(ShopOwnerGuard)
+  @ShopIdParam('shopId')
+  @Roles(UserRole.OWNER)
+  @ApiOperation({ summary: 'Owner: update staff role' })
+  async updateStaffRole(
+    @Param('shopId') shopId: string,
+    @Param('staffId') staffId: string,
+    @CurrentUser('id') ownerId: string,
+    @Body() dto: UpdateStaffRoleDto,
+  ) {
+    return this.adminService.updateStaffRole(shopId, staffId, ownerId, dto);
+  }
+
+  @Get('owners/shops/:shopId/staff-hierarchy')
+  @UseGuards(ShopOwnerGuard)
+  @ShopIdParam('shopId')
+  @Roles(UserRole.OWNER)
+  @ApiOperation({ summary: 'Owner: get staff hierarchy' })
+  async getStaffHierarchy(
+    @Param('shopId') shopId: string,
+    @CurrentUser('id') ownerId: string,
+  ) {
+    return this.adminService.getStaffHierarchy(shopId, ownerId);
+  }
+
+  @Patch('owners/shops/:shopId/staff/:staffId/manager')
+  @UseGuards(ShopOwnerGuard)
+  @ShopIdParam('shopId')
+  @Roles(UserRole.OWNER)
+  @ApiOperation({ summary: 'Owner: reassign staff manager' })
+  async reassignStaffManager(
+    @Param('shopId') shopId: string,
+    @Param('staffId') staffId: string,
+    @CurrentUser('id') ownerId: string,
+    @Body() dto: ReassignStaffManagerDto,
+  ) {
+    return this.adminService.reassignStaffManager(shopId, staffId, ownerId, dto.managerId);
+  }
+
+  @Get('owners/shops/:shopId/staff/:staffId/earnings')
+  @UseGuards(ShopOwnerGuard)
+  @ShopIdParam('shopId')
+  @Roles(UserRole.OWNER)
+  @ApiOperation({ summary: 'Owner: get staff earnings' })
+  async getStaffEarnings(
+    @Param('shopId') shopId: string,
+    @Param('staffId') staffId: string,
+    @CurrentUser('id') ownerId: string,
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+    @Query('breakdown') breakdown?: string,
+  ) {
+    return this.adminService.getStaffEarnings(shopId, staffId, ownerId, {
+      startDate,
+      endDate,
+      breakdown,
+    });
+  }
+
+  @Patch('owners/shops/:shopId/staff/:staffId/commission')
+  @UseGuards(ShopOwnerGuard)
+  @ShopIdParam('shopId')
+  @Roles(UserRole.OWNER)
+  @ApiOperation({ summary: 'Owner: set staff commission' })
+  async setStaffCommission(
+    @Param('shopId') shopId: string,
+    @Param('staffId') staffId: string,
+    @CurrentUser('id') ownerId: string,
+    @Body() dto: SetStaffCommissionDto,
+  ) {
+    return this.adminService.setStaffCommission(shopId, staffId, ownerId, dto);
+  }
+
+  @Get('staff/me')
+  @Roles(UserRole.STAFF)
+  @ApiOperation({ summary: 'Staff: get own profile' })
+  async getStaffMe(@CurrentUser('id') userId: string) {
+    return this.adminService.getStaffProfile(userId);
+  }
+
+  @Patch('staff/me')
+  @Roles(UserRole.STAFF)
+  @ApiOperation({ summary: 'Staff: update own profile' })
+  async updateStaffMe(@CurrentUser('id') userId: string, @Body() dto: UpdateStaffProfileDto) {
+    return this.adminService.updateStaffProfile(userId, dto);
+  }
+
+  @Patch('staff/me/bank-details')
+  @Roles(UserRole.STAFF)
+  @ApiOperation({ summary: 'Staff: update own bank details' })
+  async updateStaffBankDetails(
+    @CurrentUser('id') userId: string,
+    @Body() dto: UpdateStaffBankDetailsDto,
+  ) {
+    return this.adminService.updateStaffBankDetails(userId, dto);
+  }
+
+  @Get('staff/me/schedule')
+  @Roles(UserRole.STAFF)
+  @ApiOperation({ summary: 'Staff: get own schedule' })
+  async getStaffOwnSchedule(@CurrentUser('id') userId: string) {
+    return this.adminService.getStaffOwnSchedule(userId);
+  }
+
+  @Patch('staff/me/schedule/:dayOfWeek')
+  @Roles(UserRole.STAFF)
+  @ApiOperation({ summary: 'Staff: update own schedule day' })
+  async updateStaffOwnSchedule(
+    @CurrentUser('id') userId: string,
+    @Param('dayOfWeek') dayOfWeek: DayOfWeek,
+    @Body() dto: UpdateStaffOwnScheduleDto,
+  ) {
+    return this.adminService.updateStaffOwnSchedule(userId, dayOfWeek, dto);
+  }
+
+  @Post('staff/me/time-off')
+  @Roles(UserRole.STAFF)
+  @ApiOperation({ summary: 'Staff: request time-off' })
+  async requestStaffTimeOff(
+    @CurrentUser('id') userId: string,
+    @Body() dto: RequestStaffTimeOffDto,
+  ) {
+    return this.adminService.requestStaffTimeOff(userId, dto);
+  }
+
+  @Patch('staff/me/time-off/:timeOffId')
+  @Roles(UserRole.STAFF)
+  @ApiOperation({ summary: 'Staff: update own time-off request' })
+  async updateStaffTimeOff(
+    @CurrentUser('id') userId: string,
+    @Param('timeOffId') timeOffId: string,
+    @Body() dto: UpdateStaffTimeOffDto,
+  ) {
+    return this.adminService.updateStaffTimeOff(userId, timeOffId, dto);
+  }
+
+  @Delete('staff/me/time-off/:timeOffId')
+  @Roles(UserRole.STAFF)
+  @ApiOperation({ summary: 'Staff: delete own time-off request' })
+  async deleteStaffTimeOffSelf(
+    @CurrentUser('id') userId: string,
+    @Param('timeOffId') timeOffId: string,
+  ) {
+    return this.adminService.deleteStaffTimeOffSelf(userId, timeOffId);
+  }
+
+  @Get('staff/me/bookings')
+  @Roles(UserRole.STAFF)
+  @ApiOperation({ summary: 'Staff: get own bookings' })
+  async getStaffOwnBookings(
+    @CurrentUser('id') userId: string,
+    @Query('date') date?: string,
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+    @Query('status') status?: BookingStatus,
+    @Query('page') page?: number,
+    @Query('limit') limit?: number,
+  ) {
+    return this.adminService.getStaffOwnBookings(userId, {
+      date,
+      startDate,
+      endDate,
+      status,
+      page,
+      limit,
+    });
+  }
+
+  @Patch('staff/me/bookings/:bookingId/status')
+  @Roles(UserRole.STAFF)
+  @ApiOperation({ summary: 'Staff: update own booking status' })
+  async updateStaffOwnBookingStatus(
+    @CurrentUser('id') userId: string,
+    @Param('bookingId') bookingId: string,
+    @Body() dto: UpdateOwnBookingStatusDto,
+  ) {
+    return this.adminService.updateStaffOwnBookingStatus(userId, bookingId, dto);
+  }
+
+  @Get('staff/me/services')
+  @Roles(UserRole.STAFF)
+  @ApiOperation({ summary: 'Staff: get assigned services' })
+  async getStaffAssignedServices(@CurrentUser('id') userId: string) {
+    return this.adminService.getStaffAssignedServices(userId);
+  }
+
+  @Get('staff/me/earnings')
+  @Roles(UserRole.STAFF)
+  @ApiOperation({ summary: 'Staff: get own earnings' })
+  async getStaffOwnEarnings(
+    @CurrentUser('id') userId: string,
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+    @Query('breakdown') breakdown?: string,
+  ) {
+    return this.adminService.getStaffOwnEarnings(userId, { startDate, endDate, breakdown });
+  }
+
+  @Get('staff/me/payout-history')
+  @Roles(UserRole.STAFF)
+  @ApiOperation({ summary: 'Staff: get own payout history' })
+  async getStaffPayoutHistory(
+    @CurrentUser('id') userId: string,
+    @Query('startDate') startDate?: string,
+    @Query('endDate') endDate?: string,
+  ) {
+    return this.adminService.getStaffPayoutHistory(userId, { startDate, endDate });
+  }
+
+  @Get('staff/me/reviews')
+  @Roles(UserRole.STAFF)
+  @ApiOperation({ summary: 'Staff: get own reviews' })
+  @ApiQuery({ name: 'page', required: false, type: Number })
+  @ApiQuery({ name: 'limit', required: false, type: Number })
+  @ApiQuery({ name: 'rating', required: false, type: Number })
+  @ApiQuery({ name: 'withComment', required: false, type: Boolean })
+  @ApiQuery({ name: 'unanswered', required: false, type: Boolean })
+  async getStaffOwnReviews(
+    @CurrentUser('id') userId: string,
+    @Query('page') page?: number,
+    @Query('limit') limit?: number,
+    @Query('rating') rating?: number,
+    @Query('withComment') withComment?: string | boolean,
+    @Query('unanswered') unanswered?: string | boolean,
+  ) {
+    const toBool = (value?: string | boolean) => value === true || value === 'true';
+
+    return this.adminService.getStaffOwnReviews(userId, {
+      page,
+      limit,
+      rating: rating ? Number(rating) : undefined,
+      withComment: toBool(withComment),
+      unanswered: toBool(unanswered),
+    });
   }
 
   @Get('users')

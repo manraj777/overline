@@ -2,7 +2,7 @@ import { Injectable } from '@nestjs/common';
 import { PrismaService } from '@/common/prisma/prisma.service';
 import { RedisService } from '@/common/redis/redis.service';
 import { SlotEngineService } from './slot-engine.service';
-import { BookingSource, BookingStatus, ServiceStatus } from '@prisma/client';
+import { BookingSource, BookingStatus, Prisma, ServiceStatus } from '@prisma/client';
 import { v4 as uuidv4 } from 'uuid';
 
 @Injectable()
@@ -322,6 +322,172 @@ export class QueueService {
 
     await this.updateQueueStats(booking.shopId);
     return updated;
+  }
+
+  async callAheadCustomer(shopId: string, bookingId: string, staffId: string, message?: string) {
+    const booking = await this.prisma.booking.findFirst({
+      where: {
+        id: bookingId,
+        shopId,
+        status: {
+          in: [
+            BookingStatus.PENDING,
+            BookingStatus.PENDING_APPROVAL,
+            BookingStatus.WAITLISTED,
+            BookingStatus.CONFIRMED,
+          ],
+        },
+      },
+    });
+
+    if (!booking) {
+      throw new Error('Booking not found or cannot be called ahead');
+    }
+
+    const note = message?.trim()
+      ? `Call-ahead by ${staffId}: ${message.trim()}`
+      : `Call-ahead by ${staffId}`;
+
+    const updated = await this.prisma.booking.update({
+      where: { id: booking.id },
+      data: {
+        status:
+          booking.status === BookingStatus.PENDING ||
+          booking.status === BookingStatus.PENDING_APPROVAL ||
+          booking.status === BookingStatus.WAITLISTED
+            ? BookingStatus.CONFIRMED
+            : booking.status,
+        adminNotes: booking.adminNotes ? `${booking.adminNotes}\n${note}` : note,
+      },
+    });
+
+    await this.updateQueueStats(shopId);
+    return updated;
+  }
+
+  async skipCustomer(shopId: string, bookingId: string, staffId: string, reason?: string) {
+    const booking = await this.prisma.booking.findFirst({
+      where: {
+        id: bookingId,
+        shopId,
+        status: {
+          in: [
+            BookingStatus.PENDING,
+            BookingStatus.PENDING_APPROVAL,
+            BookingStatus.WAITLISTED,
+            BookingStatus.CONFIRMED,
+            BookingStatus.IN_PROGRESS,
+            BookingStatus.IN_SERVICE,
+          ],
+        },
+      },
+    });
+
+    if (!booking) {
+      throw new Error('Booking not found or cannot be skipped');
+    }
+
+    const note = reason?.trim()
+      ? `Skipped by ${staffId}: ${reason.trim()}`
+      : `Skipped by ${staffId}`;
+
+    const updated = await this.prisma.booking.update({
+      where: { id: booking.id },
+      data: {
+        status: BookingStatus.SKIPPED,
+        serviceStatus: ServiceStatus.COMPLETED,
+        adminNotes: booking.adminNotes ? `${booking.adminNotes}\n${note}` : note,
+      },
+    });
+
+    await this.updateQueueStats(shopId);
+    return updated;
+  }
+
+  async handleOverrun(
+    shopId: string,
+    bookingId: string,
+    staffId: string,
+    extraMinutes: number,
+    note?: string,
+  ) {
+    const booking = await this.prisma.booking.findFirst({
+      where: {
+        id: bookingId,
+        shopId,
+        status: { in: [BookingStatus.IN_PROGRESS, BookingStatus.IN_SERVICE, BookingStatus.CONFIRMED] },
+      },
+      select: {
+        id: true,
+        shopId: true,
+        startTime: true,
+        endTime: true,
+        queuePosition: true,
+        adminNotes: true,
+      },
+    });
+
+    if (!booking) {
+      throw new Error('Booking not found or not eligible for overrun');
+    }
+
+    const extensionMs = extraMinutes * 60 * 1000;
+    const nextEndTime = new Date(booking.endTime.getTime() + extensionMs);
+    const appendedNote = note?.trim()
+      ? `Overrun +${extraMinutes}m by ${staffId}: ${note.trim()}`
+      : `Overrun +${extraMinutes}m by ${staffId}`;
+
+    const dayStart = new Date(booking.startTime);
+    dayStart.setHours(0, 0, 0, 0);
+    const dayEnd = new Date(booking.startTime);
+    dayEnd.setHours(23, 59, 59, 999);
+
+    await this.prisma.$transaction(async (tx: Prisma.TransactionClient) => {
+      await tx.booking.update({
+        where: { id: booking.id },
+        data: {
+          endTime: nextEndTime,
+          adminNotes: booking.adminNotes
+            ? `${booking.adminNotes}\n${appendedNote}`
+            : appendedNote,
+        },
+      });
+
+      const impacted = await tx.booking.findMany({
+        where: {
+          shopId,
+          id: { not: booking.id },
+          startTime: { gte: dayStart, lte: dayEnd, gt: booking.startTime },
+          status: {
+            in: [
+              BookingStatus.PENDING,
+              BookingStatus.PENDING_APPROVAL,
+              BookingStatus.WAITLISTED,
+              BookingStatus.CONFIRMED,
+              BookingStatus.IN_PROGRESS,
+              BookingStatus.IN_SERVICE,
+            ],
+          },
+        },
+        orderBy: [
+          { queuePosition: 'asc' },
+          { startTime: 'asc' },
+        ],
+      });
+
+      for (const item of impacted) {
+        await tx.booking.update({
+          where: { id: item.id },
+          data: {
+            startTime: new Date(item.startTime.getTime() + extensionMs),
+            endTime: new Date(item.endTime.getTime() + extensionMs),
+          },
+        });
+      }
+    });
+
+    await this.updateQueueStats(shopId);
+    return this.prisma.booking.findUnique({ where: { id: bookingId } });
   }
 
   /**

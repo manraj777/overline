@@ -9,16 +9,36 @@ import { ToastProvider } from '@/components/ui';
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
 import api from '@/lib/api';
 import { useAuthStore } from '@/stores/auth';
+import {
+  canAccessPath,
+  getDefaultRouteForRole,
+  getLegacyRedirectForRole,
+  isPublicRoute,
+} from '@/lib/role-routing';
 
 function AuthBootstrap() {
   const router = useRouter();
   const { accessToken, isAuthenticated, logout } = useAuthStore();
 
   React.useEffect(() => {
-    const publicRoutes = ['/login', '/register', '/auth/google/callback', '/404'];
-    const isPublicRoute = publicRoutes.some((route) => router.pathname.startsWith(route));
-    if (!accessToken || !isAuthenticated || isPublicRoute) {
+    const publicPath = isPublicRoute(router.pathname);
+
+    if (!accessToken || !isAuthenticated || publicPath) {
       return;
+    }
+
+    const user = useAuthStore.getState().user;
+    if (user) {
+      const legacyRedirect = getLegacyRedirectForRole(router.pathname, user.role);
+      if (legacyRedirect && legacyRedirect !== router.pathname) {
+        router.replace(legacyRedirect);
+        return;
+      }
+
+      if (!canAccessPath(user.role, router.pathname)) {
+        router.replace(getDefaultRouteForRole(user.role));
+        return;
+      }
     }
 
     let cancelled = false;

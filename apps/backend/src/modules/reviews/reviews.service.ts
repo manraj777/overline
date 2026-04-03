@@ -102,6 +102,104 @@ export class ReviewsService {
   }
 
   /**
+   * Get reviews linked to current staff member in a shop.
+   * Supports both new `staffProfileId` linkage and legacy booking `staffId` linkage.
+   */
+  async findForStaff(shopId: string, userId: string, page = 1, limit = 10) {
+    const skip = (page - 1) * limit;
+
+    const [staffProfile, staff] = await Promise.all([
+      this.prisma.staffProfile.findFirst({
+        where: { shopId, userId, isActive: true },
+        select: { id: true },
+      }),
+      this.prisma.staff.findFirst({
+        where: { shopId, userId, isActive: true },
+        select: { id: true },
+      }),
+    ]);
+
+    if (!staffProfile && !staff) {
+      return {
+        data: [],
+        stats: {
+          averageRating: 0,
+          totalReviews: 0,
+          distribution: { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 },
+        },
+        meta: {
+          total: 0,
+          page,
+          limit,
+          totalPages: 0,
+        },
+      };
+    }
+
+    const staffReviewFilter = {
+      shopId,
+      isPublic: true,
+      OR: [
+        ...(staffProfile ? [{ staffProfileId: staffProfile.id }] : []),
+        ...(staff ? [{ booking: { staffId: staff.id } }] : []),
+      ],
+    };
+
+    const [reviews, total] = await Promise.all([
+      this.prisma.review.findMany({
+        where: staffReviewFilter,
+        include: {
+          user: {
+            select: { id: true, name: true, avatarUrl: true },
+          },
+          booking: {
+            select: {
+              id: true,
+              bookingNumber: true,
+              services: {
+                select: {
+                  serviceName: true,
+                },
+              },
+            },
+          },
+        },
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: limit,
+      }),
+      this.prisma.review.count({ where: staffReviewFilter }),
+    ]);
+
+    const ratings = await this.prisma.review.findMany({
+      where: staffReviewFilter,
+      select: { rating: true },
+    });
+
+    const distribution = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 };
+    let sum = 0;
+    ratings.forEach((r) => {
+      sum += r.rating;
+      distribution[r.rating as keyof typeof distribution]++;
+    });
+
+    return {
+      data: reviews,
+      stats: {
+        averageRating: ratings.length ? Math.round((sum / ratings.length) * 10) / 10 : 0,
+        totalReviews: ratings.length,
+        distribution,
+      },
+      meta: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
+  }
+
+  /**
    * Increment helpful vote count for a review
    */
   async incrementHelpfulCount(reviewId: string, userId: string) {

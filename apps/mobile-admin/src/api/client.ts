@@ -167,6 +167,30 @@ export const bookingsApi = {
   ) => apiClient.post(`/admin/shops/${shopId}/walk-in`, data),
 };
 
+export const queueApi = {
+  callAhead: (shopId: string, bookingId: string, message?: string) =>
+    apiClient.post(`/queue/${shopId}/call-ahead`, {bookingId, message}),
+  skip: (shopId: string, bookingId: string, reason?: string) =>
+    apiClient.post(`/queue/${shopId}/skip`, {bookingId, reason}),
+  overrun: (shopId: string, bookingId: string, extraMinutes: number, note?: string) =>
+    apiClient.post(`/queue/${shopId}/overrun`, {bookingId, extraMinutes, note}),
+  getTrackableBookings: (shopId: string) =>
+    apiClient.get(`/queue/tracking/${shopId}`),
+  getMessages: (bookingId: string) =>
+    apiClient.get(`/queue/tracking/${bookingId}/messages`),
+  postMessage: (
+    bookingId: string,
+    data: {senderId: string; senderType: 'USER' | 'SHOP'; content: string},
+  ) => apiClient.post(`/queue/tracking/${bookingId}/messages`, data),
+};
+
+export const reviewsApi = {
+  getMyStaffReviews: (
+    shopId: string,
+    params?: {page?: number; limit?: number},
+  ) => apiClient.get(`/reviews/shop/${shopId}/staff/me`, {params}),
+};
+
 // Services APIs - uses /services/shop/:shopId
 export const servicesApi = {
   getAll: (shopId: string) =>

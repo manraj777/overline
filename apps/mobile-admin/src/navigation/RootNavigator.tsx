@@ -5,7 +5,11 @@ import {createNativeStackNavigator} from '@react-navigation/native-stack';
 import {createBottomTabNavigator} from '@react-navigation/bottom-tabs';
 import {DefaultTheme} from '@react-navigation/native';
 import {useAuthStore} from '../stores/authStore';
-import {RootStackParamList, MainTabParamList} from '../types';
+import {
+  RootStackParamList,
+  OwnerTabParamList,
+  StaffTabParamList,
+} from '../types';
 import {Colors, FontSize, FontWeight} from '../theme';
 import {
   BarChart3,
@@ -19,9 +23,6 @@ import {
 import SplashScreen from '../screens/auth/SplashScreen';
 import LoginScreen from '../screens/auth/LoginScreen';
 import OtpVerifyScreen from '../screens/auth/OtpVerifyScreen';
-import DashboardScreen from '../screens/dashboard/DashboardScreen';
-import BookingsScreen from '../screens/bookings/BookingsScreen';
-import QueueScreen from '../screens/queue/QueueScreen';
 import BookingDetailScreen from '../screens/bookings/BookingDetailScreen';
 import VerifyCodeScreen from '../screens/bookings/VerifyCodeScreen';
 import ServiceFormScreen from '../screens/services/ServiceFormScreen';
@@ -30,11 +31,27 @@ import ShopSettingsScreen from '../screens/settings/ShopSettingsScreen';
 import WorkingHoursScreen from '../screens/settings/WorkingHoursScreen';
 import StaffManagementScreen from '../screens/settings/StaffManagementScreen';
 import AnalyticsScreen from '../screens/settings/AnalyticsScreen';
-import AnalyticsTabScreen from '../screens/analytics/AnalyticsTabScreen';
 import PayoutDetailsScreen from '../screens/settings/PayoutDetailsScreen.tsx';
+import OwnerDashboardScreen from '../screens/owner/OwnerDashboardScreen';
+import LiveQueueScreen from '../screens/owner/LiveQueueScreen';
+import AllBookingsScreen from '../screens/owner/AllBookingsScreen';
+import OwnerEarningsScreen from '../screens/owner/OwnerEarningsScreen';
+import MyDayScreen from '../screens/staff/MyDayScreen';
+import MyQueueScreen from '../screens/staff/MyQueueScreen';
+import MyEarningsScreen from '../screens/staff/MyEarningsScreen';
+import MyProfileScreen from '../screens/staff/MyProfileScreen';
+import MyServicesScreen from '../screens/staff/MyServicesScreen';
+import MyScheduleScreen from '../screens/staff/MyScheduleScreen';
+import MyReviewsScreen from '../screens/staff/MyReviewsScreen';
+import NotificationSettingsScreen from '../screens/staff/NotificationSettingsScreen';
+import PaymentUPIScreen from '../screens/staff/PaymentUPIScreen';
+import PendingApprovalsScreen from '../screens/staff/PendingApprovalsScreen';
+import LocationMapScreen from '../screens/staff/LocationMapScreen';
+import PreArrivalChatScreen from '../screens/staff/PreArrivalChatScreen';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
-const Tab = createBottomTabNavigator<MainTabParamList>();
+const OwnerTab = createBottomTabNavigator<OwnerTabParamList>();
+const StaffTab = createBottomTabNavigator<StaffTabParamList>();
 
 function TabIcon({
   name,
@@ -75,29 +92,30 @@ const AppTheme = {
   },
 };
 
-function MainTabs() {
+const tabScreenOptions = {
+  tabBarActiveTintColor: Colors.primary,
+  tabBarInactiveTintColor: Colors.gray400,
+  tabBarStyle: {
+    backgroundColor: Colors.surface,
+    borderTopWidth: 1,
+    borderTopColor: Colors.border,
+    paddingBottom: 8,
+    paddingTop: 8,
+    height: 64,
+  },
+  tabBarLabelStyle: {
+    fontSize: FontSize.label,
+    fontWeight: FontWeight.medium,
+  },
+  headerShown: false,
+} as const;
+
+function OwnerTabs() {
   return (
-    <Tab.Navigator
-      screenOptions={{
-        tabBarActiveTintColor: Colors.primary,
-        tabBarInactiveTintColor: Colors.gray400,
-        tabBarStyle: {
-          backgroundColor: Colors.surface,
-          borderTopWidth: 1,
-          borderTopColor: Colors.border,
-          paddingBottom: 8,
-          paddingTop: 8,
-          height: 64,
-        },
-        tabBarLabelStyle: {
-          fontSize: FontSize.label,
-          fontWeight: FontWeight.medium,
-        },
-        headerShown: false,
-      }}>
-      <Tab.Screen
+    <OwnerTab.Navigator screenOptions={tabScreenOptions}>
+      <OwnerTab.Screen
         name="Dashboard"
-        component={DashboardScreen}
+        component={OwnerDashboardScreen}
         options={{
           tabBarLabel: 'Dashboard',
           tabBarIcon: ({color, size, focused}) => (
@@ -105,9 +123,9 @@ function MainTabs() {
           ),
         }}
       />
-      <Tab.Screen
+      <OwnerTab.Screen
         name="Queue"
-        component={QueueScreen}
+        component={LiveQueueScreen}
         options={{
           tabBarLabel: 'Queue',
           tabBarIcon: ({color, size, focused}) => (
@@ -115,9 +133,9 @@ function MainTabs() {
           ),
         }}
       />
-      <Tab.Screen
+      <OwnerTab.Screen
         name="Bookings"
-        component={BookingsScreen}
+        component={AllBookingsScreen}
         options={{
           tabBarLabel: 'Bookings',
           tabBarIcon: ({color, size, focused}) => (
@@ -125,17 +143,17 @@ function MainTabs() {
           ),
         }}
       />
-      <Tab.Screen
-        name="AnalyticsTab"
-        component={AnalyticsTabScreen}
+      <OwnerTab.Screen
+        name="Earnings"
+        component={OwnerEarningsScreen}
         options={{
-          tabBarLabel: 'Analytics',
+          tabBarLabel: 'Earnings',
           tabBarIcon: ({color, size, focused}) => (
             <TabIcon name="analytics" color={color} size={size} focused={focused} />
           ),
         }}
       />
-      <Tab.Screen
+      <OwnerTab.Screen
         name="Profile"
         component={SettingsScreen}
         options={{
@@ -145,13 +163,65 @@ function MainTabs() {
           ),
         }}
       />
-    </Tab.Navigator>
+    </OwnerTab.Navigator>
+  );
+}
+
+function StaffTabs() {
+  return (
+    <StaffTab.Navigator screenOptions={tabScreenOptions}>
+      <StaffTab.Screen
+        name="MyDay"
+        component={MyDayScreen}
+        options={{
+          tabBarLabel: 'My Day',
+          tabBarIcon: ({color, size, focused}) => (
+            <TabIcon name="dashboard" color={color} size={size} focused={focused} />
+          ),
+        }}
+      />
+      <StaffTab.Screen
+        name="Queue"
+        component={MyQueueScreen}
+        options={{
+          tabBarLabel: 'Queue',
+          tabBarIcon: ({color, size, focused}) => (
+            <TabIcon name="queue" color={color} size={size} focused={focused} />
+          ),
+        }}
+      />
+      <StaffTab.Screen
+        name="Earn"
+        component={MyEarningsScreen}
+        options={{
+          tabBarLabel: 'Earn',
+          tabBarIcon: ({color, size, focused}) => (
+            <TabIcon name="analytics" color={color} size={size} focused={focused} />
+          ),
+        }}
+      />
+      <StaffTab.Screen
+        name="Profile"
+        component={MyProfileScreen}
+        options={{
+          tabBarLabel: 'Profile',
+          tabBarIcon: ({color, size, focused}) => (
+            <TabIcon name="profile" color={color} size={size} focused={focused} />
+          ),
+        }}
+      />
+    </StaffTab.Navigator>
   );
 }
 
 export default function RootNavigator() {
-  const {isAuthenticated, isLoading, pendingOtpVerification, otpPhone} =
-    useAuthStore();
+  const {
+    isAuthenticated,
+    isLoading,
+    pendingOtpVerification,
+    otpPhone,
+    isStaff,
+  } = useAuthStore();
 
   if (isLoading) {
     return (
@@ -177,7 +247,7 @@ export default function RootNavigator() {
           />
         ) : (
           <>
-            <Stack.Screen name="Main" component={MainTabs} />
+            <Stack.Screen name="Main" component={isStaff ? StaffTabs : OwnerTabs} />
             <Stack.Screen
               name="BookingDetail"
               component={BookingDetailScreen}
@@ -221,6 +291,46 @@ export default function RootNavigator() {
               name="PayoutDetails"
               component={PayoutDetailsScreen}
               options={{headerShown: true, title: 'Payout Details'}}
+            />
+            <Stack.Screen
+              name="MyServices"
+              component={MyServicesScreen}
+              options={{headerShown: true, title: 'My Services'}}
+            />
+            <Stack.Screen
+              name="MySchedule"
+              component={MyScheduleScreen}
+              options={{headerShown: true, title: 'My Schedule'}}
+            />
+            <Stack.Screen
+              name="MyReviews"
+              component={MyReviewsScreen}
+              options={{headerShown: true, title: 'My Reviews'}}
+            />
+            <Stack.Screen
+              name="NotificationSettings"
+              component={NotificationSettingsScreen}
+              options={{headerShown: true, title: 'Notification Settings'}}
+            />
+            <Stack.Screen
+              name="PaymentUPI"
+              component={PaymentUPIScreen}
+              options={{headerShown: true, title: 'Payment UPI'}}
+            />
+            <Stack.Screen
+              name="PendingApprovals"
+              component={PendingApprovalsScreen}
+              options={{headerShown: true, title: 'Pending Approvals'}}
+            />
+            <Stack.Screen
+              name="LocationMap"
+              component={LocationMapScreen}
+              options={{headerShown: true, title: 'Location Map'}}
+            />
+            <Stack.Screen
+              name="PreArrivalChat"
+              component={PreArrivalChatScreen}
+              options={{headerShown: true, title: 'Pre-Arrival Chat'}}
             />
           </>
         )}

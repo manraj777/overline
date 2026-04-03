@@ -17,7 +17,7 @@ export class ServicesController {
   constructor(private readonly servicesService: ServicesService) {}
 
   @Post('shop/:shopId')
-  @Roles(UserRole.OWNER, UserRole.SUPER_ADMIN)
+  @Roles(UserRole.OWNER, UserRole.STAFF, UserRole.SUPER_ADMIN)
   @ApiOperation({ summary: 'Create a new service for a shop' })
   @ApiParam({ name: 'shopId', description: 'Shop ID' })
   async create(
@@ -45,7 +45,7 @@ export class ServicesController {
   }
 
   @Patch(':id')
-  @Roles(UserRole.OWNER, UserRole.SUPER_ADMIN)
+  @Roles(UserRole.OWNER, UserRole.STAFF, UserRole.SUPER_ADMIN)
   @ApiOperation({ summary: 'Update a service' })
   @ApiParam({ name: 'id', description: 'Service ID' })
   async update(
@@ -57,7 +57,7 @@ export class ServicesController {
   }
 
   @Delete(':id')
-  @Roles(UserRole.OWNER, UserRole.SUPER_ADMIN)
+  @Roles(UserRole.OWNER, UserRole.STAFF, UserRole.SUPER_ADMIN)
   @ApiOperation({ summary: 'Delete (deactivate) a service' })
   @ApiParam({ name: 'id', description: 'Service ID' })
   async delete(@Param('id') id: string, @CurrentUser('tenantId') tenantId: string) {
@@ -65,7 +65,7 @@ export class ServicesController {
   }
 
   @Patch('shop/:shopId/reorder')
-  @Roles(UserRole.OWNER, UserRole.SUPER_ADMIN)
+  @Roles(UserRole.OWNER, UserRole.STAFF, UserRole.SUPER_ADMIN)
   @ApiOperation({ summary: 'Reorder services for a shop' })
   @ApiParam({ name: 'shopId', description: 'Shop ID' })
   async reorder(

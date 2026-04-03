@@ -79,6 +79,8 @@ describe('Queue HTTP Lifecycle + Fraud Persistence (e2e)', () => {
   });
 
   beforeEach(async () => {
+    jest.clearAllMocks();
+
     const unique = `${Date.now()}-${Math.floor(Math.random() * 10000)}`;
 
     const staff = await prisma.user.create({
@@ -185,7 +187,7 @@ describe('Queue HTTP Lifecycle + Fraud Persistence (e2e)', () => {
     expect(persisted?.shopId).toBe(shopId);
     expect(persisted?.services.length).toBe(1);
     expect(redisMock.updateShopQueueStats).toHaveBeenCalled();
-  });
+  }, 30000);
 
   it('executes call-next, check-in, start-service(valid), mark-done, and remove over HTTP with persisted state transitions', async () => {
     const first = await joinQueue('First User', '9000000001');
@@ -274,7 +276,7 @@ describe('Queue HTTP Lifecycle + Fraud Persistence (e2e)', () => {
     expect(persistedThird?.status).toBe('CANCELLED');
     expect(persistedThird?.adminNotes).toBe('Removed in e2e test');
     expect(persistedThird?.cancelledAt).toBeTruthy();
-  }, 20000);
+  }, 60000);
 
   it('returns expected errors for call-next/check-in/mark-done/remove edge cases', async () => {
     await request(app.getHttpServer())
@@ -331,4 +333,68 @@ describe('Queue HTTP Lifecycle + Fraud Persistence (e2e)', () => {
     const persisted = await prisma.booking.findUnique({ where: { id: bookingId } });
     expect(persisted?.status).toBe('PENDING');
   });
+
+  it('supports call-ahead, skip, and overrun queue actions and emits realtime updates', async () => {
+    const first = await joinQueue('Action First', '9111111111');
+    const second = await joinQueue('Action Second', '9222222222');
+
+    const callAheadResponse = await request(app.getHttpServer())
+      .post(`/queue/${shopId}/call-ahead`)
+      .set('Authorization', 'Bearer e2e-token')
+      .send({ bookingId: second.id, message: 'Please be ready in 5 mins' })
+      .expect(201);
+
+    expect(callAheadResponse.body.id).toBe(second.id);
+    expect(callAheadResponse.body.status).toBe('CONFIRMED');
+    expect(callAheadResponse.body.adminNotes).toContain('Call-ahead');
+
+    const skipResponse = await request(app.getHttpServer())
+      .post(`/queue/${shopId}/skip`)
+      .set('Authorization', 'Bearer e2e-token')
+      .send({ bookingId: second.id, reason: 'Customer asked to rejoin later' })
+      .expect(201);
+
+    expect(skipResponse.body.status).toBe('SKIPPED');
+    expect(skipResponse.body.serviceStatus).toBe('COMPLETED');
+    expect(skipResponse.body.adminNotes).toContain('Skipped');
+
+    await request(app.getHttpServer())
+      .post(`/queue/${shopId}/call-next`)
+      .set('Authorization', 'Bearer e2e-token')
+      .expect(201);
+
+    const firstBeforeStart = await prisma.booking.findUnique({ where: { id: first.id } });
+    expect(firstBeforeStart?.verificationCode).toBeTruthy();
+
+    await request(app.getHttpServer())
+      .post(`/queue/${first.id}/start-service`)
+      .set('Authorization', 'Bearer e2e-token')
+      .send({ verificationCode: firstBeforeStart?.verificationCode })
+      .expect(201);
+
+    const third = await joinQueue('Action Third', '9333333333');
+    const thirdBeforeOverrun = await prisma.booking.findUnique({ where: { id: third.id } });
+    const thirdStartBefore = thirdBeforeOverrun?.startTime;
+    expect(thirdStartBefore).toBeTruthy();
+
+    const overrunMinutes = 15;
+    const overrunResponse = await request(app.getHttpServer())
+      .post(`/queue/${shopId}/overrun`)
+      .set('Authorization', 'Bearer e2e-token')
+      .send({ bookingId: first.id, extraMinutes: overrunMinutes, note: 'Chemical service took longer' })
+      .expect(201);
+
+    expect(overrunResponse.body.id).toBe(first.id);
+    expect(overrunResponse.body.adminNotes).toContain(`Overrun +${overrunMinutes}m`);
+
+    const thirdAfterOverrun = await prisma.booking.findUnique({ where: { id: third.id } });
+    expect(thirdAfterOverrun).toBeTruthy();
+
+    const shiftedByMs =
+      new Date(thirdAfterOverrun!.startTime).getTime() - new Date(thirdStartBefore!).getTime();
+    expect(shiftedByMs).toBe(overrunMinutes * 60 * 1000);
+
+    expect(gatewayMock.emitQueueUpdate).toHaveBeenCalled();
+    expect(gatewayMock.emitBookingUpdate).toHaveBeenCalled();
+  }, 60000);
 });

@@ -8,9 +8,20 @@ import { PrismaService } from '@/common/prisma/prisma.service';
 import { RedisService } from '@/common/redis/redis.service';
 import { QueueService } from '../queue/queue.service';
 import { BookingsService } from '../bookings/bookings.service';
-import { BookingStatus, BookingSource, DayOfWeek } from '@prisma/client';
+import { BookingStatus, BookingSource, DayOfWeek, Prisma } from '@prisma/client';
 import { CreateWalkInDto } from './dto/create-walk-in.dto';
 import { UpdateWorkingHoursDto } from './dto/update-working-hours.dto';
+import { UpdateOwnerShopSettingsDto } from './dto/update-owner-shop-settings.dto';
+import { UpdateOwnerPayoutDto } from './dto/update-owner-payout.dto';
+import { CreateStaffHierarchyDto } from './dto/create-staff-hierarchy.dto';
+import { UpdateStaffRoleDto } from './dto/update-staff-role.dto';
+import { SetStaffCommissionDto } from './dto/set-staff-commission.dto';
+import { UpdateStaffProfileDto } from './dto/update-staff-profile.dto';
+import { UpdateStaffBankDetailsDto } from './dto/update-staff-bank-details.dto';
+import { UpdateStaffOwnScheduleDto } from './dto/update-staff-own-schedule.dto';
+import { RequestStaffTimeOffDto } from './dto/request-staff-time-off.dto';
+import { UpdateStaffTimeOffDto } from './dto/update-staff-time-off.dto';
+import { UpdateOwnBookingStatusDto } from './dto/update-own-booking-status.dto';
 
 @Injectable()
 export class AdminService {
@@ -768,8 +779,1061 @@ export class AdminService {
     };
   }
 
+  async updateOwnerShopSettings(
+    shopId: string,
+    ownerId: string,
+    dto: UpdateOwnerShopSettingsDto,
+  ) {
+    await this.verifyOwnerShopAccess(shopId, ownerId);
+
+    const updateData: Record<string, unknown> = {
+      ...(dto.name !== undefined ? { name: dto.name } : {}),
+      ...(dto.description !== undefined ? { description: dto.description } : {}),
+      ...(dto.logoUrl !== undefined ? { logoUrl: dto.logoUrl } : {}),
+      ...(dto.bannerUrl !== undefined ? { coverUrl: dto.bannerUrl } : {}),
+      ...(dto.address !== undefined ? { address: dto.address } : {}),
+      ...(dto.city !== undefined ? { city: dto.city } : {}),
+      ...(dto.phone !== undefined ? { phone: dto.phone } : {}),
+      ...(dto.email !== undefined ? { email: dto.email } : {}),
+      ...(dto.website !== undefined ? { website: dto.website } : {}),
+    };
+
+    if (dto.socialLinks) {
+      const shop = await this.prisma.shop.findUnique({ where: { id: shopId }, select: { settings: true } });
+      const settings = ((shop?.settings || {}) as Record<string, unknown>) || {};
+      updateData.settings = { ...settings, socialLinks: dto.socialLinks };
+    }
+
+    await this.prisma.shop.update({
+      where: { id: shopId },
+      data: updateData,
+    });
+
+    return this.prisma.shop.findUnique({ where: { id: shopId } });
+  }
+
+  async updateOwnerPayoutSettings(shopId: string, ownerId: string, dto: UpdateOwnerPayoutDto) {
+    await this.verifyOwnerShopAccess(shopId, ownerId);
+    const shop = await this.prisma.shop.findUnique({ where: { id: shopId }, select: { settings: true } });
+    const settings = ((shop?.settings || {}) as Record<string, unknown>) || {};
+    const payoutSettings = {
+      ...(((settings.ownerPayout || {}) as Record<string, unknown>) || {}),
+      ...dto,
+      updatedAt: new Date().toISOString(),
+    };
+
+    await this.prisma.shop.update({
+      where: { id: shopId },
+      data: {
+        settings: {
+          ...settings,
+          ownerPayout: payoutSettings,
+        },
+      },
+    });
+
+    return { shopId, payoutSettings };
+  }
+
+  async getShopFinancials(
+    shopId: string,
+    ownerId: string,
+    filters: { startDate?: string; endDate?: string; breakdown?: string },
+  ) {
+    await this.verifyOwnerShopAccess(shopId, ownerId);
+    const range = this.buildDateRange(filters.startDate, filters.endDate);
+
+    const where: Record<string, unknown> = {
+      shopId,
+      ...(range ? { createdAt: range } : {}),
+    };
+
+    const [payments, completedBookings] = await Promise.all([
+      this.prisma.payment.findMany({
+        where,
+        select: {
+          id: true,
+          amount: true,
+          status: true,
+          createdAt: true,
+        },
+        orderBy: { createdAt: 'desc' },
+        take: 200,
+      }),
+      this.prisma.booking.findMany({
+        where: {
+          shopId,
+          status: BookingStatus.COMPLETED,
+          ...(range ? { completedAt: range } : {}),
+        },
+        select: {
+          id: true,
+          totalAmount: true,
+          completedAt: true,
+        },
+      }),
+    ]);
+
+    const totalRevenue = completedBookings.reduce(
+      (sum, booking) => sum + Number(booking.totalAmount || 0),
+      0,
+    );
+    const totalPayouts = payments
+      .filter((payment) => payment.status === 'COMPLETED')
+      .reduce((sum, payment) => sum + Number(payment.amount || 0), 0);
+
+    return {
+      totalRevenue,
+      totalPayouts,
+      pendingSettlement: Math.max(totalRevenue - totalPayouts, 0),
+      transactions: payments.map((payment) => ({
+        date: payment.createdAt.toISOString(),
+        type: 'booking_payment' as const,
+        amount: Number(payment.amount || 0),
+        status: String(payment.status || '').toLowerCase(),
+      })),
+      summary: {
+        breakdown: filters.breakdown || 'daily',
+      },
+    };
+  }
+
+  async createStaffHierarchy(shopId: string, ownerId: string, dto: CreateStaffHierarchyDto) {
+    await this.verifyOwnerShopAccess(shopId, ownerId);
+    await this.verifyStaffBelongsToShop(shopId, dto.staffId);
+
+    const shop = await this.prisma.shop.findUnique({ where: { id: shopId }, select: { settings: true } });
+    const settings = ((shop?.settings || {}) as Record<string, unknown>) || {};
+    const hierarchy = ((settings.staffHierarchy || {}) as Record<string, unknown>) || {};
+    const roleMap = ((hierarchy.roles || {}) as Record<string, unknown>) || {};
+    const managerMap = ((hierarchy.managers || {}) as Record<string, unknown>) || {};
+
+    roleMap[dto.staffId] = dto.role;
+    if (dto.subordinateIds?.length) {
+      managerMap[dto.staffId] = dto.subordinateIds;
+    }
+
+    await this.prisma.shop.update({
+      where: { id: shopId },
+      data: {
+        settings: {
+          ...settings,
+          staffHierarchy: {
+            ...hierarchy,
+            roles: roleMap,
+            managers: managerMap,
+            updatedAt: new Date().toISOString(),
+          },
+        } as Prisma.InputJsonValue,
+      },
+    });
+
+    return {
+      shopId,
+      staffId: dto.staffId,
+      role: dto.role,
+      subordinates: dto.subordinateIds || [],
+    };
+  }
+
+  async updateStaffRole(
+    shopId: string,
+    staffId: string,
+    ownerId: string,
+    dto: UpdateStaffRoleDto,
+  ) {
+    await this.verifyOwnerShopAccess(shopId, ownerId);
+    await this.verifyStaffBelongsToShop(shopId, staffId);
+
+    const shop = await this.prisma.shop.findUnique({ where: { id: shopId }, select: { settings: true } });
+    const settings = ((shop?.settings || {}) as Record<string, unknown>) || {};
+    const hierarchy = ((settings.staffHierarchy || {}) as Record<string, unknown>) || {};
+    const roleMap = ((hierarchy.roles || {}) as Record<string, unknown>) || {};
+    const managerForStaff = ((hierarchy.managerForStaff || {}) as Record<string, unknown>) || {};
+    const permissionMap = ((hierarchy.permissions || {}) as Record<string, unknown>) || {};
+
+    roleMap[staffId] = dto.staffRole;
+    if (dto.managerId !== undefined) {
+      managerForStaff[staffId] = dto.managerId;
+    }
+    if (dto.permissions) {
+      permissionMap[staffId] = dto.permissions;
+    }
+
+    await this.prisma.shop.update({
+      where: { id: shopId },
+      data: {
+        settings: {
+          ...settings,
+          staffHierarchy: {
+            ...hierarchy,
+            roles: roleMap,
+            managerForStaff,
+            permissions: permissionMap,
+            updatedAt: new Date().toISOString(),
+          },
+        } as Prisma.InputJsonValue,
+      },
+    });
+
+    return { staffId, staffRole: dto.staffRole, managerId: dto.managerId, permissions: dto.permissions || [] };
+  }
+
+  async getStaffHierarchy(shopId: string, ownerId: string) {
+    await this.verifyOwnerShopAccess(shopId, ownerId);
+    const [shop, staff] = await Promise.all([
+      this.prisma.shop.findUnique({ where: { id: shopId }, select: { settings: true } }),
+      this.prisma.staff.findMany({ where: { shopId }, select: { id: true, name: true, isActive: true } }),
+    ]);
+
+    const settings = ((shop?.settings || {}) as Record<string, unknown>) || {};
+    const hierarchy = ((settings.staffHierarchy || {}) as Record<string, unknown>) || {};
+    const roleMap = (((hierarchy.roles as Record<string, string>) || {}) as Record<string, string>) || {};
+    const managerForStaff =
+      (((hierarchy.managerForStaff as Record<string, string>) || {}) as Record<string, string>) || {};
+
+    const staffById = new Map(staff.map((member) => [member.id, member]));
+    const managers = staff
+      .filter((member) => (roleMap[member.id] || 'TECHNICIAN') === 'MANAGER')
+      .map((manager) => ({
+        id: manager.id,
+        name: manager.name,
+        role: roleMap[manager.id] || 'MANAGER',
+        subordinates: staff
+          .filter((member) => managerForStaff[member.id] === manager.id)
+          .map((member) => ({
+            id: member.id,
+            name: member.name,
+            role: roleMap[member.id] || 'TECHNICIAN',
+          })),
+      }));
+
+    const unassignedStaff = staff
+      .filter((member) => !managerForStaff[member.id] && (roleMap[member.id] || 'TECHNICIAN') !== 'MANAGER')
+      .map((member) => ({ id: member.id, name: member.name, role: roleMap[member.id] || 'TECHNICIAN' }));
+
+    return {
+      managers,
+      unassignedStaff,
+      totalStaff: staffById.size,
+    };
+  }
+
+  async reassignStaffManager(shopId: string, staffId: string, ownerId: string, managerId: string) {
+    await this.verifyOwnerShopAccess(shopId, ownerId);
+    await this.verifyStaffBelongsToShop(shopId, staffId);
+    await this.verifyStaffBelongsToShop(shopId, managerId);
+
+    const shop = await this.prisma.shop.findUnique({ where: { id: shopId }, select: { settings: true } });
+    const settings = ((shop?.settings || {}) as Record<string, unknown>) || {};
+    const hierarchy = ((settings.staffHierarchy || {}) as Record<string, unknown>) || {};
+    const managerForStaff =
+      (((hierarchy.managerForStaff as Record<string, string>) || {}) as Record<string, string>) || {};
+
+    managerForStaff[staffId] = managerId;
+
+    await this.prisma.shop.update({
+      where: { id: shopId },
+      data: {
+        settings: {
+          ...settings,
+          staffHierarchy: {
+            ...hierarchy,
+            managerForStaff,
+            updatedAt: new Date().toISOString(),
+          },
+        },
+      },
+    });
+
+    return { staffId, managerId };
+  }
+
+  async getStaffEarnings(
+    shopId: string,
+    staffId: string,
+    ownerId: string,
+    filters: { startDate?: string; endDate?: string; breakdown?: string },
+  ) {
+    await this.verifyOwnerShopAccess(shopId, ownerId);
+    const staff = await this.prisma.staff.findFirst({
+      where: { id: staffId, shopId },
+      select: { id: true, name: true, userId: true },
+    });
+    if (!staff) {
+      throw new NotFoundException('Staff member not found');
+    }
+
+    const staffProfile = staff.userId
+      ? await this.prisma.staffProfile.findFirst({
+          where: { userId: staff.userId, shopId },
+          select: { id: true },
+        })
+      : null;
+
+    if (!staffProfile) {
+      return {
+        staffName: staff.name,
+        totalBookings: 0,
+        totalEarnings: 0,
+        commissionRate: 0,
+        bonuses: 0,
+        deductions: 0,
+        breakdownByService: [],
+      };
+    }
+
+    const dateRange = this.buildDateRange(filters.startDate, filters.endDate);
+    const earnings = await this.prisma.earning.findMany({
+      where: {
+        shopId,
+        staffProfileId: staffProfile.id,
+        ...(dateRange ? { earnedAt: dateRange } : {}),
+      },
+      include: {
+        booking: {
+          include: {
+            service: {
+              select: { id: true, name: true },
+            },
+          },
+        },
+      },
+      orderBy: { earnedAt: 'desc' },
+    });
+
+    const totalEarnings = earnings.reduce((sum, item) => sum + Number(item.netAmount || 0), 0);
+    const totalBookings = earnings.length;
+    const breakdownMap: Record<string, { serviceName: string; count: number; earnings: number }> = {};
+
+    for (const item of earnings) {
+      const serviceName = item.booking?.service?.name || 'Unknown Service';
+      if (!breakdownMap[serviceName]) {
+        breakdownMap[serviceName] = { serviceName, count: 0, earnings: 0 };
+      }
+      breakdownMap[serviceName].count += 1;
+      breakdownMap[serviceName].earnings += Number(item.netAmount || 0);
+    }
+
+    const commissionRate = totalBookings > 0 ? Number(((totalEarnings / totalBookings) * 100).toFixed(2)) : 0;
+
+    return {
+      staffName: staff.name,
+      totalBookings,
+      totalEarnings,
+      commissionRate,
+      bonuses: 0,
+      deductions: 0,
+      breakdownByService: Object.values(breakdownMap),
+    };
+  }
+
+  async setStaffCommission(
+    shopId: string,
+    staffId: string,
+    ownerId: string,
+    dto: SetStaffCommissionDto,
+  ) {
+    await this.verifyOwnerShopAccess(shopId, ownerId);
+    await this.verifyStaffBelongsToShop(shopId, staffId);
+
+    const shop = await this.prisma.shop.findUnique({ where: { id: shopId }, select: { settings: true } });
+    const settings = ((shop?.settings || {}) as Record<string, unknown>) || {};
+    const commissionMap = ((settings.staffCommissions || {}) as Record<string, unknown>) || {};
+
+    commissionMap[staffId] = {
+      commissionType: dto.commissionType,
+      commissionValue: dto.commissionValue,
+      startDate: dto.startDate,
+      endDate: dto.endDate,
+      services: dto.services || [],
+      updatedAt: new Date().toISOString(),
+    };
+
+    await this.prisma.shop.update({
+      where: { id: shopId },
+      data: {
+        settings: {
+          ...settings,
+          staffCommissions: commissionMap,
+        } as Prisma.InputJsonValue,
+      },
+    });
+
+    return { staffId, commission: commissionMap[staffId] };
+  }
+
+  async getStaffProfile(staffUserId: string) {
+    const profile = await this.prisma.staffProfile.findFirst({
+      where: { userId: staffUserId, isActive: true, isSuspended: false },
+      include: {
+        user: {
+          select: {
+            id: true,
+            name: true,
+            email: true,
+            phone: true,
+          },
+        },
+      },
+    });
+
+    if (!profile) {
+      throw new NotFoundException('Staff profile not found');
+    }
+
+    return {
+      id: profile.id,
+      userId: profile.userId,
+      shopId: profile.shopId,
+      displayName: profile.displayName,
+      avatar: profile.avatar,
+      bio: profile.bio,
+      permissions: [],
+      notificationSettings: {
+        notifReminderMins: profile.notifReminderMins,
+        notifCallAheadMins: profile.notifCallAheadMins,
+        notifNewBooking: profile.notifNewBooking,
+        notifLocationShare: profile.notifLocationShare,
+        notifReview: profile.notifReview,
+        notifNoShow: profile.notifNoShow,
+      },
+      user: profile.user,
+    };
+  }
+
+  async updateStaffProfile(staffUserId: string, dto: UpdateStaffProfileDto) {
+    const profile = await this.prisma.staffProfile.findFirst({
+      where: { userId: staffUserId, isActive: true, isSuspended: false },
+      select: { id: true },
+    });
+
+    if (!profile) {
+      throw new NotFoundException('Staff profile not found');
+    }
+
+    return this.prisma.staffProfile.update({
+      where: { id: profile.id },
+      data: {
+        ...(dto.displayName !== undefined ? { displayName: dto.displayName } : {}),
+        ...(dto.bio !== undefined ? { bio: dto.bio } : {}),
+        ...(dto.avatar !== undefined ? { avatar: dto.avatar } : {}),
+        ...(dto.notifReminderMins !== undefined ? { notifReminderMins: dto.notifReminderMins } : {}),
+        ...(dto.notifCallAheadMins !== undefined
+          ? { notifCallAheadMins: dto.notifCallAheadMins }
+          : {}),
+        ...(dto.notifNewBooking !== undefined ? { notifNewBooking: dto.notifNewBooking } : {}),
+        ...(dto.notifLocationShare !== undefined ? { notifLocationShare: dto.notifLocationShare } : {}),
+        ...(dto.notifReview !== undefined ? { notifReview: dto.notifReview } : {}),
+      },
+    });
+  }
+
+  async updateStaffBankDetails(staffUserId: string, dto: UpdateStaffBankDetailsDto) {
+    const profile = await this.prisma.staffProfile.findFirst({
+      where: { userId: staffUserId, isActive: true, isSuspended: false },
+      select: { id: true },
+    });
+
+    if (!profile) {
+      throw new NotFoundException('Staff profile not found');
+    }
+
+    const updated = await this.prisma.staffProfile.update({
+      where: { id: profile.id },
+      data: {
+        ...(dto.upiId !== undefined ? { upiId: dto.upiId } : {}),
+        ...(dto.bankAccountNo !== undefined ? { bankAccountNo: dto.bankAccountNo } : {}),
+        ...(dto.bankIfsc !== undefined ? { bankIfsc: dto.bankIfsc } : {}),
+      },
+      select: {
+        id: true,
+        upiId: true,
+        bankAccountNo: true,
+        bankIfsc: true,
+      },
+    });
+
+    return {
+      ...updated,
+      bankAccountNo: updated.bankAccountNo ? this.maskAccountNumber(updated.bankAccountNo) : null,
+      bankAccountHolder: dto.bankAccountHolder || null,
+    };
+  }
+
+  async getStaffOwnSchedule(staffUserId: string) {
+    const [legacyStaff, profile] = await Promise.all([
+      this.prisma.staff.findFirst({ where: { userId: staffUserId, isActive: true }, select: { id: true } }),
+      this.prisma.staffProfile.findFirst({ where: { userId: staffUserId, isActive: true } }),
+    ]);
+
+    if (!legacyStaff && !profile) {
+      throw new NotFoundException('Staff not found');
+    }
+
+    const [workingHours, timeOffs] = await Promise.all([
+      legacyStaff
+        ? this.prisma.staffWorkingHours.findMany({
+            where: { staffId: legacyStaff.id },
+            orderBy: { dayOfWeek: 'asc' },
+          })
+        : Promise.resolve([]),
+      legacyStaff
+        ? this.prisma.staffTimeOff.findMany({
+            where: { staffId: legacyStaff.id },
+            orderBy: { startTime: 'asc' },
+          })
+        : Promise.resolve([]),
+    ]);
+
+    return {
+      workingHours,
+      timeOffs: timeOffs.map((timeOff) => ({
+        ...timeOff,
+        status: 'pending',
+      })),
+      profileSchedules: profile
+        ? await this.prisma.staffSchedule.findMany({
+            where: { staffProfileId: profile.id },
+            include: { breaks: true },
+            orderBy: { dayOfWeek: 'asc' },
+          })
+        : [],
+    };
+  }
+
+  async updateStaffOwnSchedule(
+    staffUserId: string,
+    dayOfWeek: DayOfWeek,
+    dto: UpdateStaffOwnScheduleDto,
+  ) {
+    const staff = await this.prisma.staff.findFirst({
+      where: { userId: staffUserId, isActive: true },
+      select: { id: true, shopId: true },
+    });
+
+    if (!staff) {
+      throw new NotFoundException('Staff not found');
+    }
+
+    const isOff = dto.isOff ?? false;
+    const startTime = dto.startTime || '09:00';
+    const endTime = dto.endTime || '18:00';
+
+    if (!isOff && startTime >= endTime) {
+      throw new BadRequestException('endTime must be after startTime');
+    }
+
+    const result = await this.prisma.staffWorkingHours.upsert({
+      where: {
+        staffId_dayOfWeek: {
+          staffId: staff.id,
+          dayOfWeek,
+        },
+      },
+      update: { startTime, endTime, isOff },
+      create: { staffId: staff.id, dayOfWeek, startTime, endTime, isOff },
+    });
+
+    await this.invalidateSlotCache(staff.shopId);
+    return {
+      ...result,
+      approvalStatus: dto.requiresApproval ? 'pending' : 'approved',
+    };
+  }
+
+  async requestStaffTimeOff(staffUserId: string, dto: RequestStaffTimeOffDto) {
+    const staff = await this.prisma.staff.findFirst({
+      where: { userId: staffUserId, isActive: true },
+      select: { id: true, shopId: true },
+    });
+    if (!staff) {
+      throw new NotFoundException('Staff not found');
+    }
+
+    const startTime = new Date(dto.startDate);
+    const endTime = new Date(dto.endDate);
+    if (Number.isNaN(startTime.getTime()) || Number.isNaN(endTime.getTime()) || endTime <= startTime) {
+      throw new BadRequestException('Invalid time-off range');
+    }
+
+    const timeOff = await this.prisma.staffTimeOff.create({
+      data: {
+        staffId: staff.id,
+        startTime,
+        endTime,
+        reason: dto.reason,
+        isFullDay: dto.isFullDay,
+      },
+    });
+
+    await this.invalidateSlotCache(staff.shopId);
+    return {
+      ...timeOff,
+      status: 'pending',
+      urgency: dto.urgency || 'normal',
+    };
+  }
+
+  async updateStaffTimeOff(staffUserId: string, timeOffId: string, dto: UpdateStaffTimeOffDto) {
+    const staff = await this.prisma.staff.findFirst({
+      where: { userId: staffUserId, isActive: true },
+      select: { id: true, shopId: true },
+    });
+    if (!staff) {
+      throw new NotFoundException('Staff not found');
+    }
+
+    const existing = await this.prisma.staffTimeOff.findFirst({
+      where: { id: timeOffId, staffId: staff.id },
+    });
+    if (!existing) {
+      throw new NotFoundException('Time-off request not found');
+    }
+
+    if (existing.startTime.getTime() <= Date.now()) {
+      throw new BadRequestException('Past or active time-off cannot be edited');
+    }
+
+    const nextStart = dto.startDate ? new Date(dto.startDate) : existing.startTime;
+    const nextEnd = dto.endDate ? new Date(dto.endDate) : existing.endTime;
+
+    if (nextEnd <= nextStart) {
+      throw new BadRequestException('Invalid time-off range');
+    }
+
+    const result = await this.prisma.staffTimeOff.update({
+      where: { id: existing.id },
+      data: {
+        startTime: nextStart,
+        endTime: nextEnd,
+        ...(dto.reason !== undefined ? { reason: dto.reason } : {}),
+      },
+    });
+
+    await this.invalidateSlotCache(staff.shopId);
+    return { ...result, status: 'pending' };
+  }
+
+  async deleteStaffTimeOffSelf(staffUserId: string, timeOffId: string) {
+    const staff = await this.prisma.staff.findFirst({
+      where: { userId: staffUserId, isActive: true },
+      select: { id: true, shopId: true },
+    });
+    if (!staff) {
+      throw new NotFoundException('Staff not found');
+    }
+
+    const existing = await this.prisma.staffTimeOff.findFirst({
+      where: { id: timeOffId, staffId: staff.id },
+    });
+    if (!existing) {
+      throw new NotFoundException('Time-off request not found');
+    }
+
+    await this.prisma.staffTimeOff.delete({ where: { id: existing.id } });
+    await this.invalidateSlotCache(staff.shopId);
+    return { success: true };
+  }
+
+  async getStaffOwnBookings(
+    staffUserId: string,
+    filters: {
+      date?: string;
+      startDate?: string;
+      endDate?: string;
+      status?: BookingStatus;
+      page?: number;
+      limit?: number;
+    },
+  ) {
+    const [staff, profile] = await Promise.all([
+      this.prisma.staff.findFirst({ where: { userId: staffUserId, isActive: true }, select: { id: true } }),
+      this.prisma.staffProfile.findFirst({ where: { userId: staffUserId, isActive: true }, select: { id: true } }),
+    ]);
+
+    if (!staff && !profile) {
+      throw new NotFoundException('Staff not found');
+    }
+
+    const page = Number(filters.page) || 1;
+    const limit = Number(filters.limit) || 50;
+    const skip = (page - 1) * limit;
+
+    const where: Record<string, unknown> = {
+      OR: [
+        ...(staff ? [{ staffId: staff.id }] : []),
+        ...(profile ? [{ staffProfileId: profile.id }] : []),
+      ],
+    };
+
+    if (filters.status) {
+      where.status = filters.status;
+    }
+
+    if (filters.date) {
+      where.startTime = {
+        gte: new Date(`${filters.date}T00:00:00`),
+        lte: new Date(`${filters.date}T23:59:59`),
+      };
+    } else if (filters.startDate || filters.endDate) {
+      where.startTime = {
+        ...(filters.startDate ? { gte: new Date(`${filters.startDate}T00:00:00`) } : {}),
+        ...(filters.endDate ? { lte: new Date(`${filters.endDate}T23:59:59`) } : {}),
+      };
+    }
+
+    const [data, total] = await Promise.all([
+      this.prisma.booking.findMany({
+        where,
+        skip,
+        take: limit,
+        orderBy: { startTime: 'asc' },
+        include: {
+          user: { select: { id: true, name: true, phone: true } },
+          shop: { select: { id: true, name: true } },
+          service: { select: { id: true, name: true } },
+        },
+      }),
+      this.prisma.booking.count({ where }),
+    ]);
+
+    return {
+      data,
+      meta: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
+  }
+
+  async updateStaffOwnBookingStatus(
+    staffUserId: string,
+    bookingId: string,
+    dto: UpdateOwnBookingStatusDto,
+  ) {
+    const [staff, profile] = await Promise.all([
+      this.prisma.staff.findFirst({ where: { userId: staffUserId, isActive: true }, select: { id: true } }),
+      this.prisma.staffProfile.findFirst({ where: { userId: staffUserId, isActive: true }, select: { id: true } }),
+    ]);
+    if (!staff && !profile) {
+      throw new NotFoundException('Staff not found');
+    }
+
+    const booking = await this.prisma.booking.findFirst({
+      where: {
+        id: bookingId,
+        OR: [
+          ...(staff ? [{ staffId: staff.id }] : []),
+          ...(profile ? [{ staffProfileId: profile.id }] : []),
+        ],
+      },
+      select: {
+        id: true,
+        status: true,
+        shopId: true,
+      },
+    });
+
+    if (!booking) {
+      throw new ForbiddenException('You can only update your own assigned bookings');
+    }
+
+    const allowedTransitions: Record<BookingStatus, BookingStatus[]> = {
+      [BookingStatus.PENDING]: [BookingStatus.CONFIRMED, BookingStatus.CANCELLED],
+      [BookingStatus.PENDING_APPROVAL]: [BookingStatus.CONFIRMED, BookingStatus.CANCELLED],
+      [BookingStatus.WAITLISTED]: [BookingStatus.CONFIRMED, BookingStatus.CANCELLED],
+      [BookingStatus.CONFIRMED]: [BookingStatus.IN_PROGRESS, BookingStatus.CANCELLED],
+      [BookingStatus.IN_PROGRESS]: [BookingStatus.COMPLETED, BookingStatus.CANCELLED],
+      [BookingStatus.IN_SERVICE]: [BookingStatus.COMPLETED, BookingStatus.CANCELLED],
+      [BookingStatus.COMPLETED]: [],
+      [BookingStatus.CANCELLED]: [],
+      [BookingStatus.NO_SHOW]: [],
+      [BookingStatus.REJECTED]: [],
+      [BookingStatus.SKIPPED]: [],
+    };
+
+    if (!allowedTransitions[booking.status].includes(dto.status)) {
+      throw new BadRequestException(`Cannot transition from ${booking.status} to ${dto.status}`);
+    }
+
+    const updated = await this.prisma.booking.update({
+      where: { id: booking.id },
+      data: {
+        status: dto.status,
+        ...(dto.notes ? { adminNotes: dto.notes } : {}),
+        ...(dto.status === BookingStatus.IN_PROGRESS ? { startedAt: new Date() } : {}),
+        ...(dto.status === BookingStatus.COMPLETED ? { completedAt: new Date() } : {}),
+      },
+    });
+
+    await this.invalidateSlotCache(booking.shopId);
+    return updated;
+  }
+
+  async getStaffAssignedServices(staffUserId: string) {
+    const [staff, profile] = await Promise.all([
+      this.prisma.staff.findFirst({ where: { userId: staffUserId, isActive: true }, select: { id: true } }),
+      this.prisma.staffProfile.findFirst({ where: { userId: staffUserId, isActive: true }, select: { id: true } }),
+    ]);
+
+    if (!staff && !profile) {
+      throw new NotFoundException('Staff not found');
+    }
+
+    const [legacyServices, profileServices] = await Promise.all([
+      staff
+        ? this.prisma.staffService.findMany({
+            where: { staffId: staff.id },
+            include: {
+              service: {
+                select: {
+                  id: true,
+                  name: true,
+                  durationMinutes: true,
+                  price: true,
+                  isActive: true,
+                },
+              },
+            },
+          })
+        : Promise.resolve([]),
+      profile
+        ? this.prisma.service.findMany({
+            where: { staffProfileId: profile.id },
+            select: {
+              id: true,
+              name: true,
+              durationMinutes: true,
+              price: true,
+              isActive: true,
+            },
+          })
+        : Promise.resolve([]),
+    ]);
+
+    return {
+      legacyServices: legacyServices.map((item) => item.service),
+      profileServices,
+    };
+  }
+
+  async getStaffOwnEarnings(
+    staffUserId: string,
+    filters: { startDate?: string; endDate?: string; breakdown?: string },
+  ) {
+    const profile = await this.prisma.staffProfile.findFirst({
+      where: { userId: staffUserId, isActive: true },
+      select: { id: true },
+    });
+
+    if (!profile) {
+      throw new NotFoundException('Staff profile not found');
+    }
+
+    const dateRange = this.buildDateRange(filters.startDate, filters.endDate);
+    const earnings = await this.prisma.earning.findMany({
+      where: {
+        staffProfileId: profile.id,
+        ...(dateRange ? { earnedAt: dateRange } : {}),
+      },
+      orderBy: { earnedAt: 'desc' },
+    });
+
+    const totalEarnings = earnings.reduce((sum, item) => sum + Number(item.netAmount || 0), 0);
+    const pendingPayment = earnings
+      .filter((item) => !item.settledAt)
+      .reduce((sum, item) => sum + Number(item.netAmount || 0), 0);
+    const lastPayout = earnings.find((item) => !!item.settledAt);
+
+    const breakdownMap: Record<string, { date: string; bookingCount: number; revenue: number; commission: number }> = {};
+    for (const earning of earnings) {
+      const key = earning.earnedAt.toISOString().slice(0, 10);
+      if (!breakdownMap[key]) {
+        breakdownMap[key] = { date: key, bookingCount: 0, revenue: 0, commission: 0 };
+      }
+      breakdownMap[key].bookingCount += 1;
+      breakdownMap[key].revenue += Number(earning.amount || 0);
+      breakdownMap[key].commission += Number(earning.netAmount || 0);
+    }
+
+    return {
+      totalEarnings,
+      commissionRate: 0,
+      breakdownType: filters.breakdown || 'daily',
+      breakdown: Object.values(breakdownMap),
+      pendingPayment,
+      lastPayout: lastPayout
+        ? { date: (lastPayout.settledAt || lastPayout.earnedAt).toISOString(), amount: Number(lastPayout.netAmount || 0) }
+        : null,
+    };
+  }
+
+  async getStaffPayoutHistory(staffUserId: string, filters: { startDate?: string; endDate?: string }) {
+    const profile = await this.prisma.staffProfile.findFirst({
+      where: { userId: staffUserId, isActive: true },
+      select: { id: true },
+    });
+
+    if (!profile) {
+      throw new NotFoundException('Staff profile not found');
+    }
+
+    const dateRange = this.buildDateRange(filters.startDate, filters.endDate);
+    const payouts = await this.prisma.earning.findMany({
+      where: {
+        staffProfileId: profile.id,
+        settledAt: { not: null, ...(dateRange || {}) },
+      },
+      orderBy: { settledAt: 'desc' },
+      select: {
+        id: true,
+        netAmount: true,
+        settledAt: true,
+        razorpayTransferId: true,
+      },
+    });
+
+    return {
+      data: payouts.map((item) => ({
+        id: item.id,
+        amount: Number(item.netAmount || 0),
+        status: 'completed',
+        date: (item.settledAt || new Date()).toISOString(),
+        reference: item.razorpayTransferId,
+      })),
+    };
+  }
+
+  async getStaffOwnReviews(
+    staffUserId: string,
+    filters: {
+      page?: number;
+      limit?: number;
+      rating?: number;
+      withComment?: boolean;
+      unanswered?: boolean;
+    },
+  ) {
+    const [staff, profile] = await Promise.all([
+      this.prisma.staff.findFirst({ where: { userId: staffUserId, isActive: true }, select: { id: true } }),
+      this.prisma.staffProfile.findFirst({ where: { userId: staffUserId, isActive: true }, select: { id: true } }),
+    ]);
+
+    if (!staff && !profile) {
+      throw new NotFoundException('Staff not found');
+    }
+
+    const page = Number(filters.page) || 1;
+    const limit = Number(filters.limit) || 20;
+    const skip = (page - 1) * limit;
+
+    const bookingScope = [
+      ...(staff ? [{ staffId: staff.id }] : []),
+      ...(profile ? [{ staffProfileId: profile.id }] : []),
+    ];
+
+    const where: Prisma.ReviewWhereInput = {
+      booking: {
+        OR: bookingScope,
+      },
+      ...(filters.rating ? { rating: filters.rating } : {}),
+      ...(filters.withComment ? { comment: { not: null } } : {}),
+      ...(filters.unanswered ? { reply: null } : {}),
+    };
+
+    const [reviews, total, grouped, average, responded] = await Promise.all([
+      this.prisma.review.findMany({
+        where,
+        orderBy: { createdAt: 'desc' },
+        skip,
+        take: limit,
+        include: {
+          user: {
+            select: {
+              id: true,
+              name: true,
+              avatarUrl: true,
+            },
+          },
+          booking: {
+            select: {
+              id: true,
+              bookingNumber: true,
+              createdAt: true,
+              service: {
+                select: { id: true, name: true },
+              },
+              services: {
+                select: { id: true, serviceName: true },
+              },
+            },
+          },
+        },
+      }),
+      this.prisma.review.count({ where }),
+      this.prisma.review.groupBy({ by: ['rating'], where, _count: { _all: true } }),
+      this.prisma.review.aggregate({ where, _avg: { rating: true } }),
+      this.prisma.review.count({ where: { ...where, reply: { not: null } } }),
+    ]);
+
+    const distribution = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0 } as Record<number, number>;
+    for (const item of grouped) {
+      distribution[item.rating] = item._count._all;
+    }
+
+    const averageRating = Number(average._avg.rating || 0);
+    const fiveStarPct = total > 0 ? (distribution[5] / total) * 100 : 0;
+    const responseRate = total > 0 ? (responded / total) * 100 : 0;
+
+    return {
+      data: reviews,
+      stats: {
+        averageRating,
+        totalReviews: total,
+        distribution,
+        fiveStarPct,
+        responseRate,
+      },
+      meta: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
+  }
+
   private async invalidateSlotCache(shopId: string): Promise<void> {
     await this.redis.invalidateSlots(shopId);
+  }
+
+  private async verifyOwnerShopAccess(shopId: string, ownerId: string) {
+    const shop = await this.prisma.shop.findFirst({ where: { id: shopId, ownerId } });
+    if (!shop) {
+      throw new ForbiddenException('Not authorized to manage this shop');
+    }
+    return shop;
+  }
+
+  private buildDateRange(startDate?: string, endDate?: string) {
+    if (!startDate && !endDate) {
+      return undefined;
+    }
+
+    return {
+      ...(startDate ? { gte: new Date(`${startDate}T00:00:00`) } : {}),
+      ...(endDate ? { lte: new Date(`${endDate}T23:59:59`) } : {}),
+    };
+  }
+
+  private maskAccountNumber(value: string) {
+    if (value.length <= 4) {
+      return value;
+    }
+    return `${'*'.repeat(Math.max(value.length - 4, 0))}${value.slice(-4)}`;
   }
 
   /**

@@ -1,4 +1,4 @@
-import { UserRole, TenantType, BookingStatus, BookingSource, PaymentStatus, DayOfWeek } from './enums';
+import { UserRole, TenantType, BookingStatus, BookingSource, PaymentStatus, DayOfWeek, StaffRole } from './enums';
 
 // ============================================================================
 // Auth Types
@@ -11,7 +11,11 @@ export interface User {
   phone?: string;
   avatarUrl?: string;
   role: UserRole;
+  staffRole?: StaffRole;
   tenantId?: string;
+  shopId?: string;
+  shopIds?: string[];
+  staffProfileId?: string;
   isEmailVerified: boolean;
   isPhoneVerified: boolean;
   createdAt: string;
@@ -116,8 +120,60 @@ export interface Staff {
   email?: string;
   phone?: string;
   avatarUrl?: string;
-  role: string;
+  role: StaffRole;
   isActive: boolean;
+}
+
+export interface StaffNotificationSettings {
+  notifReminderMins?: number;
+  notifCallAheadMins?: number;
+  notifNewBooking?: boolean;
+  notifLocationShare?: boolean;
+  notifReview?: boolean;
+  notifNoShow?: boolean;
+}
+
+export interface StaffProfile {
+  id: string;
+  userId: string;
+  shopId: string;
+  displayName?: string;
+  avatar?: string;
+  bio?: string;
+  notificationSettings?: StaffNotificationSettings;
+  user?: Pick<User, 'id' | 'name' | 'email' | 'phone'>;
+}
+
+export interface StaffScheduleResponse {
+  workingHours: Array<{
+    id: string;
+    dayOfWeek: DayOfWeek;
+    startTime: string;
+    endTime: string;
+    isOff: boolean;
+  }>;
+  timeOffs: Array<{
+    id: string;
+    startTime: string;
+    endTime: string;
+    reason?: string;
+    status?: string;
+  }>;
+  profileSchedules?: Array<Record<string, unknown>>;
+}
+
+export interface StaffEarningsResponse {
+  totalEarnings: number;
+  commissionRate: number;
+  breakdownType: string;
+  breakdown: Array<{
+    date: string;
+    bookingCount: number;
+    revenue: number;
+    commission: number;
+  }>;
+  pendingPayment?: number;
+  lastPayout?: { date: string; amount: number } | null;
 }
 
 // ============================================================================
@@ -263,4 +319,41 @@ export interface NotificationsResponse {
     limit: number;
     totalPages: number;
   };
+}
+
+// ============================================================================
+// Owner Dashboard Contracts (Phase 3)
+// ============================================================================
+
+export interface OwnerFinancialTransaction {
+  date: string;
+  type: 'booking_payment' | 'payout' | 'refund';
+  amount: number;
+  status: string;
+}
+
+export interface OwnerFinancials {
+  totalRevenue: number;
+  totalPayouts: number;
+  pendingSettlement: number;
+  transactions: OwnerFinancialTransaction[];
+  summary?: Record<string, unknown>;
+}
+
+export interface StaffPerformanceRow {
+  id: string;
+  name: string;
+  avatarUrl?: string;
+  bookings: number;
+  onlineEarned: number;
+  cashEarned: number;
+  rating?: number;
+  status?: string;
+}
+
+export interface QueueHeatmapCell {
+  staffId: string;
+  slot: string;
+  utilization: number;
+  bookingCount: number;
 }

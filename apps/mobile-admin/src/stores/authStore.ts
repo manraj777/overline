@@ -19,6 +19,8 @@ interface AuthState {
   isAuthenticated: boolean;
   isLoading: boolean;
   selectedShopId: string | null;
+  isOwner: boolean;
+  isStaff: boolean;
 
   // OTP 2FA state
   pendingOtpVerification: boolean;
@@ -37,6 +39,8 @@ export const useAuthStore = create<AuthState>((set) => ({
   isAuthenticated: false,
   isLoading: true,
   selectedShopId: null,
+  isOwner: false,
+  isStaff: false,
   pendingOtpVerification: false,
   otpPhone: null,
 
@@ -50,6 +54,9 @@ export const useAuthStore = create<AuthState>((set) => ({
       if (!adminRoles.includes(user.role)) {
         throw new Error('Access denied. This app is for shop owners and staff only.');
       }
+
+      const isOwner = user.role === 'OWNER' || user.role === 'SUPER_ADMIN';
+      const isStaff = user.role === 'STAFF';
 
       await AsyncStorage.setItem('admin_token', accessToken);
       if (refreshToken) {
@@ -77,6 +84,8 @@ export const useAuthStore = create<AuthState>((set) => ({
             pendingOtpVerification: true,
             otpPhone: user.phone,
             selectedShopId: defaultShopId,
+            isOwner,
+            isStaff,
           });
           return;
         } catch (error: any) {
@@ -92,6 +101,8 @@ export const useAuthStore = create<AuthState>((set) => ({
         user: userWithShops,
         isAuthenticated: true,
         selectedShopId: defaultShopId,
+        isOwner,
+        isStaff,
       });
     } catch (error) {
       throw error;
@@ -103,6 +114,10 @@ export const useAuthStore = create<AuthState>((set) => ({
       isAuthenticated: true,
       pendingOtpVerification: false,
       otpPhone: null,
+      isOwner:
+        useAuthStore.getState().user?.role === 'OWNER' ||
+        useAuthStore.getState().user?.role === 'SUPER_ADMIN',
+      isStaff: useAuthStore.getState().user?.role === 'STAFF',
     });
   },
 
@@ -121,6 +136,8 @@ export const useAuthStore = create<AuthState>((set) => ({
       selectedShopId: null,
       pendingOtpVerification: false,
       otpPhone: null,
+      isOwner: false,
+      isStaff: false,
     });
   },
 
@@ -146,6 +163,8 @@ export const useAuthStore = create<AuthState>((set) => ({
       }
 
       const userWithShops = {...user, shops};
+      const isOwner = user.role === 'OWNER' || user.role === 'SUPER_ADMIN';
+      const isStaff = user.role === 'STAFF';
 
       // Restore selected shop from storage or use first shop
       const storedShopId = await AsyncStorage.getItem('selected_shop_id');
@@ -159,6 +178,8 @@ export const useAuthStore = create<AuthState>((set) => ({
         isAuthenticated: true,
         isLoading: false,
         selectedShopId: defaultShopId,
+        isOwner,
+        isStaff,
       });
     } catch {
       await AsyncStorage.removeItem('admin_token');
@@ -167,6 +188,8 @@ export const useAuthStore = create<AuthState>((set) => ({
         user: null,
         isAuthenticated: false,
         isLoading: false,
+        isOwner: false,
+        isStaff: false,
       });
     }
   },

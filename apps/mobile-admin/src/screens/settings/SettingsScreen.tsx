@@ -28,7 +28,7 @@ type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 export default function SettingsScreen() {
   const navigation = useNavigation<NavigationProp>();
-  const {user, selectedShopId, setSelectedShop, logout} = useAuthStore();
+  const {user, selectedShopId, setSelectedShop, logout, isOwner} = useAuthStore();
 
   const selectedShop = user?.shops?.find(s => s.id === selectedShopId);
 
@@ -127,60 +127,62 @@ export default function SettingsScreen() {
         )}
 
         {/* Shop Settings */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Shop Management</Text>
-          <TouchableOpacity
-            style={styles.menuItem}
-            onPress={() =>
-              navigation.navigate('ShopSettings', {shopId: selectedShopId || ''})
-            }>
-            <Store size={20} color="#6B7280" style={styles.menuIcon} />
-            <Text style={styles.menuText}>Shop Details</Text>
-            <ChevronRight size={18} color="#9CA3AF" />
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.menuItem}
-            onPress={() =>
-              navigation.navigate('WorkingHours', {shopId: selectedShopId || ''})
-            }>
-            <Clock3 size={20} color="#6B7280" style={styles.menuIcon} />
-            <Text style={styles.menuText}>Working Hours</Text>
-            <ChevronRight size={18} color="#9CA3AF" />
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.menuItem}
-            onPress={() =>
-              navigation.navigate('StaffManagement', {
-                shopId: selectedShopId || '',
-              })
-            }>
-            <Users size={20} color="#6B7280" style={styles.menuIcon} />
-            <Text style={styles.menuText}>Staff Management</Text>
-            <ChevronRight size={18} color="#9CA3AF" />
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.menuItem}
-            onPress={() =>
-              navigation.navigate('Analytics', {
-                shopId: selectedShopId || '',
-              })
-            }>
-            <ChartColumn size={20} color="#6B7280" style={styles.menuIcon} />
-            <Text style={styles.menuText}>Analytics</Text>
-            <ChevronRight size={18} color="#9CA3AF" />
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={styles.menuItem}
-            onPress={() =>
-              navigation.navigate('PayoutDetails', {
-                shopId: selectedShopId || '',
-              })
-            }>
-            <CreditCard size={20} color="#6B7280" style={styles.menuIcon} />
-            <Text style={styles.menuText}>Payout Details</Text>
-            <ChevronRight size={18} color="#9CA3AF" />
-          </TouchableOpacity>
-        </View>
+        {isOwner && (
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>Shop Management</Text>
+            <TouchableOpacity
+              style={styles.menuItem}
+              onPress={() =>
+                navigation.navigate('ShopSettings', {shopId: selectedShopId || ''})
+              }>
+              <Store size={20} color="#6B7280" style={styles.menuIcon} />
+              <Text style={styles.menuText}>Shop Details</Text>
+              <ChevronRight size={18} color="#9CA3AF" />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.menuItem}
+              onPress={() =>
+                navigation.navigate('WorkingHours', {shopId: selectedShopId || ''})
+              }>
+              <Clock3 size={20} color="#6B7280" style={styles.menuIcon} />
+              <Text style={styles.menuText}>Working Hours</Text>
+              <ChevronRight size={18} color="#9CA3AF" />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.menuItem}
+              onPress={() =>
+                navigation.navigate('StaffManagement', {
+                  shopId: selectedShopId || '',
+                })
+              }>
+              <Users size={20} color="#6B7280" style={styles.menuIcon} />
+              <Text style={styles.menuText}>Staff Management</Text>
+              <ChevronRight size={18} color="#9CA3AF" />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.menuItem}
+              onPress={() =>
+                navigation.navigate('Analytics', {
+                  shopId: selectedShopId || '',
+                })
+              }>
+              <ChartColumn size={20} color="#6B7280" style={styles.menuIcon} />
+              <Text style={styles.menuText}>Analytics</Text>
+              <ChevronRight size={18} color="#9CA3AF" />
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={styles.menuItem}
+              onPress={() =>
+                navigation.navigate('PayoutDetails', {
+                  shopId: selectedShopId || '',
+                })
+              }>
+              <CreditCard size={20} color="#6B7280" style={styles.menuIcon} />
+              <Text style={styles.menuText}>Payout Details</Text>
+              <ChevronRight size={18} color="#9CA3AF" />
+            </TouchableOpacity>
+          </View>
+        )}
 
         {/* App Settings */}
         <View style={styles.section}>

@@ -758,17 +758,32 @@ export class BookingsService {
         BookingStatus.CONFIRMED,
         BookingStatus.REJECTED,
         BookingStatus.CANCELLED,
+        BookingStatus.PENDING_APPROVAL,
+        BookingStatus.WAITLISTED,
+      ],
+      [BookingStatus.PENDING_APPROVAL]: [
+        BookingStatus.CONFIRMED,
+        BookingStatus.REJECTED,
+        BookingStatus.CANCELLED,
+      ],
+      [BookingStatus.WAITLISTED]: [
+        BookingStatus.PENDING_APPROVAL,
+        BookingStatus.CONFIRMED,
+        BookingStatus.CANCELLED,
       ],
       [BookingStatus.CONFIRMED]: [
         BookingStatus.IN_PROGRESS,
+        BookingStatus.IN_SERVICE,
         BookingStatus.CANCELLED,
         BookingStatus.NO_SHOW,
       ],
-      [BookingStatus.IN_PROGRESS]: [BookingStatus.COMPLETED],
+      [BookingStatus.IN_PROGRESS]: [BookingStatus.COMPLETED, BookingStatus.IN_SERVICE],
+      [BookingStatus.IN_SERVICE]: [BookingStatus.COMPLETED, BookingStatus.SKIPPED],
       [BookingStatus.COMPLETED]: [],
       [BookingStatus.CANCELLED]: [],
       [BookingStatus.NO_SHOW]: [],
       [BookingStatus.REJECTED]: [],
+      [BookingStatus.SKIPPED]: [],
     };
 
     if (!allowedTransitions[currentStatus].includes(newStatus)) {

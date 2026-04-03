@@ -34,12 +34,23 @@ export enum TenantPlan {
 
 export enum BookingStatus {
   PENDING = 'PENDING',
+  PENDING_APPROVAL = 'PENDING_APPROVAL',
+  WAITLISTED = 'WAITLISTED',
   CONFIRMED = 'CONFIRMED',
   IN_PROGRESS = 'IN_PROGRESS',
+  IN_SERVICE = 'IN_SERVICE',
   COMPLETED = 'COMPLETED',
   CANCELLED = 'CANCELLED',
   NO_SHOW = 'NO_SHOW',
   REJECTED = 'REJECTED',
+  SKIPPED = 'SKIPPED',
+}
+
+export enum StaffRole {
+  OWNER = 'OWNER',
+  MANAGER = 'MANAGER',
+  SUPERVISOR = 'SUPERVISOR',
+  TECHNICIAN = 'TECHNICIAN',
 }
 
 export enum BookingSource {

@@ -43,6 +43,23 @@ export class ReviewsController {
     return this.reviewsService.findByShop(shopId, page || 1, limit || 10);
   }
 
+  @Get('shop/:shopId/staff/me')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({ summary: 'Get reviews associated with current staff member in a shop' })
+  @ApiParam({ name: 'shopId', description: 'Shop ID' })
+  @ApiQuery({ name: 'page', required: false, type: Number })
+  @ApiQuery({ name: 'limit', required: false, type: Number })
+  @ApiResponse({ status: 200, description: 'Staff-specific list of reviews with stats' })
+  async findForCurrentStaff(
+    @Param('shopId') shopId: string,
+    @CurrentUser() user: any,
+    @Query('page') page?: number,
+    @Query('limit') limit?: number,
+  ) {
+    return this.reviewsService.findForStaff(shopId, user.id, page || 1, limit || 10);
+  }
+
   @Get('shop/:shopId/stats')
   @Public()
   @ApiOperation({ summary: 'Get rating statistics for a shop' })

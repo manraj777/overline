@@ -12,6 +12,14 @@ export type RootStackParamList = {
   StaffManagement: {shopId: string};
   Analytics: {shopId: string};
   PayoutDetails: {shopId: string};
+  MyServices: undefined;
+  MySchedule: undefined;
+  MyReviews: undefined;
+  NotificationSettings: undefined;
+  PaymentUPI: undefined;
+  PendingApprovals: undefined;
+  LocationMap: undefined;
+  PreArrivalChat: {bookingId: string; customerName?: string};
 };
 
 export type MainTabParamList = {
@@ -19,6 +27,21 @@ export type MainTabParamList = {
   Queue: undefined;
   Bookings: undefined;
   AnalyticsTab: undefined;
+  Profile: undefined;
+};
+
+export type OwnerTabParamList = {
+  Dashboard: undefined;
+  Queue: undefined;
+  Bookings: undefined;
+  Earnings: undefined;
+  Profile: undefined;
+};
+
+export type StaffTabParamList = {
+  MyDay: undefined;
+  Queue: undefined;
+  Earn: undefined;
   Profile: undefined;
 };
 
@@ -109,6 +132,56 @@ export interface Booking {
     name: string;
   };
   services?: BookingService[];
+}
+
+export interface ReviewItem {
+  id: string;
+  rating: number;
+  comment?: string;
+  createdAt: string;
+  user?: {
+    id: string;
+    name: string;
+    avatarUrl?: string;
+  };
+  booking?: {
+    id: string;
+    bookingNumber?: string;
+    services?: Array<{
+      serviceName: string;
+    }>;
+  };
+}
+
+export interface StaffReviewsResponse {
+  data: ReviewItem[];
+  stats: {
+    averageRating: number;
+    totalReviews: number;
+    distribution: Record<number, number>;
+  };
+  meta?: {
+    total: number;
+    page: number;
+    limit: number;
+    totalPages: number;
+  };
+}
+
+export interface TrackableBooking extends Booking {
+  location?: {
+    lat: number;
+    lng: number;
+  } | null;
+}
+
+export interface QueueChatMessage {
+  id: string;
+  bookingId: string;
+  senderId: string;
+  senderType: 'USER' | 'SHOP';
+  content: string;
+  createdAt: string;
 }
 
 export type BookingStatus =
