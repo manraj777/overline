@@ -4,12 +4,14 @@ import { PrismaService } from '@/common/prisma/prisma.service';
 import { RedisService } from '@/common/redis/redis.service';
 import { QueueService } from '../queue/queue.service';
 import { QueueGateway } from '../queue/queue.gateway';
+import { QueueTrackingService } from '../queue/queue-tracking.service';
 import { SlotEngineService } from '../queue/slot-engine.service';
 import { NotificationsService } from '../notifications/notifications.service';
 import { TrustScoreService } from '../users/trust-score.service';
 import { FraudDetectionService } from '../fraud-detection/fraud-detection.service';
 import { WalletService } from '../wallet/wallet.service';
 import { BookingStatus } from '@prisma/client';
+import { NotFoundException } from '@nestjs/common';
 
 describe('BookingsService', () => {
   let service: BookingsService;
@@ -17,6 +19,9 @@ describe('BookingsService', () => {
   let prismaService: PrismaService;
 
   const mockPrismaService = {
+    user: {
+      findMany: jest.fn().mockResolvedValue([]),
+    },
     shop: {
       findUnique: jest.fn(),
     },
@@ -35,15 +40,22 @@ describe('BookingsService', () => {
     $transaction: jest.fn((callback) => callback(mockPrismaService)),
   };
 
-  const mockRedisService = {};
+  const mockRedisService = {
+    set: jest.fn().mockResolvedValue(true),
+    del: jest.fn().mockResolvedValue(true),
+  };
   const mockQueueService = {
     getQueuePosition: jest.fn().mockResolvedValue(0),
+    getNextQueuePosition: jest.fn().mockResolvedValue(0),
     updateQueueStats: jest.fn().mockResolvedValue(true),
     invalidateSlotCache: jest.fn().mockResolvedValue(true),
   };
   const mockQueueGateway = {
     emitQueueUpdate: jest.fn().mockResolvedValue(true),
     emitBookingUpdate: jest.fn().mockResolvedValue(true),
+  };
+  const mockQueueTrackingService = {
+    saveLocation: jest.fn().mockResolvedValue(true),
   };
   const mockSlotEngineService = {
     isSlotAvailable: jest.fn().mockResolvedValue(true),
@@ -81,6 +93,7 @@ describe('BookingsService', () => {
         { provide: RedisService, useValue: mockRedisService },
         { provide: QueueService, useValue: mockQueueService },
         { provide: QueueGateway, useValue: mockQueueGateway },
+        { provide: QueueTrackingService, useValue: mockQueueTrackingService },
         { provide: SlotEngineService, useValue: mockSlotEngineService },
         { provide: NotificationsService, useValue: mockNotificationsService },
         { provide: TrustScoreService, useValue: mockTrustScoreService },
@@ -122,6 +135,7 @@ describe('BookingsService', () => {
         Promise.resolve({
           id: 'booking-1',
           ...args.data,
+          services: [{ serviceName: 'Haircut' }, { serviceName: 'Beard Trim' }],
         }),
       );
 
@@ -155,7 +169,10 @@ describe('BookingsService', () => {
       ]);
 
       mockPrismaService.booking.create.mockImplementation((args) =>
-        Promise.resolve({ ...args.data }),
+        Promise.resolve({
+          ...args.data,
+          services: [{ serviceName: 'Premium Service' }],
+        }),
       );
 
       const result = await service.create({
@@ -167,6 +184,141 @@ describe('BookingsService', () => {
       });
 
       expect(result.totalAmount).toBe(925); // 900 (1000 - 10%) + 25 free cash
+    });
+  });
+
+  describe('handleCallAheadReply', () => {
+    it('keeps status unchanged for COMING and does not promote waitlisted', async () => {
+      mockPrismaService.booking.findFirst.mockResolvedValueOnce({
+        id: 'booking-1',
+        shopId: 'shop-1',
+        staffProfileId: 'sp-1',
+        slotDate: '2026-04-03',
+        slotTime: '13:00',
+      });
+      mockPrismaService.booking.update.mockResolvedValueOnce({
+        id: 'booking-1',
+        shopId: 'shop-1',
+        callAheadReply: 'COMING',
+        status: BookingStatus.CONFIRMED,
+      });
+
+      const result = await service.handleCallAheadReply('booking-1', 'user-1', 'COMING');
+
+      expect(mockPrismaService.booking.update).toHaveBeenCalledWith({
+        where: { id: 'booking-1' },
+        data: { callAheadReply: 'COMING' },
+      });
+      expect(mockQueueService.updateQueueStats).toHaveBeenCalledWith('shop-1');
+      expect(result).toEqual(
+        expect.objectContaining({ id: 'booking-1', callAheadReply: 'COMING' }),
+      );
+      expect(mockPrismaService.booking.findFirst).toHaveBeenCalledTimes(1);
+    });
+
+    it('marks booking skipped and promotes next waitlisted for NOT_COMING', async () => {
+      mockPrismaService.booking.findFirst
+        .mockResolvedValueOnce({
+          id: 'booking-1',
+          shopId: 'shop-1',
+          staffProfileId: 'sp-1',
+          slotDate: '2026-04-03',
+          slotTime: '13:00',
+        })
+        .mockResolvedValueOnce({ id: 'booking-2' });
+
+      mockPrismaService.booking.update
+        .mockResolvedValueOnce({
+          id: 'booking-1',
+          shopId: 'shop-1',
+          callAheadReply: 'NOT_COMING',
+          status: BookingStatus.SKIPPED,
+        })
+        .mockResolvedValueOnce({
+          id: 'booking-2',
+          status: BookingStatus.PENDING_APPROVAL,
+          queuePosition: null,
+        });
+
+      const result = await service.handleCallAheadReply('booking-1', 'user-1', 'NOT_COMING');
+
+      expect(mockPrismaService.booking.update).toHaveBeenNthCalledWith(1, {
+        where: { id: 'booking-1' },
+        data: {
+          callAheadReply: 'NOT_COMING',
+          status: BookingStatus.SKIPPED,
+        },
+      });
+
+      expect(mockPrismaService.booking.findFirst).toHaveBeenNthCalledWith(
+        2,
+        expect.objectContaining({
+          where: {
+            staffProfileId: 'sp-1',
+            slotDate: '2026-04-03',
+            slotTime: '13:00',
+            status: BookingStatus.WAITLISTED,
+          },
+          orderBy: { queuePosition: 'asc' },
+        }),
+      );
+
+      expect(mockPrismaService.booking.update).toHaveBeenNthCalledWith(2, {
+        where: { id: 'booking-2' },
+        data: {
+          status: BookingStatus.PENDING_APPROVAL,
+          queuePosition: null,
+        },
+      });
+      expect(mockQueueService.updateQueueStats).toHaveBeenCalledWith('shop-1');
+      expect(result).toEqual(
+        expect.objectContaining({ id: 'booking-1', status: BookingStatus.SKIPPED }),
+      );
+    });
+
+    it('marks booking skipped for LATER and does not fail when no waitlisted booking exists', async () => {
+      mockPrismaService.booking.findFirst
+        .mockResolvedValueOnce({
+          id: 'booking-1',
+          shopId: 'shop-1',
+          staffProfileId: 'sp-1',
+          slotDate: '2026-04-03',
+          slotTime: '13:00',
+        })
+        .mockResolvedValueOnce(null);
+
+      mockPrismaService.booking.update.mockResolvedValueOnce({
+        id: 'booking-1',
+        shopId: 'shop-1',
+        callAheadReply: 'LATER',
+        status: BookingStatus.SKIPPED,
+      });
+
+      const result = await service.handleCallAheadReply('booking-1', 'user-1', 'LATER');
+
+      expect(mockPrismaService.booking.update).toHaveBeenCalledTimes(1);
+      expect(mockPrismaService.booking.update).toHaveBeenCalledWith({
+        where: { id: 'booking-1' },
+        data: {
+          callAheadReply: 'LATER',
+          status: BookingStatus.SKIPPED,
+        },
+      });
+      expect(mockQueueService.updateQueueStats).toHaveBeenCalledWith('shop-1');
+      expect(result).toEqual(
+        expect.objectContaining({ id: 'booking-1', callAheadReply: 'LATER' }),
+      );
+    });
+
+    it('throws NotFoundException when booking is not owned by user', async () => {
+      mockPrismaService.booking.findFirst.mockResolvedValueOnce(null);
+
+      await expect(
+        service.handleCallAheadReply('missing-booking', 'user-1', 'COMING'),
+      ).rejects.toBeInstanceOf(NotFoundException);
+
+      expect(mockPrismaService.booking.update).not.toHaveBeenCalled();
+      expect(mockQueueService.updateQueueStats).not.toHaveBeenCalled();
     });
   });
 });
