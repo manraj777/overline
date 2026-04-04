@@ -140,7 +140,7 @@ export const shopsApi = {
 export const queueApi = {
   getSlots: (
     shopId: string,
-    params: { date: string; serviceIds?: string[]; duration?: number },
+    params: { date: string; serviceIds?: string[]; duration?: number; staffId?: string },
   ) => api.get(`/queue/slots/${shopId}`, { params }),
   getNextSlot: (shopId: string, params?: { serviceIds?: string[] }) =>
     api.get(`/queue/next-slot/${shopId}`, { params }),

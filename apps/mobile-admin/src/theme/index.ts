@@ -1,45 +1,75 @@
 export const Colors = {
-  primary50: '#f0f4ff',
-  primary100: '#e0e7ff',
-  primary200: '#c7d2fe',
-  primary400: '#818cf8',
-  primary500: '#6366f1',
-  primary600: '#4f46e5',
-  primary700: '#4338ca',
+  // M3 Tokens Mapping
+  primary: '#4648d4',
+  onPrimary: '#ffffff',
+  primaryContainer: '#dfe0ff',
+  onPrimaryContainer: '#00006e',
 
-  accent100: '#ede9fe',
-  accent500: '#8b5cf6',
-  accent600: '#7c3aed',
+  secondary: '#5c5d72',
+  onSecondary: '#ffffff',
+  secondaryContainer: '#e1e0f9',
+  onSecondaryContainer: '#191a2c',
+
+  tertiary: '#795369',
+  onTertiary: '#ffffff',
+  tertiaryContainer: '#ffd8ec',
+  onTertiaryContainer: '#2f1124',
+
+  error: '#ba1a1a',
+  onError: '#ffffff',
+  errorContainer: '#ffdad6',
+  onErrorContainer: '#410002',
+
+  background: '#f8f9ff',
+  onBackground: '#191a20',
+  surface: '#f8f9ff',
+  onSurface: '#191a20',
+
+  surfaceVariant: '#e3e1ec',
+  onSurfaceVariant: '#46464f',
+  outline: '#777680',
+  outlineVariant: '#c7c5d0',
+
+  white: '#ffffff',
+
+  // Convenience aliases to simplify incremental migration.
+  primaryDark: '#00006e',
+  border: '#c7c5d0',
+  textPrimary: '#191a20',
+  textSecondary: '#46464f',
+  textMuted: '#777680',
+
+  // Deprecated legacy tokens remapped to M3 equivalents for backward compatibility
+  gray50: '#f8f9ff',
+  gray100: '#f8f9ff',
+  gray200: '#e3e1ec',
+  gray400: '#c7c5d0',
+  gray500: '#777680',
+  gray600: '#46464f',
+  gray800: '#191a20',
+  gray900: '#191a20',
+
+  primary50: '#dfe0ff',
+  primary100: '#dfe0ff',
+  primary200: '#dfe0ff',
+  primary400: '#4648d4',
+  primary500: '#4648d4',
+  primary600: '#4648d4',
+  primary700: '#00006e',
+
+  accent100: '#e1e0f9',
+  accent500: '#5c5d72',
+  accent600: '#5c5d72',
 
   success50: '#d1fae5',
-  success500: '#10b981',
-  success700: '#065f46',
+  success500: '#006e44',
+  success700: '#006e44',
   warning50: '#fef3c7',
   warning500: '#f59e0b',
   warning700: '#92400e',
-  danger50: '#fee2e2',
-  danger500: '#ef4444',
-  danger700: '#b91c1c',
-
-  white: '#ffffff',
-  gray50: '#f9fafb',
-  gray100: '#f3f4f6',
-  gray200: '#e5e7eb',
-  gray400: '#9ca3af',
-  gray500: '#6b7280',
-  gray600: '#4b5563',
-  gray800: '#1f2937',
-  gray900: '#111827',
-
-  // Convenience aliases to simplify incremental migration.
-  primary: '#6366f1',
-  primaryDark: '#4f46e5',
-  background: '#f9fafb',
-  surface: '#ffffff',
-  border: '#e5e7eb',
-  textPrimary: '#111827',
-  textSecondary: '#4b5563',
-  textMuted: '#9ca3af',
+  danger50: '#ffdad6',
+  danger500: '#ba1a1a',
+  danger700: '#ba1a1a',
 } as const;
 
 export const Spacing = {

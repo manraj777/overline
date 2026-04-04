@@ -1,6 +1,6 @@
 import '@/styles/globals.css';
 import type { AppProps } from 'next/app';
-import { Outfit } from 'next/font/google';
+import { Inter } from 'next/font/google';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { ReactQueryDevtools } from '@tanstack/react-query-devtools';
 import { queryClient } from '@/lib/query-client';
@@ -10,10 +10,11 @@ import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
 import { SmoothScrollProvider } from '@/components/layout/SmoothScrollProvider';
 import { AuthGuard } from '@/components/auth/AuthGuard';
 
-const outfit = Outfit({
+const inter = Inter({
   subsets: ['latin'],
-  variable: '--font-outfit',
+  variable: '--font-body',
   display: 'swap',
+  weight: ['400', '500', '600', '700', '800', '900'],
 });
 
 export default function App({ Component, pageProps }: AppProps) {
@@ -21,7 +22,7 @@ export default function App({ Component, pageProps }: AppProps) {
     <QueryClientProvider client={queryClient}>
       <ErrorBoundary>
         <SmoothScrollProvider>
-          <div className={`${outfit.variable} font-sans`}>
+          <div className={`${inter.variable} font-sans`}>
             <ToastProvider>
               <Layout>
                 <AuthGuard>

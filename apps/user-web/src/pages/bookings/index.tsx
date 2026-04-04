@@ -2,7 +2,7 @@ import React from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
-import { Calendar, Clock } from 'lucide-react';
+import { Calendar, Clock, RefreshCw, Search, ArrowRight } from 'lucide-react';
 import { Button, Card, Loading } from '@/components/ui';
 import { BookingCard } from '@/components/booking';
 import { ReviewModal } from '@/components/reviews/ReviewModal';
@@ -52,7 +52,6 @@ export default function BookingsPage() {
     [],
   );
 
-  // Redirect to login if not authenticated
   React.useEffect(() => {
     if (!authLoading && !isAuthenticated) {
       router.push('/auth/login?redirect=/bookings');
@@ -139,23 +138,36 @@ export default function BookingsPage() {
   return (
     <>
       <Head>
-        <title>My Bookings - Overline</title>
+        <title>My Bookings — Overline</title>
+        <meta name="description" content="View and manage your Overline bookings and queue sessions." />
       </Head>
 
-      <div className="container-app py-6">
-        <h1 className="text-2xl font-bold text-gray-900 mb-6">My Bookings</h1>
+      <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        {/* Page Header */}
+        <div className="flex flex-col md:flex-row md:items-end justify-between mb-8 gap-4">
+          <div>
+            <span className="label-m3 mb-2 block">Manage</span>
+            <h1 className="text-3xl md:text-4xl font-black tracking-tight text-on-surface">My Bookings</h1>
+          </div>
+          <Link href="/explore">
+            <button className="btn-primary px-6 py-3 flex items-center gap-2 text-sm">
+              <Search className="w-4 h-4" />
+              Book New
+            </button>
+          </Link>
+        </div>
 
-        {/* Tabs */}
-        <div className="flex gap-2 mb-6 border-b border-gray-200">
+        {/* Filter Tabs */}
+        <div className="flex gap-2 mb-8 overflow-x-auto no-scrollbar pb-1">
           {tabs.map((tab) => (
             <button
               key={tab.value}
               onClick={() => setActiveTab(tab.value)}
               className={cn(
-                'px-4 py-2 text-sm font-medium border-b-2 -mb-px transition-colors',
+                'px-5 py-2.5 rounded-full text-sm font-bold transition-all whitespace-nowrap active:scale-95',
                 activeTab === tab.value
-                  ? 'border-primary-500 text-primary-600'
-                  : 'border-transparent text-gray-500 hover:text-gray-700'
+                  ? 'bg-primary text-white shadow-button'
+                  : 'bg-surface-container-low text-on-surface-variant hover:bg-surface-container-high'
               )}
             >
               {tab.label}
@@ -163,81 +175,93 @@ export default function BookingsPage() {
           ))}
         </div>
 
-        <Card variant="bordered" className="mb-6">
-          <div className="flex items-center justify-between gap-3 mb-4">
-            <h2 className="text-lg font-semibold text-gray-900">Resume Active Queue</h2>
-            <Button
-              size="sm"
-              variant="outline"
+        {/* Active Queue Sessions */}
+        <div className="card-m3 p-6 md:p-8 mb-8">
+          <div className="flex items-center justify-between gap-3 mb-5">
+            <div className="flex items-center gap-3">
+              <div className="w-1.5 h-8 bg-tertiary rounded-full" />
+              <h2 className="text-lg font-bold tracking-tight text-on-surface">Active Queue</h2>
+            </div>
+            <button
               onClick={() => {
                 setIsRefreshingSessions(true);
                 loadActiveSessions();
               }}
+              className="btn-tonal px-4 py-2 text-xs flex items-center gap-2"
             >
+              <RefreshCw className="w-3.5 h-3.5" />
               Refresh
-            </Button>
+            </button>
           </div>
 
           {isRefreshingSessions ? (
             <div className="space-y-3">
               {Array.from({ length: 2 }).map((_, index) => (
-                <div key={index} className="rounded-lg border border-gray-100 p-4">
-                  <div className="h-4 w-1/2 rounded bg-gray-100" />
-                  <div className="mt-2 h-3 w-1/3 rounded bg-gray-100" />
+                <div key={index} className="rounded-2xl bg-surface-container-low p-5 animate-shimmer">
+                  <div className="h-4 w-1/2 rounded bg-surface-container-high mb-3" />
+                  <div className="h-3 w-1/3 rounded bg-surface-container-high" />
                 </div>
               ))}
             </div>
           ) : activeSessions.length === 0 ? (
-            <p className="text-sm text-gray-500">
-              No active queue sessions found. Join a queue from any shop and it will appear here.
+            <p className="text-sm text-on-surface-variant py-2">
+              No active queue sessions. Join a queue from any shop to track it here.
             </p>
           ) : (
             <div className="space-y-3">
               {activeSessions.map((session) => (
-                <article key={session.bookingId} className="rounded-lg border border-gray-200 p-4">
-                  <div className="flex flex-wrap items-center justify-between gap-3">
-                    <div>
-                      <h3 className="font-semibold text-gray-900">{session.shopName}</h3>
-                      <p className="mt-1 text-sm text-gray-600">
-                        Token {session.tokenCode} • {session.aheadCount > 0 ? `${session.aheadCount} ahead` : "You're next"}
-                      </p>
-                      <p className="mt-1 text-xs text-primary-600">
-                        {statusLabel(session.status)} • ETA {session.estimatedMinutes} min
-                      </p>
+                <article
+                  key={session.bookingId}
+                  className="rounded-2xl bg-surface-container-low p-5 flex flex-wrap items-center justify-between gap-4 hover:bg-surface-container transition-colors"
+                >
+                  <div>
+                    <h3 className="font-bold text-on-surface text-base">{session.shopName}</h3>
+                    <p className="mt-1 text-sm text-on-surface-variant">
+                      Token <span className="font-bold text-primary">{session.tokenCode}</span> •{' '}
+                      {session.aheadCount > 0 ? `${session.aheadCount} ahead` : "You're next!"}
+                    </p>
+                    <div className="mt-2 flex items-center gap-2">
+                      <span className="bg-tertiary-fixed text-tertiary text-[10px] font-black px-2 py-0.5 rounded-full uppercase">
+                        {statusLabel(session.status)}
+                      </span>
+                      <span className="text-xs text-on-surface-variant font-medium flex items-center gap-1">
+                        <Clock className="w-3 h-3" />
+                        ETA {session.estimatedMinutes} min
+                      </span>
                     </div>
-                    <Link
-                      href={`/bookings/${session.bookingId}`}
-                      className="inline-flex rounded-lg bg-primary-600 px-3 py-2 text-xs font-semibold text-white hover:bg-primary-700"
-                    >
-                      Resume Tracking
-                    </Link>
                   </div>
+                  <Link
+                    href={`/bookings/${session.bookingId}`}
+                    className="btn-primary px-5 py-2.5 text-xs flex items-center gap-1"
+                  >
+                    Resume <ArrowRight className="w-3.5 h-3.5" />
+                  </Link>
                 </article>
               ))}
             </div>
           )}
-        </Card>
+        </div>
 
         {/* Bookings List */}
         {isLoading ? (
           <Loading text="Loading your bookings..." />
         ) : bookings?.data.length === 0 ? (
-          <Card variant="bordered" className="text-center py-12">
-            <Calendar className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">
+          <div className="card-m3 text-center py-16 px-8">
+            <Calendar className="w-14 h-14 text-outline-variant mx-auto mb-5" />
+            <h3 className="text-xl font-bold text-on-surface mb-2">
               No {activeTab !== 'all' ? activeTab : ''} bookings
             </h3>
-            <p className="text-gray-500 mb-4">
+            <p className="text-on-surface-variant mb-6 max-w-xs mx-auto">
               {activeTab === 'upcoming'
                 ? "You don't have any upcoming appointments"
                 : activeTab === 'past'
-                ? "You haven't had any appointments yet"
-                : "You haven't made any bookings yet"}
+                  ? "You haven't had any appointments yet"
+                  : "You haven't made any bookings yet"}
             </p>
-            <Button onClick={() => router.push('/explore')}>
+            <button onClick={() => router.push('/explore')} className="btn-primary px-8 py-3">
               Book an Appointment
-            </Button>
-          </Card>
+            </button>
+          </div>
         ) : (
           <div className="space-y-4">
             {bookings?.data.map((booking) => (
@@ -246,7 +270,6 @@ export default function BookingsPage() {
           </div>
         )}
 
-        {/* Auto-show Review Modal for completed bookings */}
         <ReviewModal />
       </div>
     </>

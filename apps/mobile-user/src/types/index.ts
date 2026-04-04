@@ -144,10 +144,21 @@ export type RootStackParamList = {
   Onboarding: undefined;
   Login: undefined;
   Register: undefined;
+  RegisterPhone: {name: string; email: string; password: string};
+  RegisterOtp: {name: string; email: string; password: string; phone: string};
+  RegisterProfile: {name: string; email: string; password: string; phone: string};
   OtpVerify: {phone: string};
   Main: undefined;
   ShopDetail: {shopId: string};
-  Booking: {shopId: string; selectedServices?: string[]};
+  BookingStaff: {shopId: string; selectedServices: string[]};
+  Booking: {shopId: string; selectedServices?: string[]; selectedStaffId?: string};
+  BookingReview: {
+    shopId: string;
+    selectedServices: string[];
+    selectedDate: string;
+    selectedTime: string;
+    selectedStaffId?: string;
+  };
   BookingDetail: {bookingId: string};
   BookingConfirmation: {bookingId: string};
   EditProfile: undefined;

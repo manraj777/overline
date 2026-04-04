@@ -700,6 +700,26 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
+    // Strict UI Role Verification (Phase 5 Alignment)
+    if (dto.requestedRole) {
+      const isRequestingAdminRole = ['OWNER', 'STAFF', 'SUPER_ADMIN'].includes(dto.requestedRole);
+      
+      // Prevent a plain user from logging into the Admin web/mobile portal
+      if (isRequestingAdminRole && user.role === 'USER') {
+        throw new ForbiddenException('Access denied. You do not have an Owner or Staff account. Please use the standard Overline user app.');
+      }
+      
+      // Specifically block Staff from logging in via the Owner toggle
+      if (dto.requestedRole === 'OWNER' && user.role === 'STAFF') {
+        throw new ForbiddenException('Access denied. You attempted to log in as an Owner, but your account is registered as Staff. Please select the Staff tab and try again.');
+      }
+
+      // Conversely, if an Owner tries to log in via the Staff toggle
+      if (dto.requestedRole === 'STAFF' && user.role === 'OWNER') {
+        throw new ForbiddenException('Access denied. You attempted to log in as Staff, but you are a Shop Owner. Please select the Shop Owner tab and try again.');
+      }
+    }
+
     // --- POST-AUTH FRAUD CHECK: Now check with user ID for better accuracy ---
     if (requestContext) {
       const postAuthContext: LoginContext = {

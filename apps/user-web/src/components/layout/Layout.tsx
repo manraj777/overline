@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
-import { Home, Search, Calendar, User, Menu, X, LogOut } from 'lucide-react';
+import { Home, Search, Calendar, User, Menu, X, LogOut, Bell } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/stores/auth';
 import { Avatar, Button } from '@/components/ui';
@@ -22,7 +22,6 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
   const [scrolled, setScrolled] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
-  // Close dropdown when clicking outside
   useEffect(() => {
     const handler = (e: MouseEvent) => {
       if (dropdownRef.current && !dropdownRef.current.contains(e.target as Node)) {
@@ -35,7 +34,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
   useEffect(() => {
     const handleScroll = () => {
-      setScrolled(window.scrollY > 50);
+      setScrolled(window.scrollY > 30);
     };
     window.addEventListener('scroll', handleScroll, { passive: true });
     return () => window.removeEventListener('scroll', handleScroll);
@@ -53,110 +52,122 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
     return router.pathname.startsWith(href);
   };
 
+  // Hide layout on auth pages
+  const isAuthPage = router.pathname.startsWith('/auth');
+  if (isAuthPage) {
+    return <>{children}</>;
+  }
+
   return (
-    <div className="flex flex-col min-h-screen bg-[#F8F9FA] text-[#282D3C]">
-      {/* ========================================================= */}
-      {/* Floating Navigation Bar                                    */}
-      {/* ========================================================= */}
-      <header className="fixed top-0 inset-x-0 z-50 px-4 sm:px-6 lg:px-8 pt-6 pb-2 pointer-events-none">
-        <div
-          className={cn(
-            "max-w-7xl mx-auto pointer-events-auto rounded-full transition-all duration-500 ease-[cubic-bezier(0.19,1,0.22,1)]",
-            scrolled
-              ? "bg-white/80 backdrop-blur-xl border border-white/20 shadow-[0_8px_32px_rgb(0,0,0,0.04)] py-3 px-6"
-              : "bg-transparent py-4 px-2"
-          )}
-        >
-          <div className="flex items-center justify-between">
-            {/* Logo */}
+    <div className="ovl-app-bg flex flex-col min-h-screen text-on-surface">
+      {/* ═══════════════════════════════════════════════════════════ */}
+      {/* Top Navigation Bar — M3 Glassmorphism                      */}
+      {/* ═══════════════════════════════════════════════════════════ */}
+      <header
+        className={cn(
+          'fixed top-0 w-full z-50 transition-all duration-500',
+          scrolled
+            ? 'bg-white/70 backdrop-blur-xl shadow-glass'
+            : 'bg-transparent'
+        )}
+      >
+        <div className="flex justify-between items-center px-6 lg:px-8 h-16 max-w-[1440px] mx-auto w-full">
+          {/* Left: Logo & Nav */}
+          <div className="flex items-center gap-8">
             <Link href="/" className="flex items-center gap-2 group">
-              <div className="w-10 h-10 rounded-xl bg-lexo-black flex items-center justify-center transition-transform duration-300 group-hover:scale-95 group-hover:rotate-3">
-                <span className="text-white font-bold text-lg">O</span>
-              </div>
-              <span className="text-2xl font-bold tracking-tight">Overline</span>
+              <span className="text-xl font-black tracking-tighter text-primary">
+                Overline Portal
+              </span>
             </Link>
 
             {/* Desktop Navigation */}
-            <nav className="hidden md:flex items-center gap-1 bg-white/40 p-1.5 rounded-full border border-gray-200/50">
+            <nav className="hidden md:flex items-center gap-1">
               {navigation.slice(0, 3).map((item) => (
                 <Link
                   key={item.name}
                   href={item.href}
                   className={cn(
-                    'px-5 py-2 rounded-full text-sm font-semibold transition-all duration-300',
+                    'px-4 py-2 text-sm font-medium transition-all duration-200 h-16 flex items-center',
                     isActive(item.href)
-                      ? 'bg-lexo-black text-white shadow-md'
-                      : 'text-lexo-gray hover:text-lexo-charcoal hover:bg-white/60'
+                      ? 'text-primary font-bold border-b-2 border-primary'
+                      : 'text-on-surface-variant hover:text-primary'
                   )}
                 >
                   {item.name}
                 </Link>
               ))}
             </nav>
+          </div>
 
-            {/* Desktop User Menu */}
-            <div className="hidden md:flex items-center gap-3">
-              <div className="w-px h-5 bg-gray-200 hidden lg:block mx-1" />
+          {/* Right: Actions */}
+          <div className="flex items-center gap-4">
+            {/* Notifications */}
+            <button className="p-2 text-on-surface-variant hover:text-primary rounded-full hover:bg-surface-container-low transition-all active:scale-90">
+              <Bell className="w-5 h-5" />
+            </button>
 
-              {isAuthenticated && user ? (
-                <div className="relative" ref={dropdownRef}>
-                  <button
-                    onClick={() => setUserMenuOpen(!userMenuOpen)}
-                    className="flex items-center gap-3 bg-white/40 border border-gray-200/50 pl-2 pr-4 py-1.5 rounded-full hover:bg-white/80 transition-colors"
-                  >
-                    <Avatar src={user.avatarUrl || null} name={user.name} size="sm" />
-                    <span className="text-sm font-semibold">{user.name.split(' ')[0]}</span>
-                  </button>
-                  <AnimatePresence>
-                    {userMenuOpen && (
-                      <motion.div
-                        initial={{ opacity: 0, y: 8, scale: 0.95 }}
-                        animate={{ opacity: 1, y: 0, scale: 1 }}
-                        exit={{ opacity: 0, y: 8, scale: 0.95 }}
-                        transition={{ duration: 0.15 }}
-                        className="absolute right-0 top-full mt-2 w-48 bg-white rounded-2xl shadow-[0_8px_32px_rgba(0,0,0,0.12)] border border-gray-100 overflow-hidden z-50"
+            {/* User Menu */}
+            {isAuthenticated && user ? (
+              <div className="relative" ref={dropdownRef}>
+                <button
+                  onClick={() => setUserMenuOpen(!userMenuOpen)}
+                  className="w-10 h-10 rounded-full overflow-hidden border-2 border-primary-fixed-dim bg-surface-container hover:ring-2 hover:ring-primary/20 transition-all"
+                >
+                  <Avatar src={user.avatarUrl || null} name={user.name} size="sm" />
+                </button>
+                <AnimatePresence>
+                  {userMenuOpen && (
+                    <motion.div
+                      initial={{ opacity: 0, y: 8, scale: 0.95 }}
+                      animate={{ opacity: 1, y: 0, scale: 1 }}
+                      exit={{ opacity: 0, y: 8, scale: 0.95 }}
+                      transition={{ duration: 0.15 }}
+                      className="absolute right-0 top-full mt-2 w-56 bg-surface-container-lowest rounded-2xl shadow-glass-strong border border-outline-variant/10 overflow-hidden z-50"
+                    >
+                      <div className="p-4 border-b border-outline-variant/10">
+                        <p className="font-bold text-sm text-on-surface">{user.name}</p>
+                        <p className="text-xs text-on-surface-variant mt-0.5">{user.email}</p>
+                      </div>
+                      <Link
+                        href="/profile"
+                        onClick={() => setUserMenuOpen(false)}
+                        className="flex items-center gap-3 px-4 py-3 text-sm font-medium hover:bg-surface-container-low transition-colors"
                       >
-                        <Link
-                          href="/profile"
-                          onClick={() => setUserMenuOpen(false)}
-                          className="flex items-center gap-3 px-4 py-3 text-sm font-semibold hover:bg-gray-50 transition-colors"
-                        >
-                          <User className="w-4 h-4 text-gray-500" />
-                          Profile
-                        </Link>
-                        <button
-                          onClick={() => { setUserMenuOpen(false); logoutMutate(); }}
-                          className="w-full flex items-center gap-3 px-4 py-3 text-sm font-semibold text-red-600 hover:bg-red-50 transition-colors"
-                        >
-                          <LogOut className="w-4 h-4" />
-                          Sign Out
-                        </button>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </div>
-              ) : (
-                <div className="flex items-center gap-2">
-                  <Link href="/auth/login">
-                    <Button variant="ghost" className="rounded-full font-semibold hover:bg-white/40 text-lexo-charcoal">
-                      Login
-                    </Button>
-                  </Link>
-                  <Link href="/auth/signup">
-                    <Button className="rounded-full bg-lexo-black text-white hover:bg-lexo-dark shadow-[0_4px_14px_0_rgb(0,0,0,0.1)] hover:shadow-[0_6px_20px_rgba(0,0,0,0.15)] transition-all font-semibold">
-                      Sign Up
-                    </Button>
-                  </Link>
-                </div>
-              )}
-            </div>
+                        <User className="w-4 h-4 text-on-surface-variant" />
+                        Profile
+                      </Link>
+                      <button
+                        onClick={() => { setUserMenuOpen(false); logoutMutate(); }}
+                        className="w-full flex items-center gap-3 px-4 py-3 text-sm font-medium text-error hover:bg-error-container/30 transition-colors"
+                      >
+                        <LogOut className="w-4 h-4" />
+                        Sign Out
+                      </button>
+                    </motion.div>
+                  )}
+                </AnimatePresence>
+              </div>
+            ) : (
+              <div className="hidden md:flex items-center gap-2">
+                <Link href="/auth/login">
+                  <Button variant="ghost" className="rounded-xl font-semibold text-on-surface-variant hover:bg-surface-container-low text-sm">
+                    Login
+                  </Button>
+                </Link>
+                <Link href="/auth/signup">
+                  <Button className="rounded-xl bg-gradient-to-br from-primary to-primary-container text-white font-bold shadow-button hover:shadow-button-hover active:scale-[0.97] transition-all text-sm px-6">
+                    Sign Up
+                  </Button>
+                </Link>
+              </div>
+            )}
 
             {/* Mobile Menu Toggle */}
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="md:hidden p-2 rounded-full bg-white/60 border border-gray-200/50 hover:bg-white/80 transition-colors"
+              className="md:hidden p-2 rounded-full bg-surface-container-low text-on-surface hover:bg-surface-container-high transition-colors"
             >
-              {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+              {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
             </button>
           </div>
         </div>
@@ -169,25 +180,27 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             initial={{ opacity: 0, y: -20 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -20 }}
-            className="fixed inset-0 z-40 bg-white/95 backdrop-blur-3xl pt-28 px-6 md:hidden"
+            className="fixed inset-0 z-40 bg-surface/95 backdrop-blur-3xl pt-28 px-6 md:hidden"
           >
-            <nav className="flex flex-col gap-4">
+            <nav className="flex flex-col gap-2">
               {navigation.map((item, i) => (
                 <motion.div
                   key={item.name}
                   initial={{ opacity: 0, x: -20 }}
                   animate={{ opacity: 1, x: 0 }}
-                  transition={{ delay: i * 0.1 }}
+                  transition={{ delay: i * 0.08 }}
                 >
                   <Link
                     href={item.href}
                     onClick={() => setMobileMenuOpen(false)}
                     className={cn(
-                      'flex items-center gap-4 py-4 border-b border-gray-100 text-2xl font-bold tracking-tight',
-                      isActive(item.href) ? 'text-lexo-black' : 'text-lexo-gray'
+                      'flex items-center gap-4 py-4 px-4 rounded-2xl text-lg font-bold tracking-tight transition-all',
+                      isActive(item.href)
+                        ? 'text-primary bg-primary-fixed/30'
+                        : 'text-on-surface-variant hover:bg-surface-container-low'
                     )}
                   >
-                    <item.icon className="w-8 h-8" />
+                    <item.icon className="w-6 h-6" />
                     {item.name}
                   </Link>
                 </motion.div>
@@ -195,14 +208,14 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
               {isAuthenticated && user ? (
                 <motion.div
-                  className="mt-8 flex flex-col gap-3"
+                  className="mt-8"
                   initial={{ opacity: 0 }}
                   animate={{ opacity: 1 }}
                   transition={{ delay: 0.4 }}
                 >
                   <button
                     onClick={() => { setMobileMenuOpen(false); logoutMutate(); }}
-                    className="w-full flex items-center justify-center gap-3 rounded-full py-5 text-lg font-bold border-2 border-red-200 text-red-600 hover:bg-red-50 transition-colors"
+                    className="w-full flex items-center justify-center gap-3 rounded-xl py-4 text-base font-bold border border-error/20 text-error hover:bg-error-container/20 transition-colors"
                   >
                     <LogOut className="w-5 h-5" />
                     Sign Out
@@ -216,74 +229,94 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                   transition={{ delay: 0.4 }}
                 >
                   <Link href="/auth/signup" className="w-full">
-                    <Button className="w-full rounded-full bg-lexo-black py-6 text-lg">Sign Up Free</Button>
+                    <Button className="w-full rounded-xl bg-gradient-to-br from-primary to-primary-container py-4 text-base font-bold shadow-button">
+                      Sign Up Free
+                    </Button>
                   </Link>
                   <Link href="/auth/login" className="w-full">
-                    <Button variant="outline" className="w-full rounded-full py-6 text-lg border-2 border-gray-200">
+                    <Button variant="outline" className="w-full rounded-xl py-4 text-base border border-outline-variant/30 text-on-surface font-bold">
                       Login
                     </Button>
                   </Link>
                 </motion.div>
               )}
-
-              {/* Mobile Partner Link Removed */}
             </nav>
           </motion.div>
         )}
       </AnimatePresence>
 
       {/* Main Content */}
-      <main className="flex-1 pt-32 pb-20 md:pb-0">{children}</main>
+      <main className="flex-1 pt-16 pb-20 md:pb-0">{children}</main>
 
-      {/* ========================================================= */}
-      {/* Massive Lexogrine Footer                                   */}
-      {/* ========================================================= */}
-      <footer className="mt-20 px-4 sm:px-6 lg:px-8 pb-8">
-        <div className="max-w-7xl mx-auto bg-lexo-black text-white rounded-[2.5rem] p-8 md:p-16 lg:p-24 overflow-hidden relative">
-
-          {/* Abstract Glow Effect inside Footer */}
-          <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-gradient-to-br from-indigo-500/30 to-purple-600/30 blur-[100px] rounded-full translate-x-1/3 -translate-y-1/3 pointer-events-none" />
+      {/* ═══════════════════════════════════════════════════════════ */}
+      {/* Footer — M3 Premium Dark                                   */}
+      {/* ═══════════════════════════════════════════════════════════ */}
+      <footer className="mt-16 px-4 sm:px-6 lg:px-8 pb-8">
+        <div className="max-w-7xl mx-auto bg-inverse-surface text-inverse-on-surface rounded-4xl p-8 md:p-16 lg:p-24 overflow-hidden relative">
+          {/* Abstract Glow */}
+          <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-gradient-to-br from-primary/20 to-secondary/20 blur-[120px] rounded-full translate-x-1/3 -translate-y-1/3 pointer-events-none" />
 
           <div className="relative z-10 grid lg:grid-cols-2 gap-16 lg:gap-8 items-end">
             <div>
-              <h2 className="text-5xl md:text-7xl font-bold tracking-tighter mb-8 leading-[1.1]">
-                Ready to<br />
-                <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-400 via-indigo-400 to-purple-400">
+              <h2 className="text-5xl md:text-7xl font-black tracking-tighter mb-8 leading-[1.1]">
+                Ready to
+                <br />
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary-fixed-dim via-inverse-primary to-secondary-fixed-dim">
                   book now?
                 </span>
               </h2>
-              <p className="text-lexo-gray text-lg md:text-xl max-w-md mb-10 leading-relaxed font-medium">
+              <p className="text-inverse-on-surface/60 text-lg md:text-xl max-w-md mb-10 leading-relaxed font-medium">
                 Skip the line and experience premium grooming. Secure your appointment in seconds.
               </p>
-              {/* Footer action buttons removed per request */}
             </div>
 
             <div className="flex flex-col sm:flex-row justify-between lg:justify-end gap-12 lg:gap-24">
               <div className="space-y-4">
-                <h4 className="text-lexo-gray font-semibold tracking-wide uppercase text-sm">Platform</h4>
+                <h4 className="text-inverse-on-surface/40 font-semibold tracking-wide uppercase text-sm">Platform</h4>
                 <div className="flex flex-col gap-3">
-                  <Link href="/explore" className="font-semibold hover:text-indigo-400 transition-colors">Explore</Link>
-                  <Link href="/bookings" className="font-semibold hover:text-indigo-400 transition-colors">My Bookings</Link>
-                  <Link href="/auth/signup" className="font-semibold hover:text-indigo-400 transition-colors">Create Account</Link>
+                  <Link href="/explore" className="font-semibold hover:text-inverse-primary transition-colors">Explore</Link>
+                  <Link href="/bookings" className="font-semibold hover:text-inverse-primary transition-colors">My Bookings</Link>
+                  <Link href="/auth/signup" className="font-semibold hover:text-inverse-primary transition-colors">Create Account</Link>
                 </div>
               </div>
               <div className="space-y-4">
-                <h4 className="text-lexo-gray font-semibold tracking-wide uppercase text-sm">Legal</h4>
+                <h4 className="text-inverse-on-surface/40 font-semibold tracking-wide uppercase text-sm">Legal</h4>
                 <div className="flex flex-col gap-3">
-                  <a href="#" className="font-semibold hover:text-indigo-400 transition-colors">Privacy Policy</a>
-                  <a href="#" className="font-semibold hover:text-indigo-400 transition-colors">Terms of Service</a>
-                  <a href={process.env.NEXT_PUBLIC_ADMIN_URL || "https://overline-admin-web.vercel.app"} target="_blank" rel="noreferrer" className="font-semibold hover:text-indigo-400 transition-colors text-white/50">Partner Login</a>
+                  <a href="#" className="font-semibold hover:text-inverse-primary transition-colors">Privacy Policy</a>
+                  <a href="#" className="font-semibold hover:text-inverse-primary transition-colors">Terms of Service</a>
+                  <a href={process.env.NEXT_PUBLIC_ADMIN_URL || 'https://overline-admin-web.vercel.app'} target="_blank" rel="noreferrer" className="font-semibold hover:text-inverse-primary transition-colors text-inverse-on-surface/30">
+                    Partner Login
+                  </a>
                 </div>
               </div>
             </div>
           </div>
 
-          <div className="mt-24 pt-8 border-t border-white/10 flex flex-col md:flex-row justify-between items-center gap-4 text-sm font-medium text-lexo-gray relative z-10">
+          <div className="mt-24 pt-8 border-t border-white/10 flex flex-col md:flex-row justify-between items-center gap-4 text-sm font-medium text-inverse-on-surface/40 relative z-10">
             <p>© {new Date().getFullYear()} Overline. All rights reserved.</p>
-            <p>Designed for aesthetics & performance.</p>
+            <p>Engineered for performance.</p>
           </div>
         </div>
       </footer>
+
+      {/* Bottom Mobile Nav */}
+      <nav className="md:hidden fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 pb-6 pt-3 bg-white/80 backdrop-blur-2xl shadow-nav rounded-t-3xl">
+        {navigation.map((item) => (
+          <Link
+            key={item.name}
+            href={item.href}
+            className={cn(
+              'flex flex-col items-center justify-center px-4 py-2 rounded-2xl transition-all active:scale-90 duration-150',
+              isActive(item.href)
+                ? 'bg-primary-fixed/30 text-primary'
+                : 'text-on-surface-variant hover:text-primary'
+            )}
+          >
+            <item.icon className={cn('w-5 h-5 mb-0.5', isActive(item.href) && 'fill-primary/10')} />
+            <span className="text-[11px] font-semibold tracking-wide uppercase">{item.name}</span>
+          </Link>
+        ))}
+      </nav>
 
       {/* AI Chat Widget */}
       <ChatWidget />

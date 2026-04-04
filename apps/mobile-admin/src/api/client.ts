@@ -116,8 +116,8 @@ apiClient.interceptors.response.use(
 
 // Auth APIs - uses the same auth endpoints as user app
 export const authApi = {
-  login: (email: string, password: string) =>
-    apiClient.post('/auth/login', { email, password }),
+  login: (email: string, password: string, options?: { requestedRole?: string }) =>
+    apiClient.post('/auth/login', { email, password, requestedRole: options?.requestedRole }),
   getProfile: () => apiClient.get('/users/me'),
   logout: () => apiClient.post('/auth/logout'),
   refresh: (refreshToken: string) =>

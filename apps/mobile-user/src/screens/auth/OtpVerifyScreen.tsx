@@ -22,6 +22,7 @@ import {
 } from '../../theme';
 import { useAuthStore } from '../../stores/authStore';
 import { RootStackParamList } from '../../types';
+import { ArrowLeft, ShieldCheck } from 'lucide-react-native';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'OtpVerify'>;
 type RouteProps = RouteProp<RootStackParamList, 'OtpVerify'>;
@@ -153,13 +154,14 @@ export default function OtpVerifyScreen() {
         <TouchableOpacity
           style={styles.backButton}
           onPress={() => navigation.goBack()}>
-          <Text style={styles.backText}>{'<'} Back</Text>
+          <ArrowLeft color={Colors.textPrimary} size={20} />
+          <Text style={styles.backText}>Back</Text>
         </TouchableOpacity>
 
         {/* Header */}
         <View style={styles.header}>
           <View style={styles.iconCircle}>
-            <Text style={styles.iconText}>{'🔐'}</Text>
+            <ShieldCheck color={Colors.primary} size={34} />
           </View>
           <Text style={styles.title}>Verify Your Number</Text>
           <Text style={styles.subtitle}>
@@ -227,7 +229,7 @@ export default function OtpVerifyScreen() {
 
         {/* Security note */}
         <View style={styles.securityNote}>
-          <Text style={styles.securityIcon}>{'🛡️'}</Text>
+          <ShieldCheck color={Colors.primary} size={18} />
           <Text style={styles.securityText}>
             Your verification code expires in 10 minutes. Never share this code
             with anyone.
@@ -252,7 +254,7 @@ const styles = StyleSheet.create({
     width: 250,
     height: 250,
     borderRadius: 125,
-    backgroundColor: 'rgba(108, 92, 231, 0.08)',
+    backgroundColor: 'rgba(255, 140, 66, 0.12)',
   },
   bgOrb2: {
     position: 'absolute',
@@ -261,7 +263,7 @@ const styles = StyleSheet.create({
     width: 200,
     height: 200,
     borderRadius: 100,
-    backgroundColor: 'rgba(0, 210, 255, 0.05)',
+    backgroundColor: 'rgba(84, 28, 191, 0.08)',
   },
   content: {
     flex: 1,
@@ -269,13 +271,22 @@ const styles = StyleSheet.create({
     paddingTop: height * 0.06,
   },
   backButton: {
-    paddingVertical: Spacing.md,
+    alignSelf: 'flex-start',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.sm,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderRadius: BorderRadius.full,
+    backgroundColor: Colors.surface,
     marginBottom: Spacing.xl,
   },
   backText: {
-    color: Colors.primary,
-    fontSize: FontSizes.md,
-    fontWeight: FontWeights.semibold,
+    color: Colors.textPrimary,
+    fontSize: FontSizes.sm,
+    fontWeight: FontWeights.medium,
   },
   header: {
     alignItems: 'center',
@@ -289,9 +300,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginBottom: Spacing.xl,
-  },
-  iconText: {
-    fontSize: 36,
   },
   title: {
     fontSize: FontSizes['3xl'],
@@ -379,15 +387,12 @@ const styles = StyleSheet.create({
   securityNote: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    backgroundColor: Colors.surfaceLight,
+    backgroundColor: Colors.surface,
     padding: Spacing.lg,
     borderRadius: BorderRadius.md,
     borderWidth: 1,
     borderColor: Colors.border,
     gap: Spacing.md,
-  },
-  securityIcon: {
-    fontSize: 18,
   },
   securityText: {
     flex: 1,

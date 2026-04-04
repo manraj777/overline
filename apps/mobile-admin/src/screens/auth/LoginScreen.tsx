@@ -18,6 +18,7 @@ import {Colors, FontSize, FontWeight, Radius, Spacing} from '../../theme';
 const BRAND_LOGO = require('../../../assets/branding/overline-logo.png');
 
 export default function LoginScreen() {
+  const [role, setRole] = useState<'OWNER' | 'STAFF'>('OWNER');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [isLoading, setIsLoading] = useState(false);
@@ -49,11 +50,12 @@ export default function LoginScreen() {
 
     setIsLoading(true);
     try {
-      await login(email, password);
+      // Send the requested scope to the login handler (auth.service.ts will enforce it)
+      await login(email, password, { requestedRole: role });
     } catch (error: any) {
       Alert.alert(
         'Login Failed',
-        error.response?.data?.message || 'Invalid credentials',
+        error.response?.data?.message || 'Invalid credentials'
       );
     } finally {
       setIsLoading(false);
@@ -69,27 +71,46 @@ export default function LoginScreen() {
         keyboardShouldPersistTaps="handled">
         <View style={styles.header}>
           <Image source={BRAND_LOGO} style={styles.logoImage} resizeMode="contain" />
-          <Text style={styles.subtitle}>Admin Panel</Text>
-          <Text style={styles.description}>
-            Manage your shop, bookings, and services
-          </Text>
+          <Text style={styles.subtitle}>Admin Portal</Text>
+          <Text style={styles.description}>Manage your operations securely</Text>
         </View>
 
-        <View style={styles.form}>
+        <View style={styles.formContainer}>
+          {/* Role Selector */}
+          <View style={styles.roleSelector}>
+            <TouchableOpacity
+              style={[styles.roleTab, role === 'OWNER' && styles.roleTabActive]}
+              onPress={() => setRole('OWNER')}
+              activeOpacity={0.8}
+            >
+              <Text style={[styles.roleText, role === 'OWNER' && styles.roleTextActive]}>
+                Shop Owner
+              </Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.roleTab, role === 'STAFF' && styles.roleTabActive]}
+              onPress={() => setRole('STAFF')}
+              activeOpacity={0.8}
+            >
+              <Text style={[styles.roleText, role === 'STAFF' && styles.roleTextActive]}>
+                Staff Member
+              </Text>
+            </TouchableOpacity>
+          </View>
+
           <View style={styles.inputGroup}>
-            <Text style={styles.label}>Email</Text>
+            <Text style={styles.label}>Email Address</Text>
             <TextInput
               style={[styles.input, errors.email && styles.inputError]}
               value={email}
               onChangeText={setEmail}
-              placeholder="admin@example.com"
+              placeholder="Enter your email"
+              placeholderTextColor={Colors.outline}
               keyboardType="email-address"
               autoCapitalize="none"
               autoCorrect={false}
             />
-            {errors.email && (
-              <Text style={styles.errorText}>{errors.email}</Text>
-            )}
+            {errors.email && <Text style={styles.errorText}>{errors.email}</Text>}
           </View>
 
           <View style={styles.inputGroup}>
@@ -99,28 +120,28 @@ export default function LoginScreen() {
               value={password}
               onChangeText={setPassword}
               placeholder="Enter your password"
+              placeholderTextColor={Colors.outline}
               secureTextEntry
             />
-            {errors.password && (
-              <Text style={styles.errorText}>{errors.password}</Text>
-            )}
+            {errors.password && <Text style={styles.errorText}>{errors.password}</Text>}
           </View>
 
           <TouchableOpacity
             style={[styles.button, isLoading && styles.buttonDisabled]}
             onPress={handleLogin}
-            disabled={isLoading}>
+            disabled={isLoading}
+            activeOpacity={0.8}>
             {isLoading ? (
               <ActivityIndicator color="#fff" />
             ) : (
-              <Text style={styles.buttonText}>Login</Text>
+              <Text style={styles.buttonText}>Sign In</Text>
             )}
           </TouchableOpacity>
         </View>
 
         <View style={styles.footer}>
           <Text style={styles.footerText}>
-            Contact support for access issues
+            Protected by Overline internal policies
           </Text>
         </View>
       </ScrollView>
@@ -143,71 +164,120 @@ const styles = StyleSheet.create({
     marginBottom: Spacing.xxxxxl,
   },
   logoImage: {
-    width: 170,
-    height: 170,
-    borderRadius: Radius.lg,
-    marginBottom: Spacing.sm,
+    width: 120,
+    height: 120,
+    borderRadius: Radius.full,
+    marginBottom: Spacing.lg,
   },
   subtitle: {
-    fontSize: FontSize.h3,
-    fontWeight: FontWeight.semibold,
+    fontSize: FontSize.h1,
+    fontWeight: FontWeight.bold,
     color: Colors.textPrimary,
-    marginBottom: Spacing.sm,
+    marginBottom: Spacing.xs,
   },
   description: {
     fontSize: FontSize.body,
+    fontWeight: FontWeight.medium,
     color: Colors.textSecondary,
     textAlign: 'center',
   },
-  form: {
+  formContainer: {
+    backgroundColor: Colors.surface,
+    borderRadius: Radius.lg,
+    padding: Spacing.xxl,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
+    elevation: 2,
     marginBottom: Spacing.xxl,
   },
+  roleSelector: {
+    flexDirection: 'row',
+    backgroundColor: Colors.surfaceVariant,
+    borderRadius: Radius.full,
+    padding: 4,
+    marginBottom: Spacing.xxl,
+  },
+  roleTab: {
+    flex: 1,
+    paddingVertical: 10,
+    borderRadius: Radius.full,
+    alignItems: 'center',
+  },
+  roleTabActive: {
+    backgroundColor: Colors.surface,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 1,
+  },
+  roleText: {
+    fontSize: FontSize.label,
+    fontWeight: FontWeight.bold,
+    color: Colors.textSecondary,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
+  },
+  roleTextActive: {
+    color: Colors.primary,
+  },
   inputGroup: {
-    marginBottom: Spacing.xl,
+    marginBottom: Spacing.lg,
   },
   label: {
-    fontSize: FontSize.body,
-    fontWeight: FontWeight.medium,
-    color: Colors.textSecondary,
+    fontSize: FontSize.label,
+    fontWeight: FontWeight.bold,
+    color: Colors.textPrimary,
     marginBottom: Spacing.sm,
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
   },
   input: {
     borderWidth: 1,
-    borderColor: Colors.gray200,
+    borderColor: Colors.border,
     borderRadius: Radius.md,
     paddingHorizontal: Spacing.lg,
     paddingVertical: Spacing.md,
-    fontSize: 16,
-    backgroundColor: Colors.gray50,
+    fontSize: FontSize.body,
+    backgroundColor: Colors.surface,
+    color: Colors.textPrimary,
   },
   inputError: {
-    borderColor: Colors.danger500,
+    borderColor: Colors.error,
   },
   errorText: {
-    color: Colors.danger500,
-    fontSize: FontSize.label,
+    color: Colors.error,
+    fontSize: FontSize.caption,
     marginTop: 4,
+    fontWeight: FontWeight.medium,
   },
   button: {
     backgroundColor: Colors.primary,
-    borderRadius: Radius.md,
-    paddingVertical: Spacing.lg,
+    borderRadius: Radius.full,
+    paddingVertical: 16,
     alignItems: 'center',
-    marginTop: Spacing.sm,
+    marginTop: Spacing.md,
   },
   buttonDisabled: {
-    opacity: 0.7,
+    opacity: 0.6,
   },
   buttonText: {
     color: Colors.white,
-    fontSize: 16,
-    fontWeight: FontWeight.semibold,
+    fontSize: FontSize.body,
+    fontWeight: FontWeight.bold,
+    textTransform: 'uppercase',
+    letterSpacing: 1,
   },
   footer: {
     alignItems: 'center',
   },
   footerText: {
     color: Colors.textMuted,
-    fontSize: 13,
+    fontSize: FontSize.caption,
+    fontWeight: FontWeight.medium,
   },
 });

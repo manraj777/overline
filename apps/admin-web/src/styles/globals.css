@@ -2,13 +2,40 @@
 @tailwind components;
 @tailwind utilities;
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+/* ══════════════════════════════════════════
+   Overline Admin — M3 Design System
+   ══════════════════════════════════════════ */
+
+:root {
+  /* Core M3 tokens */
+  --primary: #4648d4;
+  --primary-container: #6063ee;
+  --secondary: #6b38d4;
+  --secondary-container: #8455ef;
+  --tertiary: #006c49;
+  --surface: #f8f9ff;
+  --surface-container: #e5eeff;
+  --surface-container-low: #eff2ff;
+  --surface-container-high: #d8dfff;
+  --on-surface: #0b1c30;
+  --on-surface-variant: #3a4565;
+  --outline: #6b7a99;
+  --outline-variant: #c0c9e0;
+  --error: #ba1a1a;
+  --error-container: #ffdad6;
+
+  /* Sidebar */
+  --sidebar-bg: #181945;
+  --sidebar-border: rgba(70, 72, 212, 0.2);
+}
 
 html,
 body {
-  font-family: 'Inter', system-ui, sans-serif;
+  font-family: var(--font-admin-body), 'Inter', system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  color: var(--on-surface);
+  background: var(--surface);
 }
 
 @layer base {
@@ -18,68 +45,135 @@ body {
   }
 }
 
-/* Animations */
+/* ═══ Component Classes ═══ */
+@layer components {
+  /* Background */
+  .ovl-admin-bg {
+    background: var(--surface);
+  }
+
+  /* M3 Card */
+  .card-m3 {
+    @apply bg-white rounded-3xl shadow-card-m3 border border-outline-variant/10;
+  }
+  .card-m3-flat {
+    @apply bg-surface-container-low rounded-2xl border border-outline-variant/10;
+  }
+
+  /* M3 Inputs */
+  .input-m3 {
+    @apply w-full px-4 py-3 bg-surface-container-low border border-outline-variant/20 rounded-xl text-sm text-on-surface font-medium
+    placeholder:text-outline transition-all duration-200
+    focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary;
+  }
+  .label-m3 {
+    @apply text-[11px] font-bold tracking-widest text-outline uppercase;
+  }
+
+  /* M3 Buttons */
+  .btn-primary {
+    @apply inline-flex items-center justify-center gap-2 px-6 py-2.5 bg-gradient-to-r from-primary to-primary-container text-white font-bold text-sm rounded-xl shadow-button
+    hover:shadow-lg hover:brightness-110 active:scale-[0.97] transition-all duration-200;
+  }
+  .btn-tonal {
+    @apply inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-surface-container-low text-primary font-bold text-sm rounded-xl border border-outline-variant/10
+    hover:bg-surface-container-high active:scale-[0.97] transition-all duration-200;
+  }
+  .btn-outline {
+    @apply inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-transparent text-on-surface font-bold text-sm rounded-xl border border-outline-variant/30
+    hover:bg-surface-container-low active:scale-[0.97] transition-all duration-200;
+  }
+  .btn-danger {
+    @apply inline-flex items-center justify-center gap-2 px-5 py-2.5 bg-error text-white font-bold text-sm rounded-xl
+    hover:brightness-110 active:scale-[0.97] transition-all duration-200;
+  }
+
+  /* M3 Metric Card */
+  .metric-card {
+    @apply card-m3 p-6 flex flex-col gap-2;
+  }
+  .metric-value {
+    @apply text-3xl font-black tracking-tight text-on-surface leading-none;
+  }
+  .metric-label {
+    @apply text-[11px] font-bold tracking-widest text-outline uppercase;
+  }
+  .metric-delta-up {
+    @apply text-xs font-bold text-tertiary bg-tertiary-fixed px-2 py-0.5 rounded-full inline-flex items-center gap-1;
+  }
+  .metric-delta-down {
+    @apply text-xs font-bold text-error bg-error-container px-2 py-0.5 rounded-full inline-flex items-center gap-1;
+  }
+
+  /* M3 Table */
+  .table-m3 {
+    @apply w-full;
+  }
+  .table-m3 thead {
+    @apply border-b border-outline-variant/10;
+  }
+  .table-m3 th {
+    @apply label-m3 text-left px-4 py-3;
+  }
+  .table-m3 td {
+    @apply px-4 py-3.5 text-sm text-on-surface border-b border-outline-variant/5;
+  }
+  .table-m3 tbody tr:hover {
+    @apply bg-surface-container-low/50;
+  }
+
+  /* Badge */
+  .badge-m3 {
+    @apply text-[10px] font-black tracking-widest uppercase px-2.5 py-0.5 rounded-lg;
+  }
+
+  /* Sidebar Active */
+  .sidebar-link-active {
+    @apply bg-primary/15 text-white font-bold;
+  }
+  .sidebar-link-idle {
+    @apply text-white/60 hover:bg-white/5 hover:text-white/90;
+  }
+}
+
+/* ═══ Animations ═══ */
 @keyframes slide-in {
-  from {
-    transform: translateX(100%);
-    opacity: 0;
-  }
-
-  to {
-    transform: translateX(0);
-    opacity: 1;
-  }
+  from { transform: translateX(100%); opacity: 0; }
+  to { transform: translateX(0); opacity: 1; }
 }
-
-.animate-slide-in {
-  animation: slide-in 0.3s ease-out;
-}
+.animate-slide-in { animation: slide-in 0.3s ease-out; }
 
 @keyframes fade-in-up {
-  from {
-    opacity: 0;
-    transform: translateY(12px);
-  }
-
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
+  from { opacity: 0; transform: translateY(12px); }
+  to { opacity: 1; transform: translateY(0); }
 }
+.animate-fade-in-up { animation: fade-in-up 0.4s ease-out; }
 
-.animate-fade-in-up {
-  animation: fade-in-up 0.4s ease-out;
+@keyframes fade-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
+.animate-fade-in { animation: fade-in 0.3s ease-out; }
 
 /* Line clamp */
-.line-clamp-1 {
-  display: -webkit-box;
-  -webkit-line-clamp: 1;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
-
-.line-clamp-2 {
-  display: -webkit-box;
-  -webkit-line-clamp: 2;
-  -webkit-box-orient: vertical;
-  overflow: hidden;
-}
+.line-clamp-1 { display: -webkit-box; -webkit-line-clamp: 1; -webkit-box-orient: vertical; overflow: hidden; }
+.line-clamp-2 { display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
 
 /* Skeleton loader */
 .skeleton {
   @apply rounded-lg;
-  background: linear-gradient(90deg, #f3f4f6 25%, #e5e7eb 50%, #f3f4f6 75%);
+  background: linear-gradient(90deg, var(--surface-container-low) 25%, var(--surface-container-high) 50%, var(--surface-container-low) 75%);
   background-size: 200% 100%;
   animation: shimmer 1.5s infinite;
 }
 
 @keyframes shimmer {
-  0% {
-    background-position: -200% 0;
-  }
-
-  100% {
-    background-position: 200% 0;
-  }
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
 }
+
+/* Custom scrollbar */
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--outline-variant); border-radius: 100px; }
+::-webkit-scrollbar-thumb:hover { background: var(--outline); }

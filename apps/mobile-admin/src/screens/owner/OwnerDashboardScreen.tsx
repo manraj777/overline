@@ -54,7 +54,7 @@ export default function OwnerDashboardScreen() {
     <View style={styles.container}>
       <View style={styles.header}>
         <Text style={styles.eyebrow}>Owner View</Text>
-        <Text style={styles.title}>{user?.name}</Text>
+        <Text style={styles.title}>{user?.name || 'Owner'}</Text>
         <Text style={styles.subtitle}>Operational pulse for today</Text>
       </View>
 
@@ -116,7 +116,7 @@ export default function OwnerDashboardScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: '#EEF2FF',
   },
   centered: {
     flex: 1,
@@ -131,28 +131,28 @@ const styles = StyleSheet.create({
     textAlign: 'center',
   },
   header: {
-    backgroundColor: Colors.white,
-    borderBottomColor: Colors.border,
-    borderBottomWidth: 1,
+    backgroundColor: Colors.primary,
     paddingTop: 60,
     paddingHorizontal: Spacing.lg,
-    paddingBottom: Spacing.lg,
+    paddingBottom: Spacing.xl,
+    borderBottomLeftRadius: Radius.xl,
+    borderBottomRightRadius: Radius.xl,
   },
   eyebrow: {
-    color: Colors.primary600,
+    color: 'rgba(255,255,255,0.75)',
     fontWeight: FontWeight.semibold,
     fontSize: FontSize.label,
     textTransform: 'uppercase',
   },
   title: {
     marginTop: 4,
-    color: Colors.textPrimary,
+    color: '#fff',
     fontWeight: FontWeight.bold,
     fontSize: FontSize.h1,
   },
   subtitle: {
     marginTop: 2,
-    color: Colors.textSecondary,
+    color: 'rgba(255,255,255,0.85)',
     fontSize: FontSize.body,
   },
   content: {
@@ -170,15 +170,20 @@ const styles = StyleSheet.create({
     borderColor: Colors.gray100,
     borderWidth: 1,
     padding: Spacing.lg,
+    shadowColor: '#3346d3',
+    shadowOffset: {width: 0, height: 8},
+    shadowOpacity: 0.08,
+    shadowRadius: 16,
+    elevation: 3,
   },
   kpiValue: {
-    color: Colors.textPrimary,
+    color: '#1A245F',
     fontWeight: FontWeight.bold,
     fontSize: FontSize.h2,
   },
   kpiLabel: {
     marginTop: 4,
-    color: Colors.textSecondary,
+    color: '#596189',
     fontSize: FontSize.body,
   },
   shortcutsRow: {
@@ -191,8 +196,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     borderRadius: Radius.md,
-    backgroundColor: Colors.primary50,
-    borderColor: Colors.primary200,
+    backgroundColor: '#FFFFFF',
+    borderColor: '#D7DEFF',
     borderWidth: 1,
     paddingVertical: Spacing.md,
     gap: 6,

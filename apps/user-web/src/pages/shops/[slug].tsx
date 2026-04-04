@@ -2,10 +2,10 @@ import React from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
 import {
-  ArrowLeft, MapPin, Clock, Star, Phone, Globe, Share2,
+  ArrowLeft, MapPin, Clock, Star, Phone, Share2,
   MessageSquare, ChevronLeft, ChevronRight, X, Camera, UserPlus, Check,
 } from 'lucide-react';
-import { Button, Badge, Loading, Alert, Card, Input } from '@/components/ui';
+import { Button, Badge, Loading, Alert, Input } from '@/components/ui';
 import { ServiceList, StaffPicker, LiveQueueStatus } from '@/components/shop';
 import { DatePicker, SlotPicker, BookingSummary } from '@/components/booking';
 import { ReviewList } from '@/components/reviews';
@@ -61,7 +61,6 @@ export default function ShopDetailPage() {
     reset,
   } = useBookingStore();
 
-  // Fetch available slots when date is selected
   const { data: slots, isLoading: loadingSlots } = useAvailableSlots({
     shopId: shop?.id || '',
     date: selectedDate ? format(selectedDate, 'yyyy-MM-dd') : '',
@@ -75,42 +74,29 @@ export default function ShopDetailPage() {
     if (!shop?.staff || selectedServices.length === 0) {
       return shop?.staff || [];
     }
-
     const selectedServiceIds = new Set(selectedServices.map((service) => service.id));
-
     return shop.staff.filter((person: any) => {
       const personServiceIds = new Set(
         (person.staffServices || []).map((staffService: any) => staffService.serviceId),
       );
-
       return Array.from(selectedServiceIds).every((serviceId) => personServiceIds.has(serviceId));
     });
   }, [shop?.staff, selectedServices]);
 
-  // Set shop when loaded
   React.useEffect(() => {
-    if (shop) {
-      setShop(shop);
-    }
+    if (shop) setShop(shop);
   }, [shop, setShop]);
 
-  // Reset on unmount
   React.useEffect(() => {
     return () => reset();
   }, [reset]);
 
   React.useEffect(() => {
-    if (!selectedStaff) {
-      return;
-    }
-
+    if (!selectedStaff) return;
     const stillEligible = eligibleStaff.some((person) => person.id === selectedStaff.id);
-    if (!stillEligible) {
-      setStaff(null);
-    }
+    if (!stillEligible) setStaff(null);
   }, [eligibleStaff, selectedStaff, setStaff]);
 
-  // Gather all photos for gallery
   const allPhotos = React.useMemo(() => {
     if (!shop) return [];
     const photos: string[] = [];
@@ -119,22 +105,17 @@ export default function ShopDetailPage() {
     return photos;
   }, [shop]);
 
+  const steps: BookingStep[] = ['services', 'staff', 'datetime', 'confirm'];
+
   const handleNextStep = () => {
-    const steps: BookingStep[] = ['services', 'staff', 'datetime', 'confirm'];
-    const currentIndex = steps.indexOf(step);
-    if (currentIndex < steps.length - 1) {
-      setStep(steps[currentIndex + 1]);
-    }
+    const idx = steps.indexOf(step);
+    if (idx < steps.length - 1) setStep(steps[idx + 1]);
   };
 
   const handlePrevStep = () => {
-    const steps: BookingStep[] = ['services', 'staff', 'datetime', 'confirm'];
-    const currentIndex = steps.indexOf(step);
-    if (currentIndex > 0) {
-      setStep(steps[currentIndex - 1]);
-    } else {
-      router.back();
-    }
+    const idx = steps.indexOf(step);
+    if (idx > 0) setStep(steps[idx - 1]);
+    else router.back();
   };
 
   const handleConfirmBooking = async () => {
@@ -142,12 +123,10 @@ export default function ShopDetailPage() {
       router.push(`/auth/login?redirect=/shops/${slug}`);
       return;
     }
-
     if (!shop || !selectedDate || !selectedSlot || selectedServices.length === 0) {
       setError('Please complete all booking steps');
       return;
     }
-
     try {
       const booking = await createBooking.mutateAsync({
         shopId: shop.id,
@@ -162,7 +141,6 @@ export default function ShopDetailPage() {
           customerPhone: customerPhone || undefined,
         } : {}),
       });
-
       if (booking?.id && booking?.bookingNumber) {
         saveQueueSession({
           shopId: shop.id,
@@ -170,7 +148,6 @@ export default function ShopDetailPage() {
           tokenCode: booking.bookingNumber,
         });
       }
-
       router.push(`/bookings/${booking.id}?success=true`);
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to create booking');
@@ -179,243 +156,170 @@ export default function ShopDetailPage() {
 
   const canProceed = () => {
     switch (step) {
-      case 'services':
-        return selectedServices.length > 0;
-      case 'staff':
-        return true; // Staff is optional
-      case 'datetime':
-        return selectedDate && selectedSlot;
-      case 'confirm':
-        return true;
-      default:
-        return false;
+      case 'services': return selectedServices.length > 0;
+      case 'staff': return true;
+      case 'datetime': return selectedDate && selectedSlot;
+      case 'confirm': return true;
+      default: return false;
     }
   };
 
-  if (loadingShop) {
-    return <Loading text="Loading shop details..." />;
-  }
+  if (loadingShop) return <Loading text="Loading shop details..." />;
 
   if (!shop) {
     return (
-      <div className="container-app py-12 text-center">
-        <h1 className="text-2xl font-bold text-gray-900 mb-2">Shop not found</h1>
-        <p className="text-gray-500 mb-4">
-          The shop you're looking for doesn't exist or has been removed.
-        </p>
-        <Button onClick={() => router.push('/explore')}>Explore Shops</Button>
+      <div className="max-w-[1440px] mx-auto px-4 py-16 text-center">
+        <h1 className="text-2xl font-bold text-on-surface mb-2">Shop not found</h1>
+        <p className="text-on-surface-variant mb-6">The shop you're looking for doesn't exist or has been removed.</p>
+        <button onClick={() => router.push('/explore')} className="btn-primary px-8 py-3">
+          Explore Shops
+        </button>
       </div>
     );
   }
 
   const heroImage = shop.coverUrl || shop.photoUrls?.[0] || shop.logoUrl;
-  const isClinic = shop.tenant?.type === 'CLINIC';
-  const isSalon = shop.tenant?.type === 'SALON' || shop.tenant?.type === 'BARBER';
-
-  // Dynamic Theming Variables
-  const themeBgColor = isClinic ? 'bg-blue-50/50' : isSalon ? 'bg-zinc-950' : 'bg-[#F8F9FA]';
-  const themeNavBgColor = isClinic ? 'bg-white/90' : isSalon ? 'bg-zinc-900/90 border-zinc-800' : 'bg-white/80';
-  const themeTextColorPrimary = isClinic ? 'text-blue-950' : isSalon ? 'text-white' : 'text-lexo-black';
-  const themeTextColorSecondary = isClinic ? 'text-blue-700/70' : isSalon ? 'text-zinc-400' : 'text-lexo-gray';
   const stepLabels = getStepLabels(shop.tenant?.type);
+  const stepIndex = steps.indexOf(step);
 
   return (
     <>
       <Head>
-        <title>{shop.name} - Overline</title>
+        <title>{shop.name} — Overline</title>
         <meta name="description" content={shop.description || `Book an appointment at ${shop.name}`} />
       </Head>
 
       {/* Photo Gallery Lightbox */}
       {galleryOpen && allPhotos.length > 0 && (
-        <div className="fixed inset-0 z-50 bg-black/90 flex items-center justify-center">
-          <button
-            onClick={() => setGalleryOpen(false)}
-            className="absolute top-4 right-4 p-2 text-white/80 hover:text-white z-10"
-          >
+        <div className="fixed inset-0 z-50 bg-black/95 flex items-center justify-center backdrop-blur-2xl">
+          <button onClick={() => setGalleryOpen(false)} className="absolute top-6 right-6 p-2 text-white/60 hover:text-white z-10">
             <X className="w-6 h-6" />
           </button>
-
-          <button
-            onClick={() => setGalleryIndex((i) => (i > 0 ? i - 1 : allPhotos.length - 1))}
-            className="absolute left-4 p-2 text-white/80 hover:text-white"
-          >
+          <button onClick={() => setGalleryIndex((i) => (i > 0 ? i - 1 : allPhotos.length - 1))} className="absolute left-6 p-2 text-white/60 hover:text-white">
             <ChevronLeft className="w-8 h-8" />
           </button>
-
-          <img
-            src={allPhotos[galleryIndex]}
-            alt={`Photo ${galleryIndex + 1}`}
-            className="max-w-[90vw] max-h-[85vh] object-contain rounded-lg"
-          />
-
-          <button
-            onClick={() => setGalleryIndex((i) => (i < allPhotos.length - 1 ? i + 1 : 0))}
-            className="absolute right-4 p-2 text-white/80 hover:text-white"
-          >
+          <img src={allPhotos[galleryIndex]} alt={`Photo ${galleryIndex + 1}`} className="max-w-[90vw] max-h-[85vh] object-contain rounded-2xl" />
+          <button onClick={() => setGalleryIndex((i) => (i < allPhotos.length - 1 ? i + 1 : 0))} className="absolute right-6 p-2 text-white/60 hover:text-white">
             <ChevronRight className="w-8 h-8" />
           </button>
-
-          <div className="absolute bottom-4 text-white/80 text-sm">
-            {galleryIndex + 1} / {allPhotos.length}
-          </div>
+          <div className="absolute bottom-6 text-white/50 text-sm font-bold">{galleryIndex + 1} / {allPhotos.length}</div>
         </div>
       )}
 
-      <div className={`relative min-h-screen pb-32 transition-colors duration-500 ${themeBgColor} overflow-hidden`}>
-        {/* Abstract 3D Gradients blending with Theme */}
-        {isSalon ? (
-          <>
-            <div className="absolute top-0 right-0 w-[800px] h-[800px] bg-gradient-to-bl from-purple-900/40 via-blue-900/20 to-transparent blur-[120px] rounded-full translate-x-1/3 -translate-y-1/3 pointer-events-none z-0" />
-            <div className="absolute bottom-0 left-0 w-[600px] h-[600px] bg-gradient-to-tr from-rose-900/20 to-transparent blur-[100px] rounded-full -translate-x-1/3 translate-y-1/3 pointer-events-none z-0" />
-          </>
-        ) : (
-          <>
-            <div className="absolute top-0 right-0 w-[800px] h-[800px] bg-gradient-to-bl from-primary-400/20 via-purple-400/10 to-transparent blur-[120px] rounded-full translate-x-1/3 -translate-y-1/3 pointer-events-none z-0" />
-            <div className="absolute bottom-0 left-0 w-[600px] h-[600px] bg-gradient-to-tr from-accent-400/10 to-transparent blur-[100px] rounded-full -translate-x-1/3 translate-y-1/3 pointer-events-none z-0" />
-          </>
-        )}
-
-        {/* Sleek Breadcrumb/Top Nav */}
-        <div className={`${themeNavBgColor} backdrop-blur-md border-b sticky top-0 z-40 transition-all`}>
-          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between h-16">
+      <div className="min-h-screen bg-surface pb-32 overflow-hidden">
+        {/* ── Sticky Progress Bar ── */}
+        <div className="bg-white/70 backdrop-blur-xl border-b border-outline-variant/10 sticky top-16 z-30">
+          <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between h-14">
             <button
               onClick={handlePrevStep}
-              className={`flex items-center gap-2 font-semibold transition-colors ${themeTextColorSecondary} hover:${themeTextColorPrimary}`}
+              className="flex items-center gap-2 text-on-surface-variant hover:text-primary font-semibold transition-colors text-sm"
             >
-              <ArrowLeft className="w-5 h-5" />
-              <span className="hidden sm:inline">
-                {step === 'services' ? 'Back to Explore' : 'Previous Step'}
-              </span>
+              <ArrowLeft className="w-4 h-4" />
+              <span className="hidden sm:inline">{step === 'services' ? 'Back' : 'Previous'}</span>
             </button>
 
-            {/* Progress Steps */}
-            <div className="flex items-center gap-2">
-              {(['services', 'staff', 'datetime', 'confirm'] as BookingStep[]).map((s, i) => {
-                const stepIndex = ['services', 'staff', 'datetime', 'confirm'].indexOf(step);
-                const isActive = i <= stepIndex;
-
-                return (
-                  <div key={s} className="flex items-center gap-2">
-                    <div
-                      className={`w-8 h-8 rounded-full flex items-center justify-center text-sm font-bold transition-all duration-300 ${isActive
-                        ? isSalon ? 'bg-white text-black shadow-md scale-110' : 'bg-lexo-black text-white shadow-md scale-110'
-                        : isSalon ? 'bg-zinc-800 text-zinc-500' : 'bg-gray-100 text-gray-400'
-                        }`}
-                    >
-                      {i + 1}
-                    </div>
-                    {i < 3 && (
-                      <div className={`w-8 h-1 rounded-full transition-colors ${i < stepIndex ? (isSalon ? 'bg-white' : 'bg-lexo-black') : (isSalon ? 'bg-zinc-800' : 'bg-gray-200')}`} />
-                    )}
+            {/* Step Indicators */}
+            <div className="flex items-center gap-1.5">
+              {steps.map((s, i) => (
+                <div key={s} className="flex items-center gap-1.5">
+                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-black transition-all duration-300 ${
+                    i <= stepIndex
+                      ? 'bg-primary text-white shadow-button scale-105'
+                      : 'bg-surface-container-high text-outline'
+                  }`}>
+                    {i < stepIndex ? <Check className="w-4 h-4" /> : i + 1}
                   </div>
-                );
-              })}
+                  {i < 3 && (
+                    <div className={`w-6 lg:w-10 h-0.5 rounded-full transition-colors ${
+                      i < stepIndex ? 'bg-primary' : 'bg-surface-container-high'
+                    }`} />
+                  )}
+                </div>
+              ))}
             </div>
 
-            <span className={`text-sm font-bold hidden sm:block ${themeTextColorPrimary}`}>
+            <span className="text-xs font-bold tracking-widest text-outline uppercase hidden sm:block">
               {stepLabels[step]}
             </span>
           </div>
         </div>
 
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 md:py-12">
-
-          <div className="lg:grid lg:grid-cols-12 lg:gap-12 relative">
-
-            {/* Main Content (Left) */}
+        <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="lg:grid lg:grid-cols-12 lg:gap-8 relative">
+            {/* ── Main Content ── */}
             <div className="lg:col-span-7 xl:col-span-8">
-
-              {/* Massive Header & Cover (Always show on top) */}
+              {/* Hero Header — only on services step */}
               {step === 'services' && (
-                <div className="mb-12 relative">
-                  {/* Title absolutely massive */}
-                  <h1 className={`text-5xl md:text-7xl font-black tracking-tight leading-[0.9] mb-8 relative z-10 text-balance ${themeTextColorPrimary}`}>
+                <div className="mb-10">
+                  <h1 className="text-4xl md:text-5xl font-black tracking-tight text-on-surface mb-6 leading-tight">
                     {shop.name}
                   </h1>
 
-                  {/* Cover Image / Gallery (3D Transform) */}
+                  {/* Cover Image */}
                   <div
-                    className="relative h-64 md:h-96 w-full rounded-[2.5rem] overflow-hidden cursor-pointer group shadow-[0_20px_60px_rgba(0,0,0,0.15)] z-0 -mt-8 md:-mt-12 ml-0 md:ml-12 transform perspective-[2000px] hover:[transform:rotateX(2deg)_rotateY(-2deg)_scale(1.02)] transition-all duration-700 ease-[cubic-bezier(0.23,1,0.32,1)]"
-                    onClick={() => {
-                      if (allPhotos.length > 0) {
-                        setGalleryIndex(0);
-                        setGalleryOpen(true);
-                      }
-                    }}
+                    className="relative h-64 md:h-80 w-full rounded-3xl overflow-hidden cursor-pointer group shadow-card-hover"
+                    onClick={() => { if (allPhotos.length > 0) { setGalleryIndex(0); setGalleryOpen(true); } }}
                   >
-                    {/* Decorative glass shine over the image on hover */}
-                    <div className="absolute inset-0 bg-gradient-to-tr from-white/0 via-white/30 to-white/0 opacity-0 group-hover:opacity-100 group-hover:translate-x-full transition-all duration-1000 ease-out z-20 pointer-events-none -skew-x-12 w-[150%]" />
                     {heroImage ? (
-                      <img
-                        src={heroImage}
-                        alt={shop.name}
-                        className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-700 ease-in-out"
-                      />
+                      <img src={heroImage} alt={shop.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
                     ) : (
-                      <div className="w-full h-full bg-gradient-to-br from-gray-800 to-lexo-black flex items-center justify-center">
-                        <span className="text-9xl text-white/20 font-black tracking-tighter">
-                          {shop.name.charAt(0)}
-                        </span>
+                      <div className="w-full h-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center">
+                        <span className="text-8xl text-white/20 font-black">{shop.name.charAt(0)}</span>
                       </div>
                     )}
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
 
-                    {/* Gradient overlay */}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-60" />
-
-                    {/* Shop Info Overlay */}
-                    <div className="absolute bottom-6 left-8 right-8 flex flex-col sm:flex-row justify-between items-end gap-4">
-                      <div className="flex gap-3">
-                        <Badge variant="success" className="bg-green-500 hover:bg-green-400 text-white font-bold px-4 py-1! rounded-full shadow-lg border-0">Open</Badge>
+                    <div className="absolute bottom-5 left-5 right-5 flex justify-between items-end">
+                      <div className="flex gap-2">
+                        <span className="px-3 py-1 rounded-lg bg-tertiary text-white text-[10px] font-black uppercase tracking-widest">Open</span>
                         {ratingStats && (
-                          <div className="flex items-center gap-1.5 bg-white/20 backdrop-blur-md px-4 py-1 rounded-full text-white font-bold shadow-lg">
-                            <Star className="w-4 h-4 text-amber-400 fill-current" />
+                          <span className="flex items-center gap-1 px-3 py-1 rounded-lg bg-white/20 backdrop-blur-md text-white text-xs font-bold">
+                            <Star className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />
                             {ratingStats.averageRating?.toFixed(1) || 'New'}
-                          </div>
+                          </span>
                         )}
                       </div>
-
                       {allPhotos.length > 1 && (
-                        <div className="flex items-center gap-2 bg-black/40 backdrop-blur-md px-4 py-2 rounded-full text-white text-sm font-semibold shadow-lg hover:bg-black/60 transition-colors">
-                          <Camera className="w-4 h-4" />
-                          {allPhotos.length} Photos
-                        </div>
+                        <span className="flex items-center gap-1 px-3 py-1.5 rounded-lg bg-black/40 backdrop-blur-md text-white text-xs font-bold">
+                          <Camera className="w-3.5 h-3.5" /> {allPhotos.length}
+                        </span>
                       )}
                     </div>
                   </div>
 
-                  {/* Minimal Info Row */}
-                  <div className={`flex flex-wrap items-center gap-x-8 gap-y-4 mt-8 md:pl-12 ${themeTextColorPrimary}`}>
+                  {/* Info Row */}
+                  <div className="flex flex-wrap items-center gap-x-8 gap-y-3 mt-6 text-on-surface">
                     <a
                       href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${shop.address}, ${shop.city}`)}`}
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="flex items-center gap-2 font-medium text-lg hover:text-primary-500 transition-colors"
+                      className="flex items-center gap-2 text-sm font-medium hover:text-primary transition-colors"
                     >
-                      <MapPin className={`w-5 h-5 ${themeTextColorSecondary}`} />
+                      <MapPin className="w-4 h-4 text-outline" />
                       {shop.address}, {shop.city}
                     </a>
                     {shop.phone && (
-                      <a href={`tel:${shop.phone}`} className="flex items-center gap-2 font-medium text-lg hover:text-indigo-500 transition-colors">
-                        <Phone className={`w-5 h-5 ${themeTextColorSecondary}`} />
+                      <a href={`tel:${shop.phone}`} className="flex items-center gap-2 text-sm font-medium hover:text-primary transition-colors">
+                        <Phone className="w-4 h-4 text-outline" />
                         {shop.phone}
                       </a>
                     )}
+                    <button className="flex items-center gap-2 text-sm font-medium text-on-surface-variant hover:text-primary transition-colors">
+                      <Share2 className="w-4 h-4" />
+                      Share
+                    </button>
                   </div>
 
                   {shop.description && (
-                    <p className={`mt-6 md:pl-12 text-lg leading-relaxed max-w-3xl ${themeTextColorSecondary}`}>
-                      {shop.description}
-                    </p>
+                    <p className="mt-4 text-on-surface-variant leading-relaxed max-w-3xl">{shop.description}</p>
                   )}
                 </div>
               )}
 
-              {/* Step Content Area */}
-              <div className="bg-white rounded-[2.5rem] p-6 sm:p-10 shadow-[0_8px_30px_rgb(0,0,0,0.04)] border border-gray-100 mb-8">
+              {/* Step Content */}
+              <div className="card-m3 p-6 sm:p-8 mb-8">
                 {step === 'services' && (
                   <div className="animate-fade-in">
-                    {/* Inline Queue Banner embedded here if active */}
                     {shop?.id && (
                       <div className="mb-8">
                         <LiveQueueStatus
@@ -427,10 +331,7 @@ export default function ShopDetailPage() {
                         />
                       </div>
                     )}
-
-                    <h2 className="text-3xl font-black text-lexo-black mb-8 tracking-tight">
-                      Curated Services
-                    </h2>
+                    <h2 className="text-2xl font-black tracking-tight text-on-surface mb-6">Curated Services</h2>
                     {shop.services && shop.services.length > 0 ? (
                       <ServiceList
                         services={shop.services}
@@ -438,15 +339,14 @@ export default function ShopDetailPage() {
                         onToggleService={toggleService}
                       />
                     ) : (
-                      <div className="p-12 text-center bg-gray-50 rounded-3xl border border-dashed border-gray-200">
-                        <p className="text-lg text-lexo-gray font-medium">No services currently available.</p>
+                      <div className="p-10 text-center bg-surface-container-low rounded-2xl border border-dashed border-outline-variant/20">
+                        <p className="text-on-surface-variant font-medium">No services currently available.</p>
                       </div>
                     )}
 
-                    {/* Reviews injected naturally below services */}
-                    <div className="mt-16 pt-12 border-t border-gray-100">
-                      <h2 className="text-2xl font-black text-lexo-black mb-8 tracking-tight flex items-center gap-3">
-                        <MessageSquare className="w-6 h-6 text-lexo-gray" />
+                    <div className="mt-12 pt-8 border-t border-outline-variant/10">
+                      <h2 className="text-xl font-black tracking-tight text-on-surface mb-6 flex items-center gap-3">
+                        <MessageSquare className="w-5 h-5 text-outline" />
                         What people are saying
                       </h2>
                       <ReviewList shopId={shop.id} />
@@ -456,21 +356,15 @@ export default function ShopDetailPage() {
 
                 {step === 'staff' && (
                   <div className="animate-fade-in">
-                    <h2 className="text-3xl font-black text-lexo-black mb-8 tracking-tight">
-                      Select Professional
-                    </h2>
+                    <h2 className="text-2xl font-black tracking-tight text-on-surface mb-6">Select Professional</h2>
                     {eligibleStaff.length > 0 ? (
-                      <StaffPicker
-                        staff={eligibleStaff}
-                        selectedStaff={selectedStaff}
-                        onSelectStaff={setStaff}
-                      />
+                      <StaffPicker staff={eligibleStaff} selectedStaff={selectedStaff} onSelectStaff={setStaff} />
                     ) : (
-                      <div className="p-12 text-center bg-gray-50 rounded-3xl border border-dashed border-gray-200">
-                        <p className="text-lg text-lexo-gray font-medium">
+                      <div className="p-10 text-center bg-surface-container-low rounded-2xl border border-dashed border-outline-variant/20">
+                        <p className="text-on-surface-variant font-medium">
                           {selectedServices.length > 0
-                            ? 'No professionals are currently mapped for the selected service(s). Please change services or try later.'
-                            : 'No specific professionals available for request.'}
+                            ? 'No professionals are currently mapped for the selected service(s).'
+                            : 'No specific professionals available.'}
                         </p>
                       </div>
                     )}
@@ -479,25 +373,14 @@ export default function ShopDetailPage() {
 
                 {step === 'datetime' && (
                   <div className="animate-fade-in">
-                    <h2 className="text-3xl font-black text-lexo-black mb-8 tracking-tight">
-                      When is good?
-                    </h2>
-                    <DatePicker
-                      selectedDate={selectedDate}
-                      onSelectDate={setDate}
-                    />
-
+                    <h2 className="text-2xl font-black tracking-tight text-on-surface mb-6">When is good?</h2>
+                    <DatePicker selectedDate={selectedDate} onSelectDate={setDate} />
                     {selectedDate && (
-                      <div className="mt-12 animate-fade-in-up">
-                        <h3 className="text-xl font-bold text-lexo-charcoal mb-6">
-                          Available Times on {format(selectedDate, 'MMM d, yyyy')}
+                      <div className="mt-10 animate-fade-in-up">
+                        <h3 className="text-lg font-bold text-on-surface mb-4">
+                          Available on {format(selectedDate, 'MMM d, yyyy')}
                         </h3>
-                        <SlotPicker
-                          slots={slots || []}
-                          selectedSlot={selectedSlot}
-                          onSelectSlot={setSlot}
-                          isLoading={loadingSlots}
-                        />
+                        <SlotPicker slots={slots || []} selectedSlot={selectedSlot} onSelectSlot={setSlot} isLoading={loadingSlots} />
                       </div>
                     )}
                   </div>
@@ -505,19 +388,12 @@ export default function ShopDetailPage() {
 
                 {step === 'confirm' && (
                   <div className="animate-fade-in max-w-2xl mx-auto">
-                    <h2 className="text-3xl font-black text-lexo-black mb-8 tracking-tight text-center">
-                      Final Details
-                    </h2>
+                    <h2 className="text-2xl font-black tracking-tight text-on-surface mb-8 text-center">Final Details</h2>
+                    {error && <Alert variant="error" className="mb-6">{error}</Alert>}
 
-                    {error && (
-                      <Alert variant="error" className="mb-8 rounded-2xl">
-                        {error}
-                      </Alert>
-                    )}
-
-                    <div className="space-y-8">
+                    <div className="space-y-6">
                       {/* Booking For Someone Else */}
-                      <div className="p-6 bg-gray-50 rounded-3xl border border-gray-100 transition-all focus-within:ring-2 ring-lexo-black/5">
+                      <div className="p-5 bg-surface-container-low rounded-2xl border border-outline-variant/10">
                         <label className="flex items-center gap-4 cursor-pointer group">
                           <div className="relative flex items-center justify-center">
                             <input
@@ -526,63 +402,64 @@ export default function ShopDetailPage() {
                               onChange={(e) => setBookingForOther(e.target.checked)}
                               className="peer sr-only"
                             />
-                            <div className="w-6 h-6 border-2 border-gray-300 rounded-md peer-checked:bg-lexo-black peer-checked:border-lexo-black transition-colors"></div>
+                            <div className="w-6 h-6 border-2 border-outline-variant rounded-lg peer-checked:bg-primary peer-checked:border-primary transition-colors" />
                             <Check className="w-4 h-4 text-white absolute opacity-0 peer-checked:opacity-100 transition-opacity" />
                           </div>
                           <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center shadow-sm text-lexo-gray group-hover:text-lexo-black transition-colors">
-                              <UserPlus className="w-5 h-5" />
+                            <div className="w-9 h-9 rounded-xl bg-surface-container flex items-center justify-center">
+                              <UserPlus className="w-4 h-4 text-primary" />
                             </div>
-                            <span className="text-lg font-bold text-lexo-charcoal group-hover:text-lexo-black transition-colors">
-                              Booking for someone else?
-                            </span>
+                            <span className="font-bold text-on-surface">Booking for someone else?</span>
                           </div>
                         </label>
 
                         {bookingForOther && (
-                          <div className="mt-6 space-y-5 animate-fade-in-up">
-                            <Input
-                              label="Guest Name"
-                              value={customerName}
-                              onChange={(e) => setCustomerName(e.target.value)}
-                              placeholder="Enter full name"
-                              className="h-14 text-lg bg-white rounded-xl"
-                              required
-                            />
-                            <Input
-                              label="Guest Phone (optional)"
-                              type="tel"
-                              value={customerPhone}
-                              onChange={(e) => setCustomerPhone(e.target.value)}
-                              placeholder="+91 XXXXX XXXXX"
-                              className="h-14 text-lg bg-white rounded-xl"
-                            />
+                          <div className="mt-5 space-y-4 animate-fade-in-up">
+                            <div className="space-y-2">
+                              <label className="label-m3">Guest Name</label>
+                              <input
+                                type="text"
+                                value={customerName}
+                                onChange={(e) => setCustomerName(e.target.value)}
+                                placeholder="Enter full name"
+                                className="input-m3"
+                                required
+                              />
+                            </div>
+                            <div className="space-y-2">
+                              <label className="label-m3">Guest Phone (optional)</label>
+                              <input
+                                type="tel"
+                                value={customerPhone}
+                                onChange={(e) => setCustomerPhone(e.target.value)}
+                                placeholder="+91 XXXXX XXXXX"
+                                className="input-m3"
+                              />
+                            </div>
                           </div>
                         )}
                       </div>
 
                       <div>
-                        <label className="block text-sm font-bold text-lexo-gray uppercase tracking-wider mb-2 pl-2">
-                          Special Requests
-                        </label>
+                        <label className="label-m3 mb-2 block">Special Requests</label>
                         <textarea
                           value={notes}
                           onChange={(e) => setNotes(e.target.value)}
                           placeholder="Anything we should know before you arrive?"
-                          className="w-full px-5 py-4 bg-gray-50 border border-gray-200 rounded-2xl focus:ring-2 focus:ring-lexo-black focus:border-lexo-black transition-all text-lg resize-none"
+                          className="input-m3 min-h-[120px] resize-none"
                           rows={4}
                         />
                       </div>
 
                       {!isAuthenticated && (
-                        <div className="bg-amber-50 border border-amber-200 rounded-2xl p-5 text-center">
-                          <p className="text-amber-800 font-bold mb-3">Almost there!</p>
-                          <Button
+                        <div className="bg-tertiary-fixed/30 border border-tertiary/20 rounded-2xl p-5 text-center">
+                          <p className="text-on-surface font-bold mb-3">Almost there!</p>
+                          <button
                             onClick={() => router.push(`/auth/login?redirect=/shops/${slug}`)}
-                            className="w-full bg-lexo-black text-white hover:bg-lexo-dark rounded-xl h-12"
+                            className="w-full btn-primary py-3"
                           >
                             Login to Complete Booking
-                          </Button>
+                          </button>
                         </div>
                       )}
                     </div>
@@ -590,46 +467,44 @@ export default function ShopDetailPage() {
                 )}
               </div>
 
-              {/* Navigation Action Buttons (Mobile View handled cleanly) */}
-              <div className="flex flex-col-reverse sm:flex-row justify-between gap-4 mt-8 pb-8">
-                <Button
-                  variant="outline"
+              {/* Navigation Buttons */}
+              <div className="flex flex-col-reverse sm:flex-row justify-between gap-4 mt-6 pb-8">
+                <button
                   onClick={handlePrevStep}
-                  className="rounded-full h-14 px-8 text-lg font-bold border-2 border-gray-200 text-lexo-charcoal hover:border-lexo-black hover:bg-transparent"
+                  className="btn-tonal px-8 py-3.5 rounded-xl font-bold"
                 >
                   {step === 'services' ? 'Cancel' : 'Go Back'}
-                </Button>
+                </button>
 
                 {step !== 'confirm' ? (
-                  <Button
+                  <button
                     onClick={handleNextStep}
                     disabled={!canProceed()}
-                    className="rounded-full h-14 px-8 text-lg font-bold bg-lexo-black hover:bg-lexo-dark text-white shadow-xl hover:-translate-y-1 transition-transform"
+                    className="btn-primary px-10 py-3.5 rounded-xl font-bold disabled:opacity-40 disabled:cursor-not-allowed"
                   >
                     Continue
-                  </Button>
+                  </button>
                 ) : (
                   <Button
                     onClick={handleConfirmBooking}
                     isLoading={createBooking.isPending}
-                    disabled={!canProceed() || (!isAuthenticated)}
-                    className="rounded-full h-14 px-12 text-lg font-black bg-lexo-black hover:bg-lexo-dark text-white shadow-[0_10px_40px_rgba(0,0,0,0.15)] hover:-translate-y-1 transition-transform"
+                    disabled={!canProceed() || !isAuthenticated}
+                    className="btn-primary px-12 py-3.5 rounded-xl font-black shadow-button-hover"
                   >
                     Confirm & Book Now
                   </Button>
                 )}
               </div>
-
             </div>
 
+            {/* ── Sticky Sidebar Summary ── */}
             <div className="hidden lg:block lg:col-span-5 xl:col-span-4 relative">
-              <div className="sticky top-24 pt-6 perspective-[1500px]">
-                <div className="transform transition-all duration-700 ease-[cubic-bezier(0.23,1,0.32,1)] hover:-translate-y-2 hover:[transform:rotateX(2deg)_rotateY(-1deg)_scale(1.02)] shadow-[0_20px_50px_rgba(0,0,0,0.1)] hover:shadow-[0_30px_70px_rgba(0,0,0,0.15)] rounded-[2.5rem] bg-white/40 backdrop-blur-xl border border-white/40">
+              <div className="sticky top-36 pt-2">
+                <div className="card-m3 overflow-hidden">
                   <BookingSummary />
                 </div>
               </div>
             </div>
-
           </div>
         </div>
       </div>

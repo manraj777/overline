@@ -2,6 +2,7 @@ import '@/styles/globals.css';
 import type { AppProps } from 'next/app';
 import React from 'react';
 import { useRouter } from 'next/router';
+import { Inter } from 'next/font/google';
 import { QueryClientProvider } from '@tanstack/react-query';
 import { queryClient } from '@/lib/query-client';
 import { AdminLayout } from '@/components/layout';
@@ -15,6 +16,13 @@ import {
   getLegacyRedirectForRole,
   isPublicRoute,
 } from '@/lib/role-routing';
+
+const inter = Inter({
+  subsets: ['latin'],
+  variable: '--font-admin-body',
+  display: 'swap',
+  weight: ['400', '500', '600', '700', '800', '900'],
+});
 
 function AuthBootstrap() {
   const router = useRouter();
@@ -46,7 +54,6 @@ function AuthBootstrap() {
       try {
         await api.get('/users/me');
       } catch (err: any) {
-        // Only logout on definitive 401/403 — NOT on network/CORS errors
         const status = err?.response?.status;
         if (!cancelled && (status === 401 || status === 403)) {
           logout();
@@ -55,7 +62,6 @@ function AuthBootstrap() {
       }
     };
 
-    // Small delay to allow hydration to complete before validating
     const timer = setTimeout(validateSession, 500);
 
     return () => {
@@ -69,15 +75,17 @@ function AuthBootstrap() {
 
 export default function App({ Component, pageProps }: AppProps) {
   return (
-    <QueryClientProvider client={queryClient}>
-      <ErrorBoundary>
-        <AuthBootstrap />
-        <ToastProvider>
-          <AdminLayout>
-            <Component {...pageProps} />
-          </AdminLayout>
-        </ToastProvider>
-      </ErrorBoundary>
-    </QueryClientProvider>
+    <div className={`${inter.variable} font-sans`}>
+      <QueryClientProvider client={queryClient}>
+        <ErrorBoundary>
+          <AuthBootstrap />
+          <ToastProvider>
+            <AdminLayout>
+              <Component {...pageProps} />
+            </AdminLayout>
+          </ToastProvider>
+        </ErrorBoundary>
+      </QueryClientProvider>
+    </div>
   );
 }

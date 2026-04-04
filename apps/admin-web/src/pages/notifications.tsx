@@ -1,158 +1,148 @@
 import React from 'react';
 import Head from 'next/head';
 import { useNotifications, useMarkNotificationRead, useMarkAllNotificationsRead } from '@/hooks';
-import { Bell, CheckCircle, Clock, Search, ExternalLink, AlertCircle } from 'lucide-react';
-import { Card, Badge, Button, Loading } from '@/components/ui';
-import { AdminLayout } from '@/components/layout';
+import { Bell, CheckCircle, Clock, AlertCircle } from 'lucide-react';
+import { Loading } from '@/components/ui';
 import { format } from 'date-fns';
-import { Notification } from '@/types';
+import { cn } from '@/lib/utils';
 
 export default function NotificationsPage() {
-    const [filter, setFilter] = React.useState<'ALL' | 'UNREAD'>('ALL');
-    const { data: notificationsData, isLoading, error } = useNotifications({
-        limit: 50,
-        unreadOnly: filter === 'UNREAD',
-    });
-    const markRead = useMarkNotificationRead();
-    const markAllRead = useMarkAllNotificationsRead();
+  const [filter, setFilter] = React.useState<'ALL' | 'UNREAD'>('ALL');
+  const { data: notificationsData, isLoading, error } = useNotifications({
+    limit: 50,
+    unreadOnly: filter === 'UNREAD',
+  });
+  const markRead = useMarkNotificationRead();
+  const markAllRead = useMarkAllNotificationsRead();
 
-    const notifications = notificationsData?.data || [];
+  const notifications = notificationsData?.data || [];
 
-    const handleMarkRead = (id: string, isRead: boolean) => {
-        if (!isRead && !markRead.isPending) {
-            markRead.mutate(id);
-        }
-    };
+  const handleMarkRead = (id: string, isRead: boolean) => {
+    if (!isRead && !markRead.isPending) {
+      markRead.mutate(id);
+    }
+  };
 
-    const getNotificationIcon = (type: string) => {
-        switch (type) {
-            case 'BOOKING_CONFIRMED':
-                return <CheckCircle className="w-5 h-5 text-green-500" />;
-            case 'BOOKING_REMINDER':
-                return <Clock className="w-5 h-5 text-amber-500" />;
-            default:
-                return <Bell className="w-5 h-5 text-indigo-500" />;
-        }
-    };
+  const getNotificationIcon = (type: string) => {
+    switch (type) {
+      case 'BOOKING_CONFIRMED':
+        return <CheckCircle className="w-4 h-4 text-tertiary" />;
+      case 'BOOKING_REMINDER':
+        return <Clock className="w-4 h-4 text-amber-500" />;
+      default:
+        return <Bell className="w-4 h-4 text-primary" />;
+    }
+  };
 
-    return (
-        <AdminLayout>
-            <Head>
-                <title>Notifications - Admin</title>
-            </Head>
+  return (
+    <>
+      <Head>
+        <title>Notifications — Overline Admin</title>
+        <meta name="description" content="View and manage admin notifications." />
+      </Head>
 
-            <div className="space-y-6">
-                {/* Header */}
-                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-                    <div>
-                        <h1 className="text-2xl font-bold text-gray-900">Notifications</h1>
-                        <p className="text-gray-500">View and manage your alerts</p>
-                    </div>
-                    <div className="flex gap-3">
-                        <div className="flex bg-white rounded-lg border border-gray-200 p-1">
-                            <button
-                                onClick={() => setFilter('ALL')}
-                                className={`px-4 py-1.5 text-sm font-medium rounded-md transition-colors ${filter === 'ALL'
-                                        ? 'bg-indigo-50 text-indigo-700'
-                                        : 'text-gray-500 hover:text-gray-700'
-                                    }`}
-                            >
-                                All
-                            </button>
-                            <button
-                                onClick={() => setFilter('UNREAD')}
-                                className={`px-4 py-1.5 text-sm font-medium rounded-md transition-colors ${filter === 'UNREAD'
-                                        ? 'bg-indigo-50 text-indigo-700'
-                                        : 'text-gray-500 hover:text-gray-700'
-                                    }`}
-                            >
-                                Unread
-                            </button>
-                        </div>
-                        <Button
-                            variant="outline"
-                            onClick={() => markAllRead.mutate()}
-                            isLoading={markAllRead.isPending}
-                            disabled={notifications.length === 0}
-                        >
-                            Mark All Read
-                        </Button>
-                    </div>
-                </div>
-
-                {error && (
-                    <div className="flex items-center gap-2 p-4 rounded-lg bg-red-50 border border-red-200 text-red-700">
-                        <AlertCircle className="w-5 h-5 flex-shrink-0" />
-                        <span>Failed to load notifications. Please try again.</span>
-                    </div>
-                )}
-
-                {/* List */}
-                <Card className="p-0">
-                    {isLoading ? (
-                        <div className="p-8 pb-12">
-                            <Loading text="Loading notifications..." />
-                        </div>
-                    ) : notifications.length === 0 ? (
-                        <div className="p-12 text-center flex flex-col items-center">
-                            <div className="w-16 h-16 bg-gray-50 rounded-full flex items-center justify-center mb-4">
-                                <Bell className="w-8 h-8 text-gray-400" />
-                            </div>
-                            <h3 className="text-lg font-medium text-gray-900 mb-1">
-                                You're all caught up!
-                            </h3>
-                            <p className="text-gray-500 max-w-sm">
-                                There are no new notifications to display right now. Check back later.
-                            </p>
-                        </div>
-                    ) : (
-                        <div className="divide-y divide-gray-100">
-                            {notifications.map((notification) => {
-                                const isRead = !!notification.readAt;
-
-                                return (
-                                    <div
-                                        key={notification.id}
-                                        className={`p-4 hover:bg-gray-50 transition-colors flex gap-4 ${!isRead ? 'bg-indigo-50/30' : ''
-                                            } cursor-pointer`}
-                                        onClick={() => handleMarkRead(notification.id, isRead)}
-                                    >
-                                        <div className="mt-1 flex-shrink-0">
-                                            {getNotificationIcon(notification.type)}
-                                        </div>
-                                        <div className="flex-1 min-w-0">
-                                            <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-1 mb-1">
-                                                <h4
-                                                    className={`text-sm font-semibold truncate ${!isRead ? 'text-gray-900' : 'text-gray-700'
-                                                        }`}
-                                                >
-                                                    {notification.title}
-                                                </h4>
-                                                <span className="text-xs text-gray-400 whitespace-nowrap">
-                                                    {format(new Date(notification.createdAt), 'MMM d, h:mm a')}
-                                                </span>
-                                            </div>
-                                            <p className={`text-sm mb-2 ${!isRead ? 'text-gray-800' : 'text-gray-600'}`}>
-                                                {notification.body}
-                                            </p>
-
-                                            {/* Optional Booking Details Badge */}
-                                            {notification.data?.bookingNumber && (
-                                                <div className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-white border border-gray-200 text-xs font-medium text-gray-600">
-                                                    <span>Ref: {notification.data.bookingNumber}</span>
-                                                </div>
-                                            )}
-                                        </div>
-                                        {!isRead && (
-                                            <div className="w-2.5 h-2.5 rounded-full bg-indigo-600 flex-shrink-0 mt-2" />
-                                        )}
-                                    </div>
-                                );
-                            })}
-                        </div>
-                    )}
-                </Card>
+      <div className="space-y-6">
+        {/* Header */}
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <div>
+            <span className="label-m3 mb-2 block">Alerts</span>
+            <h1 className="text-3xl font-black tracking-tight text-on-surface">Notifications</h1>
+          </div>
+          <div className="flex gap-3">
+            <div className="flex bg-surface-container-low rounded-xl p-1 border border-outline-variant/10">
+              {(['ALL', 'UNREAD'] as const).map((f) => (
+                <button
+                  key={f}
+                  onClick={() => setFilter(f)}
+                  className={cn(
+                    'px-4 py-2 text-xs font-bold rounded-lg transition-all',
+                    filter === f
+                      ? 'bg-primary text-white shadow-button'
+                      : 'text-on-surface-variant hover:text-on-surface'
+                  )}
+                >
+                  {f === 'ALL' ? 'All' : 'Unread'}
+                </button>
+              ))}
             </div>
-        </AdminLayout>
-    );
+            <button
+              onClick={() => markAllRead.mutate()}
+              disabled={notifications.length === 0 || markAllRead.isPending}
+              className="btn-tonal px-4 py-2.5 text-xs disabled:opacity-50"
+            >
+              {markAllRead.isPending ? 'Marking...' : 'Mark All Read'}
+            </button>
+          </div>
+        </div>
+
+        {error && (
+          <div className="flex items-center gap-2 p-4 rounded-xl bg-error-container/50 border border-error/20 text-error text-sm font-medium">
+            <AlertCircle className="w-5 h-5 flex-shrink-0" />
+            <span>Failed to load notifications. Please try again.</span>
+          </div>
+        )}
+
+        {/* List */}
+        <div className="card-m3 overflow-hidden">
+          {isLoading ? (
+            <div className="p-8 pb-12">
+              <Loading text="Loading notifications..." />
+            </div>
+          ) : notifications.length === 0 ? (
+            <div className="p-16 text-center flex flex-col items-center">
+              <div className="w-16 h-16 bg-surface-container-low rounded-2xl flex items-center justify-center mb-5">
+                <Bell className="w-8 h-8 text-outline-variant" />
+              </div>
+              <h3 className="text-lg font-bold text-on-surface mb-1">You&apos;re all caught up!</h3>
+              <p className="text-on-surface-variant text-sm max-w-sm">
+                No new notifications right now. Check back later.
+              </p>
+            </div>
+          ) : (
+            <div>
+              {notifications.map((notification, idx) => {
+                const isRead = !!notification.readAt;
+                return (
+                  <div
+                    key={notification.id}
+                    className={cn(
+                      'p-5 flex gap-4 cursor-pointer transition-colors',
+                      !isRead ? 'bg-primary-fixed/20' : 'hover:bg-surface-container-low',
+                      idx !== notifications.length - 1 && 'border-b border-outline-variant/5'
+                    )}
+                    onClick={() => handleMarkRead(notification.id, isRead)}
+                  >
+                    <div className="mt-0.5 w-8 h-8 rounded-xl bg-surface-container-low flex items-center justify-center flex-shrink-0">
+                      {getNotificationIcon(notification.type)}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex flex-col sm:flex-row sm:justify-between sm:items-start gap-1 mb-1">
+                        <h4 className={cn('text-sm font-semibold truncate', !isRead ? 'text-on-surface' : 'text-on-surface-variant')}>
+                          {notification.title}
+                        </h4>
+                        <span className="text-[10px] font-bold text-outline whitespace-nowrap tracking-widest uppercase">
+                          {format(new Date(notification.createdAt), 'MMM d, h:mm a')}
+                        </span>
+                      </div>
+                      <p className={cn('text-sm', !isRead ? 'text-on-surface' : 'text-on-surface-variant')}>
+                        {notification.body}
+                      </p>
+                      {notification.data?.bookingNumber && (
+                        <span className="inline-flex items-center gap-1.5 mt-2 px-2.5 py-1 rounded-lg bg-surface-container-low border border-outline-variant/10 text-[10px] font-bold text-on-surface-variant">
+                          Ref: {notification.data.bookingNumber}
+                        </span>
+                      )}
+                    </div>
+                    {!isRead && (
+                      <div className="w-2 h-2 rounded-full bg-primary flex-shrink-0 mt-2" />
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          )}
+        </div>
+      </div>
+    </>
+  );
 }

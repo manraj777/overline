@@ -46,18 +46,12 @@ export default function ServicesPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-
-    const payload = {
-      ...formData,
-      imageUrl: formData.imageUrl || undefined,
-    };
-
+    const payload = { ...formData, imageUrl: formData.imageUrl || undefined };
     if (editingService) {
       await updateService.mutateAsync({ id: editingService, ...payload });
     } else {
       await createService.mutateAsync(payload);
     }
-
     setShowForm(false);
     setEditingService(null);
     setFormData({ ...emptyForm });
@@ -88,41 +82,36 @@ export default function ServicesPage() {
     setFormData({ ...emptyForm });
   };
 
-  if (isLoading) {
-    return <Loading text="Loading services..." />;
-  }
+  if (isLoading) return <Loading text="Loading services..." />;
 
   return (
     <>
       <Head>
-        <title>Services - Overline Admin</title>
+        <title>Services — Overline Admin</title>
+        <meta name="description" content="Manage your service offerings on Overline." />
       </Head>
 
       <div>
-        {/* Header */}
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Services</h1>
-            <p className="text-gray-500">Manage your service offerings</p>
+            <span className="label-m3 mb-2 block">Catalog</span>
+            <h1 className="text-3xl font-black tracking-tight text-on-surface">Services</h1>
+            <p className="text-on-surface-variant text-sm mt-1">Manage your service offerings</p>
           </div>
-          <Button onClick={() => setShowForm(true)}>
-            <Plus className="w-4 h-4 mr-2" />
-            Add Service
-          </Button>
+          <button onClick={() => setShowForm(true)} className="btn-primary px-6 py-2.5">
+            <Plus className="w-4 h-4" /> Add Service
+          </button>
         </div>
 
         {/* Add/Edit Form */}
         {showForm && (
-          <Card className="mb-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">
+          <div className="card-m3 p-8 mb-8 animate-fade-in">
+            <h2 className="text-lg font-bold text-on-surface mb-6">
               {editingService ? 'Edit Service' : 'New Service'}
             </h2>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              {/* Service Image */}
+            <form onSubmit={handleSubmit} className="space-y-5">
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">
-                  Service Image
-                </label>
+                <label className="label-m3 mb-2 block">Service Image</label>
                 <ImageUpload
                   currentUrl={formData.imageUrl || null}
                   onUpload={async (file) => {
@@ -137,133 +126,130 @@ export default function ServicesPage() {
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Input
-                  label="Service Name"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                  required
-                />
-                <Input
-                  label="Category"
-                  value={formData.category}
-                  onChange={(e) => setFormData({ ...formData, category: e.target.value })}
-                  placeholder="e.g., Haircut, Facial"
-                />
+                <div className="space-y-2">
+                  <label className="label-m3">Service Name</label>
+                  <input
+                    type="text"
+                    className="input-m3"
+                    value={formData.name}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="label-m3">Category</label>
+                  <input
+                    type="text"
+                    className="input-m3"
+                    value={formData.category}
+                    onChange={(e) => setFormData({ ...formData, category: e.target.value })}
+                    placeholder="e.g., Haircut, Facial"
+                  />
+                </div>
               </div>
 
-              <div>
-                <label className="block text-sm font-medium text-gray-700 mb-1">
-                  Description
-                </label>
+              <div className="space-y-2">
+                <label className="label-m3">Description</label>
                 <textarea
                   value={formData.description}
                   onChange={(e) => setFormData({ ...formData, description: e.target.value })}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                  className="input-m3 min-h-[80px] resize-none"
                   rows={2}
                   placeholder="Brief description of the service..."
                 />
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Input
-                  label="Duration (minutes)"
-                  type="number"
-                  min="5"
-                  step="5"
-                  value={formData.durationMinutes}
-                  onChange={(e) =>
-                    setFormData({ ...formData, durationMinutes: parseInt(e.target.value) })
-                  }
-                  required
-                />
-                <Input
-                  label="Price (₹)"
-                  type="number"
-                  min="0"
-                  step="10"
-                  value={formData.price}
-                  onChange={(e) => setFormData({ ...formData, price: parseInt(e.target.value) })}
-                  required
-                />
+                <div className="space-y-2">
+                  <label className="label-m3">Duration (minutes)</label>
+                  <input
+                    type="number"
+                    min="5"
+                    step="5"
+                    className="input-m3"
+                    value={formData.durationMinutes}
+                    onChange={(e) => setFormData({ ...formData, durationMinutes: parseInt(e.target.value) })}
+                    required
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="label-m3">Price (₹)</label>
+                  <input
+                    type="number"
+                    min="0"
+                    step="10"
+                    className="input-m3"
+                    value={formData.price}
+                    onChange={(e) => setFormData({ ...formData, price: parseInt(e.target.value) })}
+                    required
+                  />
+                </div>
               </div>
 
-              <div className="flex gap-2 pt-4">
-                <Button type="submit" isLoading={createService.isPending || updateService.isPending}>
-                  {editingService ? 'Update Service' : 'Add Service'}
-                </Button>
-                <Button type="button" variant="outline" onClick={handleCancel}>
-                  Cancel
-                </Button>
+              <div className="flex gap-3 pt-4">
+                <button type="submit" disabled={createService.isPending || updateService.isPending} className="btn-primary px-8 py-3 disabled:opacity-50">
+                  {createService.isPending || updateService.isPending ? 'Saving...' : editingService ? 'Update Service' : 'Add Service'}
+                </button>
+                <button type="button" className="btn-tonal px-6 py-3" onClick={handleCancel}>Cancel</button>
               </div>
             </form>
-          </Card>
+          </div>
         )}
 
-        {/* Services List */}
+        {/* Services Grid */}
         {services?.length === 0 ? (
-          <Card className="text-center py-12">
-            <ImageIcon className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-            <p className="text-gray-500 mb-4">No services yet. Add your first service to get started.</p>
-            <Button onClick={() => setShowForm(true)}>Add Your First Service</Button>
-          </Card>
+          <div className="card-m3 text-center py-16 px-8">
+            <ImageIcon className="w-14 h-14 text-outline-variant mx-auto mb-5" />
+            <h3 className="text-xl font-bold text-on-surface mb-2">No services yet</h3>
+            <p className="text-on-surface-variant mb-6">Add your first service to get started.</p>
+            <button onClick={() => setShowForm(true)} className="btn-primary px-8 py-3">Add Your First Service</button>
+          </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {services?.map((service) => (
-              <Card key={service.id} className="overflow-hidden">
+              <div key={service.id} className="card-m3 overflow-hidden hover:shadow-card-hover transition-shadow">
                 {/* Service Image */}
                 {service.imageUrl ? (
-                  <div className="w-full h-40 -mt-4 -mx-4 mb-3" style={{ width: 'calc(100% + 2rem)' }}>
-                    <img
-                      src={service.imageUrl}
-                      alt={service.name}
-                      className="w-full h-full object-cover"
-                    />
+                  <div className="w-full h-40">
+                    <img src={service.imageUrl} alt={service.name} className="w-full h-full object-cover" />
                   </div>
                 ) : (
-                  <div className="w-full h-24 -mt-4 -mx-4 mb-3 bg-gradient-to-br from-purple-50 to-blue-50 flex items-center justify-center" style={{ width: 'calc(100% + 2rem)' }}>
-                    <ImageIcon className="w-8 h-8 text-gray-300" />
+                  <div className="w-full h-24 bg-gradient-to-br from-primary-fixed to-secondary-fixed flex items-center justify-center">
+                    <ImageIcon className="w-8 h-8 text-outline-variant" />
                   </div>
                 )}
 
-                <div className="flex items-start justify-between mb-2">
-                  <div>
-                    <h3 className="font-semibold text-gray-900">{service.name}</h3>
-                    {service.category && (
-                      <Badge variant="default" className="mt-1">
-                        {service.category}
-                      </Badge>
-                    )}
+                <div className="p-5">
+                  <div className="flex items-start justify-between mb-2">
+                    <div>
+                      <h3 className="font-bold text-on-surface">{service.name}</h3>
+                      {service.category && (
+                        <span className="badge-m3 bg-surface-container-high text-outline mt-1 inline-block">{service.category}</span>
+                      )}
+                    </div>
+                    <div className="flex gap-1">
+                      <button onClick={() => handleEdit(service)} className="p-2 text-outline hover:text-primary hover:bg-surface-container-low rounded-xl transition-all">
+                        <Edit2 className="w-4 h-4" />
+                      </button>
+                      <button onClick={() => handleDelete(service.id)} className="p-2 text-outline hover:text-error hover:bg-error-container/30 rounded-xl transition-all">
+                        <Trash2 className="w-4 h-4" />
+                      </button>
+                    </div>
                   </div>
-                  <div className="flex gap-1">
-                    <button
-                      onClick={() => handleEdit(service)}
-                      className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-                    >
-                      <Edit2 className="w-4 h-4" />
-                    </button>
-                    <button
-                      onClick={() => handleDelete(service.id)}
-                      className="p-2 text-gray-400 hover:text-red-600 hover:bg-red-50 rounded-lg transition-colors"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
+
+                  {service.description && (
+                    <p className="text-xs text-on-surface-variant mb-3 line-clamp-2">{service.description}</p>
+                  )}
+
+                  <div className="flex items-center justify-between pt-3 border-t border-outline-variant/10">
+                    <span className="text-xs text-on-surface-variant flex items-center gap-1 font-medium">
+                      <Clock className="w-3.5 h-3.5 text-outline" />
+                      {formatDuration(service.durationMinutes)}
+                    </span>
+                    <span className="text-lg font-black text-on-surface">{formatPrice(service.price)}</span>
                   </div>
                 </div>
-
-                {service.description && (
-                  <p className="text-sm text-gray-500 mb-3 line-clamp-2">{service.description}</p>
-                )}
-
-                <div className="flex items-center justify-between pt-3 border-t border-gray-100">
-                  <span className="text-sm text-gray-500 flex items-center gap-1">
-                    <Clock className="w-3.5 h-3.5" />
-                    {formatDuration(service.durationMinutes)}
-                  </span>
-                  <span className="text-lg font-bold text-gray-900">
-                    {formatPrice(service.price)}
-                  </span>
-                </div>
-              </Card>
+              </div>
             ))}
           </div>
         )}

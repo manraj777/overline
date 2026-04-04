@@ -1,10 +1,10 @@
 import { useMemo, useState } from 'react';
 import Head from 'next/head';
 import { format } from 'date-fns';
-import { Badge, Button, Card, Loading } from '@/components/ui';
+import { Loading } from '@/components/ui';
 import { useStaffOwnBookings, useUpdateStaffOwnBookingStatus } from '@/hooks';
 import { BookingStatus } from '@/types';
-import { formatPrice, formatTime } from '@/lib/utils';
+import { formatPrice, formatTime, cn } from '@/lib/utils';
 
 const STATUS_OPTIONS: Array<BookingStatus | 'ALL'> = [
 	'ALL',
@@ -16,6 +16,18 @@ const STATUS_OPTIONS: Array<BookingStatus | 'ALL'> = [
 	BookingStatus.CANCELLED,
 	BookingStatus.WAITLISTED,
 ];
+
+const STATUS_BADGE: Record<string, string> = {
+	COMPLETED: 'bg-tertiary-fixed text-tertiary',
+	CANCELLED: 'bg-error-container text-error',
+	NO_SHOW: 'bg-error-container text-error',
+	PENDING: 'bg-amber-100 text-amber-700',
+	PENDING_APPROVAL: 'bg-amber-100 text-amber-700',
+	CONFIRMED: 'bg-primary-fixed text-primary',
+	IN_PROGRESS: 'bg-secondary-fixed text-secondary',
+	IN_SERVICE: 'bg-secondary-fixed text-secondary',
+	WAITLISTED: 'bg-surface-container-high text-outline',
+};
 
 export default function StaffBookingsPage() {
 	const [statusFilter, setStatusFilter] = useState<BookingStatus | 'ALL'>('ALL');
@@ -39,27 +51,27 @@ export default function StaffBookingsPage() {
 		});
 	}, [data?.data, search]);
 
-	if (isLoading) {
-		return <Loading text="Loading your bookings..." />;
-	}
+	if (isLoading) return <Loading text="Loading your bookings..." />;
 
 	return (
 		<>
 			<Head>
-				<title>My Bookings - Staff</title>
+				<title>My Bookings — Staff</title>
+				<meta name="description" content="View and manage your assigned bookings." />
 			</Head>
 
 			<div className="space-y-6">
 				<div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
 					<div>
-						<h1 className="text-2xl font-bold text-gray-900">My Bookings</h1>
-						<p className="text-gray-500">Only bookings assigned to you are shown here.</p>
+						<span className="label-m3 mb-2 block">Queue</span>
+						<h1 className="text-3xl font-black tracking-tight text-on-surface">My Bookings</h1>
+						<p className="text-on-surface-variant text-sm mt-1">Only bookings assigned to you are shown here.</p>
 					</div>
 					<input
 						value={search}
 						onChange={(event) => setSearch(event.target.value)}
 						placeholder="Search customer/service"
-						className="h-10 w-full rounded-lg border border-gray-300 px-3 text-sm sm:w-72"
+						className="input-m3 sm:w-72"
 					/>
 				</div>
 
@@ -69,80 +81,73 @@ export default function StaffBookingsPage() {
 							key={status}
 							type="button"
 							onClick={() => setStatusFilter(status)}
-							className={`rounded-full px-3 py-1.5 text-xs font-medium ${
-								statusFilter === status ? 'bg-[#0f4c75] text-white' : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-							}`}
+							className={cn(
+								'rounded-xl px-4 py-2 text-[10px] font-bold transition-all',
+								statusFilter === status
+									? 'bg-primary text-white shadow-button'
+									: 'bg-surface-container-low text-on-surface-variant hover:bg-surface-container-high border border-outline-variant/10'
+							)}
 						>
 							{status}
 						</button>
 					))}
 				</div>
 
-				<Card className="p-0 overflow-hidden">
+				<div className="card-m3 overflow-hidden">
 					{bookings.length === 0 ? (
-						<div className="p-10 text-center text-sm text-gray-500">No bookings found for the selected filter.</div>
+						<div className="p-12 text-center text-sm text-on-surface-variant">No bookings found for the selected filter.</div>
 					) : (
-						<table className="min-w-full text-sm">
-							<thead className="bg-gray-50">
+						<table className="table-m3">
+							<thead>
 								<tr>
-									<th className="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-500">Time</th>
-									<th className="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-500">Customer</th>
-									<th className="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-500">Service</th>
-									<th className="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-500">Amount</th>
-									<th className="px-4 py-3 text-left text-xs font-semibold uppercase text-gray-500">Status</th>
-									<th className="px-4 py-3 text-right text-xs font-semibold uppercase text-gray-500">Actions</th>
+									<th>Time</th>
+									<th>Customer</th>
+									<th>Service</th>
+									<th>Amount</th>
+									<th>Status</th>
+									<th className="text-right">Actions</th>
 								</tr>
 							</thead>
-							<tbody className="divide-y divide-gray-100">
+							<tbody>
 								{bookings.map((booking) => (
 									<tr key={booking.id}>
-										<td className="px-4 py-3 text-gray-800">{formatTime(booking.startTime)}</td>
-										<td className="px-4 py-3 text-gray-800">{booking.user?.name || booking.customerName || 'Walk-in'}</td>
-										<td className="px-4 py-3 text-gray-700">{booking.services?.[0]?.serviceName || 'Service'}</td>
-										<td className="px-4 py-3 text-gray-700">{formatPrice(Number(booking.totalAmount || 0))}</td>
-										<td className="px-4 py-3">
-											<Badge
-												variant={
-													booking.status === BookingStatus.COMPLETED
-														? 'success'
-														: booking.status === BookingStatus.CANCELLED || booking.status === BookingStatus.NO_SHOW
-															? 'error'
-															: booking.status === BookingStatus.PENDING || booking.status === BookingStatus.PENDING_APPROVAL
-																? 'warning'
-																: 'info'
-												}
-											>
+										<td><span className="font-bold">{formatTime(booking.startTime)}</span></td>
+										<td><span className="font-medium">{booking.user?.name || booking.customerName || 'Walk-in'}</span></td>
+										<td className="text-on-surface-variant">{booking.services?.[0]?.serviceName || 'Service'}</td>
+										<td><span className="font-bold">{formatPrice(Number(booking.totalAmount || 0))}</span></td>
+										<td>
+											<span className={`badge-m3 ${STATUS_BADGE[booking.status] || 'bg-surface-container-high text-outline'}`}>
 												{booking.status}
-											</Badge>
+											</span>
 										</td>
-										<td className="px-4 py-3 text-right">
+										<td className="text-right">
 											<div className="flex justify-end gap-2">
 												{(booking.status === BookingStatus.PENDING || booking.status === BookingStatus.PENDING_APPROVAL) && (
-													<Button
-														size="sm"
+													<button
 														onClick={() => updateStatus.mutate({ bookingId: booking.id, status: BookingStatus.CONFIRMED })}
-														isLoading={updateStatus.isPending}
+														disabled={updateStatus.isPending}
+														className="btn-primary px-3 py-1 text-[10px] disabled:opacity-50"
 													>
 														Approve
-													</Button>
+													</button>
 												)}
 												{booking.status === BookingStatus.CONFIRMED && (
-													<Button
-														size="sm"
+													<button
 														onClick={() => updateStatus.mutate({ bookingId: booking.id, status: BookingStatus.IN_PROGRESS })}
-														isLoading={updateStatus.isPending}
+														disabled={updateStatus.isPending}
+														className="btn-primary px-3 py-1 text-[10px] disabled:opacity-50"
 													>
 														Start
-													</Button>
+													</button>
 												)}
 												{(booking.status === BookingStatus.IN_PROGRESS || booking.status === BookingStatus.IN_SERVICE) && (
-													<Button
-														size="sm"
+													<button
 														onClick={() => updateStatus.mutate({ bookingId: booking.id, status: BookingStatus.COMPLETED })}
-														isLoading={updateStatus.isPending}
+														disabled={updateStatus.isPending}
+														className="btn-primary px-3 py-1 text-[10px] disabled:opacity-50"
 													>
 														Complete
-													</Button>
+													</button>
 												)}
 											</div>
 										</td>
@@ -151,7 +156,7 @@ export default function StaffBookingsPage() {
 							</tbody>
 						</table>
 					)}
-				</Card>
+				</div>
 			</div>
 		</>
 	);

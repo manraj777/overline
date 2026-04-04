@@ -144,9 +144,9 @@ export default function LoginScreen() {
 
           {/* Welcome Text */}
           <View style={styles.welcomeSection}>
-            <Text style={styles.welcomeTitle}>Welcome{'\n'}back</Text>
+            <Text style={styles.welcomeTitle}>Welcome back</Text>
             <Text style={styles.welcomeSubtitle}>
-              Sign in to continue your beauty journey
+              Sign in and continue where you left off
             </Text>
           </View>
 
@@ -188,7 +188,7 @@ export default function LoginScreen() {
                 <InputField
                   label="Phone Number"
                   icon={<Smartphone color={Colors.textSecondary} size={20} />}
-                  placeholder="Enter your 10-digit number"
+                  placeholder="98765 43210"
                   value={phone}
                   onChangeText={setPhone}
                   keyboardType="phone-pad"
@@ -196,7 +196,7 @@ export default function LoginScreen() {
                 />
 
                 <PrimaryButton
-                  title={isSendingOtp ? 'Sending OTP...' : 'Send OTP'}
+                  title={isSendingOtp ? 'Sending code...' : 'Continue'}
                   onPress={handlePhoneLogin}
                   loading={isSendingOtp}
                   icon={<Lock color="#fff" size={20} />}
@@ -308,7 +308,7 @@ const styles = StyleSheet.create({
     width: 300,
     height: 300,
     borderRadius: 150,
-    backgroundColor: 'rgba(108, 92, 231, 0.08)',
+    backgroundColor: 'rgba(255, 140, 66, 0.12)',
   },
   bgOrb2: {
     position: 'absolute',
@@ -317,7 +317,7 @@ const styles = StyleSheet.create({
     width: 250,
     height: 250,
     borderRadius: 125,
-    backgroundColor: 'rgba(0, 210, 255, 0.05)',
+    backgroundColor: 'rgba(84, 28, 191, 0.08)',
   },
   scrollContent: {
     flexGrow: 1,
@@ -363,10 +363,10 @@ const styles = StyleSheet.create({
     marginBottom: Spacing['3xl'],
   },
   welcomeTitle: {
-    fontSize: FontSizes.hero,
+    fontSize: FontSizes['4xl'],
     fontWeight: FontWeights.extrabold,
     color: Colors.textPrimary,
-    lineHeight: 56,
+    lineHeight: 48,
     marginBottom: Spacing.md,
   },
   welcomeSubtitle: {

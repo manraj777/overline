@@ -3,6 +3,7 @@ import {
   View,
   Text,
   FlatList,
+  ScrollView,
   StyleSheet,
   TouchableOpacity,
   RefreshControl,
@@ -20,7 +21,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { Colors, Spacing, BorderRadius, FontSizes, FontWeights, Shadows } from '../../theme';
 import { Chip } from '../../components/ui';
 import { useAuthStore } from '../../stores/authStore';
-import { Search, MapPin, Star, X } from 'lucide-react-native';
+import { Search, MapPin, Star, X, List, Map as MapIcon } from 'lucide-react-native';
 import { PermissionManager } from '../../utils/PermissionManager';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
@@ -32,6 +33,7 @@ export default function HomeScreen() {
   const { user } = useAuthStore();
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState('All');
+  const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
   const scrollY = useRef(new Animated.Value(0)).current;
 
   React.useEffect(() => {
@@ -74,6 +76,22 @@ export default function HomeScreen() {
   });
 
   const firstName = user?.name?.split(' ')[0] || 'there';
+
+  const mapShops = shops.slice(0, 6);
+  const mapHeight = 420;
+  const mapWidth = width - Spacing.xl * 2;
+
+  const markerPositions = React.useMemo(
+    () => [
+      { top: 0.18, left: 0.14 },
+      { top: 0.28, left: 0.58 },
+      { top: 0.42, left: 0.3 },
+      { top: 0.55, left: 0.66 },
+      { top: 0.62, left: 0.22 },
+      { top: 0.72, left: 0.5 },
+    ],
+    [],
+  );
 
   const renderShop = ({ item, index }: { item: Shop; index: number }) => (
     <TouchableOpacity
@@ -157,7 +175,7 @@ export default function HomeScreen() {
         <Animated.View style={[styles.header, { opacity: headerOpacity }]}>
           <View style={styles.headerTop}>
             <View>
-              <Text style={styles.greeting}>Hello, {firstName} 👋</Text>
+              <Text style={styles.greeting}>Hello, {firstName}</Text>
               <Text style={styles.headerTitle}>Find your next{'\n'}experience</Text>
             </View>
             <TouchableOpacity style={styles.avatarButton}>
@@ -189,71 +207,141 @@ export default function HomeScreen() {
           </View>
 
           {/* Categories */}
-          <FlatList
-            data={CATEGORIES}
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            contentContainerStyle={styles.categoryList}
-            keyExtractor={item => item}
-            renderItem={({ item }) => (
-              <Chip
-                label={item}
-                selected={activeCategory === item}
-                onPress={() => setActiveCategory(item)}
-                style={{ marginRight: Spacing.sm }}
-              />
-            )}
-          />
+          <View style={styles.filterRow}>
+            <FlatList
+              data={CATEGORIES}
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.categoryList}
+              keyExtractor={item => item}
+              renderItem={({ item }) => (
+                <Chip
+                  label={item}
+                  selected={activeCategory === item}
+                  onPress={() => setActiveCategory(item)}
+                  style={{ marginRight: Spacing.sm }}
+                />
+              )}
+            />
+            <View style={styles.viewToggle}>
+              <TouchableOpacity
+                style={[styles.viewToggleBtn, viewMode === 'list' && styles.viewToggleBtnActive]}
+                onPress={() => setViewMode('list')}
+              >
+                <List color={viewMode === 'list' ? '#fff' : Colors.textSecondary} size={16} />
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.viewToggleBtn, viewMode === 'map' && styles.viewToggleBtnActive]}
+                onPress={() => setViewMode('map')}
+              >
+                <MapIcon color={viewMode === 'map' ? '#fff' : Colors.textSecondary} size={16} />
+              </TouchableOpacity>
+            </View>
+          </View>
         </Animated.View>
 
-        {/* Shop List */}
-        <Animated.FlatList
-          data={shops}
-          keyExtractor={item => item.id}
-          renderItem={renderShop}
-          contentContainerStyle={styles.listContent}
-          showsVerticalScrollIndicator={false}
-          onScroll={Animated.event(
-            [{ nativeEvent: { contentOffset: { y: scrollY } } }],
-            { useNativeDriver: true },
-          )}
-          refreshControl={
-            <RefreshControl
-              refreshing={isRefetching}
-              onRefresh={refetch}
-              tintColor={Colors.primary}
-              progressBackgroundColor={Colors.surface}
-              colors={[Colors.primary]}
-            />
-          }
-          ListEmptyComponent={
-            !isLoading ? (
-              <View style={styles.emptyState}>
-                <View style={styles.emptyIcon}>
-                  <Search color={Colors.textTertiary} size={48} />
-                </View>
-                <Text style={styles.emptyTitle}>No salons found</Text>
-                <Text style={styles.emptyText}>
-                  {searchQuery
-                    ? 'Try a different search term'
-                    : 'No salons available in your area'}
-                </Text>
-              </View>
-            ) : (
-              <View style={styles.loadingState}>
-                {[1, 2, 3].map(i => (
-                  <View key={i} style={styles.skeletonCard}>
-                    <View style={styles.skeletonImage} />
-                    <View style={styles.skeletonContent}>
-                      <View style={[styles.skeletonLine, { width: '70%' }]} />
-                      <View style={[styles.skeletonLine, { width: '50%' }]} />
-                    </View>
+        {viewMode === 'list' ? (
+          <Animated.FlatList
+            data={shops}
+            keyExtractor={item => item.id}
+            renderItem={renderShop}
+            contentContainerStyle={styles.listContent}
+            showsVerticalScrollIndicator={false}
+            onScroll={Animated.event(
+              [{ nativeEvent: { contentOffset: { y: scrollY } } }],
+              { useNativeDriver: true },
+            )}
+            refreshControl={
+              <RefreshControl
+                refreshing={isRefetching}
+                onRefresh={refetch}
+                tintColor={Colors.primary}
+                progressBackgroundColor={Colors.surface}
+                colors={[Colors.primary]}
+              />
+            }
+            ListEmptyComponent={
+              !isLoading ? (
+                <View style={styles.emptyState}>
+                  <View style={styles.emptyIcon}>
+                    <Search color={Colors.textTertiary} size={48} />
                   </View>
-                ))}
-              </View>
-            )
-          }
-        />
+                  <Text style={styles.emptyTitle}>No salons found</Text>
+                  <Text style={styles.emptyText}>
+                    {searchQuery
+                      ? 'Try a different search term'
+                      : 'No salons available in your area'}
+                  </Text>
+                </View>
+              ) : (
+                <View style={styles.loadingState}>
+                  {[1, 2, 3].map(i => (
+                    <View key={i} style={styles.skeletonCard}>
+                      <View style={styles.skeletonImage} />
+                      <View style={styles.skeletonContent}>
+                        <View style={[styles.skeletonLine, { width: '70%' }]} />
+                        <View style={[styles.skeletonLine, { width: '50%' }]} />
+                      </View>
+                    </View>
+                  ))}
+                </View>
+              )
+            }
+          />
+        ) : (
+          <View style={styles.mapModeContainer}>
+            <View style={styles.mapCanvas}>
+              {mapShops.map((shop, index) => {
+                const marker = markerPositions[index % markerPositions.length];
+                return (
+                  <TouchableOpacity
+                    key={shop.id}
+                    style={[
+                      styles.mapMarker,
+                      {
+                        top: marker.top * mapHeight,
+                        left: marker.left * mapWidth,
+                      },
+                    ]}
+                    onPress={() => navigation.navigate('ShopDetail', { shopId: shop.id })}
+                  >
+                    <Text style={styles.mapMarkerText}>₹</Text>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerStyle={styles.mapCardsRow}
+            >
+              {mapShops.map((shop) => (
+                <TouchableOpacity
+                  key={shop.id}
+                  style={styles.mapShopCard}
+                  onPress={() => navigation.navigate('ShopDetail', { shopId: shop.id })}
+                  activeOpacity={0.9}
+                >
+                  <Text style={styles.mapShopName} numberOfLines={1}>{shop.name}</Text>
+                  <Text style={styles.mapShopAddress} numberOfLines={1}>{shop.address}</Text>
+                </TouchableOpacity>
+              ))}
+            </ScrollView>
+          </View>
+        )}
+
+        <TouchableOpacity
+          style={styles.stickyToggle}
+          onPress={() => setViewMode(viewMode === 'list' ? 'map' : 'list')}
+          activeOpacity={0.9}
+        >
+          {viewMode === 'list' ? (
+            <MapIcon color="#fff" size={16} />
+          ) : (
+            <List color="#fff" size={16} />
+          )}
+          <Text style={styles.stickyToggleText}>{viewMode === 'list' ? 'View Map' : 'View List'}</Text>
+        </TouchableOpacity>
       </SafeAreaView>
     </View>
   );
@@ -264,39 +352,46 @@ const { width } = Dimensions.get('window');
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: '#F3F6FF',
   },
   header: {
     paddingBottom: Spacing.lg,
-    backgroundColor: Colors.background,
+    backgroundColor: '#F3F6FF',
   },
   headerTop: {
+    backgroundColor: Colors.primary,
+    borderRadius: BorderRadius['2xl'],
+    marginHorizontal: Spacing.xl,
+    paddingHorizontal: Spacing.xl,
+    paddingVertical: Spacing.lg,
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'flex-start',
-    paddingHorizontal: Spacing.xl,
-    paddingTop: Spacing.md,
+    paddingTop: Spacing.lg,
     marginBottom: Spacing.xl,
+    ...Shadows.glow,
   },
   greeting: {
     fontSize: FontSizes.md,
-    color: Colors.textSecondary,
+    color: '#E6EBFF',
     marginBottom: 4,
+    fontWeight: FontWeights.medium,
   },
   headerTitle: {
     fontSize: FontSizes['3xl'],
     fontWeight: FontWeights.extrabold,
-    color: Colors.textPrimary,
+    color: '#FFFFFF',
     lineHeight: 38,
   },
   avatarButton: {
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: Colors.primary,
+    backgroundColor: 'rgba(255,255,255,0.2)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.35)',
     justifyContent: 'center',
     alignItems: 'center',
-    ...Shadows.lg,
   },
   avatarText: {
     fontSize: 20,
@@ -313,6 +408,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.border,
     marginBottom: Spacing.lg,
+    ...Shadows.sm,
   },
   searchIcon: {
     marginRight: Spacing.sm,
@@ -336,8 +432,32 @@ const styles = StyleSheet.create({
     color: Colors.textSecondary,
   },
   categoryList: {
-    paddingHorizontal: Spacing.xl,
+    paddingLeft: Spacing.xl,
     paddingBottom: Spacing.sm,
+  },
+  filterRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  viewToggle: {
+    flexDirection: 'row',
+    backgroundColor: Colors.surface,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderRadius: BorderRadius.full,
+    marginRight: Spacing.xl,
+    marginLeft: Spacing.sm,
+    padding: 3,
+  },
+  viewToggleBtn: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  viewToggleBtnActive: {
+    backgroundColor: Colors.primary,
   },
   listContent: {
     padding: Spacing.xl,
@@ -522,5 +642,75 @@ const styles = StyleSheet.create({
     height: 14,
     backgroundColor: Colors.surfaceLight,
     borderRadius: 7,
+  },
+  mapModeContainer: {
+    flex: 1,
+    paddingHorizontal: Spacing.xl,
+    paddingBottom: 100,
+  },
+  mapCanvas: {
+    height: 420,
+    borderRadius: BorderRadius.xl,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    backgroundColor: '#DBEAFE',
+    marginBottom: Spacing.md,
+    overflow: 'hidden',
+  },
+  mapMarker: {
+    position: 'absolute',
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: Colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
+    ...Shadows.md,
+  },
+  mapMarkerText: {
+    color: '#fff',
+    fontWeight: FontWeights.bold,
+    fontSize: 12,
+  },
+  mapCardsRow: {
+    paddingBottom: Spacing.lg,
+    gap: Spacing.md,
+  },
+  mapShopCard: {
+    width: width * 0.72,
+    backgroundColor: Colors.surface,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderRadius: BorderRadius.lg,
+    padding: Spacing.lg,
+    ...Shadows.sm,
+  },
+  mapShopName: {
+    fontSize: FontSizes.md,
+    fontWeight: FontWeights.bold,
+    color: Colors.textPrimary,
+    marginBottom: 4,
+  },
+  mapShopAddress: {
+    fontSize: FontSizes.sm,
+    color: Colors.textSecondary,
+  },
+  stickyToggle: {
+    position: 'absolute',
+    bottom: 16,
+    alignSelf: 'center',
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+    paddingHorizontal: Spacing.xl,
+    paddingVertical: Spacing.md,
+    backgroundColor: Colors.primary,
+    borderRadius: BorderRadius.full,
+    ...Shadows.lg,
+  },
+  stickyToggleText: {
+    color: '#fff',
+    fontWeight: FontWeights.semibold,
+    fontSize: FontSizes.sm,
   },
 });

@@ -117,6 +117,11 @@ export default function ShopDetailScreen() {
 
         {/* Info Section */}
         <View style={styles.infoSection}>
+          <View style={styles.queueNotice}>
+            <Text style={styles.queueNoticeTitle}>Walk-in queue available</Text>
+            <Text style={styles.queueNoticeText}>Book now to get priority at your slot time.</Text>
+          </View>
+
           <View style={styles.infoRow}>
             <MapPin color={Colors.textSecondary} size={18} style={styles.infoIcon} />
             <Text style={styles.infoText}>{shop.address}</Text>
@@ -137,9 +142,9 @@ export default function ShopDetailScreen() {
 
         {/* Services Section */}
         <View style={styles.servicesSection}>
-          <Text style={styles.sectionTitle}>Select Services</Text>
+          <Text style={styles.sectionTitle}>Choose Services</Text>
           <Text style={styles.sectionSubtitle}>
-            Choose one or more services to book
+            Pick one or more services for your appointment
           </Text>
 
           {(shop.services || []).map((service: Service) => {
@@ -203,7 +208,7 @@ export default function ShopDetailScreen() {
           <PrimaryButton
             title="Continue"
             onPress={() =>
-              navigation.navigate('Booking', { shopId, selectedServices })
+              navigation.navigate('BookingStaff', { shopId, selectedServices })
             }
             icon={<ArrowRight color="#fff" size={18} />}
             size="sm"
@@ -321,8 +326,24 @@ const styles = StyleSheet.create({
   infoSection: {
     padding: Spacing.xl,
     backgroundColor: Colors.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: Colors.border,
+  },
+  queueNotice: {
+    backgroundColor: Colors.primaryGhost,
+    borderWidth: 1,
+    borderColor: Colors.primaryBorder,
+    borderRadius: BorderRadius.lg,
+    padding: Spacing.md,
+    marginBottom: Spacing.lg,
+  },
+  queueNoticeTitle: {
+    fontSize: FontSizes.sm,
+    fontWeight: FontWeights.bold,
+    color: Colors.primary,
+    marginBottom: 2,
+  },
+  queueNoticeText: {
+    fontSize: FontSizes.xs,
+    color: Colors.textSecondary,
   },
   infoRow: {
     flexDirection: 'row',

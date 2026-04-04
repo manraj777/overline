@@ -399,8 +399,8 @@ const styles = StyleSheet.create({
         color: Colors.textPrimary,
     },
     primaryButton: {
-        borderRadius: BorderRadius.lg,
-        paddingVertical: 16,
+        borderRadius: BorderRadius.full, // M3 Buttons are highly rounded
+        paddingVertical: 14,             // Thinner padding per M3 spec
         paddingHorizontal: 24,
         alignItems: 'center',
         justifyContent: 'center',
@@ -433,9 +433,11 @@ const styles = StyleSheet.create({
         marginRight: 2,
     },
     primaryButtonText: {
-        fontSize: FontSizes.md,
-        fontWeight: FontWeights.semibold,
+        fontSize: FontSizes.sm,
+        fontWeight: FontWeights.bold,
         color: Colors.primary,
+        textTransform: 'uppercase', // M3 style
+        letterSpacing: 0.5,
     },
     sectionHeader: {
         flexDirection: 'row',
@@ -538,19 +540,19 @@ const styles = StyleSheet.create({
     },
     inputLabel: {
         fontSize: FontSizes.sm,
-        fontWeight: FontWeights.semibold,
-        color: Colors.textSecondary,
+        fontWeight: FontWeights.bold,
+        color: Colors.textPrimary, // Label-m3 uses darker contrast
         marginBottom: Spacing.sm,
         textTransform: 'uppercase',
-        letterSpacing: 0.5,
+        letterSpacing: 1.0,
     },
     inputContainer: {
         flexDirection: 'row',
         alignItems: 'center',
-        backgroundColor: Colors.surfaceLight,
-        borderRadius: BorderRadius.lg,
+        backgroundColor: Colors.surface, // Container-low equivalent
+        borderRadius: BorderRadius.md,
         borderWidth: 1,
-        borderColor: Colors.border,
+        borderColor: Colors.outlineVariant,
         paddingHorizontal: Spacing.lg,
     },
     inputError: {

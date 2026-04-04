@@ -10,7 +10,6 @@
     "lib": ["ES2021"],
     "sourceMap": true,
     "outDir": "./dist",
-    "baseUrl": "./",
     "rootDir": "./",
     "incremental": true,
     "skipLibCheck": true,
@@ -20,11 +19,12 @@
     "forceConsistentCasingInFileNames": true,
     "noFallthroughCasesInSwitch": true,
     "paths": {
-      "@/*": ["src/*"],
-      "@modules/*": ["src/modules/*"],
-      "@common/*": ["src/common/*"],
-      "@config/*": ["src/config/*"]
-    }
+      "@/*": ["./src/*"],
+      "@modules/*": ["./src/modules/*"],
+      "@common/*": ["./src/common/*"],
+      "@config/*": ["./src/config/*"]
+    },
+    "types": ["node", "jest"]
   },
   "include": ["src/**/*", "test/**/*"],
   "exclude": ["node_modules", "dist", "prisma"]

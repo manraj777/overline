@@ -2,13 +2,66 @@
 @tailwind components;
 @tailwind utilities;
 
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+/* ============================================================ */
+/* Overline M3 Design System — CSS Variables                     */
+/* ============================================================ */
+
+:root {
+  /* Primary Palette */
+  --ovl-primary: #4648d4;
+  --ovl-primary-container: #6063ee;
+  --ovl-primary-fixed: #e1e0ff;
+  --ovl-on-primary: #ffffff;
+  --ovl-on-primary-container: #fffbff;
+
+  /* Secondary Palette */
+  --ovl-secondary: #6b38d4;
+  --ovl-secondary-container: #8455ef;
+
+  /* Tertiary Palette */
+  --ovl-tertiary: #006c49;
+  --ovl-tertiary-container: #00885d;
+
+  /* Surfaces */
+  --ovl-surface: #f8f9ff;
+  --ovl-surface-container: #e5eeff;
+  --ovl-surface-container-low: #eff4ff;
+  --ovl-surface-container-high: #dce9ff;
+  --ovl-surface-container-highest: #d3e4fe;
+  --ovl-surface-container-lowest: #ffffff;
+
+  /* Text */
+  --ovl-on-surface: #0b1c30;
+  --ovl-on-surface-variant: #464554;
+  --ovl-outline: #767586;
+  --ovl-outline-variant: #c7c4d7;
+
+  /* Background */
+  --ovl-bg: #f8f9ff;
+  --ovl-bg-gradient: radial-gradient(
+      ellipse 1200px 600px at 10% -10%,
+      rgba(70, 72, 212, 0.08),
+      transparent 60%
+    ),
+    radial-gradient(
+      ellipse 900px 500px at 100% 5%,
+      rgba(107, 56, 212, 0.06),
+      transparent 55%
+    ),
+    #f8f9ff;
+}
+
+/* ============================================================ */
+/* Base Styles                                                   */
+/* ============================================================ */
 
 html,
 body {
-  font-family: 'Inter', system-ui, sans-serif;
+  font-family: 'Inter', var(--font-body), system-ui, sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  color: var(--ovl-on-surface);
+  background: var(--ovl-bg-gradient);
 }
 
 @layer base {
@@ -18,19 +71,140 @@ body {
   }
 }
 
+/* ============================================================ */
+/* Component Layer                                               */
+/* ============================================================ */
+
 @layer components {
   .container-app {
     @apply max-w-7xl mx-auto px-4 sm:px-6 lg:px-8;
   }
+
+  /* Glassmorphism Header */
+  .glass-header {
+    background: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(20px);
+    -webkit-backdrop-filter: blur(20px);
+  }
+
+  /* Glass Surface */
+  .glass {
+    background: rgba(255, 255, 255, 0.7);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.3);
+  }
+
+  .glass-dark {
+    background: rgba(0, 0, 0, 0.5);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+  }
+
+  .glass-strong {
+    background: rgba(255, 255, 255, 0.85);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+  }
+
+  /* M3 Tonal Surface (No borders, bg shifts) */
+  .ovl-surface {
+    background: var(--ovl-surface-container-lowest);
+  }
+
+  .ovl-surface-container {
+    background: var(--ovl-surface-container);
+  }
+
+  .ovl-surface-low {
+    background: var(--ovl-surface-container-low);
+  }
+
+  .ovl-surface-high {
+    background: var(--ovl-surface-container-high);
+  }
+
+  /* Gradient CTA Button */
+  .btn-primary {
+    @apply bg-gradient-to-br from-primary to-primary-container text-white font-bold rounded-xl shadow-button;
+    @apply hover:shadow-button-hover active:scale-[0.97] transition-all duration-200;
+  }
+
+  .btn-primary-lg {
+    @apply btn-primary h-14 px-8 text-base;
+  }
+
+  /* Tonal Button */
+  .btn-tonal {
+    @apply bg-surface-container-high text-primary font-bold rounded-xl;
+    @apply hover:bg-primary hover:text-white transition-all duration-200;
+    @apply active:scale-95;
+  }
+
+  /* Card Styles */
+  .card-m3 {
+    @apply bg-surface-container-lowest rounded-4xl shadow-card overflow-hidden;
+    @apply hover:shadow-card-hover transition-all duration-300;
+    border: 1px solid rgba(199, 196, 215, 0.1);
+  }
+
+  .card-m3-flat {
+    @apply bg-surface-container-low rounded-3xl;
+    @apply hover:bg-surface-container-lowest transition-all duration-300;
+  }
+
+  /* Input Styles */
+  .input-m3 {
+    @apply w-full h-14 bg-surface-container-low rounded-xl px-6;
+    @apply text-on-surface border-none;
+    @apply focus:ring-2 focus:ring-primary/20 transition-all;
+    @apply placeholder:text-outline-variant;
+  }
+
+  /* Label Style */
+  .label-m3 {
+    @apply block text-[11px] font-bold tracking-widest uppercase text-outline px-1;
+  }
+
+  /* Chip Active */
+  .chip-active {
+    @apply bg-secondary text-white px-6 py-2.5 rounded-full text-sm font-semibold;
+    box-shadow: 0px 4px 12px rgba(107, 56, 212, 0.2);
+  }
+
+  .chip-inactive {
+    @apply bg-surface-container-high text-on-surface-variant px-6 py-2.5 rounded-full text-sm font-semibold;
+    @apply hover:bg-surface-container-highest transition-colors;
+  }
+
+  /* Tag / Badge */
+  .badge-tertiary {
+    @apply bg-tertiary text-white text-[10px] font-bold px-2 py-0.5 rounded-full uppercase;
+  }
+
+  .badge-ai {
+    @apply bg-secondary-container/10 text-secondary text-[10px] font-black px-2 py-1 rounded-md uppercase tracking-tighter;
+  }
+
+  /* Background App */
+  .ovl-app-bg {
+    background: var(--ovl-bg-gradient);
+  }
 }
 
+/* ============================================================ */
+/* Utility Layer                                                 */
+/* ============================================================ */
+
 /* Hide scrollbar but keep functionality */
-.hide-scrollbar {
+.hide-scrollbar,
+.no-scrollbar {
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
 
-.hide-scrollbar::-webkit-scrollbar {
+.hide-scrollbar::-webkit-scrollbar,
+.no-scrollbar::-webkit-scrollbar {
   display: none;
 }
 
@@ -43,7 +217,6 @@ body {
     transform: translateX(100%);
     opacity: 0;
   }
-
   to {
     transform: translateX(0);
     opacity: 1;
@@ -55,13 +228,8 @@ body {
 }
 
 @keyframes fade-in {
-  from {
-    opacity: 0;
-  }
-
-  to {
-    opacity: 1;
-  }
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 .animate-fade-in {
@@ -73,7 +241,6 @@ body {
     opacity: 0;
     transform: translateY(16px);
   }
-
   to {
     opacity: 1;
     transform: translateY(0);
@@ -89,7 +256,6 @@ body {
     opacity: 0;
     transform: scale(0.95);
   }
-
   to {
     opacity: 1;
     transform: scale(1);
@@ -101,17 +267,12 @@ body {
 }
 
 @keyframes shimmer {
-  0% {
-    background-position: -200% 0;
-  }
-
-  100% {
-    background-position: 200% 0;
-  }
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
 }
 
 .animate-shimmer {
-  background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+  background: linear-gradient(90deg, #eff4ff 25%, #dce9ff 50%, #eff4ff 75%);
   background-size: 200% 100%;
   animation: shimmer 1.5s infinite;
 }
@@ -122,7 +283,7 @@ body {
 
 .skeleton {
   @apply rounded-lg;
-  background: linear-gradient(90deg, #f3f4f6 25%, #e5e7eb 50%, #f3f4f6 75%);
+  background: linear-gradient(90deg, #eff4ff 25%, #dce9ff 50%, #eff4ff 75%);
   background-size: 200% 100%;
   animation: shimmer 1.5s infinite;
 }
@@ -153,39 +314,20 @@ body {
 }
 
 /* ============================================================ */
-/* Glassmorphism utilities                                       */
+/* Selection & Scrollbar                                         */
 /* ============================================================ */
 
-.glass {
-  background: rgba(255, 255, 255, 0.7);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.3);
-}
-
-.glass-dark {
-  background: rgba(0, 0, 0, 0.5);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-}
-
-/* ============================================================ */
-/* Lexogrine Aesthetics                                          */
-/* ============================================================ */
-
-/* Custom Selection */
 ::selection {
-  background: #282D3C;
-  /* lexo-charcoal */
-  color: #FFFFFF;
+  background: var(--ovl-primary);
+  color: #ffffff;
 }
 
 ::-moz-selection {
-  background: #282D3C;
-  color: #FFFFFF;
+  background: var(--ovl-primary);
+  color: #ffffff;
 }
 
-/* Custom Scrollbar for Lenis */
+/* Lenis Smooth Scroll */
 html.lenis,
 html.lenis body {
   height: auto;
@@ -207,10 +349,10 @@ html.lenis body {
   pointer-events: none;
 }
 
-/* Beautiful Scrollbar Track */
+/* Premium Scrollbar */
 ::-webkit-scrollbar {
-  width: 10px;
-  height: 10px;
+  width: 8px;
+  height: 8px;
 }
 
 ::-webkit-scrollbar-track {
@@ -218,19 +360,31 @@ html.lenis body {
 }
 
 ::-webkit-scrollbar-thumb {
-  background: #d1d5db;
-  /* gray-300 */
+  background: var(--ovl-outline-variant);
   border-radius: 10px;
-  border: 3px solid #ffffff;
-  /* pure white border for padding */
+  border: 2px solid var(--ovl-surface);
 }
 
 ::-webkit-scrollbar-thumb:hover {
-  background: #9ca3af;
-  /* gray-400 */
+  background: var(--ovl-outline);
 }
 
 /* Utilities */
 .text-balance {
   text-wrap: balance;
+}
+
+/* M3 Interaction states */
+.active-press:active {
+  transform: scale(0.97);
+}
+
+.active-press-sm:active {
+  transform: scale(0.95);
+}
+
+/* Material Symbols */
+.material-symbols-outlined {
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+  vertical-align: middle;
 }

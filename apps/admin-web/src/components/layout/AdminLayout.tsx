@@ -11,7 +11,6 @@ import {
   LogOut,
   Menu,
   X,
-  ChevronDown,
   Bell,
   CreditCard,
   Star,
@@ -20,6 +19,7 @@ import {
   Clock3,
   Wallet,
   User,
+  Search,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/stores/auth';
@@ -65,35 +65,22 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
   const isStaff = userRole === UserRole.STAFF;
   const isOwnerLike = userRole === UserRole.OWNER || userRole === UserRole.SUPER_ADMIN;
 
-  // Pending booking approval modal state
   const [pendingBookings, setPendingBookings] = React.useState<PendingBooking[]>([]);
   const updateBookingStatus = useUpdateBookingStatus();
 
-  // Fetch unread count if authenticated
   const { data: unreadData } = useUnreadNotificationsCount();
   const unreadCount = unreadData?.count || 0;
 
-  // Global socket listener for new bookings
   useQueueSocket({
     shopId: shopId || undefined,
     enabled: isAuthenticated && !!shopId && isOwnerLike,
     onQueueUpdate: React.useCallback(
       (update: any) => {
-        // Invalidate queries so the dashboard refreshes automatically
         queryClient.invalidateQueries({ queryKey: ['adminBookings'] });
         queryClient.invalidateQueries({ queryKey: ['dashboard'] });
-
-        // Check if queue grew to display a new booking toast/popup
         const currentLength = update?.queue?.length || 0;
-        if (
-          prevQueueLengthRef.current !== null &&
-          currentLength > prevQueueLengthRef.current
-        ) {
-          // Find new PENDING bookings to show approval popup
-          const newBookings = update?.queue?.filter(
-            (b: any) => b.status === 'PENDING'
-          ) || [];
-          
+        if (prevQueueLengthRef.current !== null && currentLength > prevQueueLengthRef.current) {
+          const newBookings = update?.queue?.filter((b: any) => b.status === 'PENDING') || [];
           if (newBookings.length > 0) {
             setPendingBookings((prev) => {
               const existingIds = new Set(prev.map((p) => p.id));
@@ -101,13 +88,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
               return [...prev, ...toAdd];
             });
           } else {
-            // Just show toast if no pending bookings
-            addToast({
-              type: 'info',
-              title: 'New Booking',
-              message: 'A new appointment has been added to the queue.',
-              duration: 5000,
-            });
+            addToast({ type: 'info', title: 'New Booking', message: 'A new appointment has been added to the queue.', duration: 5000 });
           }
           queryClient.invalidateQueries({ queryKey: ['notifications'] });
         }
@@ -117,21 +98,14 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
     ),
     onBookingUpdate: React.useCallback(
       (update: any) => {
-        // Show popup for new PENDING booking
         if (update?.status === 'PENDING' && update?.id) {
           setPendingBookings((prev) => {
             if (prev.some((p) => p.id === update.id)) return prev;
             return [...prev, update];
           });
         }
-        // Show toast for cancelled bookings
         if (update?.status === 'CANCELLED') {
-          addToast({
-            type: 'warning',
-            title: 'Booking Cancelled',
-            message: `A booking was just cancelled.`,
-            duration: 5000,
-          });
+          addToast({ type: 'warning', title: 'Booking Cancelled', message: `A booking was just cancelled.`, duration: 5000 });
           queryClient.invalidateQueries({ queryKey: ['adminBookings'] });
         }
       },
@@ -139,23 +113,14 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
     ),
   });
 
-  // Handlers for booking approval/denial
   const handleApproveBooking = React.useCallback(
     async (bookingId: string) => {
       try {
         await updateBookingStatus.mutateAsync({ bookingId, status: 'CONFIRMED' });
         setPendingBookings((prev) => prev.filter((b) => b.id !== bookingId));
-        addToast({
-          type: 'success',
-          title: 'Booking Approved',
-          message: 'The booking has been confirmed.',
-        });
+        addToast({ type: 'success', title: 'Booking Approved', message: 'The booking has been confirmed.' });
       } catch (err) {
-        addToast({
-          type: 'error',
-          title: 'Failed to approve',
-          message: 'Could not approve the booking. Please try again.',
-        });
+        addToast({ type: 'error', title: 'Failed to approve', message: 'Could not approve the booking.' });
       }
     },
     [updateBookingStatus, addToast]
@@ -166,17 +131,9 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
       try {
         await updateBookingStatus.mutateAsync({ bookingId, status: 'CANCELLED' });
         setPendingBookings((prev) => prev.filter((b) => b.id !== bookingId));
-        addToast({
-          type: 'success',
-          title: 'Booking Denied',
-          message: 'The booking has been cancelled.',
-        });
+        addToast({ type: 'success', title: 'Booking Denied', message: 'The booking has been cancelled.' });
       } catch (err) {
-        addToast({
-          type: 'error',
-          title: 'Failed to deny',
-          message: 'Could not deny the booking. Please try again.',
-        });
+        addToast({ type: 'error', title: 'Failed to deny', message: 'Could not deny the booking.' });
       }
     },
     [updateBookingStatus, addToast]
@@ -269,30 +226,6 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
   };
 
   const roleSections = navigationByRole[userRole] || [];
-  const staffTheme = {
-    sidebarBg: 'bg-[#0f4c75]',
-    border: 'border-[#2f6f99]',
-    sectionTitle: 'text-cyan-100/90',
-    navActive: 'bg-cyan-50 text-cyan-900',
-    navIdle: 'text-cyan-100 hover:bg-[#1b5f8f] hover:text-white',
-    userSubtext: 'text-cyan-100',
-    userCard: 'bg-[#1b5f8f]/80 text-cyan-100',
-    buttonIdle: 'text-cyan-100 hover:bg-[#1b5f8f] hover:text-white',
-    closeButton: 'text-cyan-100 hover:text-white',
-  };
-  const ownerTheme = {
-    sidebarBg: 'bg-[#312e81]',
-    border: 'border-indigo-700/80',
-    sectionTitle: 'text-indigo-200/90',
-    navActive: 'bg-indigo-100 text-indigo-900',
-    navIdle: 'text-indigo-100 hover:bg-indigo-700/80 hover:text-white',
-    userSubtext: 'text-indigo-200',
-    userCard: 'bg-indigo-700/50 text-indigo-100',
-    buttonIdle: 'text-indigo-100 hover:bg-indigo-700/80 hover:text-white',
-    closeButton: 'text-indigo-200 hover:text-white',
-  };
-  const sidebarTheme = isStaff ? staffTheme : ownerTheme;
-
   const isActive = (href: string) => router.pathname.startsWith(href);
   const publicRoute = isPublicRoute(router.pathname);
 
@@ -301,7 +234,6 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
     router.push('/login');
   };
 
-  // Redirect to login if not authenticated
   React.useEffect(() => {
     if (!isAuthenticated && !publicRoute) {
       router.replace('/login');
@@ -315,7 +247,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
   }, [isAuthenticated, pendingOtpVerification, router]);
 
   if (!isAuthenticated && !publicRoute) {
-    return <div className="min-h-screen bg-gray-50" />;
+    return <div className="min-h-screen bg-surface" />;
   }
 
   if (!isAuthenticated) {
@@ -323,53 +255,53 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Sidebar */}
+    <div className="ovl-admin-bg min-h-screen">
+      {/* ── Sidebar ── */}
       <aside
         className={cn(
-          'fixed inset-y-0 left-0 z-50 w-16 lg:w-[240px] transform transition-transform duration-300 lg:translate-x-0',
-          sidebarTheme.sidebarBg,
+          'fixed inset-y-0 left-0 z-50 w-16 lg:w-[260px] transform transition-transform duration-300 lg:translate-x-0',
+          'bg-inverse-surface',
           sidebarOpen ? 'translate-x-0' : '-translate-x-full'
         )}
       >
         {/* Logo */}
-        <div className={cn('flex items-center justify-between h-16 px-3 lg:px-6 border-b', sidebarTheme.border)}>
-          <Link href={getDefaultRouteForRole(user?.role as UserRole)} className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-primary-500 rounded-lg flex items-center justify-center">
-              <span className="text-white font-bold">O</span>
+        <div className="flex items-center justify-between h-16 px-3 lg:px-6 border-b border-white/5">
+          <Link href={getDefaultRouteForRole(user?.role as UserRole)} className="flex items-center gap-3">
+            <div className="w-9 h-9 bg-gradient-to-br from-primary to-primary-container rounded-xl flex items-center justify-center shadow-button">
+              <span className="text-white font-black text-sm">O</span>
             </div>
-            <span className="hidden lg:inline text-lg font-bold text-white">Overline</span>
+            <span className="hidden lg:inline text-lg font-black text-white tracking-tight">Overline</span>
           </Link>
           <button
             onClick={() => setSidebarOpen(false)}
-            className={cn('lg:hidden', sidebarTheme.closeButton)}
+            className="lg:hidden text-white/40 hover:text-white"
           >
             <X className="w-5 h-5" />
           </button>
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 px-2 lg:px-3 py-4 space-y-4 overflow-y-auto">
+        <nav className="flex-1 px-2 lg:px-3 py-5 space-y-5 overflow-y-auto">
           {roleSections.map((section) => (
             <div key={section.title}>
-              <p className={cn('hidden lg:block px-3 mb-2 text-[11px] uppercase tracking-wide', sidebarTheme.sectionTitle)}>
+              <p className="hidden lg:block px-4 mb-2 text-[10px] font-bold tracking-[0.15em] text-white/30 uppercase">
                 {section.title}
               </p>
-              <div className="space-y-1">
+              <div className="space-y-0.5">
                 {section.items.map((item) => (
                   <Link
                     key={item.name}
                     href={item.href}
                     onClick={() => setSidebarOpen(false)}
                     className={cn(
-                      'flex items-center justify-center lg:justify-start gap-3 px-2 lg:px-3 py-2.5 rounded-lg text-sm font-medium transition-colors',
+                      'flex items-center justify-center lg:justify-start gap-3 px-3 lg:px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-200',
                       isActive(item.href)
-                        ? sidebarTheme.navActive
-                        : sidebarTheme.navIdle
+                        ? 'sidebar-link-active'
+                        : 'sidebar-link-idle'
                     )}
                     title={item.name}
                   >
-                    <item.icon className="w-5 h-5" />
+                    <item.icon className="w-[18px] h-[18px]" />
                     <span className="hidden lg:inline">{item.name}</span>
                   </Link>
                 ))}
@@ -379,39 +311,22 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
         </nav>
 
         {/* User Section */}
-        <div className={cn('p-2 lg:p-3 border-t', sidebarTheme.border)}>
-          <div className="flex items-center justify-center lg:justify-start gap-3 px-2 lg:px-3 py-2">
-            <div className="w-9 h-9 rounded-full bg-primary-500 flex items-center justify-center text-white font-medium text-sm">
+        <div className="p-2 lg:p-3 border-t border-white/5">
+          <div className="flex items-center justify-center lg:justify-start gap-3 px-2 lg:px-4 py-2">
+            <div className="w-9 h-9 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-white font-bold text-sm">
               {user?.name?.charAt(0) || 'A'}
             </div>
             <div className="hidden lg:block flex-1 min-w-0">
-              <p className="text-sm font-medium text-white truncate">
-                {user?.name}
-              </p>
-              <p className={cn('text-xs truncate', sidebarTheme.userSubtext)}>{user?.role}</p>
+              <p className="text-sm font-semibold text-white truncate">{user?.name}</p>
+              <p className="text-[10px] font-bold tracking-widest text-white/30 uppercase">{user?.role}</p>
             </div>
           </div>
-          {user?.role === UserRole.OWNER && (
-            <div className={cn('hidden lg:block mt-1 px-3 py-2 rounded-lg text-xs', sidebarTheme.userCard)}>
-              <p className="font-semibold truncate">{shopId || 'Current Shop'}</p>
-              <button
-                type="button"
-                className="mt-1 hover:text-white underline underline-offset-2"
-                onClick={() => router.push('/owner/dashboard')}
-              >
-                Switch to customer →
-              </button>
-            </div>
-          )}
           <button
             onClick={handleLogout}
-            className={cn(
-              'flex items-center justify-center lg:justify-start gap-3 w-full px-2 lg:px-3 py-2.5 mt-2 rounded-lg text-sm font-medium transition-colors',
-              sidebarTheme.buttonIdle
-            )}
+            className="flex items-center justify-center lg:justify-start gap-3 w-full px-3 lg:px-4 py-2.5 mt-1 rounded-xl text-sm font-medium text-white/40 hover:bg-white/5 hover:text-white/80 transition-all"
             title="Sign Out"
           >
-            <LogOut className="w-5 h-5" />
+            <LogOut className="w-[18px] h-[18px]" />
             <span className="hidden lg:inline">Sign Out</span>
           </button>
         </div>
@@ -420,56 +335,69 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
       {/* Overlay */}
       {sidebarOpen && (
         <div
-          className="fixed inset-0 bg-black/50 z-40 lg:hidden"
+          className="fixed inset-0 bg-black/60 backdrop-blur-sm z-40 lg:hidden"
           onClick={() => setSidebarOpen(false)}
         />
       )}
 
-      {/* Main Content */}
-      <div className="lg:pl-[240px]">
+      {/* ── Main Content ── */}
+      <div className="lg:pl-[260px]">
         {/* Top Header */}
-        <header className="sticky top-0 z-30 bg-white border-b border-gray-200">
+        <header className="sticky top-0 z-30 bg-white/70 backdrop-blur-xl border-b border-outline-variant/10">
           <div className="flex items-center justify-between h-16 px-4 sm:px-6">
             <button
               onClick={() => setSidebarOpen(true)}
-              className="lg:hidden p-2 rounded-lg hover:bg-gray-100"
+              className="lg:hidden p-2 rounded-xl hover:bg-surface-container-low transition-colors"
             >
-              <Menu className="w-5 h-5" />
+              <Menu className="w-5 h-5 text-on-surface" />
             </button>
+
+            {/* Search Bar */}
+            <div className="hidden md:flex items-center flex-1 max-w-sm ml-4">
+              <div className="relative w-full">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-outline" />
+                <input
+                  type="text"
+                  placeholder="Search bookings, staff..."
+                  className="w-full pl-10 pr-4 py-2 bg-surface-container-low rounded-xl text-sm text-on-surface placeholder:text-outline border border-outline-variant/10 focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-all"
+                />
+              </div>
+            </div>
 
             <div className="flex-1" />
 
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-2">
               {/* Notifications */}
               <button
                 onClick={() => router.push(isStaff ? '/staff/notifications' : '/notifications')}
-                className="relative p-2 rounded-lg hover:bg-gray-100 transition-colors"
+                className="relative p-2.5 rounded-xl hover:bg-surface-container-low transition-colors"
                 title="Notifications"
               >
-                <Bell className="w-5 h-5 text-gray-500" />
+                <Bell className="w-5 h-5 text-on-surface-variant" />
                 {unreadCount > 0 && (
-                  <span className="absolute top-1.5 right-1.5 w-2.5 h-2.5 bg-red-500 border-2 border-white rounded-full" />
+                  <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-error rounded-full animate-pulse" />
                 )}
               </button>
 
-              {/* User Menu */}
-              <div className="hidden sm:flex items-center gap-2 pl-3 border-l border-gray-200">
-                <div className="w-8 h-8 rounded-full bg-primary-500 flex items-center justify-center text-white font-medium text-sm">
+              {/* User Info */}
+              <div className="hidden sm:flex items-center gap-2.5 pl-3 ml-1 border-l border-outline-variant/10">
+                <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-primary to-primary-container flex items-center justify-center text-white font-bold text-xs">
                   {user?.name?.charAt(0) || 'A'}
                 </div>
-                <span className="text-sm font-medium text-gray-700">
-                  {user?.name?.split(' ')[0]}
-                </span>
+                <div className="hidden lg:block">
+                  <p className="text-sm font-semibold text-on-surface">{user?.name?.split(' ')[0]}</p>
+                  <p className="text-[10px] font-bold text-outline uppercase tracking-widest">{user?.role}</p>
+                </div>
               </div>
             </div>
           </div>
         </header>
 
         {/* Page Content */}
-        <main className="p-4 sm:p-6">{children}</main>
+        <main className="p-4 sm:p-6 lg:p-8">{children}</main>
       </div>
 
-      {/* Booking Approval Modal - show one at a time */}
+      {/* Booking Approval Modal */}
       {isOwnerLike && pendingBookings.length > 0 && (
         <BookingApprovalModal
           booking={pendingBookings[0]}

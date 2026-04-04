@@ -4,7 +4,8 @@ import Link from 'next/link';
 import { motion } from 'framer-motion';
 import {
   Search, MapPin, Scissors, Stethoscope, ArrowRight, Star,
-  Navigation, Loader2, Sparkles, Zap, ShieldCheck, HeartHandshake
+  Navigation, Loader2, Sparkles, Zap, ShieldCheck, HeartHandshake,
+  Dumbbell, Flower2, Calendar
 } from 'lucide-react';
 import { Button, Input } from '@/components/ui';
 import { cn } from '@/lib/utils';
@@ -13,294 +14,279 @@ import { useShops, useLocation, useAiRecommendations } from '@/hooks';
 
 export default function HomePage() {
   const [searchQuery, setSearchQuery] = React.useState('');
+  const [locationQuery, setLocationQuery] = React.useState('');
   const { location, loading: locationLoading, requestLocation } = useLocation(true);
 
   const { data: popularShops, isLoading } = useShops({
-    limit: 5, // 5 fits a bento box layout well (2 large, 3 small)
+    limit: 6,
     latitude: location?.lat,
     longitude: location?.lng,
     radiusKm: 50,
   });
 
   const categories = [
-    { name: 'Haircut & Styling', icon: Scissors, href: '/explore?type=SALON' },
-    { name: 'Medical Checkups', icon: Stethoscope, href: '/explore?type=CLINIC' },
-    { name: 'Beard Trimming', icon: Scissors, href: '/explore?type=SALON' },
-    { name: 'Dental Care', icon: Stethoscope, href: '/explore?type=CLINIC' },
-    { name: 'Massage Therapy', icon: HeartHandshake, href: '/explore?type=SALON' },
-    { name: 'Skin Consultations', icon: Stethoscope, href: '/explore?type=CLINIC' },
-  ];
-
-  const features = [
-    {
-      icon: Zap,
-      title: 'Zero Wait',
-      desc: 'Live queue tracking means you walk in right when it is your turn.',
-    },
-    {
-      icon: ShieldCheck,
-      title: 'Verified Partners',
-      desc: 'We only onboard the most trusted local professionals.',
-    },
+    { name: 'Salon', icon: Scissors, href: '/explore?type=SALON' },
+    { name: 'Gym', icon: Dumbbell, href: '/explore?type=GYM' },
+    { name: 'Clinic', icon: Stethoscope, href: '/explore?type=CLINIC' },
+    { name: 'Spa', icon: Flower2, href: '/explore?type=SPA' },
   ];
 
   const containerVariants = {
     hidden: { opacity: 0 },
     show: {
       opacity: 1,
-      transition: { staggerChildren: 0.15 }
-    }
+      transition: { staggerChildren: 0.12 },
+    },
   };
 
   const itemVariants = {
-    hidden: { opacity: 0, y: 30 },
-    show: { opacity: 1, y: 0, transition: { type: "spring" as const, stiffness: 300, damping: 24 } }
+    hidden: { opacity: 0, y: 24 },
+    show: { opacity: 1, y: 0, transition: { type: 'spring' as const, stiffness: 300, damping: 24 } },
   };
 
   return (
     <>
       <Head>
-        <title>Overline - Premium Booking</title>
-        <meta name="description" content="Experience premium booking with real-time queue tracking." />
+        <title>Overline — Premium Booking Portal</title>
+        <meta name="description" content="Find your next premium experience. Book salons, spas, clinics and gyms with live queue tracking." />
       </Head>
 
-      {/* ========================================================================= */}
-      {/* 1. Asymmetric Hero Section                                                */}
-      {/* ========================================================================= */}
-      <section className="relative overflow-hidden pt-12 pb-24 md:pt-24 md:pb-32 bg-[#F8F9FA]">
-        {/* Background Gradients */}
-        <div className="absolute top-0 right-0 w-[800px] h-[800px] bg-gradient-to-bl from-primary-400/20 via-purple-400/10 to-transparent blur-[120px] rounded-full translate-x-1/3 -translate-y-1/3 pointer-events-none" />
-        <div className="absolute bottom-0 left-0 w-[600px] h-[600px] bg-gradient-to-tr from-accent-400/10 to-transparent blur-[100px] rounded-full -translate-x-1/3 translate-y-1/3 pointer-events-none" />
-
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-          <div className="grid lg:grid-cols-12 gap-12 items-center">
+      {/* ═══════════════════════════════════════════════════════════ */}
+      {/* 1. Hero Search Section — Gradient Banner                   */}
+      {/* ═══════════════════════════════════════════════════════════ */}
+      <section className="relative overflow-hidden pt-12 pb-16">
+        <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="relative rounded-4xl overflow-hidden bg-gradient-to-br from-primary to-secondary p-8 md:p-12 lg:p-16 text-white">
+            {/* Abstract Background Image */}
+            <div className="absolute top-0 right-0 h-full w-1/3 pointer-events-none opacity-30 mix-blend-overlay">
+              <div className="h-full w-full bg-gradient-to-l from-white/10 to-transparent" />
+            </div>
+            {/* Decorative Glow */}
+            <div className="absolute -right-20 -top-20 w-80 h-80 bg-white/5 rounded-full blur-[80px] pointer-events-none" />
 
             <motion.div
-              className="lg:col-span-7"
+              className="relative z-10 max-w-3xl"
               variants={containerVariants}
               initial="hidden"
               animate="show"
             >
-              <motion.div variants={itemVariants} className="inline-flex items-center gap-2 bg-lexo-black text-white text-xs font-bold tracking-widest uppercase px-4 py-2 rounded-full mb-8">
-                <Sparkles className="w-4 h-4 text-primary-400" />
-                <span>The Future of Booking</span>
-              </motion.div>
-
-              <motion.h1 variants={itemVariants} className="text-5xl sm:text-7xl lg:text-8xl font-black text-lexo-black leading-[0.95] tracking-tighter mb-8 text-balance">
-                Don't waste <br />
-                <span className="text-transparent bg-clip-text bg-gradient-to-r from-lexo-charcoal to-lexo-gray">your time</span> <br />
-                in line.
+              <motion.h1
+                variants={itemVariants}
+                className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight mb-6 leading-tight"
+              >
+                Find your next
+                <br />
+                premium experience.
               </motion.h1>
 
-              <motion.p variants={itemVariants} className="text-xl md:text-2xl text-lexo-gray font-medium max-w-xl mb-12">
-                Discover premium salons and clinics. Track live queues and walk in exactly when it's your turn.
-              </motion.p>
-
-              {/* Minimal Search Bar */}
-              <motion.div variants={itemVariants} className="max-w-xl">
-                <div className="bg-white rounded-full p-2 flex gap-2 shadow-[0_8px_40px_rgba(0,0,0,0.08)] border border-gray-100">
-                  <div className="flex-1">
-                    <Input
-                      placeholder="What are you looking for?"
-                      value={searchQuery}
-                      onChange={(e) => setSearchQuery(e.target.value)}
-                      leftIcon={<Search className="w-6 h-6 text-lexo-gray px-1" />}
-                      className="border-0 focus:ring-0 text-lg h-14 bg-transparent outline-none shadow-none"
-                    />
+              {/* Search Bar */}
+              <motion.div variants={itemVariants}>
+                <div className="flex flex-col md:flex-row gap-2 bg-surface-container-lowest p-2 rounded-2xl shadow-xl">
+                  <div className="flex-1 flex items-center px-4 py-3 bg-surface-container-low rounded-xl group focus-within:ring-2 ring-primary/20 transition-all">
+                    <Search className="w-5 h-5 text-primary mr-3 flex-shrink-0" />
+                    <div className="flex flex-col flex-1">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-outline">What are you looking for?</span>
+                      <input
+                        className="bg-transparent border-none p-0 focus:ring-0 text-on-surface placeholder:text-outline-variant font-medium text-sm w-full"
+                        placeholder="Salons, clinics, spas..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                      />
+                    </div>
                   </div>
-                  <Link
-                    href={`/explore?q=${encodeURIComponent(searchQuery)}${location ? `&lat=${location.lat}&lng=${location.lng}` : ''}`}
-                  >
-                    <Button className="h-full px-8 rounded-full bg-lexo-black hover:bg-lexo-dark text-white text-lg font-bold transition-all hover:scale-105 active:scale-95 shadow-md">
-                      Find
-                    </Button>
+
+                  <div className="hidden md:block w-px h-12 bg-outline-variant/20 mx-1 self-center" />
+
+                  <div className="flex items-center px-4 py-3 bg-surface-container-low rounded-xl group focus-within:ring-2 ring-primary/20 transition-all min-w-[200px]">
+                    <MapPin className="w-5 h-5 text-primary mr-3 flex-shrink-0" />
+                    <div className="flex flex-col flex-1">
+                      <span className="text-[10px] font-bold uppercase tracking-wider text-outline">Location</span>
+                      <input
+                        className="bg-transparent border-none p-0 focus:ring-0 text-on-surface font-medium text-sm w-full"
+                        value={locationQuery || location?.address || ''}
+                        onChange={(e) => setLocationQuery(e.target.value)}
+                        placeholder="Enter location..."
+                      />
+                    </div>
+                  </div>
+
+                  <Link href={`/explore?q=${encodeURIComponent(searchQuery)}${location ? `&lat=${location.lat}&lng=${location.lng}` : ''}`}>
+                    <button className="w-full md:w-auto bg-gradient-to-br from-primary to-primary-container text-white px-10 py-4 rounded-xl font-bold active:scale-95 transition-all shadow-lg shadow-primary/20 text-sm">
+                      Explore
+                    </button>
                   </Link>
                 </div>
+              </motion.div>
 
-                {/* Location Detection */}
-                <div className="mt-6 flex items-center gap-3 px-4">
-                  {location ? (
-                    <div className="flex items-center gap-2 text-primary-600 font-medium bg-primary-50 px-3 py-1.5 rounded-full">
-                      <MapPin className="w-4 h-4" />
-                      <span className="text-sm">{location.address || 'Location detected'}</span>
-                    </div>
-                  ) : locationLoading ? (
-                    <div className="flex items-center gap-2 text-lexo-gray font-medium">
-                      <Loader2 className="w-4 h-4 animate-spin" />
-                      <span className="text-sm">Detecting location...</span>
-                    </div>
-                  ) : (
-                    <button
-                      onClick={requestLocation}
-                      className="flex items-center gap-2 text-lexo-gray hover:text-lexo-black font-medium transition-colors"
-                    >
-                      <Navigation className="w-4 h-4" />
-                      <span className="text-sm border-b border-lexo-gray hover:border-lexo-black border-dashed">Use my current location</span>
-                    </button>
-                  )}
-                </div>
+              {/* Quick Category Tags */}
+              <motion.div variants={itemVariants} className="mt-6 flex flex-wrap gap-2">
+                {categories.map((cat) => (
+                  <Link key={cat.name} href={cat.href}>
+                    <span className="px-4 py-1.5 rounded-full bg-white/10 backdrop-blur-md border border-white/10 text-sm font-semibold hover:bg-white/20 cursor-pointer transition-all">
+                      {cat.name}
+                    </span>
+                  </Link>
+                ))}
               </motion.div>
             </motion.div>
-
-            {/* Asymmetric Right Image/Map */}
-            <motion.div
-              className="lg:col-span-5 hidden lg:block h-full"
-              initial={{ opacity: 0, x: 100, rotate: 2 }}
-              animate={{ opacity: 1, x: 0, rotate: 0 }}
-              transition={{ duration: 1, type: "spring", bounce: 0.4 }}
-            >
-              <div className="relative h-full min-h-[500px] w-full mt-4">
-                <div className="absolute inset-0 bg-lexo-charcoal rounded-[3rem] translate-x-4 translate-y-4 -z-10 opacity-20" />
-                <div className="w-full h-[600px] rounded-[3rem] overflow-hidden shadow-2xl relative border-4 border-white">
-                  <ShopMap
-                    shops={popularShops?.data || []}
-                    userLocation={location || undefined}
-                    className="w-full h-full"
-                    zoom={12}
-                  />
-                  {!popularShops?.data && isLoading && (
-                    <div className="absolute inset-0 flex items-center justify-center bg-gray-100/80 backdrop-blur-sm z-20">
-                      <Loader2 className="w-8 h-8 animate-spin text-lexo-black" />
-                    </div>
-                  )}
-                </div>
-              </div>
-            </motion.div>
-
           </div>
         </div>
       </section>
 
-      {/* ========================================================================= */}
-      {/* 2. Category Tag Marquee                                                   */}
-      {/* ========================================================================= */}
-      <section className="py-12 border-y border-gray-100 bg-white overflow-hidden flex whitespace-nowrap group">
-        <div className="animate-marquee flex gap-4 pr-4 group-hover:[animation-play-state:paused]">
-          {[...categories, ...categories].map((cat, i) => (
-            <Link key={i} href={cat.href}>
-              <div className="inline-flex items-center gap-3 px-8 py-4 rounded-full border border-gray-200 hover:border-lexo-black hover:bg-lexo-black hover:text-white transition-all duration-300 group/item cursor-pointer shadow-sm">
-                <cat.icon className="w-5 h-5 text-lexo-gray group-hover/item:text-white transition-colors" />
-                <span className="text-lg font-bold text-lexo-charcoal group-hover/item:text-white transition-colors">{cat.name}</span>
-              </div>
-            </Link>
-          ))}
+      {/* ═══════════════════════════════════════════════════════════ */}
+      {/* 2. Category Icons Row                                      */}
+      {/* ═══════════════════════════════════════════════════════════ */}
+      <section className="py-8">
+        <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-center gap-8 md:gap-16">
+            {categories.map((cat) => (
+              <Link key={cat.name} href={cat.href} className="flex flex-col items-center gap-3 group">
+                <div className="w-16 h-16 rounded-2xl bg-surface-container-low flex items-center justify-center group-active:scale-90 transition-transform shadow-sm group-hover:bg-primary-fixed/30">
+                  <cat.icon className="w-7 h-7 text-primary" />
+                </div>
+                <span className="text-[12px] font-bold tracking-wide uppercase text-on-surface-variant">
+                  {cat.name}
+                </span>
+              </Link>
+            ))}
+          </div>
         </div>
       </section>
 
-      {/* ========================================================================= */}
-      {/* 2.5 AI Recommendations                                                    */}
-      {/* ========================================================================= */}
+      {/* ═══════════════════════════════════════════════════════════ */}
+      {/* 3. AI Recommended Section                                  */}
+      {/* ═══════════════════════════════════════════════════════════ */}
       <AiRecommendationsSection location={location} />
 
-      {/* ========================================================================= */}
-      {/* 3. Bento Box Featured Shops                                               */}
-      {/* ========================================================================= */}
-      <section className="py-24 bg-[#F8F9FA]">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col md:flex-row md:items-end justify-between mb-16 gap-6">
+      {/* ═══════════════════════════════════════════════════════════ */}
+      {/* 4. Trending / Nearby Grid                                  */}
+      {/* ═══════════════════════════════════════════════════════════ */}
+      <section className="py-16">
+        <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex flex-col md:flex-row md:items-end justify-between mb-10 gap-6">
             <div>
-              <h2 className="text-4xl md:text-5xl font-black text-lexo-black tracking-tight mb-4 text-balance">
-                Trending {location ? 'Near You' : 'Spots'}
+              <span className="text-xs font-bold tracking-widest text-secondary uppercase mb-2 block">
+                Personalized for you
+              </span>
+              <h2 className="text-3xl md:text-4xl font-black tracking-tight text-on-surface">
+                {location ? 'Recommended Nearby' : 'Popular Shops'}
               </h2>
-              <p className="text-xl text-lexo-gray font-medium max-w-xl">
-                The most booked and highly rated professionals right now.
-              </p>
             </div>
             <Link href="/explore">
-              <Button variant="outline" className="rounded-full border-2 border-gray-200 text-lexo-charcoal hover:border-lexo-black hover:bg-lexo-black hover:text-white font-bold px-8 h-14 text-lg transition-all duration-300">
-                View All Directory
-              </Button>
+              <button className="text-sm font-bold text-primary flex items-center gap-1 hover:underline underline-offset-4">
+                View All <ArrowRight className="w-4 h-4" />
+              </button>
             </Link>
           </div>
 
           {isLoading ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
               {[1, 2, 3].map((i) => (
-                <div key={i} className="h-96 skeleton" />
+                <div key={i} className="h-[380px] skeleton rounded-4xl" />
               ))}
             </div>
           ) : popularShops?.data.length === 0 ? (
-            <div className="bg-white rounded-[2rem] p-16 text-center border border-gray-200 shadow-sm">
-              <MapPin className="w-16 h-16 text-gray-300 mx-auto mb-6" />
-              <h3 className="text-2xl font-bold text-lexo-black mb-2">No spots found</h3>
-              <p className="text-lexo-gray text-lg mb-8">Try expanding your search or enabling location.</p>
+            <div className="card-m3 p-16 text-center">
+              <MapPin className="w-16 h-16 text-outline-variant mx-auto mb-6" />
+              <h3 className="text-2xl font-bold text-on-surface mb-2">No spots found</h3>
+              <p className="text-on-surface-variant text-lg mb-8">
+                Try expanding your search or enabling location.
+              </p>
               <Link href="/explore">
-                <Button className="rounded-full bg-lexo-black text-white px-8 h-12">Browse Everything</Button>
+                <button className="btn-primary px-8 py-3">Browse Everything</button>
               </Link>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 auto-rows-[400px]">
-              {popularShops?.data.slice(0, 5).map((shop, idx) => (
-                <div
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {popularShops?.data.slice(0, 6).map((shop, idx) => (
+                <motion.div
                   key={shop.id}
-                  className={cn(
-                    "hover-scale-wrapper transition-transform duration-500",
-                    // Bento layout logic: First two cards are wide on lg screens
-                    idx === 0 ? "lg:col-span-2" : "",
-                    idx === 1 ? "lg:col-span-1" : "",
-                    idx > 2 ? "lg:col-span-1" : ""
-                  )}
+                  initial={{ opacity: 0, y: 20 }}
+                  whileInView={{ opacity: 1, y: 0 }}
+                  transition={{ delay: idx * 0.08 }}
+                  viewport={{ once: true }}
+                  className="group"
                 >
                   <ShopCard shop={shop} userLocation={location || undefined} />
-                </div>
+                </motion.div>
               ))}
             </div>
           )}
         </div>
       </section>
 
-      {/* ========================================================================= */}
-      {/* 4. Core Features (Minimalist Glass Cards)                                 */}
-      {/* ========================================================================= */}
-      <section className="py-24 bg-white border-t border-gray-100">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      {/* ═══════════════════════════════════════════════════════════ */}
+      {/* 5. Features Section                                        */}
+      {/* ═══════════════════════════════════════════════════════════ */}
+      <section className="py-20 bg-surface-container-low/50">
+        <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid md:grid-cols-2 gap-16 items-center">
             <div>
-              <h2 className="text-4xl md:text-5xl font-black text-lexo-black tracking-tight mb-8 text-balance">
+              <h2 className="text-4xl md:text-5xl font-black text-on-surface tracking-tight mb-8 leading-tight">
                 Built for those who value their time.
               </h2>
-              <p className="text-xl text-lexo-gray font-medium mb-10 leading-relaxed max-w-lg">
+              <p className="text-xl text-on-surface-variant font-medium mb-12 leading-relaxed max-w-lg">
                 We've stripped away the noise. Just pure, seamless booking experiences that connect you to local experts instantly.
               </p>
 
-              <div className="space-y-6">
-                {features.map((feature, i) => (
-                  <div key={i} className="flex gap-6 group cursor-pointer">
-                    <div className="flex-shrink-0 w-16 h-16 rounded-2xl bg-[#F8F9FA] border border-gray-100 flex items-center justify-center group-hover:bg-lexo-black group-hover:text-white transition-all duration-300">
-                      <feature.icon className="w-8 h-8" />
+              <div className="space-y-8">
+                {[
+                  {
+                    icon: Zap,
+                    title: 'Zero Wait',
+                    desc: 'Live queue tracking means you walk in right when it is your turn.',
+                    color: 'text-tertiary',
+                    bg: 'bg-tertiary-fixed/30',
+                  },
+                  {
+                    icon: ShieldCheck,
+                    title: 'Verified Partners',
+                    desc: 'We only onboard the most trusted local professionals.',
+                    color: 'text-primary',
+                    bg: 'bg-primary-fixed/30',
+                  },
+                  {
+                    icon: Calendar,
+                    title: 'Smart Scheduling',
+                    desc: 'AI-optimized time slots to maximize your precious hours.',
+                    color: 'text-secondary',
+                    bg: 'bg-secondary-fixed/30',
+                  },
+                ].map((feature, i) => (
+                  <div key={i} className="flex gap-5 group cursor-pointer">
+                    <div className={cn(
+                      'flex-shrink-0 w-14 h-14 rounded-2xl flex items-center justify-center transition-all duration-300',
+                      feature.bg,
+                      'group-hover:scale-110'
+                    )}>
+                      <feature.icon className={cn('w-6 h-6', feature.color)} />
                     </div>
                     <div>
-                      <h4 className="text-2xl font-bold text-lexo-black mb-2">{feature.title}</h4>
-                      <p className="text-lexo-gray text-lg">{feature.desc}</p>
+                      <h4 className="text-xl font-bold text-on-surface mb-1">{feature.title}</h4>
+                      <p className="text-on-surface-variant">{feature.desc}</p>
                     </div>
                   </div>
                 ))}
               </div>
             </div>
 
-            <div className="relative h-[600px] w-full bg-lexo-light rounded-[3rem] overflow-hidden border border-gray-200">
-              {/* Abstract decorative graphic replacing an app screenshot */}
-              <div className="absolute inset-0 flex items-center justify-center bg-[url('https://images.unsplash.com/photo-1516975080661-46bace915715?auto=format&fit=crop&q=80')] bg-cover bg-center blur-sm opacity-50"></div>
-              <div className="absolute inset-0 bg-gradient-to-tr from-lexo-charcoal/90 to-transparent flex items-center justify-center p-8">
-                <div className="glass rounded-[2rem] p-10 max-w-sm w-full shadow-2xl backdrop-blur-3xl transform rotate-[-3deg] hover:rotate-0 transition-all duration-500">
-                  <div className="flex justify-between items-center mb-8 pb-8 border-b border-gray-200/50">
-                    <div className="w-12 h-12 bg-lexo-black rounded-xl"></div>
-                    <div className="w-24 h-4 bg-gray-200 rounded-full"></div>
-                  </div>
-                  <div className="space-y-4 mb-8">
-                    <div className="w-full h-12 bg-gray-100 rounded-xl"></div>
-                    <div className="w-3/4 h-12 bg-gray-100 rounded-xl"></div>
-                  </div>
-                  <div className="w-full h-16 bg-gradient-to-r from-primary-500 to-purple-500 rounded-2xl shadow-lg mt-12 flex items-center justify-center">
-                    <span className="text-white font-bold text-lg">Confirmed</span>
-                  </div>
+            {/* Visual Map Preview */}
+            <div className="relative h-[500px] w-full rounded-4xl overflow-hidden shadow-card-hover border border-outline-variant/10">
+              <ShopMap
+                shops={popularShops?.data || []}
+                userLocation={location || undefined}
+                className="w-full h-full"
+                zoom={12}
+              />
+              {!popularShops?.data && isLoading && (
+                <div className="absolute inset-0 flex items-center justify-center bg-surface/80 backdrop-blur-sm z-20">
+                  <Loader2 className="w-8 h-8 animate-spin text-primary" />
                 </div>
-              </div>
+              )}
             </div>
           </div>
         </div>
       </section>
-
     </>
   );
 }
@@ -310,35 +296,33 @@ function AiRecommendationsSection({ location }: { location: { lat: number; lng: 
 
   if (!location) {
     return (
-      <section className="py-16 bg-white border-y border-gray-100">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <Sparkles className="w-8 h-8 text-indigo-400 mx-auto mb-3" />
-          <h3 className="text-xl font-bold text-lexo-black mb-2">Personalized recommendations</h3>
-          <p className="text-lexo-gray mb-4">Enable location to get AI-powered picks just for you</p>
+      <section className="py-12">
+        <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <div className="card-m3 p-12">
+            <Sparkles className="w-8 h-8 text-secondary mx-auto mb-3" />
+            <h3 className="text-xl font-bold text-on-surface mb-2">Personalized recommendations</h3>
+            <p className="text-on-surface-variant mb-4">Enable location to get AI-powered picks just for you</p>
+          </div>
         </div>
       </section>
     );
   }
 
   return (
-    <section className="py-16 bg-white border-y border-gray-100">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-        <div className="flex items-center gap-3 mb-8">
-          <h2 className="text-3xl font-black text-lexo-black tracking-tight">
-            ✨ Picked for you
-          </h2>
-          <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full bg-gradient-to-r from-indigo-500 to-purple-500 text-white text-xs font-bold">
-            <Sparkles className="w-3 h-3" /> AI powered
-          </span>
+    <section className="py-12">
+      <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8">
+        <div className="flex items-center gap-3 mb-6">
+          <h2 className="text-2xl font-black text-on-surface tracking-tight">✦ For you</h2>
+          <span className="badge-ai">AI Pick</span>
         </div>
 
-        <div className="flex gap-6 overflow-x-auto pb-4 scrollbar-hide -mx-4 px-4">
+        <div className="flex gap-4 overflow-x-auto pb-4 no-scrollbar -mx-4 px-4">
           {isLoading
             ? Array.from({ length: 4 }).map((_, i) => (
-                <div key={i} className="flex-shrink-0 w-[300px] h-[360px] rounded-2xl bg-gray-100 animate-pulse" />
+                <div key={i} className="flex-shrink-0 w-[280px] h-[300px] rounded-3xl animate-shimmer" />
               ))
             : (recommendations || []).slice(0, 8).map((shop: any) => (
-                <div key={shop.id} className="flex-shrink-0 w-[300px]">
+                <div key={shop.id} className="flex-shrink-0 w-[280px]">
                   <ShopCard shop={shop} userLocation={location} />
                 </div>
               ))}

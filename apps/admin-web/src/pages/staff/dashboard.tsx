@@ -14,7 +14,7 @@ import {
 import { Booking, BookingStatus } from '@/types';
 import { formatPrice, formatTime } from '@/lib/utils';
 
-const DONUT_COLORS = ['#4338ca', '#f59e0b'];
+const DONUT_COLORS = ['#4648d4', '#f59e0b'];
 
 const PENDING_STATUSES: BookingStatus[] = [
 	BookingStatus.PENDING,
@@ -56,16 +56,10 @@ export default function StaffDashboardPage() {
 		const completed = bookings.filter((booking) => booking.status === BookingStatus.COMPLETED);
 		let online = 0;
 		let cash = 0;
-
 		for (const booking of completed) {
 			const amount = Number(booking.totalAmount || 0);
-			if (booking.source === 'WALK_IN') {
-				cash += amount;
-			} else {
-				online += amount;
-			}
+			if (booking.source === 'WALK_IN') { cash += amount; } else { online += amount; }
 		}
-
 		return [
 			{ name: 'Online', value: online },
 			{ name: 'Cash', value: cash },
@@ -88,88 +82,85 @@ export default function StaffDashboardPage() {
 		return <Loading text="Loading staff dashboard..." />;
 	}
 
+	const metricCards = [
+		{ label: 'My earnings today', value: formatPrice(totalEarnings), icon: IndianRupee, color: 'text-tertiary', bgColor: 'bg-tertiary-fixed' },
+		{ label: 'My bookings today', value: String(bookings.length), icon: Calendar, color: 'text-primary', bgColor: 'bg-primary-fixed' },
+		{ label: 'Pending approvals', value: String(pendingBookings.length + pendingTimeOff.length), icon: AlertTriangle, color: 'text-amber-600', bgColor: 'bg-amber-100' },
+		{ label: 'My rating', value: `${myRating.toFixed(1)}★`, icon: Star, color: 'text-secondary', bgColor: 'bg-secondary-fixed' },
+	];
+
 	return (
 		<>
 			<Head>
-				<title>My Dashboard - Staff</title>
+				<title>My Dashboard — Staff</title>
+				<meta name="description" content="Staff personal dashboard for Overline." />
 			</Head>
 
 			<div className="space-y-6">
 				<div>
-					<p className="text-sm font-medium text-[#0f4c75]">My Day</p>
-					<h1 className="text-2xl font-bold text-gray-900">Staff Dashboard</h1>
-					<p className="text-gray-500">{format(new Date(), 'EEEE, MMMM d, yyyy')}</p>
+					<span className="label-m3 mb-2 block">My Day</span>
+					<h1 className="text-3xl font-black tracking-tight text-on-surface">Staff Dashboard</h1>
+					<p className="text-on-surface-variant text-sm mt-1">{format(new Date(), 'EEEE, MMMM d, yyyy')}</p>
 				</div>
 
+				{/* Metric Cards */}
 				<div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
-					<StatCard
-						title="My earnings today"
-						value={formatPrice(totalEarnings)}
-						icon={IndianRupee}
-						gradient="bg-gradient-to-br from-cyan-600 to-sky-700"
-					/>
-					<StatCard
-						title="My bookings today"
-						value={bookings.length}
-						icon={Calendar}
-						gradient="bg-gradient-to-br from-teal-500 to-cyan-600"
-					/>
-					<StatCard
-						title="Pending approvals"
-						value={pendingBookings.length + pendingTimeOff.length}
-						icon={AlertTriangle}
-						gradient="bg-gradient-to-br from-amber-500 to-orange-600"
-					/>
-					<StatCard
-						title="My rating"
-						value={`${myRating.toFixed(1)}★`}
-						icon={Star}
-						gradient="bg-gradient-to-br from-indigo-500 to-violet-600"
-					/>
+					{metricCards.map((metric) => (
+						<div key={metric.label} className="card-m3 p-6">
+							<div className="flex items-start justify-between mb-4">
+								<div className={`w-10 h-10 rounded-xl ${metric.bgColor} flex items-center justify-center`}>
+									<metric.icon className={`w-5 h-5 ${metric.color}`} />
+								</div>
+							</div>
+							<p className="metric-value">{metric.value}</p>
+							<p className="metric-label mt-1">{metric.label}</p>
+						</div>
+					))}
 				</div>
 
 				<div className="grid grid-cols-1 gap-6 xl:grid-cols-12">
 					<div className="xl:col-span-8 space-y-6">
+						{/* Pending Approvals */}
 						{pendingBookings.length > 0 && (
-							<Card>
-								<div className="mb-4 flex items-center justify-between">
-									<h2 className="text-lg font-semibold text-gray-900">Pending approvals</h2>
-									<Badge variant="warning">Urgent</Badge>
+							<div className="card-m3 p-6">
+								<div className="mb-5 flex items-center justify-between">
+									<h2 className="text-sm font-bold text-on-surface flex items-center gap-2">
+										<div className="w-1.5 h-6 bg-amber-500 rounded-full" />
+										Pending approvals
+									</h2>
+									<span className="badge-m3 bg-amber-100 text-amber-700">Urgent</span>
 								</div>
 
 								<div className="space-y-3">
 									{pendingBookings.slice(0, 3).map((booking) => (
-										<div key={booking.id} className="rounded-lg border border-amber-200 bg-amber-50 p-4">
-											<p className="font-semibold text-gray-900">
+										<div key={booking.id} className="rounded-2xl border border-amber-200/50 bg-amber-50/50 p-4">
+											<p className="font-bold text-on-surface text-sm">
 												{booking.user?.name || booking.customerName || 'Walk-in'} · {booking.services?.[0]?.serviceName || 'Service'} ·{' '}
 												{formatTime(booking.startTime)} · {formatPrice(Number(booking.totalAmount || 0))}
 											</p>
-											<p className="mt-1 text-sm text-gray-600">
+											<p className="mt-1 text-xs text-on-surface-variant">
 												{booking.source === 'WALK_IN' ? 'Cash booking' : 'Online payment'} · Token #{booking.bookingNumber}
 											</p>
-											<p className="mt-1 text-xs text-gray-500">
+											<p className="mt-1 text-[10px] text-outline font-bold">
 												Requested {formatDistanceToNow(new Date(booking.createdAt), { addSuffix: true })}
 											</p>
 											<div className="mt-3 flex flex-wrap gap-2">
-												<Button
-													size="sm"
+												<button
 													onClick={() => updateBooking.mutate({ bookingId: booking.id, status: BookingStatus.CONFIRMED })}
-													isLoading={updateBooking.isPending}
+													disabled={updateBooking.isPending}
+													className="btn-primary px-4 py-1.5 text-xs disabled:opacity-50"
 												>
 													Approve
-												</Button>
-												<Button
-													size="sm"
-													variant="outline"
+												</button>
+												<button
 													onClick={() => updateBooking.mutate({ bookingId: booking.id, status: BookingStatus.CANCELLED })}
-													isLoading={updateBooking.isPending}
+													disabled={updateBooking.isPending}
+													className="btn-tonal px-4 py-1.5 text-xs disabled:opacity-50"
 												>
 													Reject
-												</Button>
-												<Link href="/staff/profile">
-													<Button size="sm" variant="ghost">
-														View profile
-													</Button>
+												</button>
+												<Link href="/staff/profile" className="text-primary text-xs font-bold hover:underline self-center ml-1">
+													View profile
 												</Link>
 											</div>
 										</div>
@@ -177,20 +168,23 @@ export default function StaffDashboardPage() {
 								</div>
 
 								{(pendingBookings.length + pendingTimeOff.length) > 3 && (
-									<Link href="/staff/bookings" className="mt-4 inline-block text-sm font-medium text-[#0f4c75] hover:underline">
+									<Link href="/staff/bookings" className="mt-4 inline-block text-xs font-bold text-primary hover:underline">
 										See all {pendingBookings.length + pendingTimeOff.length} pending →
 									</Link>
 								)}
-							</Card>
+							</div>
 						)}
 
-						<Card>
-							<h2 className="mb-4 text-lg font-semibold text-gray-900">Today's timeline</h2>
+						{/* Timeline */}
+						<div className="card-m3 p-6">
+							<h2 className="mb-5 text-sm font-bold text-on-surface flex items-center gap-2">
+								<div className="w-1.5 h-6 bg-primary rounded-full" />
+								Today&apos;s timeline
+							</h2>
 							{timelineItems.length === 0 ? (
-								<p className="text-sm text-gray-500">No confirmed bookings in your timeline today.</p>
+								<p className="text-sm text-on-surface-variant">No confirmed bookings in your timeline today.</p>
 							) : (
-								<div className="relative space-y-3 border-l-2 border-gray-200 pl-4">
-									<div className="absolute left-[-2px] top-0 h-full w-[2px] bg-gradient-to-b from-red-500/30 to-transparent" />
+								<div className="relative space-y-2 border-l-2 border-outline-variant/15 pl-4">
 									{timelineItems.map((item) => {
 										const itemDate = new Date(item.startTime);
 										const now = new Date();
@@ -199,39 +193,34 @@ export default function StaffDashboardPage() {
 										return (
 											<div
 												key={item.id}
-												className="w-full rounded-lg border border-gray-100 p-3 text-left"
+												className="w-full rounded-xl border border-outline-variant/10 p-3.5 hover:bg-surface-container-low transition-colors"
 											>
 												<div className="flex items-start justify-between gap-3">
 													<div>
-														<p className="text-sm font-semibold text-gray-900">
+														<p className="text-sm font-bold text-on-surface">
 															{formatTime(item.startTime)} | {item.user?.name || item.customerName || 'Walk-in'}
 														</p>
-														<p className="text-sm text-gray-600">{item.services?.[0]?.serviceName || 'Service'} </p>
+														<p className="text-xs text-on-surface-variant mt-0.5">{item.services?.[0]?.serviceName || 'Service'}</p>
 													</div>
-													<span className={`mt-1 h-2.5 w-2.5 rounded-full ${isCurrent ? 'bg-red-500' : 'bg-cyan-500'}`} />
+													<span className={`mt-1 h-2.5 w-2.5 rounded-full ${isCurrent ? 'bg-error' : 'bg-tertiary'}`} />
 												</div>
-											  </div>
+											</div>
 										);
 									})}
 								</div>
 							)}
-						</Card>
+						</div>
 					</div>
 
+					{/* Sidebar */}
 					<div className="xl:col-span-4 space-y-6">
-						<Card>
-							<h2 className="mb-4 text-lg font-semibold text-gray-900">My earnings today</h2>
+						{/* Earnings Donut */}
+						<div className="card-m3 p-6">
+							<h2 className="mb-4 text-sm font-bold text-on-surface">My earnings today</h2>
 							<div className="h-52">
 								<ResponsiveContainer width="100%" height="100%">
 									<PieChart>
-										<Pie
-											data={earningsSplit}
-											dataKey="value"
-											nameKey="name"
-											innerRadius={55}
-											outerRadius={80}
-											paddingAngle={4}
-										>
+										<Pie data={earningsSplit} dataKey="value" nameKey="name" innerRadius={55} outerRadius={80} paddingAngle={4}>
 											{earningsSplit.map((_, idx) => (
 												<Cell key={idx} fill={DONUT_COLORS[idx]} />
 											))}
@@ -240,42 +229,41 @@ export default function StaffDashboardPage() {
 									</PieChart>
 								</ResponsiveContainer>
 							</div>
-							<p className="-mt-4 mb-3 text-center text-sm font-semibold text-gray-900">Total {formatPrice(totalEarnings)}</p>
+							<p className="-mt-4 mb-3 text-center text-sm font-black text-on-surface">Total {formatPrice(totalEarnings)}</p>
 
-							<div className="space-y-2">
+							<div className="space-y-2 pt-3 border-t border-outline-variant/10">
 								{recentEarnings.length === 0 ? (
-									<p className="text-sm text-gray-500">No completed bookings yet.</p>
+									<p className="text-xs text-on-surface-variant">No completed bookings yet.</p>
 								) : (
 									recentEarnings.map((entry: Booking) => (
 										<div key={entry.id} className="flex items-center justify-between text-sm">
 											<div>
-												<p className="font-medium text-gray-900">{entry.user?.name || entry.customerName || 'Walk-in'}</p>
-												<p className="text-xs text-gray-500">{entry.services?.[0]?.serviceName || 'Service'}</p>
+												<p className="font-medium text-on-surface text-xs">{entry.user?.name || entry.customerName || 'Walk-in'}</p>
+												<p className="text-[10px] text-outline">{entry.services?.[0]?.serviceName || 'Service'}</p>
 											</div>
-											<p className="font-semibold text-gray-900">{formatPrice(Number(entry.totalAmount || 0))}</p>
+											<p className="font-bold text-on-surface text-sm">{formatPrice(Number(entry.totalAmount || 0))}</p>
 										</div>
 									))
 								)}
 							</div>
-						</Card>
+						</div>
 
-						<Card>
-							<h2 className="mb-3 text-lg font-semibold text-gray-900">Approval snapshot</h2>
-							<div className="space-y-2 text-sm text-gray-700">
-								<div className="flex items-center justify-between">
-									<span>Booking approvals</span>
-									<span className="font-semibold">{pendingBookings.length}</span>
-								</div>
-								<div className="flex items-center justify-between">
-									<span>Time-off requests pending</span>
-									<span className="font-semibold">{pendingTimeOff.length}</span>
-								</div>
-								<div className="flex items-center justify-between">
-									<span>Next confirmed booking</span>
-									<span className="font-semibold">{timelineItems[0] ? formatTime(timelineItems[0].startTime) : '-'}</span>
-								</div>
+						{/* Approval Snapshot */}
+						<div className="card-m3 p-6">
+							<h2 className="mb-4 text-sm font-bold text-on-surface">Approval snapshot</h2>
+							<div className="space-y-3">
+								{[
+									{ label: 'Booking approvals', value: pendingBookings.length },
+									{ label: 'Time-off requests pending', value: pendingTimeOff.length },
+									{ label: 'Next confirmed booking', value: timelineItems[0] ? formatTime(timelineItems[0].startTime) : '-' },
+								].map((item) => (
+									<div key={item.label} className="flex items-center justify-between text-sm">
+										<span className="text-on-surface-variant text-xs font-medium">{item.label}</span>
+										<span className="font-bold text-on-surface">{item.value}</span>
+									</div>
+								))}
 							</div>
-						</Card>
+						</div>
 					</div>
 				</div>
 			</div>

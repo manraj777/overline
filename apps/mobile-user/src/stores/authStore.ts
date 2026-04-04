@@ -34,6 +34,7 @@ interface AuthState {
     phone: string;
   }) => Promise<void>;
   sendOtp: (phone: string) => Promise<string | undefined>;
+  verifyOtpSession: (otp: string) => Promise<void>;
   verifyOtpCode: (otp: string) => Promise<void>;
   completeOtpLogin: (user: User, accessToken?: string, refreshToken?: string) => Promise<void>;
   logout: () => Promise<void>;
@@ -110,6 +111,30 @@ export const useAuthStore = create<AuthState>((set, _get) => ({
     } catch (error: any) {
       const message =
         error.response?.data?.message || 'Failed to send OTP. Please try again.';
+      set({ error: message });
+      throw error;
+    }
+  },
+
+  verifyOtpSession: async (otp: string) => {
+    const state = _get();
+    if (!state.otpConfirmation) {
+      throw new Error('OTP session expired. Please request a new code.');
+    }
+
+    try {
+      set({ error: null });
+      const credential = await state.otpConfirmation.confirm(otp);
+      if (!credential) {
+        throw new Error('OTP confirmation failed. Please request a new code.');
+      }
+
+      // Keep OTP verification separate from login for registration flow.
+      await auth().signOut().catch(() => undefined);
+      set({ otpSent: false, otpConfirmation: null });
+    } catch (error: any) {
+      const message =
+        error.response?.data?.message || error.message || 'Invalid OTP. Please try again.';
       set({ error: message });
       throw error;
     }

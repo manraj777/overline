@@ -14,25 +14,24 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useAuthStore } from '../../stores/authStore';
 import { RootStackParamList } from '../../types';
-import { Colors, Spacing, BorderRadius, FontSizes, FontWeights, Shadows } from '../../theme';
+import { Colors, Spacing, BorderRadius, FontSizes, FontWeights } from '../../theme';
 import { InputField, PrimaryButton } from '../../components/ui';
+import { ArrowLeft, Eye, EyeOff, KeyRound, Mail, User, UserPlus } from 'lucide-react-native';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'Register'>;
 
 export default function RegisterScreen() {
   const navigation = useNavigation<NavigationProp>();
-  const { signup, isLoading, error, clearError } = useAuthStore();
+  const { isLoading, error, clearError } = useAuthStore();
 
   const [name, setName] = useState('');
   const [email, setEmail] = useState('');
-  const [phone, setPhone] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
-  const [isSendingOtp, setIsSendingOtp] = useState(false);
 
   const handleRegister = async () => {
-    if (!name.trim() || !email.trim() || !password.trim() || !phone.trim()) {
-      Alert.alert('Error', 'Please fill in all fields');
+    if (!name.trim() || !email.trim() || !password.trim()) {
+      Alert.alert('Error', 'Please fill in all required fields');
       return;
     }
 
@@ -41,22 +40,11 @@ export default function RegisterScreen() {
       return;
     }
 
-    // Normalize phone to +91 format
-    const cleaned = phone.trim().replace(/\s+/g, '').replace(/^0+/, '');
-    const normalizedPhone = cleaned.startsWith('+91')
-      ? cleaned
-      : cleaned.startsWith('91') && cleaned.length > 10
-      ? `+${cleaned}`
-      : `+91${cleaned}`;
-
-    setIsSendingOtp(true);
-    try {
-      await signup({ name: name.trim(), email: email.trim(), password, phone: normalizedPhone });
-    } catch {
-      // Error handled in store
-    } finally {
-      setIsSendingOtp(false);
-    }
+    navigation.navigate('RegisterPhone', {
+      name: name.trim(),
+      email: email.trim(),
+      password,
+    });
   };
 
   return (
@@ -76,14 +64,15 @@ export default function RegisterScreen() {
           <TouchableOpacity
             style={styles.backButton}
             onPress={() => navigation.goBack()}>
-            <Text style={styles.backArrow}>←</Text>
+            <ArrowLeft color={Colors.textPrimary} size={20} />
           </TouchableOpacity>
 
           {/* Welcome Text */}
           <View style={styles.welcomeSection}>
-            <Text style={styles.welcomeTitle}>Create{'\n'}account</Text>
+            <Text style={styles.stepPill}>STEP 1 OF 4</Text>
+            <Text style={styles.welcomeTitle}>Begin your journey.</Text>
             <Text style={styles.welcomeSubtitle}>
-              Join thousands getting appointments effortlessly
+              Enter your details to create an Overline profile and start your concierge experience.
             </Text>
           </View>
 
@@ -102,7 +91,7 @@ export default function RegisterScreen() {
 
             <InputField
               label="Full Name"
-              icon="👤"
+              icon={<User color={Colors.textSecondary} size={18} />}
               placeholder="John Doe"
               value={name}
               onChangeText={setName}
@@ -111,7 +100,7 @@ export default function RegisterScreen() {
 
             <InputField
               label="Email"
-              icon="✉️"
+              icon={<Mail color={Colors.textSecondary} size={18} />}
               placeholder="you@example.com"
               value={email}
               onChangeText={setEmail}
@@ -119,19 +108,10 @@ export default function RegisterScreen() {
               autoCapitalize="none"
             />
 
-            <InputField
-              label="Phone"
-              icon="📱"
-              placeholder="+91 98765 43210"
-              value={phone}
-              onChangeText={setPhone}
-              keyboardType="phone-pad"
-            />
-
             <View>
               <InputField
                 label="Password"
-                icon="🔑"
+                icon={<KeyRound color={Colors.textSecondary} size={18} />}
                 placeholder="Min. 8 characters"
                 value={password}
                 onChangeText={setPassword}
@@ -140,9 +120,11 @@ export default function RegisterScreen() {
               <TouchableOpacity
                 style={styles.eyeButton}
                 onPress={() => setShowPassword(!showPassword)}>
-                <Text style={{ fontSize: 18 }}>
-                  {showPassword ? '👁️' : '👁️‍🗨️'}
-                </Text>
+                {showPassword ? (
+                  <EyeOff color={Colors.textSecondary} size={20} />
+                ) : (
+                  <Eye color={Colors.textSecondary} size={20} />
+                )}
               </TouchableOpacity>
             </View>
 
@@ -153,25 +135,12 @@ export default function RegisterScreen() {
             </Text>
 
             <PrimaryButton
-              title={isSendingOtp ? 'Creating Account...' : 'Create Account'}
+              title="Continue"
               onPress={handleRegister}
-              loading={isLoading || isSendingOtp}
-              icon="✦"
+              loading={isLoading}
+              icon={<UserPlus color="#fff" size={18} />}
               style={{ marginTop: Spacing.lg }}
             />
-
-            {/* Divider */}
-            <View style={styles.dividerRow}>
-              <View style={styles.dividerLine} />
-              <Text style={styles.dividerText}>or sign up with</Text>
-              <View style={styles.dividerLine} />
-            </View>
-
-            {/* Google Sign-Up */}
-            <TouchableOpacity style={styles.googleButton}>
-              <Text style={styles.googleIcon}>G</Text>
-              <Text style={styles.googleText}>Sign up with Google</Text>
-            </TouchableOpacity>
           </View>
 
           {/* Footer */}
@@ -201,7 +170,7 @@ const styles = StyleSheet.create({
     width: 280,
     height: 280,
     borderRadius: 140,
-    backgroundColor: 'rgba(0, 210, 255, 0.06)',
+    backgroundColor: 'rgba(255, 140, 66, 0.12)',
   },
   bgOrb2: {
     position: 'absolute',
@@ -210,7 +179,7 @@ const styles = StyleSheet.create({
     width: 200,
     height: 200,
     borderRadius: 100,
-    backgroundColor: 'rgba(108, 92, 231, 0.06)',
+    backgroundColor: 'rgba(84, 28, 191, 0.08)',
   },
   scrollContent: {
     flexGrow: 1,
@@ -221,25 +190,28 @@ const styles = StyleSheet.create({
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: Colors.surfaceLight,
+    backgroundColor: Colors.surface,
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
     borderColor: Colors.border,
     marginBottom: Spacing['2xl'],
   },
-  backArrow: {
-    fontSize: 20,
-    color: Colors.textPrimary,
-  },
   welcomeSection: {
     marginBottom: Spacing['3xl'],
   },
+  stepPill: {
+    fontSize: FontSizes.xs,
+    color: Colors.primary600,
+    letterSpacing: 1,
+    fontWeight: FontWeights.bold,
+    marginBottom: Spacing.sm,
+  },
   welcomeTitle: {
-    fontSize: FontSizes['4xl'],
+    fontSize: FontSizes['3xl'],
     fontWeight: FontWeights.extrabold,
     color: Colors.textPrimary,
-    lineHeight: 44,
+    lineHeight: 38,
     marginBottom: Spacing.md,
   },
   welcomeSubtitle: {
@@ -281,49 +253,11 @@ const styles = StyleSheet.create({
     color: Colors.textTertiary,
     lineHeight: 20,
     marginTop: -Spacing.sm,
-    marginBottom: Spacing.sm,
+    marginBottom: Spacing.md,
   },
   termsLink: {
     color: Colors.primary,
     fontWeight: FontWeights.medium,
-  },
-  dividerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginVertical: Spacing['2xl'],
-  },
-  dividerLine: {
-    flex: 1,
-    height: 1,
-    backgroundColor: Colors.border,
-  },
-  dividerText: {
-    fontSize: FontSizes.xs,
-    color: Colors.textTertiary,
-    marginHorizontal: Spacing.lg,
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-  },
-  googleButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 14,
-    borderRadius: BorderRadius.lg,
-    backgroundColor: Colors.surfaceLight,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    gap: Spacing.sm,
-  },
-  googleIcon: {
-    fontSize: 18,
-    fontWeight: FontWeights.bold,
-    color: Colors.textPrimary,
-  },
-  googleText: {
-    fontSize: FontSizes.md,
-    fontWeight: FontWeights.medium,
-    color: Colors.textSecondary,
   },
   footer: {
     flexDirection: 'row',

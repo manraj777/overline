@@ -16,6 +16,7 @@ import {
   Star,
   XCircle,
   CreditCard,
+  ArrowUpRight,
 } from 'lucide-react';
 import { Card, Badge, Button, StatCard, Loading } from '@/components/ui';
 import {
@@ -44,14 +45,14 @@ function getTrustLevel(user: any): 'normal' | 'warning' | 'danger' | null {
 }
 
 const NOTIFICATION_ICONS: Record<string, { icon: any; color: string }> = {
-  NEW_BOOKING: { icon: Calendar, color: 'text-blue-500' },
-  BOOKING_CONFIRMED: { icon: Calendar, color: 'text-blue-500' },
-  BOOKING_CANCELLED: { icon: XCircle, color: 'text-gray-400' },
-  NEW_REVIEW: { icon: Star, color: 'text-yellow-500' },
-  REVIEW_SUBMITTED: { icon: Star, color: 'text-yellow-500' },
-  PAYMENT_DONE: { icon: CreditCard, color: 'text-green-500' },
-  PAYMENT_COMPLETED: { icon: CreditCard, color: 'text-green-500' },
-  QUEUE_UPDATE: { icon: Users, color: 'text-indigo-500' },
+  NEW_BOOKING: { icon: Calendar, color: 'text-primary' },
+  BOOKING_CONFIRMED: { icon: Calendar, color: 'text-primary' },
+  BOOKING_CANCELLED: { icon: XCircle, color: 'text-outline' },
+  NEW_REVIEW: { icon: Star, color: 'text-amber-500' },
+  REVIEW_SUBMITTED: { icon: Star, color: 'text-amber-500' },
+  PAYMENT_DONE: { icon: CreditCard, color: 'text-tertiary' },
+  PAYMENT_COMPLETED: { icon: CreditCard, color: 'text-tertiary' },
+  QUEUE_UPDATE: { icon: Users, color: 'text-secondary' },
 };
 
 export default function DashboardPage() {
@@ -97,89 +98,116 @@ export default function DashboardPage() {
     };
   };
 
-  const statusConfig: Record<string, { label: string; variant: 'success' | 'warning' | 'info' | 'error' | 'default' }> = {
-    PENDING: { label: 'Pending', variant: 'warning' },
-    CONFIRMED: { label: 'Confirmed', variant: 'info' },
-    IN_PROGRESS: { label: 'In Progress', variant: 'info' },
-    COMPLETED: { label: 'Completed', variant: 'success' },
-    CANCELLED: { label: 'Cancelled', variant: 'error' },
-    NO_SHOW: { label: 'No Show', variant: 'error' },
+  const statusConfig: Record<string, { label: string; variant: 'success' | 'warning' | 'info' | 'error' | 'default'; dotColor: string }> = {
+    PENDING: { label: 'Pending', variant: 'warning', dotColor: 'bg-amber-400' },
+    CONFIRMED: { label: 'Confirmed', variant: 'info', dotColor: 'bg-primary' },
+    IN_PROGRESS: { label: 'Active', variant: 'info', dotColor: 'bg-secondary' },
+    COMPLETED: { label: 'Done', variant: 'success', dotColor: 'bg-tertiary' },
+    CANCELLED: { label: 'Cancelled', variant: 'error', dotColor: 'bg-error' },
+    NO_SHOW: { label: 'No Show', variant: 'error', dotColor: 'bg-outline' },
   };
+
+  const metricCards = [
+    {
+      label: "Today's Appointments",
+      value: String(todayStats.total),
+      icon: Calendar,
+      delta: getChangeProps(todayStats.total, yesterdayStats.total),
+      color: 'text-primary',
+      bgColor: 'bg-primary-fixed',
+    },
+    {
+      label: 'In Queue',
+      value: String(todayStats.upcoming + todayStats.inProgress),
+      icon: Users,
+      color: 'text-secondary',
+      bgColor: 'bg-secondary-fixed',
+    },
+    {
+      label: 'Completed',
+      value: String(todayStats.completed),
+      icon: Clock,
+      color: 'text-tertiary',
+      bgColor: 'bg-tertiary-fixed',
+    },
+    {
+      label: "Today's Revenue",
+      value: formatPrice(todayStats.revenue),
+      icon: DollarSign,
+      delta: getChangeProps(todayStats.revenue, yesterdayStats.revenue),
+      color: 'text-on-surface',
+      bgColor: 'bg-surface-container-low',
+    },
+  ];
 
   return (
     <>
       <Head>
-        <title>Dashboard - Overline Admin</title>
+        <title>Dashboard — Overline Admin</title>
+        <meta name="description" content="Admin dashboard for managing your Overline shop." />
       </Head>
 
       <div>
         {/* Header */}
-        <div className="mb-6">
-          <h1 className="text-2xl font-bold text-gray-900">Dashboard</h1>
-          <p className="text-gray-500">{format(new Date(), 'EEEE, MMMM d, yyyy')}</p>
-        </div>
-
-        {/* Stats Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-8">
-          <StatCard
-            title="Today's Appointments"
-            value={todayStats.total}
-            change={getChangeProps(todayStats.total, yesterdayStats.total)}
-            icon={Calendar}
-            gradient="bg-gradient-to-br from-blue-500 to-indigo-600"
-          />
-          <StatCard
-            title="In Queue"
-            value={todayStats.upcoming + todayStats.inProgress}
-            icon={Users}
-            gradient="bg-gradient-to-br from-amber-400 to-orange-500"
-          />
-          <StatCard
-            title="Completed"
-            value={todayStats.completed}
-            icon={Clock}
-            gradient="bg-gradient-to-br from-purple-500 to-pink-500"
-          />
-          <StatCard
-            title="Today's Revenue"
-            value={formatPrice(todayStats.revenue)}
-            change={getChangeProps(todayStats.revenue, yesterdayStats.revenue)}
-            icon={DollarSign}
-            gradient="bg-gradient-to-br from-emerald-500 to-green-600"
-          />
-        </div>
-
-        {/* Revenue Chart */}
         <div className="mb-8">
+          <span className="label-m3 mb-2 block">Overview</span>
+          <h1 className="text-3xl font-black tracking-tight text-on-surface">Dashboard</h1>
+          <p className="text-on-surface-variant text-sm mt-1">{format(new Date(), 'EEEE, MMMM d, yyyy')}</p>
+        </div>
+
+        {/* ── Metrics Grid ── */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-8">
+          {metricCards.map((metric) => (
+            <div key={metric.label} className="card-m3 p-6">
+              <div className="flex items-start justify-between mb-4">
+                <div className={`w-10 h-10 rounded-xl ${metric.bgColor} flex items-center justify-center`}>
+                  <metric.icon className={`w-5 h-5 ${metric.color}`} />
+                </div>
+                {metric.delta && (
+                  <span className={metric.delta.type === 'increase' ? 'metric-delta-up' : 'metric-delta-down'}>
+                    {metric.delta.type === 'increase' ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
+                    {typeof metric.delta.value === 'number' ? `${Math.abs(metric.delta.value)}%` : metric.delta.value}
+                  </span>
+                )}
+              </div>
+              <p className="metric-value">{metric.value}</p>
+              <p className="metric-label mt-1">{metric.label}</p>
+            </div>
+          ))}
+        </div>
+
+        {/* ── Revenue Chart ── */}
+        <div className="card-m3 p-6 mb-8">
           <RevenueChart data={revenueData || []} isLoading={loadingRevenue} />
         </div>
 
-        {/* Two-column: Queue + Top Services */}
+        {/* ── Queue + Sidebar ── */}
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 mb-8">
           {/* Today's Queue */}
           <div className="lg:col-span-8">
-            <Card>
-              <div className="flex items-center justify-between mb-4">
-                <div className="flex items-center gap-2">
-                  <h2 className="text-lg font-semibold text-gray-900">Today&apos;s Queue</h2>
-                  <span className="relative flex h-2.5 w-2.5">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
-                    <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-green-500" />
+            <div className="card-m3 p-6">
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center gap-3">
+                  <div className="w-1.5 h-8 bg-primary rounded-full" />
+                  <h2 className="text-lg font-bold tracking-tight text-on-surface">Today&apos;s Queue</h2>
+                  <span className="relative flex h-2 w-2 ml-1">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-tertiary opacity-75" />
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-tertiary" />
                   </span>
                 </div>
-                <Button variant="outline" size="sm">
-                  <UserPlus className="w-4 h-4 mr-2" />
+                <button className="btn-tonal px-4 py-2 text-xs">
+                  <UserPlus className="w-3.5 h-3.5" />
                   Walk-in
-                </Button>
+                </button>
               </div>
 
               {todayBookings?.data.length === 0 ? (
-                <div className="text-center py-12">
-                  <Calendar className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-                  <p className="text-gray-500">No appointments scheduled for today</p>
+                <div className="text-center py-16">
+                  <Calendar className="w-12 h-12 text-outline-variant mx-auto mb-4" />
+                  <p className="text-on-surface-variant font-medium">No appointments scheduled for today</p>
                 </div>
               ) : (
-                <div className="space-y-3">
+                <div className="space-y-2">
                   {todayBookings?.data.slice(0, 10).map((booking) => {
                     const config = statusConfig[booking.status] || statusConfig.PENDING;
                     const trustLevel = getTrustLevel(booking.user);
@@ -188,26 +216,27 @@ export default function DashboardPage() {
                       <div
                         key={booking.id}
                         className={cn(
-                          'flex items-center justify-between p-4 rounded-lg border transition-all duration-200 hover:shadow-sm',
+                          'flex items-center justify-between p-4 rounded-2xl transition-all duration-200 hover:bg-surface-container-low',
                           booking.status === 'IN_PROGRESS'
-                            ? 'border-primary-200 bg-primary-50'
-                            : 'border-gray-200'
+                            ? 'bg-primary-fixed/30 border border-primary/10'
+                            : 'border border-outline-variant/5'
                         )}
                       >
                         <div className="flex items-center gap-4">
-                          <div className="text-center min-w-[60px]">
-                            <p className="text-lg font-bold text-gray-900">
+                          <div className="text-center min-w-[56px]">
+                            <p className="text-lg font-black text-on-surface leading-none">
                               {formatTime(booking.startTime)}
                             </p>
                           </div>
+                          <div className={`w-1 h-10 rounded-full ${config.dotColor}`} />
                           <div>
                             <div className="flex items-center gap-2">
-                              <p className="font-medium text-gray-900">
+                              <p className="font-semibold text-on-surface text-sm">
                                 {booking.user?.name || booking.customerName || 'Walk-in'}
                               </p>
                               {trustLevel === 'danger' && (
                                 <span
-                                  className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-red-100 text-red-700 text-xs font-medium"
+                                  className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-lg bg-error-container text-error text-[10px] font-bold"
                                   title={`Trust Score: ${booking.user?.trustScore?.toFixed(0)}%`}
                                 >
                                   <AlertTriangle className="w-3 h-3" />
@@ -215,41 +244,46 @@ export default function DashboardPage() {
                               )}
                               {trustLevel === 'warning' && (
                                 <span
-                                  className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded bg-amber-100 text-amber-700 text-xs font-medium"
+                                  className="inline-flex items-center gap-0.5 px-1.5 py-0.5 rounded-lg bg-amber-100 text-amber-700 text-[10px] font-bold"
                                   title={`Trust Score: ${booking.user?.trustScore?.toFixed(0)}%`}
                                 >
                                   <AlertTriangle className="w-3 h-3" />
                                 </span>
                               )}
                             </div>
-                            <p className="text-sm text-gray-500">
+                            <p className="text-xs text-on-surface-variant mt-0.5">
                               {booking.services?.map((s: any) => s.serviceName).join(', ')}
                             </p>
                           </div>
                         </div>
 
-                        <div className="flex items-center gap-3">
-                          <Badge variant={config.variant}>{config.label}</Badge>
+                        <div className="flex items-center gap-2">
+                          <span className={`badge-m3 ${
+                            config.variant === 'success' ? 'bg-tertiary-fixed text-tertiary' :
+                            config.variant === 'warning' ? 'bg-amber-100 text-amber-700' :
+                            config.variant === 'info' ? 'bg-primary-fixed text-primary' :
+                            config.variant === 'error' ? 'bg-error-container text-error' :
+                            'bg-surface-container-high text-outline'
+                          }`}>
+                            {config.label}
+                          </span>
 
                           {booking.status === 'CONFIRMED' && (
-                            <Button
-                              size="sm"
-                              variant="outline"
+                            <button
                               onClick={() => startService.mutate(booking.id)}
-                              isLoading={startService.isPending}
+                              className="w-8 h-8 rounded-xl bg-primary text-white flex items-center justify-center hover:brightness-110 transition-all active:scale-95"
                             >
-                              <Play className="w-4 h-4" />
-                            </Button>
+                              <Play className="w-3.5 h-3.5" />
+                            </button>
                           )}
 
                           {booking.status === 'IN_PROGRESS' && (
-                            <Button
-                              size="sm"
+                            <button
                               onClick={() => markComplete.mutate(booking.id)}
-                              isLoading={markComplete.isPending}
+                              className="w-8 h-8 rounded-xl bg-tertiary text-white flex items-center justify-center hover:brightness-110 transition-all active:scale-95"
                             >
-                              <Check className="w-4 h-4" />
-                            </Button>
+                              <Check className="w-3.5 h-3.5" />
+                            </button>
                           )}
                         </div>
                       </div>
@@ -257,41 +291,42 @@ export default function DashboardPage() {
                   })}
                 </div>
               )}
-            </Card>
+            </div>
           </div>
 
           {/* Right sidebar */}
           <div className="lg:col-span-4 space-y-6">
             {shopId && <LiveTracking shopId={shopId} />}
 
-            {/* Top Services */}
-            <TopServicesChart data={topServices || []} isLoading={loadingServices} />
+            <div className="card-m3 p-6">
+              <TopServicesChart data={topServices || []} isLoading={loadingServices} />
+            </div>
 
-            {/* Recent Activity - Now using real data */}
-            <Card>
-              <h2 className="text-lg font-semibold text-gray-900 mb-4">Recent Activity</h2>
+            {/* Recent Activity */}
+            <div className="card-m3 p-6">
+              <h2 className="text-sm font-bold tracking-tight text-on-surface mb-5 flex items-center gap-2">
+                <Bell className="w-4 h-4 text-secondary" />
+                Recent Activity
+              </h2>
               <div className="space-y-4">
                 {(!recentActivity || recentActivity.length === 0) ? (
-                  <div className="text-center py-6">
-                    <Bell className="w-8 h-8 text-gray-300 mx-auto mb-2" />
-                    <p className="text-sm text-gray-400">No recent activity</p>
+                  <div className="text-center py-8">
+                    <Bell className="w-8 h-8 text-outline-variant mx-auto mb-2" />
+                    <p className="text-xs text-on-surface-variant">No recent activity</p>
                   </div>
                 ) : (
                   recentActivity.slice(0, 5).map((activity: any) => {
-                    const iconConfig = NOTIFICATION_ICONS[activity.type] || {
-                      icon: Bell,
-                      color: 'text-gray-400',
-                    };
+                    const iconConfig = NOTIFICATION_ICONS[activity.type] || { icon: Bell, color: 'text-outline' };
                     const Icon = iconConfig.icon;
 
                     return (
                       <div key={activity.id} className="flex items-start gap-3">
-                        <div className={cn('mt-0.5', iconConfig.color)}>
-                          <Icon className="w-4 h-4" />
+                        <div className={cn('mt-0.5 w-7 h-7 rounded-lg bg-surface-container-low flex items-center justify-center', iconConfig.color)}>
+                          <Icon className="w-3.5 h-3.5" />
                         </div>
                         <div className="flex-1 min-w-0">
-                          <p className="text-sm text-gray-900 truncate">{activity.title}</p>
-                          <p className="text-xs text-gray-500">
+                          <p className="text-sm text-on-surface font-medium truncate">{activity.title}</p>
+                          <p className="text-[11px] text-outline mt-0.5">
                             {formatDistanceToNow(new Date(activity.createdAt), { addSuffix: true })}
                           </p>
                         </div>
@@ -300,7 +335,7 @@ export default function DashboardPage() {
                   })
                 )}
               </div>
-            </Card>
+            </div>
           </div>
         </div>
       </div>

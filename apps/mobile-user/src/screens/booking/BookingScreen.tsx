@@ -6,20 +6,16 @@ import {
   StyleSheet,
   TouchableOpacity,
   ActivityIndicator,
-  Alert,
 } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { format, addDays, isSameDay } from 'date-fns';
-import RazorpayCheckout from 'react-native-razorpay';
-import { shopsApi, bookingsApi, queueApi, paymentsApi } from '../../api/client';
+import { shopsApi, queueApi } from '../../api/client';
 import { RootStackParamList, TimeSlot } from '../../types';
 import { Colors, Spacing, BorderRadius, FontSizes, FontWeights, Shadows } from '../../theme';
-import { PrimaryButton, Divider } from '../../components/ui';
-import { useAuthStore } from '../../stores/authStore';
-import { Config } from '../../config';
-import { CalendarX, CreditCard, Wallet, Store } from 'lucide-react-native';
+import { PrimaryButton } from '../../components/ui';
+import { CalendarX, UserRound } from 'lucide-react-native';
 
 type RouteProps = RouteProp<RootStackParamList, 'Booking'>;
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
@@ -27,16 +23,10 @@ type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 export default function BookingScreen() {
   const navigation = useNavigation<NavigationProp>();
   const route = useRoute<RouteProps>();
-  const { shopId, selectedServices = [] } = route.params;
+  const { shopId, selectedServices = [], selectedStaffId } = route.params;
 
-  const { user } = useAuthStore();
-  const onlineOnly = Config.FEATURES.BOOKING_ONLINE_ONLY;
   const [selectedDate, setSelectedDate] = useState(new Date());
   const [selectedTime, setSelectedTime] = useState<string | null>(null);
-  const [paymentMethod, setPaymentMethod] = useState<'ONLINE' | 'WALLET' | 'PAY_AT_SHOP'>(
-    onlineOnly ? 'ONLINE' : 'PAY_AT_SHOP',
-  );
-  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const { data: shop } = useQuery({
     queryKey: ['shop', shopId],
@@ -50,6 +40,7 @@ export default function BookingScreen() {
         .getSlots(shopId, {
           date: format(selectedDate, 'yyyy-MM-dd'),
           serviceIds: selectedServices,
+          ...(selectedStaffId ? { staffId: selectedStaffId } : {}),
         })
         .then(res => res.data),
   });
@@ -58,105 +49,48 @@ export default function BookingScreen() {
     return Array.from({ length: 14 }, (_, i) => addDays(new Date(), i));
   }, []);
 
-  const selectedServiceItems = (shop?.services || []).filter((s: any) => selectedServices.includes(s.id));
-  const totalAmount = selectedServiceItems.reduce((sum: number, s: any) => sum + Number(s.price), 0);
-
-  const handleConfirm = async () => {
-    if (!selectedTime) {
-      Alert.alert('Error', 'Please select a time slot');
-      return;
-    }
-
-    // Check phone verification before booking
-    if (user && !user.isPhoneVerified) {
-      Alert.alert(
-        'Phone Verification Required',
-        'Please verify your phone number before booking. This helps prevent spam and ensures you receive booking updates.',
-        [
-          {text: 'Cancel', style: 'cancel'},
-          {text: 'Verify Now', onPress: () => navigation.goBack()},
-        ],
-      );
-      return;
-    }
-
-    const startTime = `${format(selectedDate, 'yyyy-MM-dd')}T${selectedTime}:00`;
-    try {
-      setIsSubmitting(true);
-      const created = await bookingsApi.create({ shopId, serviceIds: selectedServices, startTime });
-      const bookingId = created.data.id;
-
-      if (paymentMethod !== 'PAY_AT_SHOP') {
-        const order = await paymentsApi.createOrder({
-          bookingId,
-          amount: totalAmount,
-          method: paymentMethod,
-        });
-
-        if (paymentMethod === 'ONLINE') {
-          if (order.data?.method !== 'RAZORPAY') {
-            throw new Error('Online payment is mandatory, but payment gateway is unavailable.');
-          }
-
-          const paymentData = await RazorpayCheckout.open({
-            key: order.data.keyId,
-            amount: order.data.amount,
-            currency: order.data.currency || 'INR',
-            order_id: order.data.orderId,
-            name: 'Overline',
-            description: order.data.bookingNumber || 'Booking payment',
-            prefill: {
-              name: user?.name,
-              email: user?.email,
-              contact: user?.phone,
-            },
-            theme: { color: Colors.primary },
-          });
-
-          await paymentsApi.verifyRazorpay({
-            razorpay_order_id: paymentData.razorpay_order_id,
-            razorpay_payment_id: paymentData.razorpay_payment_id,
-            razorpay_signature: paymentData.razorpay_signature,
-          });
-        }
-      }
-
-      navigation.replace('BookingConfirmation', { bookingId });
-    } catch (error: any) {
-      Alert.alert(
-        'Booking Failed',
-        error?.response?.data?.message || 'Unable to complete booking right now. Please try again.',
-      );
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
-
   const timeSlots: TimeSlot[] = availability?.slots || [];
 
   return (
     <View style={styles.container}>
       <ScrollView showsVerticalScrollIndicator={false}>
         {/* Step indicator */}
-        <View style={styles.stepIndicator}>
-          <View style={[styles.step, styles.stepActive]}>
-            <Text style={styles.stepNumber}>1</Text>
-          </View>
-          <View style={styles.stepLine} />
-          <View style={[styles.step, styles.stepActive]}>
-            <Text style={styles.stepNumber}>
-              2
-            </Text>
-          </View>
-          <View style={styles.stepLine} />
-          <View style={[styles.step, selectedTime ? styles.stepActive : undefined]}>
-            <Text style={[styles.stepNumber, !selectedTime && { color: Colors.textTertiary }]}>3</Text>
+        <View style={styles.stepHeader}>
+          <Text style={styles.stepTitle}>Book Appointment</Text>
+          <Text style={styles.stepSubtitle}>Step 3 of 4 • Choose date and time</Text>
+          <View style={styles.stepIndicator}>
+            <View style={[styles.step, styles.stepActive]}>
+              <Text style={styles.stepNumber}>1</Text>
+            </View>
+            <View style={styles.stepLineActive} />
+            <View style={[styles.step, styles.stepActive]}>
+              <Text style={styles.stepNumber}>2</Text>
+            </View>
+            <View style={styles.stepLineActive} />
+            <View style={[styles.step, selectedTime ? styles.stepActive : undefined]}>
+              <Text style={[styles.stepNumber, !selectedTime && { color: Colors.textTertiary }]}>3</Text>
+            </View>
+            <View style={styles.stepLine} />
+            <View style={[styles.step, selectedTime ? styles.stepActive : undefined]}>
+              <Text style={[styles.stepNumber, !selectedTime && { color: Colors.textTertiary }]}>4</Text>
+            </View>
           </View>
         </View>
 
+        {selectedStaffId && (
+          <View style={styles.section}>
+            <View style={styles.staffHint}>
+              <UserRound color={Colors.primary} size={16} />
+              <Text style={styles.staffHintText}>
+                Professional selected • {selectedStaffId.slice(-4).toUpperCase()}
+              </Text>
+            </View>
+          </View>
+        )}
+
         {/* Date Selection */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Pick a Date</Text>
+          <Text style={styles.sectionTitle}>Select Date</Text>
           <ScrollView
             horizontal
             showsHorizontalScrollIndicator={false}
@@ -190,7 +124,7 @@ export default function BookingScreen() {
 
         {/* Time Selection */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Pick a Time</Text>
+          <Text style={styles.sectionTitle}>Available Time Slots</Text>
           {loadingSlots ? (
             <ActivityIndicator
               size="small"
@@ -232,66 +166,9 @@ export default function BookingScreen() {
           )}
         </View>
 
-        {/* Payment Method */}
-        {selectedTime && (
-          <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Payment Method</Text>
-            <View style={styles.paymentMethods}>
-              {!onlineOnly && (
-                <TouchableOpacity
-                  style={[
-                    styles.paymentCard,
-                    paymentMethod === 'PAY_AT_SHOP' && styles.paymentCardSelected,
-                  ]}
-                  onPress={() => setPaymentMethod('PAY_AT_SHOP')}
-                  activeOpacity={0.85}>
-                  <Store color={paymentMethod === 'PAY_AT_SHOP' ? Colors.primary : Colors.textSecondary} size={18} />
-                  <View style={styles.paymentTextWrap}>
-                    <Text style={styles.paymentTitle}>Pay at Shop</Text>
-                    <Text style={styles.paymentSubtitle}>Pay after your service is complete</Text>
-                  </View>
-                </TouchableOpacity>
-              )}
-
-              {!onlineOnly && (
-                <TouchableOpacity
-                  style={[
-                    styles.paymentCard,
-                    paymentMethod === 'WALLET' && styles.paymentCardSelected,
-                  ]}
-                  onPress={() => setPaymentMethod('WALLET')}
-                  activeOpacity={0.85}>
-                  <Wallet color={paymentMethod === 'WALLET' ? Colors.primary : Colors.textSecondary} size={18} />
-                  <View style={styles.paymentTextWrap}>
-                    <Text style={styles.paymentTitle}>Wallet</Text>
-                    <Text style={styles.paymentSubtitle}>Use available wallet balance</Text>
-                  </View>
-                </TouchableOpacity>
-              )}
-
-              <TouchableOpacity
-                style={[
-                  styles.paymentCard,
-                  paymentMethod === 'ONLINE' && styles.paymentCardSelected,
-                ]}
-                onPress={() => setPaymentMethod('ONLINE')}
-                activeOpacity={0.85}>
-                <CreditCard color={paymentMethod === 'ONLINE' ? Colors.primary : Colors.textSecondary} size={18} />
-                <View style={styles.paymentTextWrap}>
-                  <Text style={styles.paymentTitle}>Pay Online</Text>
-                  <Text style={styles.paymentSubtitle}>
-                    {onlineOnly ? 'Required for this booking' : 'Razorpay secure checkout'}
-                  </Text>
-                </View>
-              </TouchableOpacity>
-            </View>
-          </View>
-        )}
-
-        {/* Summary */}
         {shop && selectedServices.length > 0 && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Summary</Text>
+            <Text style={styles.sectionTitle}>Selected Services</Text>
             <View style={styles.summaryCard}>
               <Text style={styles.summaryShop}>{shop.name}</Text>
               {shop.services
@@ -302,29 +179,6 @@ export default function BookingScreen() {
                     <Text style={styles.summaryPrice}>₹{service.price}</Text>
                   </View>
                 ))}
-              <Divider />
-              <View style={styles.summaryItem}>
-                <Text style={styles.summaryTotal}>Total</Text>
-                <Text style={styles.summaryTotalPrice}>₹{totalAmount}</Text>
-              </View>
-              <View style={styles.summaryItem}>
-                <Text style={styles.summaryService}>Payment</Text>
-                <Text style={styles.summaryPrice}>
-                  {onlineOnly
-                    ? 'Online (Required)'
-                    : paymentMethod === 'PAY_AT_SHOP'
-                    ? 'Pay at Shop'
-                    : paymentMethod === 'WALLET'
-                    ? 'Wallet'
-                    : 'Online'}
-                </Text>
-              </View>
-              <View style={styles.freeCashBadge}>
-                <Text style={styles.freeCashIcon}>✨</Text>
-                <Text style={styles.freeCashText}>
-                  You'll earn Free Cash on this booking!
-                </Text>
-              </View>
             </View>
           </View>
         )}
@@ -335,9 +189,19 @@ export default function BookingScreen() {
       {/* Confirm Button */}
       <View style={styles.bottomBar}>
         <PrimaryButton
-          title={paymentMethod === 'ONLINE' ? 'Pay & Confirm' : 'Confirm Booking'}
-          onPress={handleConfirm}
-          loading={isSubmitting}
+          title="Continue to Review & Pay"
+          onPress={() => {
+            if (!selectedTime) {
+              return;
+            }
+            navigation.navigate('BookingReview', {
+              shopId,
+              selectedServices,
+              selectedDate: format(selectedDate, 'yyyy-MM-dd'),
+              selectedTime,
+              selectedStaffId,
+            });
+          }}
           disabled={!selectedTime}
         />
       </View>
@@ -354,8 +218,28 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: Spacing.xl,
-    paddingHorizontal: Spacing['4xl'],
+    paddingHorizontal: Spacing.md,
+  },
+  stepHeader: {
+    marginHorizontal: Spacing.xl,
+    marginTop: Spacing.lg,
+    marginBottom: Spacing.md,
+    padding: Spacing.lg,
+    borderRadius: BorderRadius.xl,
+    backgroundColor: Colors.surface,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  stepTitle: {
+    fontSize: FontSizes.xl,
+    fontWeight: FontWeights.bold,
+    color: Colors.textPrimary,
+    marginBottom: 4,
+  },
+  stepSubtitle: {
+    fontSize: FontSizes.sm,
+    color: Colors.textSecondary,
+    marginBottom: Spacing.lg,
   },
   step: {
     width: 36,
@@ -383,6 +267,12 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.surfaceLight,
     marginHorizontal: Spacing.sm,
   },
+  stepLineActive: {
+    flex: 1,
+    height: 2,
+    backgroundColor: Colors.primary,
+    marginHorizontal: Spacing.sm,
+  },
   section: {
     paddingHorizontal: Spacing.xl,
     paddingVertical: Spacing.lg,
@@ -392,6 +282,21 @@ const styles = StyleSheet.create({
     fontWeight: FontWeights.bold,
     color: Colors.textPrimary,
     marginBottom: Spacing.lg,
+  },
+  staffHint: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+    borderWidth: 1,
+    borderColor: Colors.primaryBorder,
+    backgroundColor: Colors.primaryGhost,
+    borderRadius: BorderRadius.md,
+    padding: Spacing.md,
+  },
+  staffHintText: {
+    fontSize: FontSizes.sm,
+    color: Colors.primary,
+    fontWeight: FontWeights.medium,
   },
   dateList: {
     paddingRight: Spacing.lg,
@@ -490,36 +395,6 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: Colors.border,
   },
-  paymentMethods: {
-    gap: Spacing.md,
-  },
-  paymentCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: Spacing.md,
-    padding: Spacing.lg,
-    borderRadius: BorderRadius.lg,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    backgroundColor: Colors.surface,
-  },
-  paymentCardSelected: {
-    borderColor: Colors.primary,
-    backgroundColor: Colors.primaryGhost,
-  },
-  paymentTextWrap: {
-    flex: 1,
-  },
-  paymentTitle: {
-    color: Colors.textPrimary,
-    fontSize: FontSizes.md,
-    fontWeight: FontWeights.semibold,
-    marginBottom: 2,
-  },
-  paymentSubtitle: {
-    color: Colors.textSecondary,
-    fontSize: FontSizes.sm,
-  },
   summaryShop: {
     fontSize: FontSizes.md,
     fontWeight: FontWeights.bold,
@@ -539,34 +414,6 @@ const styles = StyleSheet.create({
     fontSize: FontSizes.sm,
     color: Colors.textSecondary,
   },
-  summaryTotal: {
-    fontSize: FontSizes.lg,
-    fontWeight: FontWeights.bold,
-    color: Colors.textPrimary,
-  },
-  summaryTotalPrice: {
-    fontSize: FontSizes.lg,
-    fontWeight: FontWeights.bold,
-    color: Colors.primary,
-  },
-  freeCashBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: Colors.successLight,
-    padding: Spacing.md,
-    borderRadius: BorderRadius.md,
-    marginTop: Spacing.md,
-    gap: Spacing.sm,
-  },
-  freeCashIcon: {
-    fontSize: 16,
-  },
-  freeCashText: {
-    fontSize: FontSizes.sm,
-    color: Colors.success,
-    fontWeight: FontWeights.medium,
-    flex: 1,
-  },
   bottomBar: {
     position: 'absolute',
     bottom: 0,
@@ -577,5 +424,6 @@ const styles = StyleSheet.create({
     paddingBottom: 36,
     borderTopWidth: 1,
     borderTopColor: Colors.border,
+    ...Shadows.md,
   },
 });

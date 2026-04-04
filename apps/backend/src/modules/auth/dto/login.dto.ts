@@ -1,4 +1,4 @@
-import { IsEmail, IsString, MinLength } from 'class-validator';
+import { IsEmail, IsString, MinLength, IsOptional, IsEnum } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class LoginDto {
@@ -10,4 +10,9 @@ export class LoginDto {
   @IsString()
   @MinLength(1)
   password: string;
+
+  @ApiProperty({ example: 'OWNER', description: 'Explicit requested role (OWNER, STAFF) for Admin portal', required: false })
+  @IsOptional()
+  @IsEnum(['OWNER', 'STAFF', 'USER', 'SUPER_ADMIN'])
+  requestedRole?: string;
 }

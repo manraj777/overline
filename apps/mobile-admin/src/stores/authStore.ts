@@ -27,7 +27,7 @@ interface AuthState {
   otpPhone: string | null;
 
   // Actions
-  login: (email: string, password: string) => Promise<void>;
+  login: (email: string, password: string, options?: { requestedRole?: string }) => Promise<void>;
   completeOtpVerification: () => void;
   logout: () => Promise<void>;
   checkAuth: () => Promise<void>;
@@ -44,9 +44,9 @@ export const useAuthStore = create<AuthState>((set) => ({
   pendingOtpVerification: false,
   otpPhone: null,
 
-  login: async (email: string, password: string) => {
+  login: async (email: string, password: string, options?: { requestedRole?: string }) => {
     try {
-      const response = await authApi.login(email, password);
+      const response = await authApi.login(email, password, options);
       const {accessToken, refreshToken, user} = response.data;
 
       // Validate admin role

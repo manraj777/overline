@@ -14,10 +14,15 @@ import SplashScreen from '../screens/auth/SplashScreen';
 import OnboardingScreen from '../screens/auth/OnboardingScreen';
 import LoginScreen from '../screens/auth/LoginScreen';
 import RegisterScreen from '../screens/auth/RegisterScreen';
+import RegisterPhoneScreen from '../screens/auth/RegisterPhoneScreen';
+import RegisterOtpScreen from '../screens/auth/RegisterOtpScreen';
+import RegisterProfileScreen from '../screens/auth/RegisterProfileScreen';
 import OtpVerifyScreen from '../screens/auth/OtpVerifyScreen';
 import HomeScreen from '../screens/home/HomeScreen';
 import ShopDetailScreen from '../screens/home/ShopDetailScreen';
+import BookingStaffScreen from '../screens/booking/BookingStaffScreen';
 import BookingScreen from '../screens/booking/BookingScreen';
+import BookingReviewScreen from '../screens/booking/BookingReviewScreen';
 import BookingDetailScreen from '../screens/booking/BookingDetailScreen';
 import BookingConfirmationScreen from '../screens/booking/BookingConfirmationScreen';
 import MyBookingsScreen from '../screens/booking/MyBookingsScreen';
@@ -67,11 +72,10 @@ function MainTabs() {
         tabBarInactiveTintColor: Colors.textTertiary,
         tabBarStyle: {
           backgroundColor: Colors.surface,
-          borderTopWidth: 1,
-          borderTopColor: Colors.border,
-          paddingBottom: 8,
-          paddingTop: 8,
-          height: 70,
+          borderTopWidth: 0,
+          paddingBottom: 10,
+          paddingTop: 10,
+          height: 74,
           ...Shadows.md,
         },
         tabBarLabelStyle: {
@@ -85,7 +89,7 @@ function MainTabs() {
         name="Home"
         component={HomeScreen}
         options={{
-          tabBarLabel: 'Explore',
+          tabBarLabel: 'Home',
           tabBarIcon: ({ color, size, focused }) => (
             <TabIcon name="home" color={color} size={size} focused={focused} />
           ),
@@ -167,6 +171,9 @@ export default function RootNavigator() {
             {isFirstLaunch && <Stack.Screen name="Onboarding" component={OnboardingScreen} />}
             <Stack.Screen name="Login" component={LoginScreen} />
             <Stack.Screen name="Register" component={RegisterScreen} />
+            <Stack.Screen name="RegisterPhone" component={RegisterPhoneScreen} />
+            <Stack.Screen name="RegisterOtp" component={RegisterOtpScreen} />
+            <Stack.Screen name="RegisterProfile" component={RegisterProfileScreen} />
             <Stack.Screen
               name="OtpVerify"
               component={OtpVerifyScreen}
@@ -184,11 +191,27 @@ export default function RootNavigator() {
               component={ShopDetailScreen}
             />
             <Stack.Screen
+              name="BookingStaff"
+              component={BookingStaffScreen}
+              options={{
+                headerShown: true,
+                title: 'Choose Professional',
+              }}
+            />
+            <Stack.Screen
               name="Booking"
               component={BookingScreen}
               options={{
                 headerShown: true,
-                title: 'Book Appointment',
+                title: 'Choose Slot',
+              }}
+            />
+            <Stack.Screen
+              name="BookingReview"
+              component={BookingReviewScreen}
+              options={{
+                headerShown: true,
+                title: 'Review & Pay',
               }}
             />
             <Stack.Screen

@@ -2,86 +2,112 @@
 // Premium color palette inspired by modern fintech/booking apps
 
 export const Colors = {
-    // Figma palette: primary
-    primary50: '#f0f4ff',
-    primary100: '#e0e7ff',
-    primary200: '#c7d2fe',
-    primary400: '#818cf8',
-    primary500: '#6366f1',
-    primary600: '#4f46e5',
-    primary700: '#4338ca',
+    // M3 Tokens (Figma palette mapping)
+    primary: '#4648d4',
+    onPrimary: '#ffffff',
+    primaryContainer: '#dfe0ff',
+    onPrimaryContainer: '#00006e',
+    
+    secondary: '#5c5d72',
+    onSecondary: '#ffffff',
+    secondaryContainer: '#e1e0f9',
+    onSecondaryContainer: '#191a2c',
 
-    // Figma palette: accent
-    accent100: '#ede9fe',
-    accent500: '#8b5cf6',
-    accent600: '#7c3aed',
-    accent700: '#6d28d9',
+    tertiary: '#795369',
+    onTertiary: '#ffffff',
+    tertiaryContainer: '#ffd8ec',
+    onTertiaryContainer: '#2f1124',
 
-    // Figma palette: semantic
+    error: '#ba1a1a',
+    onError: '#ffffff',
+    errorContainer: '#ffdad6',
+    onErrorContainer: '#410002',
+
+    background: '#f8f9ff',
+    onBackground: '#191a20',
+    surface: '#f8f9ff',
+    onSurface: '#191a20',
+    
+    surfaceVariant: '#e3e1ec',
+    onSurfaceVariant: '#46464f',
+    outline: '#777680',
+    outlineVariant: '#c7c5d0',
+
+    // Retained for absolute compatibility with legacy Screens but forced to M3 equivalents
+    primaryGhost: 'rgba(70, 72, 212, 0.1)',
+    primaryBorder: 'rgba(70, 72, 212, 0.25)',
+    primaryDark: '#00006e',
+    primaryLight: '#dfe0ff',
+    
+    accent: '#5c5d72',
+    accentDark: '#191a2c',
+    accentLight: '#e1e0f9',
+    
+    success: '#006e44',
+    successLight: 'rgba(0, 110, 68, 0.14)',
+    warning: '#f59e0b',
+    warningLight: 'rgba(245, 158, 11, 0.14)',
+    errorLight: 'rgba(186, 26, 26, 0.14)',
+    info: '#4648d4',
+    
+    surfaceLight: '#ffffff',
+    surfaceElevated: '#ffffff',
+    card: '#ffffff',
+    cardLight: '#f8f9ff',
+
+    textPrimary: '#191a20',
+    textSecondary: '#46464f',
+    textTertiary: '#777680',
+    textMuted: '#c7c5d0',
+
+    border: '#c7c5d0',
+    borderLight: '#e3e1ec',
+    borderActive: '#4648d4',
+
+    gradientPrimary: ['#4648d4', '#5c5d72'],
+    gradientAccent: ['#5c5d72', '#4648d4'],
+    gradientSuccess: ['#006e44', '#34d399'],
+    gradientSurface: ['#ffffff', '#f8f9ff'],
+    gradientDark: ['#f8f9ff', '#ffffff'],
+
+    overlay: 'rgba(25, 26, 32, 0.62)',
+    overlayLight: 'rgba(25, 26, 32, 0.22)',
+    shimmer: 'rgba(199, 197, 208, 0.35)',
+
+    // Deprecated legacy tokens remapped to M3 equivalents for backward compatibility
+    white: '#ffffff',
+    black: '#000000',
+    gray50: '#f8f9ff',
+    gray100: '#f8f9ff',
+    gray200: '#e3e1ec',
+    gray400: '#c7c5d0',
+    gray500: '#777680',
+    gray600: '#46464f',
+    gray800: '#191a20',
+    gray900: '#191a20',
+
+    primary50: '#dfe0ff',
+    primary100: '#dfe0ff',
+    primary200: '#dfe0ff',
+    primary400: '#4648d4',
+    primary500: '#4648d4',
+    primary600: '#4648d4',
+    primary700: '#00006e',
+
+    accent100: '#e1e0f9',
+    accent500: '#5c5d72',
+    accent600: '#5c5d72',
+    accent700: '#191a2c',
+
     success50: '#d1fae5',
-    success500: '#10b981',
-    success700: '#065f46',
+    success500: '#006e44',
+    success700: '#006e44',
     warning50: '#fef3c7',
     warning500: '#f59e0b',
     warning700: '#92400e',
-    danger50: '#fee2e2',
-    danger500: '#ef4444',
-    danger700: '#b91c1c',
-
-    // Figma palette: neutral
-    white: '#ffffff',
-    gray50: '#f9fafb',
-    gray100: '#f3f4f6',
-    gray200: '#e5e7eb',
-    gray400: '#9ca3af',
-    gray500: '#6b7280',
-    gray600: '#4b5563',
-    gray800: '#1f2937',
-    gray900: '#111827',
-    black: '#000000',
-
-    // Backward compatible aliases used in current screens/components
-    primary: '#6366f1',
-    primaryDark: '#4f46e5',
-    primaryLight: '#c7d2fe',
-    primaryGhost: 'rgba(99, 102, 241, 0.1)',
-    primaryBorder: 'rgba(99, 102, 241, 0.25)',
-    accent: '#8b5cf6',
-    accentDark: '#7c3aed',
-    accentLight: '#ede9fe',
-    success: '#10b981',
-    successLight: 'rgba(16, 185, 129, 0.14)',
-    warning: '#f59e0b',
-    warningLight: 'rgba(245, 158, 11, 0.14)',
-    error: '#ef4444',
-    errorLight: 'rgba(239, 68, 68, 0.14)',
-    info: '#6366f1',
-
-    background: '#f9fafb',
-    surface: '#ffffff',
-    surfaceLight: '#f3f4f6',
-    surfaceElevated: '#ffffff',
-    card: '#ffffff',
-    cardLight: '#f9fafb',
-
-    textPrimary: '#111827',
-    textSecondary: '#4b5563',
-    textTertiary: '#6b7280',
-    textMuted: '#9ca3af',
-
-    border: '#e5e7eb',
-    borderLight: '#f3f4f6',
-    borderActive: 'rgba(99, 102, 241, 0.45)',
-
-    gradientPrimary: ['#6366f1', '#8b5cf6'],
-    gradientAccent: ['#8b5cf6', '#6366f1'],
-    gradientSuccess: ['#10b981', '#34d399'],
-    gradientSurface: ['#ffffff', '#f9fafb'],
-    gradientDark: ['#f9fafb', '#ffffff'],
-
-    overlay: 'rgba(17, 24, 39, 0.62)',
-    overlayLight: 'rgba(17, 24, 39, 0.22)',
-    shimmer: 'rgba(156, 163, 175, 0.35)',
+    danger50: '#ffdad6',
+    danger500: '#ba1a1a',
+    danger700: '#ba1a1a',
 };
 
 export const Spacing = {
@@ -162,12 +188,12 @@ export const StatusBarStyle = 'dark-content' as const;
 
 // Booking status config
 export const BookingStatusConfig: Record<string, { color: string; bg: string; icon: string }> = {
-    PENDING: { color: '#92400e', bg: '#fef3c7', icon: '⏳' },
-    UPCOMING: { color: '#4338ca', bg: '#e0e7ff', icon: '⏳' },
-    CONFIRMED: { color: '#065f46', bg: '#d1fae5', icon: '✓' },
-    IN_PROGRESS: { color: '#7c3aed', bg: '#ede9fe', icon: '▶' },
-    IN_SERVICE: { color: '#7c3aed', bg: '#ede9fe', icon: '▶' },
-    COMPLETED: { color: '#4b5563', bg: '#f3f4f6', icon: '✓' },
-    CANCELLED: { color: '#b91c1c', bg: '#fee2e2', icon: '✕' },
-    NO_SHOW: { color: '#92400e', bg: '#fef3c7', icon: '!' },
+    PENDING: { color: '#ba1a1a', bg: '#ffdad6', icon: '⏳' }, // Warning variant equivalent
+    UPCOMING: { color: '#4648d4', bg: '#dfe0ff', icon: '⏳' },
+    CONFIRMED: { color: '#006e44', bg: '#d1fae5', icon: '✓' },
+    IN_PROGRESS: { color: '#5c5d72', bg: '#e1e0f9', icon: '▶' },
+    IN_SERVICE: { color: '#5c5d72', bg: '#e1e0f9', icon: '▶' },
+    COMPLETED: { color: '#46464f', bg: '#e3e1ec', icon: '✓' },
+    CANCELLED: { color: '#ba1a1a', bg: '#ffdad6', icon: '✕' },
+    NO_SHOW: { color: '#ba1a1a', bg: '#ffdad6', icon: '!' },
 };

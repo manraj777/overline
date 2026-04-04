@@ -1,7 +1,7 @@
 import React from 'react';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
-import { Search, MapPin, SlidersHorizontal, X, Navigation } from 'lucide-react';
+import { Search, MapPin, SlidersHorizontal, X, Navigation, Sparkles } from 'lucide-react';
 import { Input, Button, Card, Loading, LocationPicker } from '@/components/ui';
 import { ShopCard } from '@/components/shop';
 import { ShopMap } from '@/components/map';
@@ -21,11 +21,7 @@ export default function ExplorePage() {
 
   const extractCityFromAddress = React.useCallback((address?: string) => {
     if (!address) return '';
-    const parts = address
-      .split(',')
-      .map((part) => part.trim())
-      .filter(Boolean);
-
+    const parts = address.split(',').map((part) => part.trim()).filter(Boolean);
     if (parts.length === 0) return '';
     if (parts.length === 1) return parts[0];
     if (parts.length >= 3) return parts[parts.length - 2];
@@ -82,210 +78,285 @@ export default function ExplorePage() {
   return (
     <>
       <Head>
-        <title>Explore - Overline</title>
+        <title>Explore — Overline</title>
+        <meta name="description" content="Discover premium shops, salons, clinics, and wellness centers near you." />
       </Head>
 
-      <div className="relative min-h-screen overflow-hidden bg-[#F8F9FA] pb-24">
-        {/* Abstract Premium Background */}
-        <div className="absolute top-0 right-0 w-[800px] h-[800px] bg-gradient-to-bl from-primary-400/20 via-purple-400/10 to-transparent blur-[120px] rounded-full translate-x-1/3 -translate-y-1/3 pointer-events-none z-0" />
-        <div className="absolute bottom-0 left-0 w-[600px] h-[600px] bg-gradient-to-tr from-accent-400/10 to-transparent blur-[100px] rounded-full -translate-x-1/3 translate-y-1/3 pointer-events-none z-0" />
+      <div className="flex flex-col md:flex-row min-h-screen overflow-hidden">
+        {/* ── Sidebar Filters ── */}
+        <aside className={cn(
+          'w-full md:w-80 lg:w-[320px] shrink-0 bg-white border-r border-outline-variant/10 overflow-y-auto no-scrollbar transition-all',
+          showFilters ? 'block' : 'hidden md:block'
+        )}>
+          <div className="p-6 space-y-8">
+            {/* Filter Header */}
+            <div className="flex justify-between items-center">
+              <h2 className="text-lg font-bold tracking-tight text-on-surface">Filters</h2>
+              <button
+                onClick={clearFilters}
+                className="text-xs font-bold uppercase tracking-widest text-primary hover:underline"
+              >
+                Clear All
+              </button>
+            </div>
 
-        <div className="container-app pt-8 pb-24 relative z-10">
-          {/* Main Title */}
-          <div className="mb-8 text-center md:text-left">
-            <h1 className="text-4xl md:text-5xl font-black text-lexo-black tracking-tight mb-2">
-              Explore Spaces
-            </h1>
-            <p className="text-lg text-lexo-gray font-medium">Discover premium grooming and wellness spots.</p>
-          </div>
-
-          {/* Search & Filters (Glassmorphism) */}
-          <div className="mb-10 bg-white/60 backdrop-blur-xl border border-white/40 p-4 md:p-6 rounded-[2rem] shadow-[0_8px_30px_rgb(0,0,0,0.04)]">
-            <form onSubmit={handleSearch} className="flex flex-col gap-2 md:flex-row md:gap-2">
-              <div className="flex-1 flex flex-col gap-2 md:flex-row md:gap-2">
-                <Input
-                  placeholder="Search for salons, clinics, services..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  leftIcon={<Search className="w-5 h-5" />}
-                />
-                <div className="w-full md:w-96">
-                  <LocationPicker value={location} onChange={setLocation} />
+            {/* AI Recommendation Toggle */}
+            <div className="p-4 bg-primary-fixed/20 rounded-2xl border border-primary-fixed">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2">
+                  <Sparkles className="w-5 h-5 text-primary" />
+                  <span className="text-sm font-bold text-on-surface">AI Recommends</span>
+                </div>
+                <div className="w-10 h-5 bg-primary rounded-full relative cursor-pointer">
+                  <div className="absolute right-0.5 top-0.5 w-4 h-4 rounded-full bg-white shadow-sm" />
                 </div>
               </div>
-              <div className="flex gap-2">
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setShowFilters(!showFilters)}
-                  className="hidden md:flex"
-                >
-                  <SlidersHorizontal className="w-4 h-4 mr-2" />
-                  Filters
-                </Button>
-                <Button
-                  type="submit"
-                  className="bg-lexo-black text-white hover:bg-lexo-dark rounded-xl h-12 px-8 font-bold shadow-md transition-all hover:scale-105 active:scale-95"
-                >
-                  Search
-                </Button>
-              </div>
-            </form>
+              <p className="text-[11px] text-on-surface-variant mt-2 leading-relaxed">
+                Personalized results based on your booking history.
+              </p>
+            </div>
 
-            {/* Filter Tags */}
-            {(selectedType || selectedCity || searchQuery || (location && location.address)) && (
-              <div className="flex items-center gap-2 mt-3 flex-wrap">
-                <span className="text-sm text-gray-500">Active filters:</span>
+            {/* Categories */}
+            <div className="space-y-3">
+              <label className="label-m3">Categories</label>
+              <div className="grid grid-cols-2 gap-2">
+                {typeOptions.map((option) => (
+                  <button
+                    key={option.label}
+                    onClick={() => setSelectedType(option.value)}
+                    className={cn(
+                      'flex items-center justify-center px-3 py-2.5 rounded-xl text-xs font-semibold transition-all active:scale-95',
+                      selectedType === option.value
+                        ? 'bg-primary text-white shadow-button'
+                        : 'bg-surface-container-low text-on-surface-variant hover:bg-surface-container-high border border-outline-variant/10'
+                    )}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Distance */}
+            <div className="space-y-3">
+              <label className="label-m3">Distance</label>
+              <div className="flex flex-wrap gap-2">
+                {['Under 1km', '5km', '10km'].map((d, i) => (
+                  <span
+                    key={d}
+                    className={cn(
+                      'px-4 py-2 rounded-full text-xs font-medium cursor-pointer transition-all',
+                      i === 0
+                        ? 'bg-primary text-white shadow-sm'
+                        : 'bg-surface-container-low text-on-surface-variant border border-outline-variant/10 hover:bg-surface-container-high'
+                    )}
+                  >
+                    {d}
+                  </span>
+                ))}
+              </div>
+            </div>
+
+            {/* Price Range */}
+            <div className="space-y-3">
+              <label className="label-m3">Price Range</label>
+              <div className="flex items-center gap-2">
+                {['₹', '₹₹', '₹₹₹'].map((p, i) => (
+                  <button
+                    key={p}
+                    className={cn(
+                      'flex-1 py-2.5 rounded-xl text-sm font-bold transition-all active:scale-95',
+                      i === 1
+                        ? 'bg-primary text-white shadow-button'
+                        : 'bg-surface-container-low text-on-surface-variant border border-outline-variant/10 hover:border-primary/30'
+                    )}
+                  >
+                    {p}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Rating Filter */}
+            <div className="space-y-3">
+              <label className="label-m3">Rating</label>
+              <div className="flex flex-col gap-2">
+                {['4.5+ Stars', '4.0+ Stars'].map((label, i) => (
+                  <label key={label} className="flex items-center gap-3 cursor-pointer group">
+                    <input
+                      type="checkbox"
+                      defaultChecked={i === 0}
+                      className="rounded border-outline-variant text-primary focus:ring-primary w-4 h-4"
+                    />
+                    <span className="text-sm text-on-surface font-medium">{label}</span>
+                  </label>
+                ))}
+              </div>
+            </div>
+
+            {/* Location */}
+            <div className="space-y-3">
+              <label className="label-m3">Location</label>
+              <LocationPicker value={location} onChange={setLocation} />
+            </div>
+          </div>
+        </aside>
+
+        {/* ── Main Content ── */}
+        <section className="flex-1 flex flex-col md:flex-row bg-surface overflow-hidden">
+          {/* List View */}
+          <div className="flex-1 overflow-y-auto p-6 md:p-8 no-scrollbar">
+            {/* Header */}
+            <header className="mb-8 flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
+              <div>
+                <h1 className="text-3xl font-black tracking-tighter text-on-surface leading-none mb-2">
+                  {searchQuery
+                    ? `Results for "${searchQuery}"`
+                    : selectedCity
+                      ? `Shops in ${selectedCity}`
+                      : location?.address
+                        ? `Shops near ${location.address}`
+                        : 'Search Results'}
+                </h1>
+                {shops && (
+                  <div className="flex items-center gap-2 text-on-surface-variant text-sm">
+                    <MapPin className="w-4 h-4" />
+                    <p className="font-medium italic">
+                      {shops.meta.total} {shops.meta.total === 1 ? 'location' : 'locations'} found
+                    </p>
+                  </div>
+                )}
+              </div>
+
+              <div className="flex items-center gap-3">
+                {/* Mobile filter toggle */}
+                <button
+                  onClick={() => setShowFilters(!showFilters)}
+                  className="md:hidden flex items-center gap-2 px-4 py-2 bg-surface-container-lowest border border-outline-variant/20 rounded-xl text-xs font-bold text-on-surface-variant"
+                >
+                  <SlidersHorizontal className="w-4 h-4" />
+                  Filters
+                </button>
+
+                {/* View Toggle */}
+                <div className="flex bg-surface-container-high/50 rounded-xl p-1">
+                  <button
+                    onClick={() => setViewMode('list')}
+                    className={cn(
+                      'px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2',
+                      viewMode === 'list'
+                        ? 'bg-white shadow-sm text-primary'
+                        : 'text-on-surface-variant hover:bg-surface-container-high'
+                    )}
+                  >
+                    List
+                  </button>
+                  <button
+                    onClick={() => setViewMode('map')}
+                    className={cn(
+                      'px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2',
+                      viewMode === 'map'
+                        ? 'bg-white shadow-sm text-primary'
+                        : 'text-on-surface-variant hover:bg-surface-container-high'
+                    )}
+                  >
+                    Map
+                  </button>
+                </div>
+              </div>
+            </header>
+
+            {/* Active Filter Tags */}
+            {(selectedType || selectedCity || searchQuery) && (
+              <div className="flex items-center gap-2 mb-6 flex-wrap">
                 {selectedCity && (
                   <button
                     onClick={() => setSelectedCity('')}
-                    className="inline-flex items-center gap-1 px-2 py-1 bg-indigo-100 text-indigo-700 rounded-full text-sm"
+                    className="inline-flex items-center gap-1 px-3 py-1.5 bg-primary-fixed text-primary rounded-full text-xs font-bold"
                   >
-                    {selectedCity}
-                    <X className="w-3 h-3" />
+                    {selectedCity} <X className="w-3 h-3" />
                   </button>
                 )}
                 {selectedType && (
                   <button
                     onClick={() => setSelectedType(undefined)}
-                    className="inline-flex items-center gap-1 px-2 py-1 bg-primary-100 text-primary-700 rounded-full text-sm"
+                    className="inline-flex items-center gap-1 px-3 py-1.5 bg-secondary-fixed text-secondary rounded-full text-xs font-bold"
                   >
-                    {typeOptions.find((t) => t.value === selectedType)?.label}
-                    <X className="w-3 h-3" />
+                    {typeOptions.find((t) => t.value === selectedType)?.label} <X className="w-3 h-3" />
                   </button>
                 )}
                 {searchQuery && (
                   <button
                     onClick={() => setSearchQuery('')}
-                    className="inline-flex items-center gap-1 px-2 py-1 bg-primary-100 text-primary-700 rounded-full text-sm"
+                    className="inline-flex items-center gap-1 px-3 py-1.5 bg-surface-container-high text-on-surface rounded-full text-xs font-bold"
                   >
-                    &quot;{searchQuery}&quot;
-                    <X className="w-3 h-3" />
+                    &quot;{searchQuery}&quot; <X className="w-3 h-3" />
                   </button>
                 )}
-                {location && location.address && (
-                  <button
-                    onClick={() => {
-                      setLocation(undefined);
-                      setSelectedCity('');
-                    }}
-                    className="inline-flex items-center gap-1 px-2 py-1 bg-emerald-100 text-emerald-700 rounded-full text-sm"
-                  >
-                    <Navigation className="w-3 h-3" />
-                    {location.address}
-                    <X className="w-3 h-3" />
-                  </button>
-                )}
+              </div>
+            )}
+
+            {/* Results */}
+            {isLoading ? (
+              <Loading text="Finding shops..." />
+            ) : error ? (
+              <div className="card-m3 text-center py-12 px-8">
+                <h3 className="text-lg font-bold text-on-surface mb-2">Could not load shops</h3>
+                <p className="text-on-surface-variant mb-4">Please try again.</p>
                 <button
-                  onClick={clearFilters}
-                  className="text-sm text-gray-500 hover:text-gray-700"
+                  onClick={() => router.replace(router.asPath)}
+                  className="btn-tonal px-6 py-2"
                 >
-                  Clear all
+                  Retry
                 </button>
+              </div>
+            ) : shops?.data.length === 0 ? (
+              <div className="card-m3 text-center py-16 px-8">
+                <MapPin className="w-12 h-12 text-outline-variant mx-auto mb-4" />
+                <h3 className="text-lg font-bold text-on-surface mb-2">No shops found</h3>
+                <p className="text-on-surface-variant mb-6">
+                  Try adjusting your search or filters.
+                </p>
+                <button onClick={clearFilters} className="btn-tonal px-6 py-2">
+                  Clear Filters
+                </button>
+              </div>
+            ) : viewMode === 'map' ? (
+              <div className="h-[600px] w-full rounded-3xl overflow-hidden shadow-card border border-outline-variant/10">
+                <ShopMap shops={shops?.data || []} userLocation={location} />
+              </div>
+            ) : (
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {shops?.data.map((shop) => (
+                  <ShopCard key={shop.id} shop={shop} userLocation={location} />
+                ))}
               </div>
             )}
           </div>
 
-          {/* Filter Panel */}
-          {showFilters && (
-            <Card variant="bordered" className="mb-6">
-              <div className="flex flex-wrap gap-4">
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-2">
-                    Category
-                  </label>
-                  <div className="flex gap-2">
-                    {typeOptions.map((option) => (
-                      <button
-                        key={option.label}
-                        onClick={() => setSelectedType(option.value)}
-                        className={cn(
-                          'px-4 py-2 rounded-lg text-sm font-medium transition-colors',
-                          selectedType === option.value
-                            ? 'bg-primary-500 text-white'
-                            : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-                        )}
-                      >
-                        {option.label}
-                      </button>
-                    ))}
-                  </div>
+          {/* Desktop Map Panel */}
+          {viewMode === 'list' && (
+            <div className="hidden xl:block w-[400px] bg-surface-container-high/30 h-[calc(100vh-64px)] sticky top-16 border-l border-outline-variant/10">
+              <div className="h-full relative">
+                <ShopMap shops={shops?.data || []} userLocation={location} />
+                {/* Floating Controls */}
+                <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex gap-2 bg-white/90 backdrop-blur-xl p-2 rounded-2xl shadow-glass-strong border border-outline-variant/10">
+                  <button className="p-2 bg-surface-container-low rounded-xl text-on-surface hover:bg-surface-container-high border border-outline-variant/10 transition-colors">
+                    <span className="text-lg">+</span>
+                  </button>
+                  <button className="p-2 bg-surface-container-low rounded-xl text-on-surface hover:bg-surface-container-high border border-outline-variant/10 transition-colors">
+                    <span className="text-lg">−</span>
+                  </button>
+                  <div className="w-px bg-outline-variant/20 mx-1" />
+                  <button className="p-2 bg-primary text-white rounded-xl flex items-center gap-2 px-4 text-xs font-bold shadow-button">
+                    <Navigation className="w-4 h-4" />
+                    Center
+                  </button>
                 </div>
               </div>
-            </Card>
-          )}
-
-          {/* Results */}
-          <div className="mb-4 flex flex-col md:flex-row md:items-center justify-between gap-4">
-            <div>
-              <h1 className="text-2xl font-bold text-gray-900">
-                {searchQuery
-                  ? `Results for "${searchQuery}"`
-                  : selectedCity
-                    ? `Shops in ${selectedCity}`
-                    : location?.address
-                      ? `Shops near ${location.address}`
-                      : 'All Shops'}
-              </h1>
-              {shops && (
-                <p className="text-gray-500 mt-1">
-                  {shops.meta.total} {shops.meta.total === 1 ? 'result' : 'results'}
-                  {selectedCity ? ` in ${selectedCity}` : location?.address ? ` near ${location.address}` : ''}
-                </p>
-              )}
-            </div>
-
-            <div className="flex bg-gray-100 p-1 rounded-lg w-fit">
-              <button
-                onClick={() => setViewMode('list')}
-                className={cn('px-4 py-1.5 text-sm font-medium rounded-md transition-all', viewMode === 'list' ? 'bg-white shadow text-gray-900' : 'text-gray-500 hover:text-gray-700')}
-              >
-                List
-              </button>
-              <button
-                onClick={() => setViewMode('map')}
-                className={cn('px-4 py-1.5 text-sm font-medium rounded-md transition-all', viewMode === 'map' ? 'bg-white shadow text-gray-900' : 'text-gray-500 hover:text-gray-700')}
-              >
-                Map
-              </button>
-            </div>
-          </div>
-
-          {isLoading ? (
-            <Loading text="Finding shops..." />
-          ) : error ? (
-            <Card variant="bordered" className="text-center py-12">
-              <h3 className="text-lg font-medium text-gray-900 mb-2">Could not load shops</h3>
-              <p className="text-gray-500 mb-4">Please try again. If this keeps happening, check your network connection.</p>
-              <Button variant="outline" onClick={() => router.replace(router.asPath)}>
-                Retry
-              </Button>
-            </Card>
-          ) : shops?.data.length === 0 ? (
-            <Card variant="bordered" className="text-center py-12">
-              <MapPin className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-              <h3 className="text-lg font-medium text-gray-900 mb-2">
-                No shops found
-              </h3>
-              <p className="text-gray-500 mb-4">
-                Try adjusting your search or filters to find what you&apos;re looking for.
-              </p>
-              <Button variant="outline" onClick={clearFilters}>
-                Clear Filters
-              </Button>
-            </Card>
-          ) : viewMode === 'map' ? (
-            <div className="h-[600px] w-full mt-6">
-              <ShopMap shops={shops?.data || []} userLocation={location} />
-            </div>
-          ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6 auto-rows-fr">
-              {shops?.data.map((shop) => (
-                <ShopCard key={shop.id} shop={shop} userLocation={location} />
-              ))}
             </div>
           )}
-        </div>
+        </section>
       </div>
     </>
   );

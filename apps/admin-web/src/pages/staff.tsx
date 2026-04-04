@@ -1,6 +1,6 @@
 import React from 'react';
 import Head from 'next/head';
-import { Plus, Edit2, Mail, Phone, Users } from 'lucide-react';
+import { Plus, Edit2, Mail, Phone, Users, Check } from 'lucide-react';
 import { Card, Button, Input, Badge, Loading, ImageUpload } from '@/components/ui';
 import {
   useStaff,
@@ -46,35 +46,22 @@ export default function StaffPage() {
     e.preventDefault();
     try {
       let savedStaffId = editingStaffId;
-
       if (editingStaffId) {
         await updateStaff.mutateAsync({ staffId: editingStaffId, ...formData });
       } else {
         const created = await createStaff.mutateAsync(formData as any);
         savedStaffId = created?.id;
       }
-
       if (savedStaffId) {
         const toAssign = selectedServiceIds.filter((id) => !initialServiceIds.includes(id));
         const toUnassign = initialServiceIds.filter((id) => !selectedServiceIds.includes(id));
-
         if (toAssign.length > 0) {
-          await Promise.all(
-            toAssign.map((serviceId) =>
-              assignServiceToStaff.mutateAsync({ staffId: savedStaffId as string, serviceId }),
-            ),
-          );
+          await Promise.all(toAssign.map((serviceId) => assignServiceToStaff.mutateAsync({ staffId: savedStaffId as string, serviceId })));
         }
-
         if (toUnassign.length > 0) {
-          await Promise.all(
-            toUnassign.map((serviceId) =>
-              unassignServiceFromStaff.mutateAsync({ staffId: savedStaffId as string, serviceId }),
-            ),
-          );
+          await Promise.all(toUnassign.map((serviceId) => unassignServiceFromStaff.mutateAsync({ staffId: savedStaffId as string, serviceId })));
         }
       }
-
       setShowForm(false);
       setEditingStaffId(null);
       setFormData({ ...emptyForm });
@@ -129,17 +116,19 @@ export default function StaffPage() {
   return (
     <>
       <Head>
-        <title>Staff - Overline Admin</title>
+        <title>Staff — Overline Admin</title>
+        <meta name="description" content="Manage your staff team on Overline." />
       </Head>
 
       <div>
         {/* Header */}
-        <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center justify-between mb-8">
           <div>
-            <h1 className="text-2xl font-bold text-gray-900">Staff</h1>
-            <p className="text-gray-500">Manage your team members</p>
+            <span className="label-m3 mb-2 block">Team</span>
+            <h1 className="text-3xl font-black tracking-tight text-on-surface">Staff</h1>
+            <p className="text-on-surface-variant text-sm mt-1">Manage your team members</p>
           </div>
-          <Button
+          <button
             onClick={() => {
               setEditingStaffId(null);
               setFormData({ ...emptyForm });
@@ -147,19 +136,19 @@ export default function StaffPage() {
               setInitialServiceIds([]);
               setShowForm(true);
             }}
+            className="btn-primary px-6 py-2.5"
           >
-            <Plus className="w-4 h-4 mr-2" />
-            Add Staff
-          </Button>
+            <Plus className="w-4 h-4" /> Add Staff
+          </button>
         </div>
 
         {/* Add/Edit Form */}
         {showForm && (
-          <Card className="mb-6">
-            <h2 className="text-lg font-semibold text-gray-900 mb-4">
+          <div className="card-m3 p-8 mb-8 animate-fade-in">
+            <h2 className="text-lg font-bold text-on-surface mb-6">
               {editingStaffId ? 'Edit Staff Member' : 'Add Staff Member'}
             </h2>
-            <form className="space-y-4" onSubmit={handleSubmit}>
+            <form className="space-y-5" onSubmit={handleSubmit}>
               <ImageUpload
                 currentUrl={formData.avatarUrl || null}
                 onUpload={async (file) => {
@@ -174,34 +163,44 @@ export default function StaffPage() {
               />
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Input
-                  label="Full Name"
-                  required
-                  placeholder="Enter name"
-                  value={formData.name}
-                  onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-                />
-                <Input
-                  label="Email"
-                  type="email"
-                  required
-                  placeholder="email@example.com"
-                  value={formData.email}
-                  onChange={(e) => setFormData({ ...formData, email: e.target.value })}
-                />
+                <div className="space-y-2">
+                  <label className="label-m3">Full Name</label>
+                  <input
+                    type="text"
+                    required
+                    placeholder="Enter name"
+                    className="input-m3"
+                    value={formData.name}
+                    onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="label-m3">Email</label>
+                  <input
+                    type="email"
+                    required
+                    placeholder="email@example.com"
+                    className="input-m3"
+                    value={formData.email}
+                    onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                  />
+                </div>
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <Input
-                  label="Phone"
-                  type="tel"
-                  placeholder="+91 9876543210"
-                  value={formData.phone}
-                  onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
-                />
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 mb-1">Role</label>
+                <div className="space-y-2">
+                  <label className="label-m3">Phone</label>
+                  <input
+                    type="tel"
+                    placeholder="+91 9876543210"
+                    className="input-m3"
+                    value={formData.phone}
+                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <label className="label-m3">Role</label>
                   <select
-                    className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-primary-500 focus:border-primary-500"
+                    className="input-m3"
                     value={formData.role}
                     onChange={(e) => setFormData({ ...formData, role: e.target.value })}
                   >
@@ -212,100 +211,105 @@ export default function StaffPage() {
               </div>
 
               <div>
-                <label className="block text-sm font-medium text-gray-700 mb-2">Assigned Services</label>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-2 rounded-lg border border-gray-200 p-3">
+                <label className="label-m3 mb-3 block">Assigned Services</label>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-2 rounded-2xl bg-surface-container-low p-4 border border-outline-variant/10">
                   {(services || []).map((service: any) => (
-                    <label key={service.id} className="flex items-center justify-between gap-3 rounded-md px-2 py-1.5 hover:bg-gray-50">
-                      <span className="text-sm text-gray-700">
+                    <label
+                      key={service.id}
+                      className={cn(
+                        'flex items-center justify-between gap-3 rounded-xl px-3 py-2.5 cursor-pointer transition-all',
+                        selectedServiceIds.includes(service.id)
+                          ? 'bg-primary-fixed border border-primary/15'
+                          : 'hover:bg-surface-container border border-transparent'
+                      )}
+                    >
+                      <span className="text-sm text-on-surface font-medium">
                         {service.name}
-                        <span className="ml-2 text-xs text-gray-500">{service.durationMinutes}m</span>
+                        <span className="ml-2 text-[10px] text-outline font-bold">{service.durationMinutes}m</span>
                       </span>
-                      <input
-                        type="checkbox"
-                        className="w-4 h-4 text-primary-600 border-gray-300 rounded focus:ring-primary-500"
-                        checked={selectedServiceIds.includes(service.id)}
-                        onChange={() => toggleServiceSelection(service.id)}
-                      />
+                      <div className="relative">
+                        <input
+                          type="checkbox"
+                          className="peer sr-only"
+                          checked={selectedServiceIds.includes(service.id)}
+                          onChange={() => toggleServiceSelection(service.id)}
+                        />
+                        <div className="w-5 h-5 border-2 border-outline-variant rounded-md peer-checked:bg-primary peer-checked:border-primary transition-colors" />
+                        <Check className="w-3 h-3 text-white absolute top-1 left-1 opacity-0 peer-checked:opacity-100 transition-opacity" />
+                      </div>
                     </label>
                   ))}
                   {(services || []).length === 0 && (
-                    <p className="text-sm text-gray-500">No services found. Add services first.</p>
+                    <p className="text-sm text-on-surface-variant col-span-2 text-center py-4">No services found. Add services first.</p>
                   )}
                 </div>
               </div>
 
-              <div className="flex gap-2 pt-4">
-                <Button
+              <div className="flex gap-3 pt-4">
+                <button
                   type="submit"
-                  disabled={
-                    createStaff.isPending ||
-                    updateStaff.isPending ||
-                    assignServiceToStaff.isPending ||
-                    unassignServiceFromStaff.isPending
-                  }
+                  disabled={createStaff.isPending || updateStaff.isPending || assignServiceToStaff.isPending || unassignServiceFromStaff.isPending}
+                  className="btn-primary px-8 py-3 disabled:opacity-50"
                 >
-                  {createStaff.isPending ||
-                  updateStaff.isPending ||
-                  assignServiceToStaff.isPending ||
-                  unassignServiceFromStaff.isPending
+                  {createStaff.isPending || updateStaff.isPending || assignServiceToStaff.isPending || unassignServiceFromStaff.isPending
                     ? 'Saving...'
                     : editingStaffId
                       ? 'Update Staff'
                       : 'Add Staff'}
-                </Button>
-                <Button type="button" variant="outline" onClick={handleCancel}>
+                </button>
+                <button type="button" className="btn-tonal px-6 py-3" onClick={handleCancel}>
                   Cancel
-                </Button>
+                </button>
               </div>
             </form>
-          </Card>
+          </div>
         )}
 
         {/* Staff Grid */}
         {!staff || staff.length === 0 ? (
-          <Card className="text-center py-12">
-            <Users className="w-12 h-12 text-gray-300 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-gray-900 mb-2">No staff members yet</h3>
-            <p className="text-gray-500 mb-4">Add your first team member to get started.</p>
-            <Button onClick={() => setShowForm(true)}>
-              <Plus className="w-4 h-4 mr-2" /> Add Staff
-            </Button>
-          </Card>
+          <div className="card-m3 text-center py-16 px-8">
+            <Users className="w-14 h-14 text-outline-variant mx-auto mb-5" />
+            <h3 className="text-xl font-bold text-on-surface mb-2">No staff members yet</h3>
+            <p className="text-on-surface-variant mb-6">Add your first team member to get started.</p>
+            <button onClick={() => setShowForm(true)} className="btn-primary px-8 py-3">
+              <Plus className="w-4 h-4" /> Add Staff
+            </button>
+          </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {staff.map((member: any) => (
-              <Card key={member.id}>
-                <div className="flex items-start justify-between mb-4">
+              <div key={member.id} className="card-m3 p-6 hover:shadow-card-hover transition-shadow">
+                <div className="flex items-start justify-between mb-5">
                   <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 rounded-full bg-primary-100 flex items-center justify-center text-primary-600 font-semibold text-lg">
+                    <div className="w-12 h-12 rounded-xl bg-gradient-to-br from-primary to-primary-container flex items-center justify-center text-white font-bold text-lg overflow-hidden">
                       {member.avatarUrl ? (
-                        <img src={member.avatarUrl} alt={member.name} className="w-full h-full rounded-full object-cover" />
+                        <img src={member.avatarUrl} alt={member.name} className="w-full h-full object-cover" />
                       ) : (
                         member.name?.charAt(0) || 'S'
                       )}
                     </div>
                     <div>
-                      <h3 className="font-semibold text-gray-900">{member.name}</h3>
-                      <Badge variant={member.role === 'OWNER' ? 'info' : 'default'}>
+                      <h3 className="font-bold text-on-surface">{member.name}</h3>
+                      <span className={`badge-m3 ${member.role === 'OWNER' ? 'bg-primary-fixed text-primary' : 'bg-surface-container-high text-outline'}`}>
                         {member.role}
-                      </Badge>
+                      </span>
                     </div>
                   </div>
-                  <button onClick={() => handleEdit(member)} className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg">
+                  <button onClick={() => handleEdit(member)} className="p-2 text-outline hover:text-primary hover:bg-surface-container-low rounded-xl transition-all">
                     <Edit2 className="w-4 h-4" />
                   </button>
                 </div>
 
                 <div className="space-y-2 mb-4">
                   {member.email && (
-                    <div className="flex items-center gap-2 text-sm text-gray-500">
-                      <Mail className="w-4 h-4" />
+                    <div className="flex items-center gap-2 text-xs text-on-surface-variant">
+                      <Mail className="w-3.5 h-3.5 text-outline" />
                       {member.email}
                     </div>
                   )}
                   {member.phone && (
-                    <div className="flex items-center gap-2 text-sm text-gray-500">
-                      <Phone className="w-4 h-4" />
+                    <div className="flex items-center gap-2 text-xs text-on-surface-variant">
+                      <Phone className="w-3.5 h-3.5 text-outline" />
                       {member.phone}
                     </div>
                   )}
@@ -316,7 +320,7 @@ export default function StaffPage() {
                     {member.staffServices.map((item: any) => (
                       <span
                         key={item.serviceId}
-                        className="rounded-full bg-gray-100 px-2 py-0.5 text-xs text-gray-700"
+                        className="rounded-lg bg-surface-container-low px-2.5 py-1 text-[10px] font-bold text-on-surface-variant"
                       >
                         {item.service?.name || 'Service'}
                       </span>
@@ -324,17 +328,15 @@ export default function StaffPage() {
                   </div>
                 )}
 
-                <div className="flex items-center justify-between mt-4 pt-4 border-t border-gray-100">
-                  <span
-                    className={cn(
-                      'text-sm font-medium',
-                      member.isActive ? 'text-green-600' : 'text-gray-400'
-                    )}
-                  >
-                    {member.isActive ? 'Active' : 'Inactive'}
-                  </span>
+                <div className="flex items-center justify-between mt-4 pt-4 border-t border-outline-variant/10">
+                  <div className="flex items-center gap-2">
+                    <div className={cn('w-2 h-2 rounded-full', member.isActive ? 'bg-tertiary' : 'bg-outline-variant')} />
+                    <span className={cn('text-xs font-bold', member.isActive ? 'text-tertiary' : 'text-outline')}>
+                      {member.isActive ? 'Active' : 'Inactive'}
+                    </span>
+                  </div>
                 </div>
-              </Card>
+              </div>
             ))}
           </div>
         )}
