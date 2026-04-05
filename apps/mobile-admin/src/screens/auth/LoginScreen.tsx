@@ -12,6 +12,7 @@ import {
   ScrollView,
   Image,
 } from 'react-native';
+import axios from 'axios';
 import {useAuthStore} from '../../stores/authStore';
 import {Colors, FontSize, FontWeight, Radius, Spacing} from '../../theme';
 
@@ -52,10 +53,15 @@ export default function LoginScreen() {
     try {
       // Send the requested scope to the login handler (auth.service.ts will enforce it)
       await login(email, password, { requestedRole: role });
-    } catch (error: any) {
+    } catch (error: unknown) {
+      const message = axios.isAxiosError(error)
+        ? ((error.response?.data as {message?: string} | undefined)?.message || 'Invalid credentials')
+        : error instanceof Error
+          ? error.message
+          : 'Invalid credentials';
       Alert.alert(
         'Login Failed',
-        error.response?.data?.message || 'Invalid credentials'
+        message,
       );
     } finally {
       setIsLoading(false);

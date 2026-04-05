@@ -13,16 +13,19 @@ import {
 import {LockKeyhole, ShieldCheck} from 'lucide-react-native';
 import {useRoute, RouteProp} from '@react-navigation/native';
 import {useNavigation} from '@react-navigation/native';
+import {NativeStackNavigationProp} from '@react-navigation/native-stack';
+import axios from 'axios';
 import {otpApi} from '../../api/client';
 import {useAuthStore} from '../../stores/authStore';
 import {RootStackParamList} from '../../types';
 
 type RouteProps = RouteProp<RootStackParamList, 'OtpVerify'>;
+type NavigationProps = NativeStackNavigationProp<RootStackParamList>;
 
 const OTP_LENGTH = 6;
 
 export default function OtpVerifyScreen() {
-  const navigation = useNavigation<any>();
+  const navigation = useNavigation<NavigationProps>();
   const route = useRoute<RouteProps>();
   const {phone} = route.params;
   const {completeOtpVerification, logout} = useAuthStore();
@@ -91,9 +94,12 @@ export default function OtpVerifyScreen() {
     try {
       await otpApi.verify(phone, code, 'LOGIN');
       completeOtpVerification();
-    } catch (err: any) {
-      const message =
-        err.response?.data?.message || 'Invalid OTP. Please try again.';
+    } catch (error: unknown) {
+      const message = axios.isAxiosError(error)
+        ? ((error.response?.data as {message?: string} | undefined)?.message || 'Invalid OTP. Please try again.')
+        : error instanceof Error
+          ? error.message
+          : 'Invalid OTP. Please try again.';
       setError(message);
       setOtp(Array(OTP_LENGTH).fill(''));
       inputRefs.current[0]?.focus();
@@ -111,8 +117,13 @@ export default function OtpVerifyScreen() {
       setOtp(Array(OTP_LENGTH).fill(''));
       setError('');
       Alert.alert('OTP Sent', `A new code has been sent to ${formatPhone(phone)}`);
-    } catch (err: any) {
-      Alert.alert('Error', err.response?.data?.message || 'Failed to resend OTP');
+    } catch (error: unknown) {
+      const message = axios.isAxiosError(error)
+        ? ((error.response?.data as {message?: string} | undefined)?.message || 'Failed to resend OTP')
+        : error instanceof Error
+          ? error.message
+          : 'Failed to resend OTP';
+      Alert.alert('Error', message);
     } finally {
       setIsResending(false);
     }

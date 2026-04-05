@@ -1,21 +1,32 @@
 import {create} from 'zustand';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import axios from 'axios';
 import {authApi, shopApi, otpApi} from '../api/client';
 
-interface AdminUser {
+type ShopSummary = {id: string; name: string};
+type AdminRole = 'SUPER_ADMIN' | 'OWNER' | 'STAFF';
+
+interface AuthAdminUser {
   id: string;
   name: string;
   email: string;
   phone?: string;
-  role: string;
-  shops?: Array<{
-    id: string;
-    name: string;
-  }>;
+  role: AdminRole;
+  shops?: ShopSummary[];
+}
+
+interface AuthLoginResponse {
+  accessToken: string;
+  refreshToken?: string;
+  user: AuthAdminUser;
+}
+
+interface ShopApiResponse {
+  shops?: ShopSummary[];
 }
 
 interface AuthState {
-  user: AdminUser | null;
+  user: AuthAdminUser | null;
   isAuthenticated: boolean;
   isLoading: boolean;
   selectedShopId: string | null;
@@ -27,12 +38,49 @@ interface AuthState {
   otpPhone: string | null;
 
   // Actions
-  login: (email: string, password: string, options?: { requestedRole?: string }) => Promise<void>;
+  login: (email: string, password: string, options?: {requestedRole?: string}) => Promise<void>;
   completeOtpVerification: () => void;
   logout: () => Promise<void>;
   checkAuth: () => Promise<void>;
   setSelectedShop: (shopId: string) => Promise<void>;
 }
+
+const normalizeShops = (payload: unknown): ShopSummary[] => {
+  if (!payload || typeof payload !== 'object') {
+    return [];
+  }
+
+  const maybeObject = payload as ShopApiResponse | ShopSummary[];
+  const source = Array.isArray(maybeObject)
+    ? maybeObject
+    : Array.isArray(maybeObject.shops)
+      ? maybeObject.shops
+      : [];
+
+  return source.filter(
+    (item): item is ShopSummary =>
+      !!item && typeof item.id === 'string' && typeof item.name === 'string',
+  );
+};
+
+const toErrorMessage = (error: unknown, fallback: string): string => {
+  if (axios.isAxiosError(error)) {
+    const responseMessage = (error.response?.data as {message?: string} | undefined)?.message;
+    if (typeof responseMessage === 'string' && responseMessage.trim()) {
+      return responseMessage;
+    }
+
+    if (typeof error.message === 'string' && error.message.trim()) {
+      return error.message;
+    }
+  }
+
+  if (error instanceof Error && error.message.trim()) {
+    return error.message;
+  }
+
+  return fallback;
+};
 
 export const useAuthStore = create<AuthState>((set) => ({
   user: null,
@@ -44,13 +92,13 @@ export const useAuthStore = create<AuthState>((set) => ({
   pendingOtpVerification: false,
   otpPhone: null,
 
-  login: async (email: string, password: string, options?: { requestedRole?: string }) => {
+  login: async (email: string, password: string, options?: {requestedRole?: string}) => {
     try {
       const response = await authApi.login(email, password, options);
-      const {accessToken, refreshToken, user} = response.data;
+      const {accessToken, refreshToken, user} = response.data as AuthLoginResponse;
 
       // Validate admin role
-      const adminRoles = ['SUPER_ADMIN', 'OWNER', 'STAFF'];
+      const adminRoles: AdminRole[] = ['SUPER_ADMIN', 'OWNER', 'STAFF'];
       if (!adminRoles.includes(user.role)) {
         throw new Error('Access denied. This app is for shop owners and staff only.');
       }
@@ -67,7 +115,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       let shops: Array<{id: string; name: string}> = [];
       try {
         const shopsResponse = await shopApi.getMyShops();
-        shops = shopsResponse.data?.shops || shopsResponse.data || [];
+        shops = normalizeShops(shopsResponse.data);
       } catch {
         // User may not have shops yet
       }
@@ -88,11 +136,8 @@ export const useAuthStore = create<AuthState>((set) => ({
             isStaff,
           });
           return;
-        } catch (error: any) {
-          throw new Error(
-            error?.response?.data?.message ||
-              'Failed to send OTP for verification. Please try again.',
-          );
+        } catch (error: unknown) {
+          throw new Error(toErrorMessage(error, 'Failed to send OTP for verification. Please try again.'));
         }
       }
 
@@ -110,14 +155,26 @@ export const useAuthStore = create<AuthState>((set) => ({
   },
 
   completeOtpVerification: () => {
+    const state = useAuthStore.getState();
+    const existingUser = state.user;
+
+    if (!existingUser) {
+      set({
+        isAuthenticated: false,
+        pendingOtpVerification: false,
+        otpPhone: null,
+        isOwner: false,
+        isStaff: false,
+      });
+      return;
+    }
+
     set({
       isAuthenticated: true,
       pendingOtpVerification: false,
       otpPhone: null,
-      isOwner:
-        useAuthStore.getState().user?.role === 'OWNER' ||
-        useAuthStore.getState().user?.role === 'SUPER_ADMIN',
-      isStaff: useAuthStore.getState().user?.role === 'STAFF',
+      isOwner: existingUser.role === 'OWNER' || existingUser.role === 'SUPER_ADMIN',
+      isStaff: existingUser.role === 'STAFF',
     });
   },
 
@@ -151,13 +208,13 @@ export const useAuthStore = create<AuthState>((set) => ({
       }
 
       const response = await authApi.getProfile();
-      const user = response.data;
+      const user = response.data as AuthAdminUser;
 
       // Fetch user's shops
       let shops: Array<{id: string; name: string}> = [];
       try {
         const shopsResponse = await shopApi.getMyShops();
-        shops = shopsResponse.data?.shops || shopsResponse.data || [];
+        shops = normalizeShops(shopsResponse.data);
       } catch {
         // User may not have shops yet
       }
@@ -169,7 +226,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       // Restore selected shop from storage or use first shop
       const storedShopId = await AsyncStorage.getItem('selected_shop_id');
       const defaultShopId =
-        storedShopId && shops.some((s: any) => s.id === storedShopId)
+        storedShopId && shops.some(s => s.id === storedShopId)
           ? storedShopId
           : shops[0]?.id || null;
 
