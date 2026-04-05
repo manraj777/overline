@@ -159,7 +159,7 @@ export default function ShopDetailScreen() {
         <View style={styles.servicesSection}>
           <Text style={styles.sectionTitle}>Choose Services</Text>
           <Text style={styles.sectionSubtitle}>
-            Pick one or more services for your appointment
+            Pick one or more services to add to cart
           </Text>
 
           {servicesByCategory.map((group) => (
@@ -226,7 +226,7 @@ export default function ShopDetailScreen() {
             </Text>
           </View>
           <PrimaryButton
-            title="Continue"
+            title={`Add ${selectedServices.length} item${selectedServices.length > 1 ? 's' : ''} to cart`}
             onPress={() =>
               navigation.navigate('BookingStaff', { shopId, selectedServices })
             }
