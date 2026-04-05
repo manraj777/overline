@@ -1,4 +1,4 @@
-import { IsString, IsNotEmpty } from 'class-validator';
+import { IsString, IsNotEmpty, IsOptional, IsEnum } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 
 export class GoogleLoginDto {
@@ -6,4 +6,13 @@ export class GoogleLoginDto {
   @IsString()
   @IsNotEmpty()
   idToken: string;
+
+  @ApiProperty({
+    description: 'Explicit requested role context (OWNER, STAFF, USER, SUPER_ADMIN)',
+    required: false,
+    example: 'OWNER',
+  })
+  @IsOptional()
+  @IsEnum(['OWNER', 'STAFF', 'USER', 'SUPER_ADMIN'])
+  requestedRole?: string;
 }

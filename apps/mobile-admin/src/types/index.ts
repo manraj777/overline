@@ -2,7 +2,11 @@
 export type RootStackParamList = {
   Splash: undefined;
   Login: undefined;
-  OtpVerify: {phone: string};
+  OtpVerify: {
+    phone: string;
+    flow: 'LOGIN_2FA' | 'PHONE_LOGIN';
+    requestedRole?: 'OWNER' | 'STAFF' | 'USER' | 'SUPER_ADMIN';
+  };
   Main: undefined;
   BookingDetail: {bookingId: string};
   VerifyCode: undefined;

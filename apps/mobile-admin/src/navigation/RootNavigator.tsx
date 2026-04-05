@@ -242,7 +242,7 @@ export default function RootNavigator() {
           <Stack.Screen
             name="OtpVerify"
             component={OtpVerifyScreen}
-            initialParams={{phone: otpPhone}}
+            initialParams={{phone: otpPhone, flow: 'LOGIN_2FA'}}
             options={{headerShown: true, title: 'Verify Identity'}}
           />
         ) : (

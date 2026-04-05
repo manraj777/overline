@@ -228,7 +228,7 @@ export class AuthService {
     };
   }
 
-  async verifyPhoneOtp(phone: string, otp: string): Promise<TokenResponse> {
+  async verifyPhoneOtp(phone: string, otp: string, requestedRole?: string): Promise<TokenResponse> {
     const normalizedPhone = this.normalizePhone(phone);
     const key = `otp:${normalizedPhone}`;
     const cachedOtp = await this.redis.get(key);
@@ -243,12 +243,33 @@ export class AuthService {
 
     await this.redis.del(key);
 
+    const isRequestingAdminRole =
+      requestedRole === 'OWNER' || requestedRole === 'STAFF' || requestedRole === 'SUPER_ADMIN';
+
     const user = await this.prisma.$transaction(async (tx) => {
       const existingUser = await tx.user.findUnique({
         where: { phone: normalizedPhone },
       });
 
       if (existingUser) {
+        if (isRequestingAdminRole && existingUser.role === UserRole.USER) {
+          throw new ForbiddenException(
+            'Access denied. This phone is linked to a customer account. Please use the customer app.',
+          );
+        }
+
+        if (requestedRole === 'OWNER' && existingUser.role === UserRole.STAFF) {
+          throw new ForbiddenException(
+            'Access denied. This phone is linked to a Staff account. Please use Staff login.',
+          );
+        }
+
+        if (requestedRole === 'STAFF' && existingUser.role === UserRole.OWNER) {
+          throw new ForbiddenException(
+            'Access denied. This phone is linked to an Owner account. Please use Owner login.',
+          );
+        }
+
         return tx.user.update({
           where: { id: existingUser.id },
           data: {
@@ -256,6 +277,12 @@ export class AuthService {
             lastLoginAt: new Date(),
           },
         });
+      }
+
+      if (isRequestingAdminRole) {
+        throw new ForbiddenException(
+          'No admin account found for this phone number. Ask your owner to invite you first.',
+        );
       }
 
       const emailPrefix = normalizedPhone.replace(/\D/g, '');
@@ -798,7 +825,33 @@ export class AuthService {
     }
 
     const { sub: googleId, email, name, picture, email_verified } = payload;
-    return this.handleGoogleUser(googleId, email, name, picture, email_verified);
+    const tokenResponse = await this.handleGoogleUser(googleId, email, name, picture, email_verified);
+
+    if (dto.requestedRole) {
+      const userRole = tokenResponse.user.role;
+      const isRequestingAdminRole =
+        dto.requestedRole === 'OWNER' || dto.requestedRole === 'STAFF' || dto.requestedRole === 'SUPER_ADMIN';
+
+      if (isRequestingAdminRole && userRole === UserRole.USER) {
+        throw new ForbiddenException(
+          'Access denied. You do not have an Owner or Staff account. Please use the customer app.',
+        );
+      }
+
+      if (dto.requestedRole === 'OWNER' && userRole === UserRole.STAFF) {
+        throw new ForbiddenException(
+          'Access denied. This Google account is linked to Staff. Please use Staff login.',
+        );
+      }
+
+      if (dto.requestedRole === 'STAFF' && userRole === UserRole.OWNER) {
+        throw new ForbiddenException(
+          'Access denied. This Google account is linked to Owner. Please use Owner login.',
+        );
+      }
+    }
+
+    return tokenResponse;
   }
 
   async handleGoogleUser(

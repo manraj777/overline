@@ -27,8 +27,8 @@ const OTP_LENGTH = 6;
 export default function OtpVerifyScreen() {
   const navigation = useNavigation<NavigationProps>();
   const route = useRoute<RouteProps>();
-  const {phone} = route.params;
-  const {completeOtpVerification, logout} = useAuthStore();
+  const {phone, flow, requestedRole} = route.params;
+  const {completeOtpVerification, verifyPhoneLoginOtp, logout} = useAuthStore();
 
   const [otp, setOtp] = useState<string[]>(Array(OTP_LENGTH).fill(''));
   const [isVerifying, setIsVerifying] = useState(false);
@@ -92,8 +92,14 @@ export default function OtpVerifyScreen() {
     setError('');
 
     try {
-      await otpApi.verify(phone, code, 'LOGIN');
-      completeOtpVerification();
+      if (flow === 'PHONE_LOGIN') {
+        await verifyPhoneLoginOtp(phone, code, {
+          requestedRole: requestedRole || 'OWNER',
+        });
+      } else {
+        await otpApi.verify(phone, code, 'LOGIN');
+        completeOtpVerification();
+      }
     } catch (error: unknown) {
       const message = axios.isAxiosError(error)
         ? ((error.response?.data as {message?: string} | undefined)?.message || 'Invalid OTP. Please try again.')

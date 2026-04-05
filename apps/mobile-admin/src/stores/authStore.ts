@@ -21,6 +21,8 @@ interface AuthLoginResponse {
   user: AuthAdminUser;
 }
 
+type AuthRequestedRole = 'OWNER' | 'STAFF' | 'USER' | 'SUPER_ADMIN';
+
 interface ShopApiResponse {
   shops?: ShopSummary[];
 }
@@ -39,6 +41,9 @@ interface AuthState {
 
   // Actions
   login: (email: string, password: string, options?: {requestedRole?: string}) => Promise<void>;
+  loginWithGoogle: (idToken: string, options?: {requestedRole?: AuthRequestedRole}) => Promise<void>;
+  sendPhoneLoginOtp: (phone: string) => Promise<void>;
+  verifyPhoneLoginOtp: (phone: string, otp: string, options?: {requestedRole?: AuthRequestedRole}) => Promise<void>;
   completeOtpVerification: () => void;
   logout: () => Promise<void>;
   checkAuth: () => Promise<void>;
@@ -91,6 +96,86 @@ export const useAuthStore = create<AuthState>((set) => ({
   isStaff: false,
   pendingOtpVerification: false,
   otpPhone: null,
+
+  loginWithGoogle: async (idToken: string, options?: {requestedRole?: AuthRequestedRole}) => {
+    const response = await authApi.googleLogin(idToken, options);
+    const {accessToken, refreshToken, user} = response.data as AuthLoginResponse;
+
+    const adminRoles: AdminRole[] = ['SUPER_ADMIN', 'OWNER', 'STAFF'];
+    if (!adminRoles.includes(user.role)) {
+      throw new Error('Access denied. This app is for shop owners and staff only.');
+    }
+
+    await AsyncStorage.setItem('admin_token', accessToken);
+    if (refreshToken) {
+      await AsyncStorage.setItem('admin_refresh_token', refreshToken);
+    }
+
+    let shops: ShopSummary[] = [];
+    try {
+      const shopsResponse = await shopApi.getMyShops();
+      shops = normalizeShops(shopsResponse.data);
+    } catch {
+      shops = [];
+    }
+
+    const userWithShops = {...user, shops};
+    const defaultShopId = shops[0]?.id || null;
+
+    set({
+      user: userWithShops,
+      isAuthenticated: true,
+      selectedShopId: defaultShopId,
+      isOwner: user.role === 'OWNER' || user.role === 'SUPER_ADMIN',
+      isStaff: user.role === 'STAFF',
+      pendingOtpVerification: false,
+      otpPhone: null,
+    });
+  },
+
+  sendPhoneLoginOtp: async (phone: string) => {
+    await otpApi.send(phone, 'LOGIN');
+  },
+
+  verifyPhoneLoginOtp: async (
+    phone: string,
+    otp: string,
+    options?: {requestedRole?: AuthRequestedRole},
+  ) => {
+    const response = await otpApi.verify(phone, otp, 'LOGIN', options?.requestedRole);
+    const {accessToken, refreshToken, user} = response.data as AuthLoginResponse;
+
+    const adminRoles: AdminRole[] = ['SUPER_ADMIN', 'OWNER', 'STAFF'];
+    if (!adminRoles.includes(user.role)) {
+      throw new Error('Access denied. This app is for shop owners and staff only.');
+    }
+
+    await AsyncStorage.setItem('admin_token', accessToken);
+    if (refreshToken) {
+      await AsyncStorage.setItem('admin_refresh_token', refreshToken);
+    }
+
+    let shops: ShopSummary[] = [];
+    try {
+      const shopsResponse = await shopApi.getMyShops();
+      shops = normalizeShops(shopsResponse.data);
+    } catch {
+      shops = [];
+    }
+
+    const userWithShops = {...user, shops};
+    const defaultShopId = shops[0]?.id || null;
+
+    set({
+      user: userWithShops,
+      isAuthenticated: true,
+      selectedShopId: defaultShopId,
+      isOwner: user.role === 'OWNER' || user.role === 'SUPER_ADMIN',
+      isStaff: user.role === 'STAFF',
+      pendingOtpVerification: false,
+      otpPhone: null,
+    });
+  },
 
   login: async (email: string, password: string, options?: {requestedRole?: string}) => {
     try {

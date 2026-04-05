@@ -206,7 +206,7 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Verify phone OTP and login/signup user' })
   async verifyOtp(@Body() dto: VerifyOtpDto): Promise<TokenResponse> {
-    return this.authService.verifyPhoneOtp(dto.phone, dto.otp);
+    return this.authService.verifyPhoneOtp(dto.phone, dto.otp, dto.requestedRole);
   }
 
   @Post('firebase/phone-login')

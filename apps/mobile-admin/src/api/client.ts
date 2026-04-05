@@ -118,6 +118,8 @@ apiClient.interceptors.response.use(
 export const authApi = {
   login: (email: string, password: string, options?: { requestedRole?: string }) =>
     apiClient.post('/auth/login', { email, password, requestedRole: options?.requestedRole }),
+  googleLogin: (idToken: string, options?: { requestedRole?: string }) =>
+    apiClient.post('/auth/google', { idToken, requestedRole: options?.requestedRole }),
   getProfile: () => apiClient.get('/users/me'),
   logout: () => apiClient.post('/auth/logout'),
   refresh: (refreshToken: string) =>
@@ -128,8 +130,12 @@ export const authApi = {
 export const otpApi = {
   send: (phone: string, purpose: string = 'VERIFY_PHONE') =>
     apiClient.post('/otp/send', { phone, purpose }),
-  verify: (phone: string, otp: string, purpose: string = 'VERIFY_PHONE') =>
-    apiClient.post('/otp/verify', { phone, otp, purpose }),
+  verify: (
+    phone: string,
+    otp: string,
+    purpose: string = 'VERIFY_PHONE',
+    requestedRole?: string,
+  ) => apiClient.post('/otp/verify', { phone, otp, purpose, requestedRole }),
 };
 
 // Admin Dashboard APIs
