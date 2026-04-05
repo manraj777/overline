@@ -18,6 +18,8 @@ export interface NotificationPayload {
   phone?: string;
 }
 
+import { EventsGateway } from './events.gateway';
+
 @Injectable()
 export class NotificationsService {
   private readonly logger = new Logger(NotificationsService.name);
@@ -27,6 +29,7 @@ export class NotificationsService {
   constructor(
     private prisma: PrismaService,
     private configService: ConfigService,
+    private eventsGateway: EventsGateway,
   ) {
     // Initialize Twilio
     const twilioSid = this.configService.get<string>('TWILIO_ACCOUNT_SID');
@@ -110,8 +113,17 @@ export class NotificationsService {
           break;
 
         case NotificationChannel.PUSH:
-          // TODO: Implement FCM push notifications
-          this.logger.log(`Push notification: ${notification.title}`);
+          // Use EventsGateway for real-time notification dispatch
+          if (notification.userId) {
+            this.eventsGateway.sendToUser(notification.userId, 'notification', {
+              id: notification.id,
+              title: notification.title,
+              body: notification.body,
+              type: notification.type,
+              data: notification.data,
+            });
+            this.logger.log(`Real-time PUSH (Socket.io) sent to User: ${notification.userId}`);
+          }
           break;
       }
 
@@ -285,9 +297,17 @@ export class NotificationsService {
         shopName: booking.shop.name,
         startTime: booking.startTime.toISOString(),
       },
-      channels: [NotificationChannel.EMAIL, NotificationChannel.SMS],
+      channels: [NotificationChannel.EMAIL, NotificationChannel.SMS, NotificationChannel.PUSH],
       email: booking.customerEmail || undefined,
       phone: booking.customerPhone || undefined,
+    });
+
+    // Also broadcast specifically to the shop that a new booking arrived
+    this.eventsGateway.sendToShop(booking.shopId, 'booking_new', {
+      id: booking.id,
+      bookingNumber: booking.bookingNumber,
+      customerName: booking.user?.name || 'Guest',
+      startTime: booking.startTime,
     });
   }
 
@@ -360,6 +380,14 @@ export class NotificationsService {
       channels: [NotificationChannel.SMS, NotificationChannel.PUSH],
       phone: booking.customerPhone || undefined,
     });
+
+    // Emit live queue data if needed (mobile-user UI update)
+    if (booking.userId) {
+      this.eventsGateway.sendToUser(booking.userId, 'queue_position_update', {
+        bookingId,
+        position,
+      });
+    }
   }
 
   /**

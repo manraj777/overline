@@ -30,6 +30,7 @@ import ChatScreen from '../screens/chat/ChatScreen';
 import ProfileScreen from '../screens/profile/ProfileScreen';
 import EditProfileScreen from '../screens/profile/EditProfileScreen';
 import NotificationsScreen from '../screens/profile/NotificationsScreen';
+import LocationMapScreen from '../screens/home/LocationMapScreen';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 const Tab = createBottomTabNavigator<MainTabParamList>();
@@ -246,6 +247,13 @@ export default function RootNavigator() {
               options={{
                 headerShown: true,
                 title: 'Notifications',
+              }}
+            />
+            <Stack.Screen
+              name="LocationMap"
+              component={LocationMapScreen}
+              options={{
+                headerShown: false,
               }}
             />
           </>

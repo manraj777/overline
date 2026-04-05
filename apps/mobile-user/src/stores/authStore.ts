@@ -19,6 +19,7 @@ interface AuthState {
   isAuthenticated: boolean;
   isLoading: boolean;
   error: string | null;
+  token: string | null;
 
   // OTP state
   otpPhone: string | null;
@@ -48,6 +49,7 @@ export const useAuthStore = create<AuthState>((set, _get) => ({
   isAuthenticated: false,
   isLoading: true,
   error: null,
+  token: null,
   otpPhone: null,
   otpSent: false,
   otpConfirmation: null,
@@ -60,7 +62,7 @@ export const useAuthStore = create<AuthState>((set, _get) => ({
       if (data.refreshToken) {
         await AsyncStorage.setItem('refreshToken', data.refreshToken);
       }
-      set({ user: data.user, isAuthenticated: true, isLoading: false });
+      set({ user: data.user, isAuthenticated: true, isLoading: false, token: data.accessToken });
     } catch (error: any) {
       const message =
         error.response?.data?.message || 'Login failed. Please try again.';
@@ -77,7 +79,7 @@ export const useAuthStore = create<AuthState>((set, _get) => ({
       if (data.refreshToken) {
         await AsyncStorage.setItem('refreshToken', data.refreshToken);
       }
-      set({ user: data.user, isAuthenticated: true, isLoading: false });
+      set({ user: data.user, isAuthenticated: true, isLoading: false, token: data.accessToken });
     } catch (error: any) {
       const message =
         error.response?.data?.message || 'Google login failed. Please try again.';
@@ -94,7 +96,7 @@ export const useAuthStore = create<AuthState>((set, _get) => ({
       if (response.refreshToken) {
         await AsyncStorage.setItem('refreshToken', response.refreshToken);
       }
-      set({ user: response.user, isAuthenticated: true, isLoading: false });
+      set({ user: response.user, isAuthenticated: true, isLoading: false, token: response.accessToken });
     } catch (error: any) {
       const message =
         error.response?.data?.message || 'Signup failed. Please try again.';
@@ -176,6 +178,7 @@ export const useAuthStore = create<AuthState>((set, _get) => ({
       isAuthenticated: true,
       isLoading: false,
       error: null,
+      token: accessToken || null,
       otpPhone: null,
       otpSent: false,
       otpConfirmation: null,
@@ -194,6 +197,7 @@ export const useAuthStore = create<AuthState>((set, _get) => ({
       user: null,
       isAuthenticated: false,
       error: null,
+      token: null,
       otpPhone: null,
       otpSent: false,
       otpConfirmation: null,
@@ -208,11 +212,11 @@ export const useAuthStore = create<AuthState>((set, _get) => ({
         return;
       }
       const { data } = await authApi.me();
-      set({ user: data, isAuthenticated: true, isLoading: false });
+      set({ user: data, isAuthenticated: true, isLoading: false, token });
     } catch {
       await AsyncStorage.removeItem('accessToken');
       await AsyncStorage.removeItem('refreshToken');
-      set({ isLoading: false, isAuthenticated: false, user: null });
+      set({ isLoading: false, isAuthenticated: false, user: null, token: null });
     }
   },
 

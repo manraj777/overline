@@ -1,4 +1,4 @@
-import React, {useState, useEffect} from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -9,21 +9,41 @@ import {
   Alert,
   ActivityIndicator,
   Switch,
+  SafeAreaView,
+  KeyboardAvoidingView,
+  Platform,
+  StatusBar,
 } from 'react-native';
-import {useQuery, useMutation, useQueryClient} from '@tanstack/react-query';
-import {useRoute, RouteProp, useNavigation} from '@react-navigation/native';
-import {servicesApi} from '../../api/client';
-import {RootStackParamList, ServiceFormData} from '../../types';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useRoute, RouteProp, useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import { servicesApi } from '../../api/client';
+import { RootStackParamList, ServiceFormData } from '../../types';
+import { Colors, FontSize, FontWeight, Radius, Spacing, Shadows } from '../../theme';
+import { 
+  ArrowLeft, 
+  Check, 
+  Clock, 
+  IndianRupee, 
+  LayoutGrid, 
+  Info, 
+  ChevronRight, 
+  Sparkles,
+  Zap,
+  ShieldCheck
+} from 'lucide-react-native';
 
 type RouteProps = RouteProp<RootStackParamList, 'ServiceForm'>;
+type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'ServiceForm'>;
 
 const DURATION_OPTIONS = [15, 30, 45, 60, 90, 120];
+const CATEGORY_PRESETS = ['Hair', 'Beard', 'Facial', 'Massage', 'Grooming', 'Medical'];
 
 export default function ServiceFormScreen() {
   const route = useRoute<RouteProps>();
-  const navigation = useNavigation();
+  const navigation = useNavigation<NavigationProp>();
   const queryClient = useQueryClient();
-  const {shopId, serviceId} = route.params;
+  const { shopId, serviceId } = route.params;
   const isEditing = !!serviceId;
 
   const [formData, setFormData] = useState<ServiceFormData>({
@@ -36,7 +56,7 @@ export default function ServiceFormScreen() {
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
 
-  const {data: existingService, isLoading: loadingService} = useQuery({
+  const { data: existingService, isLoading: loadingService } = useQuery({
     queryKey: ['adminService', serviceId],
     queryFn: () => servicesApi.getAll(shopId).then(res => 
       res.data.find((s: any) => s.id === serviceId)
@@ -49,7 +69,7 @@ export default function ServiceFormScreen() {
       setFormData({
         name: existingService.name,
         description: existingService.description || '',
-        price: existingService.price,
+        price: Number(existingService.price),
         durationMinutes: existingService.durationMinutes,
         category: existingService.category || '',
         isActive: existingService.isActive,
@@ -57,308 +77,391 @@ export default function ServiceFormScreen() {
     }
   }, [existingService]);
 
-  const createMutation = useMutation({
-    mutationFn: (data: ServiceFormData) =>
-      servicesApi.create(shopId, {
-        name: data.name,
-        price: data.price,
-        durationMinutes: data.durationMinutes,
-        description: data.description,
-        category: data.category,
-      }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({queryKey: ['adminServices']});
-      Alert.alert('Success', 'Service created successfully');
-      navigation.goBack();
-    },
-    onError: (error: any) => {
-      Alert.alert(
-        'Error',
-        error.response?.data?.message || 'Failed to create service',
-      );
-    },
-  });
-
   const updateMutation = useMutation({
     mutationFn: (data: ServiceFormData) =>
-      servicesApi.update(serviceId!, {
-        name: data.name,
-        price: data.price,
-        durationMinutes: data.durationMinutes,
-        description: data.description,
-        isActive: data.isActive,
-      }),
+      isEditing 
+        ? servicesApi.update(serviceId!, { ...data, id: serviceId } as any)
+        : servicesApi.create(shopId, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({queryKey: ['adminServices']});
-      Alert.alert('Success', 'Service updated successfully');
+      queryClient.invalidateQueries({ queryKey: ['adminServices'] });
+      Alert.alert('Success', `Service ${isEditing ? 'updated' : 'created'} successfully`);
       navigation.goBack();
     },
     onError: (error: any) => {
-      Alert.alert(
-        'Error',
-        error.response?.data?.message || 'Failed to update service',
-      );
+      Alert.alert('Operation Failed', error.response?.data?.message || 'Check your internet connection.');
     },
   });
 
-  const validate = () => {
-    const newErrors: Record<string, string> = {};
-
-    if (!formData.name.trim()) {
-      newErrors.name = 'Service name is required';
-    }
-
-    if (formData.price <= 0) {
-      newErrors.price = 'Price must be greater than 0';
-    }
-
-    if (formData.durationMinutes <= 0) {
-      newErrors.duration = 'Duration must be selected';
-    }
-
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
   const handleSubmit = () => {
-    if (!validate()) return;
-
-    if (isEditing) {
-      updateMutation.mutate(formData);
-    } else {
-      createMutation.mutate(formData);
-    }
+    const e: Record<string, string> = {};
+    if (!formData.name.trim()) e.name = 'Required';
+    if (formData.price <= 0) e.price = 'Invalid';
+    if (Object.keys(e).length > 0) return setErrors(e);
+    
+    updateMutation.mutate(formData);
   };
-
-  const isSubmitting = createMutation.isPending || updateMutation.isPending;
 
   if (loadingService) {
     return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#4F46E5" />
+      <View style={styles.loading}>
+        <ActivityIndicator size="large" color={Colors.primary} />
       </View>
     );
   }
 
   return (
-    <ScrollView style={styles.container} keyboardShouldPersistTaps="handled">
-      <View style={styles.form}>
-        {/* Service Name */}
-        <View style={styles.inputGroup}>
-          <Text style={styles.label}>Service Name *</Text>
-          <TextInput
-            style={[styles.input, errors.name && styles.inputError]}
-            value={formData.name}
-            onChangeText={text => setFormData({...formData, name: text})}
-            placeholder="e.g., Haircut, Beard Trim"
-          />
-          {errors.name && <Text style={styles.errorText}>{errors.name}</Text>}
-        </View>
-
-        {/* Description */}
-        <View style={styles.inputGroup}>
-          <Text style={styles.label}>Description</Text>
-          <TextInput
-            style={[styles.input, styles.textArea]}
-            value={formData.description}
-            onChangeText={text => setFormData({...formData, description: text})}
-            placeholder="Brief description of the service"
-            multiline
-            numberOfLines={3}
-          />
-        </View>
-
-        {/* Price */}
-        <View style={styles.inputGroup}>
-          <Text style={styles.label}>Price (₹) *</Text>
-          <TextInput
-            style={[styles.input, errors.price && styles.inputError]}
-            value={formData.price ? String(formData.price) : ''}
-            onChangeText={text =>
-              setFormData({...formData, price: parseInt(text) || 0})
-            }
-            placeholder="Enter price"
-            keyboardType="number-pad"
-          />
-          {errors.price && <Text style={styles.errorText}>{errors.price}</Text>}
-        </View>
-
-        {/* Duration */}
-        <View style={styles.inputGroup}>
-          <Text style={styles.label}>Duration *</Text>
-          <View style={styles.durationGrid}>
-            {DURATION_OPTIONS.map(duration => (
-              <TouchableOpacity
-                key={duration}
-                style={[
-                  styles.durationOption,
-                  formData.durationMinutes === duration &&
-                    styles.durationOptionSelected,
-                ]}
-                onPress={() =>
-                  setFormData({...formData, durationMinutes: duration})
-                }>
-                <Text
-                  style={[
-                    styles.durationText,
-                    formData.durationMinutes === duration &&
-                      styles.durationTextSelected,
-                  ]}>
-                  {duration} min
-                </Text>
-              </TouchableOpacity>
-            ))}
+    <View style={styles.container}>
+      <StatusBar barStyle="dark-content" />
+      <SafeAreaView style={styles.safeArea}>
+        
+        <View style={styles.customHeader}>
+          <TouchableOpacity style={styles.backBtn} onPress={() => navigation.goBack()}>
+            <ArrowLeft size={24} color="#0F172A" />
+          </TouchableOpacity>
+          <View>
+            <Text style={styles.headerTitle}>{isEditing ? 'Update Service' : 'New Service'}</Text>
+            <Text style={styles.headerSubtitle}>Optimize your menu offering</Text>
           </View>
-          {errors.duration && (
-            <Text style={styles.errorText}>{errors.duration}</Text>
-          )}
+          <View style={{ width: 44 }} />
         </View>
 
-        {/* Category */}
-        <View style={styles.inputGroup}>
-          <Text style={styles.label}>Category (Optional)</Text>
-          <TextInput
-            style={styles.input}
-            value={formData.category}
-            onChangeText={text => setFormData({...formData, category: text})}
-            placeholder="e.g., Hair, Beard, Grooming"
-          />
-        </View>
+        <KeyboardAvoidingView 
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          style={{ flex: 1 }}
+        >
+          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
+            
+            <View style={styles.mainCard}>
+              <View style={styles.inputSection}>
+                <Text style={styles.sectionLabel}>BASIC INFORMATION</Text>
+                
+                <View style={[styles.inputBox, errors.name && styles.inputBoxError]}>
+                  <Sparkles size={18} color={Colors.textTertiary} />
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Service name (e.g. Skin Fade)"
+                    placeholderTextColor={Colors.textMuted}
+                    value={formData.name}
+                    onChangeText={t => setFormData({ ...formData, name: t })}
+                  />
+                </View>
 
-        {/* Active Status (only for editing) */}
-        {isEditing && (
-          <View style={styles.switchGroup}>
-            <View>
-              <Text style={styles.label}>Active</Text>
-              <Text style={styles.switchDescription}>
-                Inactive services won't be shown to customers
-              </Text>
+                <View style={styles.priceRow}>
+                  <View style={[styles.inputBox, { flex: 1 }, errors.price && styles.inputBoxError]}>
+                    <IndianRupee size={16} color={Colors.textTertiary} />
+                    <TextInput
+                      style={styles.input}
+                      placeholder="Price"
+                      keyboardType="number-pad"
+                      value={formData.price ? String(formData.price) : ''}
+                      onChangeText={t => setFormData({ ...formData, price: parseInt(t) || 0 })}
+                    />
+                  </View>
+                  <View style={[styles.inputBox, { flex: 1.5, marginLeft: 12 }]}>
+                    <Clock size={16} color={Colors.textTertiary} />
+                    <Text style={styles.durationValue}>{formData.durationMinutes} minutes</Text>
+                  </View>
+                </View>
+
+                {/* Duration Picker */}
+                <View style={styles.durationGrid}>
+                  {DURATION_OPTIONS.map(d => (
+                    <TouchableOpacity 
+                      key={d}
+                      style={[styles.dChip, formData.durationMinutes === d && styles.dChipActive]}
+                      onPress={() => setFormData({ ...formData, durationMinutes: d })}
+                    >
+                      <Text style={[styles.dChipText, formData.durationMinutes === d && styles.dChipTextActive]}>{d}m</Text>
+                    </TouchableOpacity>
+                  ))}
+                </View>
+              </View>
+
+              <View style={[styles.inputSection, { marginTop: 32 }]}>
+                <Text style={styles.sectionLabel}>CATEGORIZATION</Text>
+                
+                <View style={styles.inputBox}>
+                  <LayoutGrid size={18} color={Colors.textTertiary} />
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Category"
+                    value={formData.category}
+                    onChangeText={t => setFormData({ ...formData, category: t })}
+                  />
+                </View>
+
+                <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.presetScroll}>
+                  {CATEGORY_PRESETS.map(p => (
+                    <TouchableOpacity 
+                      key={p} 
+                      style={styles.pChip}
+                      onPress={() => setFormData({ ...formData, category: p })}
+                    >
+                      <Text style={styles.pChipText}>{p}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              </View>
+
+              <View style={[styles.inputSection, { marginTop: 32 }]}>
+                <Text style={styles.sectionLabel}>DETAILED DESCRIPTION</Text>
+                <View style={[styles.inputBox, { height: 120, alignItems: 'flex-start', paddingTop: 16 }]}>
+                  <Info size={18} color={Colors.textTertiary} />
+                  <TextInput
+                    style={[styles.input, { textAlignVertical: 'top' }]}
+                    placeholder="Details about inclusions, requirements, etc."
+                    multiline
+                    value={formData.description}
+                    onChangeText={t => setFormData({ ...formData, description: t })}
+                  />
+                </View>
+              </View>
+
+              {isEditing && (
+                <View style={styles.statusBox}>
+                  <View style={styles.statusText}>
+                    <Text style={styles.statusTitle}>Active Listing</Text>
+                    <Text style={styles.statusSubtitle}>Service is visible to all customers.</Text>
+                  </View>
+                  <Switch
+                    value={formData.isActive}
+                    onValueChange={v => setFormData({ ...formData, isActive: v })}
+                    trackColor={{ false: '#F1F5F9', true: Colors.primary100 }}
+                    thumbColor={formData.isActive ? Colors.primary : Colors.textMuted}
+                  />
+                </View>
+              )}
             </View>
-            <Switch
-              value={formData.isActive}
-              onValueChange={value =>
-                setFormData({...formData, isActive: value})
-              }
-              trackColor={{false: '#E5E7EB', true: '#C7D2FE'}}
-              thumbColor={formData.isActive ? '#4F46E5' : '#9CA3AF'}
-            />
-          </View>
-        )}
 
-        {/* Submit Button */}
-        <TouchableOpacity
-          style={[styles.submitButton, isSubmitting && styles.submitButtonDisabled]}
-          onPress={handleSubmit}
-          disabled={isSubmitting}>
-          {isSubmitting ? (
-            <ActivityIndicator color="#fff" />
-          ) : (
-            <Text style={styles.submitButtonText}>
-              {isEditing ? 'Update Service' : 'Create Service'}
-            </Text>
-          )}
-        </TouchableOpacity>
-      </View>
-    </ScrollView>
+            <View style={styles.footerNote}>
+              <ShieldCheck size={14} color="#94A3B8" />
+              <Text style={styles.footerNoteText}>Verified professional listing protocol</Text>
+            </View>
+
+          </ScrollView>
+        </KeyboardAvoidingView>
+
+        <View style={styles.actionFooter}>
+          <TouchableOpacity 
+            style={[styles.submitBtn, updateMutation.isPending && { opacity: 0.8 }]}
+            onPress={handleSubmit}
+            disabled={updateMutation.isPending}
+          >
+            {updateMutation.isPending ? (
+              <ActivityIndicator color="#FFF" />
+            ) : (
+              <>
+                <Text style={styles.submitBtnText}>{isEditing ? 'COMMIT UPDATES' : 'PUBLISH SERVICE'}</Text>
+                <Zap size={18} color="#FFF" fill="#FFF" />
+              </>
+            )}
+          </TouchableOpacity>
+        </View>
+
+      </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#F9FAFB',
+    backgroundColor: '#F8FAFC',
   },
-  loadingContainer: {
+  safeArea: {
+    flex: 1,
+  },
+  loading: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
   },
-  form: {
-    padding: 20,
+  customHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    backgroundColor: '#FFF',
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
   },
-  inputGroup: {
-    marginBottom: 24,
+  backBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 14,
+    backgroundColor: '#F8FAFC',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  label: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#374151',
-    marginBottom: 8,
+  headerTitle: {
+    fontSize: 20,
+    fontWeight: '900',
+    color: '#0F172A',
+    textAlign: 'center',
+  },
+  headerSubtitle: {
+    fontSize: 12,
+    color: '#64748B',
+    fontWeight: '700',
+    textAlign: 'center',
+    marginTop: 2,
+  },
+  scrollContent: {
+    padding: 24,
+  },
+  mainCard: {
+    backgroundColor: '#FFF',
+    borderRadius: 36,
+    padding: 28,
+    ...Shadows.md,
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
+  },
+  inputSection: {
+    // Spacer
+  },
+  sectionLabel: {
+    fontSize: 11,
+    fontWeight: '900',
+    color: '#94A3B8',
+    letterSpacing: 1.5,
+    marginBottom: 16,
+    marginLeft: 4,
+  },
+  inputBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F8FAFC',
+    borderRadius: 20,
+    paddingHorizontal: 16,
+    height: 60,
+    borderWidth: 1.5,
+    borderColor: '#F1F5F9',
+  },
+  inputBoxError: {
+    borderColor: '#FECACA',
+    backgroundColor: '#FFF1F2',
   },
   input: {
-    backgroundColor: '#fff',
-    borderWidth: 1,
-    borderColor: '#D1D5DB',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    fontSize: 16,
-    color: '#111827',
+    flex: 1,
+    marginLeft: 12,
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#0F172A',
   },
-  inputError: {
-    borderColor: '#EF4444',
+  priceRow: {
+    flexDirection: 'row',
+    marginTop: 16,
   },
-  textArea: {
-    minHeight: 100,
-    textAlignVertical: 'top',
-  },
-  errorText: {
-    color: '#EF4444',
-    fontSize: 12,
-    marginTop: 4,
+  durationValue: {
+    marginLeft: 12,
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#0F172A',
   },
   durationGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 10,
+    gap: 8,
+    marginTop: 20,
   },
-  durationOption: {
-    backgroundColor: '#fff',
-    borderWidth: 1,
-    borderColor: '#D1D5DB',
-    borderRadius: 10,
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-  },
-  durationOptionSelected: {
-    backgroundColor: '#4F46E5',
-    borderColor: '#4F46E5',
-  },
-  durationText: {
-    fontSize: 14,
-    color: '#4B5563',
-    fontWeight: '500',
-  },
-  durationTextSelected: {
-    color: '#fff',
-  },
-  switchGroup: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    backgroundColor: '#fff',
-    padding: 16,
+  dChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 8,
     borderRadius: 12,
-    marginBottom: 24,
+    backgroundColor: '#F1F5F9',
+    borderWidth: 1,
+    borderColor: 'transparent',
   },
-  switchDescription: {
-    fontSize: 13,
-    color: '#6B7280',
+  dChipActive: {
+    backgroundColor: '#EFF6FF',
+    borderColor: Colors.primary,
+  },
+  dChipText: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#64748B',
+  },
+  dChipTextActive: {
+    color: Colors.primary,
+  },
+  presetScroll: {
+    marginTop: 12,
+    gap: 8,
+  },
+  pChip: {
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 10,
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
+  },
+  pChipText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#94A3B8',
+  },
+  statusBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#F8FAFC',
+    padding: 20,
+    borderRadius: 24,
+    marginTop: 32,
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
+  },
+  statusText: {
+    flex: 1,
+  },
+  statusTitle: {
+    fontSize: 15,
+    fontWeight: '800',
+    color: '#1E293B',
+  },
+  statusSubtitle: {
+    fontSize: 11,
+    color: '#94A3B8',
+    fontWeight: '600',
     marginTop: 2,
   },
-  submitButton: {
-    backgroundColor: '#4F46E5',
-    borderRadius: 12,
-    paddingVertical: 16,
+  footerNote: {
+    flexDirection: 'row',
+    justifyContent: 'center',
     alignItems: 'center',
-    marginTop: 8,
+    gap: 8,
+    marginTop: 24,
+    marginBottom: 10,
   },
-  submitButtonDisabled: {
-    opacity: 0.7,
+  footerNoteText: {
+    fontSize: 11,
+    color: '#CBD5E1',
+    fontWeight: '700',
   },
-  submitButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
+  actionFooter: {
+    paddingHorizontal: 24,
+    paddingVertical: 20,
+    backgroundColor: '#FFF',
+    borderTopWidth: 1,
+    borderTopColor: '#F1F5F9',
+  },
+  submitBtn: {
+    backgroundColor: Colors.primary,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 18,
+    borderRadius: 24,
+    gap: 12,
+    ...Shadows.glow,
+  },
+  submitBtnText: {
+    color: '#FFF',
+    fontSize: 15,
+    fontWeight: '900',
+    letterSpacing: 2,
   },
 });

@@ -23,6 +23,7 @@ import { ShopOwnerGuard } from '../auth/guards/shop-owner.guard';
 import { QueueService } from '../queue/queue.service';
 import { AdminService } from './admin.service';
 import { PrismaService } from '@/common/prisma/prisma.service';
+import { CreateOwnerShopDto } from './dto/create-owner-shop.dto';
 import { UpdateOwnerShopSettingsDto } from './dto/update-owner-shop-settings.dto';
 
 class InviteStaffDto {
@@ -107,6 +108,15 @@ export class OwnerController {
     private readonly queueService: QueueService,
     private readonly prisma: PrismaService,
   ) {}
+
+  @Post('shops')
+  @ApiOperation({ summary: 'Create initial shop' })
+  async createShop(
+    @Body() dto: CreateOwnerShopDto,
+    @CurrentUser('id') ownerId: string,
+  ) {
+    return this.adminService.createOwnerShop(ownerId, dto);
+  }
 
   @Post('staff')
   @UseGuards(ShopOwnerGuard)

@@ -9,6 +9,7 @@ import {SafeAreaProvider} from 'react-native-safe-area-context';
 import {QueryClient, QueryClientProvider} from '@tanstack/react-query';
 import RootNavigator from './src/navigation/RootNavigator';
 import {useAuthStore} from './src/stores/authStore';
+import {useSocket} from './src/hooks/useSocket';
 
 // Create a client
 const queryClient = new QueryClient({
@@ -23,6 +24,8 @@ const queryClient = new QueryClient({
 
 function AppContent() {
   const {checkAuth} = useAuthStore();
+
+  useSocket(); // Maintain global real-time connection for shop alerts
 
   useEffect(() => {
     checkAuth();

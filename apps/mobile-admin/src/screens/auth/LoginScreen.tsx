@@ -1,4 +1,4 @@
-import React, {useState} from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -11,16 +11,21 @@ import {
   ActivityIndicator,
   ScrollView,
   Image,
+  Dimensions,
+  StatusBar,
 } from 'react-native';
-import {useNavigation} from '@react-navigation/native';
-import {NativeStackNavigationProp} from '@react-navigation/native-stack';
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import axios from 'axios';
-import {GoogleSignin} from '@react-native-google-signin/google-signin';
-import {useAuthStore} from '../../stores/authStore';
-import {Colors, FontSize, FontWeight, Radius, Spacing} from '../../theme';
-import {RootStackParamList} from '../../types';
+import { GoogleSignin } from '@react-native-google-signin/google-signin';
+import { useAuthStore } from '../../stores/authStore';
+import { Colors, FontSize, FontWeight, Radius, Spacing, Shadows } from '../../theme';
+import { RootStackParamList } from '../../types';
+import { Smartphone, Mail, Lock, ShieldCheck, ChevronRight, Zap } from 'lucide-react-native';
 
+const { width, height } = Dimensions.get('window');
 const BRAND_LOGO = require('../../../assets/branding/overline-logo.png');
+
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 export default function LoginScreen() {
@@ -32,69 +37,35 @@ export default function LoginScreen() {
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   const [isPhoneLoading, setIsPhoneLoading] = useState(false);
-  const [errors, setErrors] = useState<{email?: string; password?: string}>({});
+  const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
 
-  const {login, loginWithGoogle, sendPhoneLoginOtp} = useAuthStore();
+  const { login, loginWithGoogle, sendPhoneLoginOtp } = useAuthStore();
 
-  React.useEffect(() => {
+  useEffect(() => {
     GoogleSignin.configure({
-      // Can be provided through native config; webClientId is optional but recommended for idToken.
       webClientId: process.env.GOOGLE_WEB_CLIENT_ID,
       offlineAccess: false,
-      forceCodeForRefreshToken: false,
     });
   }, []);
 
   const validate = () => {
-    const newErrors: {email?: string; password?: string} = {};
-
-    if (!email.trim()) {
-      newErrors.email = 'Email is required';
-    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      newErrors.email = 'Invalid email format';
-    }
-
-    if (!password) {
-      newErrors.password = 'Password is required';
-    } else if (password.length < 6) {
-      newErrors.password = 'Password must be at least 6 characters';
-    }
-
+    const newErrors: { email?: string; password?: string } = {};
+    if (!email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) newErrors.email = 'Valid email is required';
+    if (!password || password.length < 6) newErrors.password = 'Min 6 characters required';
     setErrors(newErrors);
     return Object.keys(newErrors).length === 0;
   };
 
   const handleLogin = async () => {
     if (!validate()) return;
-
     setIsLoading(true);
     try {
-      // Send the requested scope to the login handler (auth.service.ts will enforce it)
       await login(email, password, { requestedRole: role });
-    } catch (error: unknown) {
-      const message = axios.isAxiosError(error)
-        ? ((error.response?.data as {message?: string} | undefined)?.message || 'Invalid credentials')
-        : error instanceof Error
-          ? error.message
-          : 'Invalid credentials';
-      Alert.alert(
-        'Login Failed',
-        message,
-      );
+    } catch (error: any) {
+      Alert.alert('Login Failed', error.response?.data?.message || 'Invalid credentials');
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const normalizePhone = (rawPhone: string): string => {
-    const digits = rawPhone.replace(/\D/g, '');
-    if (digits.length === 10) {
-      return `+91${digits}`;
-    }
-    if (digits.length === 12 && digits.startsWith('91')) {
-      return `+${digits}`;
-    }
-    return rawPhone.startsWith('+') ? rawPhone : `+${digits}`;
   };
 
   const handleGoogleLogin = async () => {
@@ -103,28 +74,21 @@ export default function LoginScreen() {
       await GoogleSignin.hasPlayServices();
       const googleUser = await GoogleSignin.signIn();
       const idToken = googleUser.data?.idToken;
-
-      if (!idToken) {
-        throw new Error('Google did not return an ID token. Please retry.');
-      }
-
-      await loginWithGoogle(idToken, {requestedRole: 'OWNER'});
-    } catch (error: unknown) {
-      const message = axios.isAxiosError(error)
-        ? ((error.response?.data as {message?: string} | undefined)?.message || 'Google login failed')
-        : error instanceof Error
-          ? error.message
-          : 'Google login failed';
-      Alert.alert('Google Sign-In Failed', message);
+      if (!idToken) throw new Error('No ID token from Google');
+      await loginWithGoogle(idToken, { requestedRole: 'OWNER' });
+    } catch (error: any) {
+      Alert.alert('Google Error', error.message || 'Login failed');
     } finally {
       setIsGoogleLoading(false);
     }
   };
 
   const handleSendPhoneOtp = async () => {
-    const normalized = normalizePhone(phone);
-    if (!/^\+\d{10,15}$/.test(normalized)) {
-      Alert.alert('Invalid Phone', 'Enter a valid phone number including country code or 10-digit Indian mobile.');
+    const digits = phone.replace(/\D/g, '');
+    const normalized = digits.length === 10 ? `+91${digits}` : `+${digits}`;
+    
+    if (digits.length < 10) {
+      Alert.alert('Invalid Phone', 'Enter a valid 10-digit number');
       return;
     }
 
@@ -136,266 +100,345 @@ export default function LoginScreen() {
         flow: 'PHONE_LOGIN',
         requestedRole: 'OWNER',
       });
-    } catch (error: unknown) {
-      const message = axios.isAxiosError(error)
-        ? ((error.response?.data as {message?: string} | undefined)?.message || 'Unable to send OTP')
-        : error instanceof Error
-          ? error.message
-          : 'Unable to send OTP';
-      Alert.alert('OTP Failed', message);
+    } catch (error: any) {
+      Alert.alert('OTP Error', error.response?.data?.message || 'Failed to send OTP');
     } finally {
       setIsPhoneLoading(false);
     }
   };
 
   return (
-    <KeyboardAvoidingView
-      style={styles.container}
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-      <ScrollView
-        contentContainerStyle={styles.scrollContent}
-        keyboardShouldPersistTaps="handled">
-        <View style={styles.header}>
-          <Image source={BRAND_LOGO} style={styles.logoImage} resizeMode="contain" />
-          <Text style={styles.subtitle}>{role === 'OWNER' ? 'Shop Owner Login' : 'Staff Login'}</Text>
-          <Text style={styles.description}>
-            {role === 'OWNER' ? 'Continue with Google or phone OTP' : 'Sign in with email and password'}
-          </Text>
-        </View>
+    <View style={styles.container}>
+      <StatusBar barStyle="dark-content" />
+      <View style={styles.topCurtain} />
+      
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled">
+          
+          <View style={styles.header}>
+            <Image source={BRAND_LOGO} style={styles.logo} resizeMode="contain" />
+            <Text style={styles.title}>Overline Business</Text>
+            <Text style={styles.subtitle}>Partner Dashboard & Management</Text>
+          </View>
 
-        <View style={styles.formContainer}>
-          {role === 'OWNER' ? (
-            <>
-              <TouchableOpacity
-                style={[styles.googleButton, isGoogleLoading && styles.buttonDisabled]}
-                onPress={handleGoogleLogin}
-                disabled={isGoogleLoading}
-                activeOpacity={0.85}>
-                {isGoogleLoading ? (
-                  <ActivityIndicator color={Colors.textPrimary} />
-                ) : (
-                  <Text style={styles.googleButtonText}>Continue with Google</Text>
-                )}
-              </TouchableOpacity>
+          {/* Role Toggle */}
+          <View style={styles.toggleContainer}>
+            <TouchableOpacity 
+              style={[styles.toggleBtn, role === 'OWNER' && styles.toggleBtnActive]}
+              onPress={() => setRole('OWNER')}
+            >
+              <Text style={[styles.toggleText, role === 'OWNER' && styles.toggleTextActive]}>OWNER</Text>
+            </TouchableOpacity>
+            <TouchableOpacity 
+              style={[styles.toggleBtn, role === 'STAFF' && styles.toggleBtnActive]}
+              onPress={() => setRole('STAFF')}
+            >
+              <Text style={[styles.toggleText, role === 'STAFF' && styles.toggleTextActive]}>STAFF</Text>
+            </TouchableOpacity>
+          </View>
 
-              <Text style={styles.orText}>or</Text>
+          <View style={styles.card}>
+            <Text style={styles.formTitle}>
+              {role === 'OWNER' ? 'Shop Proprietor Login' : 'Team Member Access'}
+            </Text>
+            
+            {role === 'OWNER' ? (
+              <View>
+                <TouchableOpacity 
+                  style={styles.googleBtn} 
+                  onPress={handleGoogleLogin}
+                  disabled={isGoogleLoading}
+                >
+                  {isGoogleLoading ? (
+                    <ActivityIndicator color={Colors.textPrimary} />
+                  ) : (
+                    <>
+                      <Image source={require('../../../assets/icons/google-icon.png')} style={styles.socialIcon} />
+                      <Text style={styles.googleBtnText}>Continue with Google</Text>
+                    </>
+                  )}
+                </TouchableOpacity>
 
-              <View style={styles.inputGroup}>
-                <Text style={styles.label}>Phone Number</Text>
-                <TextInput
-                  style={styles.input}
-                  value={phone}
-                  onChangeText={setPhone}
-                  placeholder="+91 98765 43210"
-                  placeholderTextColor={Colors.outline}
-                  keyboardType="phone-pad"
-                />
+                <View style={styles.dividerRow}>
+                  <View style={styles.divider} />
+                  <Text style={styles.dividerText}>SECURE PHONE LOGIN</Text>
+                  <View style={styles.divider} />
+                </View>
+
+                <View style={styles.inputWrapper}>
+                  <Smartphone size={20} color={Colors.textTertiary} />
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Mobile Number"
+                    placeholderTextColor={Colors.textMuted}
+                    keyboardType="phone-pad"
+                    value={phone}
+                    onChangeText={setPhone}
+                  />
+                </View>
+
+                <TouchableOpacity 
+                  style={[styles.primaryBtn, isPhoneLoading && { opacity: 0.7 }]}
+                  onPress={handleSendPhoneOtp}
+                  disabled={isPhoneLoading}
+                >
+                  {isPhoneLoading ? (
+                    <ActivityIndicator color="#FFF" />
+                  ) : (
+                    <>
+                      <Text style={styles.primaryBtnText}>GET LOGIN CODE</Text>
+                      <Zap size={16} color="#FFF" fill="#FFF" />
+                    </>
+                  )}
+                </TouchableOpacity>
               </View>
-
-              <TouchableOpacity
-                style={[styles.button, isPhoneLoading && styles.buttonDisabled]}
-                onPress={handleSendPhoneOtp}
-                disabled={isPhoneLoading}
-                activeOpacity={0.8}>
-                {isPhoneLoading ? (
-                  <ActivityIndicator color="#fff" />
-                ) : (
-                  <Text style={styles.buttonText}>Send OTP</Text>
-                )}
-              </TouchableOpacity>
-
-              <TouchableOpacity onPress={() => setRole('STAFF')} style={styles.roleLinkWrap}>
-                <Text style={styles.roleLinkText}>Staff? Login with email</Text>
-              </TouchableOpacity>
-            </>
-          ) : (
-            <>
-              <View style={styles.inputGroup}>
-                <Text style={styles.label}>Email Address</Text>
-                <TextInput
-                  style={[styles.input, errors.email && styles.inputError]}
-                  value={email}
-                  onChangeText={setEmail}
-                  placeholder="Enter your email"
-                  placeholderTextColor={Colors.outline}
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                />
+            ) : (
+              <View>
+                <View style={[styles.inputWrapper, errors.email && styles.inputError]}>
+                  <Mail size={20} color={Colors.textTertiary} />
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Staff Email"
+                    placeholderTextColor={Colors.textMuted}
+                    keyboardType="email-address"
+                    autoCapitalize="none"
+                    value={email}
+                    onChangeText={setEmail}
+                  />
+                </View>
                 {errors.email && <Text style={styles.errorText}>{errors.email}</Text>}
-              </View>
 
-              <View style={styles.inputGroup}>
-                <Text style={styles.label}>Password</Text>
-                <TextInput
-                  style={[styles.input, errors.password && styles.inputError]}
-                  value={password}
-                  onChangeText={setPassword}
-                  placeholder="Enter your password"
-                  placeholderTextColor={Colors.outline}
-                  secureTextEntry
-                />
+                <View style={[styles.inputWrapper, { marginTop: 16 }, errors.password && styles.inputError]}>
+                  <Lock size={20} color={Colors.textTertiary} />
+                  <TextInput
+                    style={styles.input}
+                    placeholder="Password"
+                    placeholderTextColor={Colors.textMuted}
+                    secureTextEntry
+                    value={password}
+                    onChangeText={setPassword}
+                  />
+                </View>
                 {errors.password && <Text style={styles.errorText}>{errors.password}</Text>}
+
+                <TouchableOpacity 
+                  style={[styles.primaryBtn, isLoading && { opacity: 0.7 }]}
+                  onPress={handleLogin}
+                  disabled={isLoading}
+                >
+                  {isLoading ? (
+                    <ActivityIndicator color="#FFF" />
+                  ) : (
+                    <Text style={styles.primaryBtnText}>SIGN IN TO SHIFT</Text>
+                  )}
+                </TouchableOpacity>
               </View>
+            )}
 
-              <TouchableOpacity
-                style={[styles.button, isLoading && styles.buttonDisabled]}
-                onPress={handleLogin}
-                disabled={isLoading}
-                activeOpacity={0.8}>
-                {isLoading ? (
-                  <ActivityIndicator color="#fff" />
-                ) : (
-                  <Text style={styles.buttonText}>Sign In</Text>
-                )}
-              </TouchableOpacity>
+            <View style={styles.securityBox}>
+              <ShieldCheck size={14} color={Colors.primary} />
+              <Text style={styles.securityText}>End-to-end encrypted session</Text>
+            </View>
+          </View>
 
-              <TouchableOpacity onPress={() => setRole('OWNER')} style={styles.roleLinkWrap}>
-                <Text style={styles.roleLinkText}>Back to owner login</Text>
-              </TouchableOpacity>
-            </>
-          )}
-        </View>
-
-        <View style={styles.footer}>
-          <Text style={styles.footerText}>
-            Protected by Overline internal policies
-          </Text>
-        </View>
-      </ScrollView>
-    </KeyboardAvoidingView>
+          <Text style={styles.footerInfo}>Overline v2.0 Enterprise Cloud</Text>
+        </ScrollView>
+      </KeyboardAvoidingView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: '#F8FAFC',
+  },
+  topCurtain: {
+    position: 'absolute',
+    top: 0,
+    width: '100%',
+    height: height * 0.35,
+    backgroundColor: '#FFF',
+    borderBottomLeftRadius: 60,
+    borderBottomRightRadius: 60,
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOpacity: 0.05,
+    shadowRadius: 10,
   },
   scrollContent: {
     flexGrow: 1,
-    justifyContent: 'center',
-    padding: Spacing.xxl,
+    paddingHorizontal: 24,
+    paddingTop: height * 0.08,
+    paddingBottom: 40,
   },
   header: {
     alignItems: 'center',
-    marginBottom: Spacing.xxxxxl,
+    marginBottom: 40,
   },
-  logoImage: {
-    width: 120,
-    height: 120,
-    borderRadius: Radius.full,
-    marginBottom: Spacing.lg,
+  logo: {
+    width: 90,
+    height: 90,
+    borderRadius: Radius.xl,
+    marginBottom: 16,
+  },
+  title: {
+    fontSize: 26,
+    fontWeight: '900',
+    color: '#0F172A',
+    letterSpacing: -0.5,
   },
   subtitle: {
-    fontSize: FontSize.h1,
-    fontWeight: FontWeight.bold,
-    color: Colors.textPrimary,
-    marginBottom: Spacing.xs,
+    fontSize: 14,
+    color: '#64748B',
+    fontWeight: '600',
+    marginTop: 4,
   },
-  description: {
-    fontSize: FontSize.body,
-    fontWeight: FontWeight.medium,
-    color: Colors.textSecondary,
-    textAlign: 'center',
+  toggleContainer: {
+    flexDirection: 'row',
+    backgroundColor: '#F1F5F9',
+    borderRadius: 20,
+    padding: 6,
+    marginBottom: 32,
   },
-  formContainer: {
-    backgroundColor: Colors.surface,
-    borderRadius: Radius.lg,
-    padding: Spacing.xxl,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.05,
-    shadowRadius: 10,
-    elevation: 2,
-    marginBottom: Spacing.xxl,
-  },
-  googleButton: {
-    borderWidth: 1,
-    borderColor: Colors.border,
-    borderRadius: Radius.full,
-    paddingVertical: 14,
+  toggleBtn: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 16,
     alignItems: 'center',
-    backgroundColor: Colors.surface,
-    marginBottom: Spacing.lg,
   },
-  googleButtonText: {
-    color: Colors.textPrimary,
-    fontSize: FontSize.body,
-    fontWeight: FontWeight.bold,
+  toggleBtnActive: {
+    backgroundColor: '#FFF',
+    ...Shadows.sm,
   },
-  orText: {
-    textAlign: 'center',
-    color: Colors.textSecondary,
-    marginBottom: Spacing.lg,
-    textTransform: 'uppercase',
+  toggleText: {
+    fontSize: 12,
+    fontWeight: '800',
+    color: '#94A3B8',
     letterSpacing: 1,
-    fontWeight: FontWeight.medium,
   },
-  inputGroup: {
-    marginBottom: Spacing.lg,
+  toggleTextActive: {
+    color: Colors.primary,
   },
-  label: {
-    fontSize: FontSize.label,
-    fontWeight: FontWeight.bold,
-    color: Colors.textPrimary,
-    marginBottom: Spacing.sm,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  input: {
+  card: {
+    backgroundColor: '#FFF',
+    borderRadius: 32,
+    padding: 24,
     borderWidth: 1,
-    borderColor: Colors.border,
-    borderRadius: Radius.md,
-    paddingHorizontal: Spacing.lg,
-    paddingVertical: Spacing.md,
-    fontSize: FontSize.body,
-    backgroundColor: Colors.surface,
-    color: Colors.textPrimary,
+    borderColor: '#F1F5F9',
+    ...Shadows.md,
+  },
+  formTitle: {
+    fontSize: 18,
+    fontWeight: '900',
+    color: '#1E293B',
+    marginBottom: 24,
+    textAlign: 'center',
+  },
+  googleBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 16,
+    borderRadius: 20,
+    borderWidth: 1.5,
+    borderColor: '#E2E8F0',
+    gap: 12,
+  },
+  socialIcon: {
+    width: 20,
+    height: 20,
+  },
+  googleBtnText: {
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#1E293B',
+  },
+  dividerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginVertical: 24,
+    gap: 12,
+  },
+  divider: {
+    flex: 1,
+    height: 1,
+    backgroundColor: '#F1F5F9',
+  },
+  dividerText: {
+    fontSize: 10,
+    fontWeight: '800',
+    color: '#CBD5E1',
+    letterSpacing: 1,
+  },
+  inputWrapper: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F8FAFC',
+    borderRadius: 20,
+    paddingHorizontal: 16,
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
+    height: 60,
   },
   inputError: {
-    borderColor: Colors.error,
+    borderColor: '#FECACA',
+    backgroundColor: '#FFF5F5',
   },
-  errorText: {
-    color: Colors.error,
-    fontSize: FontSize.caption,
-    marginTop: 4,
-    fontWeight: FontWeight.medium,
+  input: {
+    flex: 1,
+    marginLeft: 12,
+    fontSize: 15,
+    fontWeight: '600',
+    color: '#0F172A',
   },
-  button: {
+  primaryBtn: {
     backgroundColor: Colors.primary,
-    borderRadius: Radius.full,
-    paddingVertical: 16,
+    flexDirection: 'row',
     alignItems: 'center',
-    marginTop: Spacing.md,
+    justifyContent: 'center',
+    paddingVertical: 18,
+    borderRadius: 20,
+    marginTop: 24,
+    gap: 8,
+    ...Shadows.glow,
   },
-  buttonDisabled: {
-    opacity: 0.6,
-  },
-  buttonText: {
-    color: Colors.white,
-    fontSize: FontSize.body,
-    fontWeight: FontWeight.bold,
-    textTransform: 'uppercase',
+  primaryBtnText: {
+    color: '#FFF',
+    fontSize: 14,
+    fontWeight: '900',
     letterSpacing: 1,
   },
-  roleLinkWrap: {
-    marginTop: Spacing.lg,
+  errorText: {
+    fontSize: 11,
+    color: '#EF4444',
+    marginTop: 6,
+    marginLeft: 12,
+    fontWeight: '600',
+  },
+  securityBox: {
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
+    gap: 6,
+    marginTop: 20,
   },
-  roleLinkText: {
-    color: Colors.primary,
-    fontWeight: FontWeight.semibold,
-    fontSize: FontSize.caption,
+  securityText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#94A3B8',
   },
-  footer: {
-    alignItems: 'center',
-  },
-  footerText: {
-    color: Colors.textMuted,
-    fontSize: FontSize.caption,
-    fontWeight: FontWeight.medium,
+  footerInfo: {
+    textAlign: 'center',
+    marginTop: 40,
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#CBD5E1',
+    letterSpacing: 0.5,
   },
 });

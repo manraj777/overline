@@ -1,6 +1,6 @@
 import React from 'react';
-import { View, Text, StyleSheet, TouchableOpacity } from 'react-native';
-import { useQuery } from '@tanstack/react-query';
+import { View, Text, StyleSheet, TouchableOpacity, Animated } from 'react-native';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { format } from 'date-fns';
@@ -8,12 +8,14 @@ import { bookingsApi } from '../../api/client';
 import { RootStackParamList } from '../../types';
 import { Colors, Spacing, BorderRadius, FontSizes, FontWeights, Shadows } from '../../theme';
 import { PrimaryButton, Divider } from '../../components/ui';
-import { Check, Sparkles } from 'lucide-react-native';
+import { Check, Sparkles, Zap, Timer, ArrowRight } from 'lucide-react-native';
+import { useSocketEvent } from '../../hooks/useSocket';
 
 type RouteProps = RouteProp<RootStackParamList, 'BookingConfirmation'>;
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 export default function BookingConfirmationScreen() {
+  const queryClient = useQueryClient();
   const navigation = useNavigation<NavigationProp>();
   const route = useRoute<RouteProps>();
   const { bookingId } = route.params;
@@ -23,30 +25,53 @@ export default function BookingConfirmationScreen() {
     queryFn: () => bookingsApi.getById(bookingId).then(res => res.data),
   });
 
+  // Real-time status sync
+  useSocketEvent('booking_status_update', (data: any) => {
+    if (data.bookingId === bookingId) {
+      queryClient.invalidateQueries({ queryKey: ['booking', bookingId] });
+      // If started, maybe navigate to a live tracking screen or just show status here
+    }
+  });
+
   const goHome = () => {
     navigation.reset({ index: 0, routes: [{ name: 'Main' }] });
   };
 
   if (!booking) return null;
 
+  const isStarted = booking.status === 'IN_SERVICE';
+
   return (
     <View style={styles.container}>
-      <View style={styles.bgOrb} />
+      <View style={[styles.bgOrb, isStarted && { backgroundColor: 'rgba(59, 130, 246, 0.1)' }]} />
 
       <View style={styles.content}>
-        {/* Success Animation */}
-        <View style={styles.successCircle}>
-          <View style={styles.successInner}>
-            <Check color="#fff" size={40} />
+        {/* Success / Live Animation */}
+        <View style={[styles.successCircle, isStarted && styles.liveCircle]}>
+          <View style={[styles.successInner, isStarted && styles.liveInner]}>
+            {isStarted ? (
+              <Timer color="#fff" size={40} />
+            ) : (
+              <Check color="#fff" size={40} />
+            )}
           </View>
         </View>
 
-        <Text style={styles.title}>Booking Confirmed!</Text>
-        <Text style={styles.subtitle}>Your appointment is all set</Text>
+        <Text style={styles.title}>{isStarted ? 'Service Live!' : 'Booking Confirmed!'}</Text>
+        <Text style={styles.subtitle}>
+          {isStarted ? 'Your session has officially started' : 'Your appointment is all set'}
+        </Text>
 
         {/* Booking Card */}
-        <View style={styles.bookingCard}>
-          <Text style={styles.bookingNumber}>{booking.bookingNumber}</Text>
+        <View style={[styles.bookingCard, isStarted && styles.liveBookingCard]}>
+          {!isStarted && <Text style={styles.bookingNumber}>{booking.bookingNumber}</Text>}
+          
+          {isStarted && (
+            <View style={styles.liveStatusRow}>
+              <Zap size={14} color={Colors.primary} fill={Colors.primary} />
+              <Text style={styles.liveStatusText}>ACTIVITY IN PROGRESS</Text>
+            </View>
+          )}
 
           <View style={styles.detailRow}>
             <Text style={styles.detailLabel}>Shop</Text>
@@ -54,31 +79,31 @@ export default function BookingConfirmationScreen() {
           </View>
 
           <View style={styles.detailRow}>
-            <Text style={styles.detailLabel}>Date & Time</Text>
-            <Text style={styles.detailValue}>
-              {format(new Date(booking.startTime), 'EEE, MMM d · h:mm a')}
-            </Text>
-          </View>
-
-          <View style={styles.detailRow}>
-            <Text style={styles.detailLabel}>Services</Text>
-            <Text style={styles.detailValue}>
-              {booking.services?.map((s: any) => s.serviceName).join(', ')}
-            </Text>
+            <Text style={styles.detailLabel}>Shift Specialist</Text>
+            <Text style={styles.detailValue}>{booking.staff?.name || 'Assigned Specialist'}</Text>
           </View>
 
           <Divider />
 
-          {/* Verification Code */}
-          <View style={styles.codeSection}>
-            <Text style={styles.codeLabel}>Your Verification Code</Text>
-            <View style={styles.codeBox}>
-              <Text style={styles.codeText}>{booking.verificationCode}</Text>
+          {/* Verification Code or Live Progress */}
+          {!isStarted ? (
+            <View style={styles.codeSection}>
+              <Text style={styles.codeLabel}>Show this to Specialist</Text>
+              <View style={styles.codeBox}>
+                <Text style={styles.codeText}>{booking.verificationCode}</Text>
+              </View>
+              <Text style={styles.codeHint}>
+                Scan this at the shop to begin your session
+              </Text>
             </View>
-            <Text style={styles.codeHint}>
-              Show this code at the shop to begin
-            </Text>
-          </View>
+          ) : (
+            <View style={styles.progressSection}>
+              <View style={styles.progressBar}>
+                <View style={[styles.progressFill, { width: '30%' }]} />
+              </View>
+              <Text style={styles.progressHint}>Specialist is now providing your service</Text>
+            </View>
+          )}
 
           <Divider />
 
@@ -87,12 +112,17 @@ export default function BookingConfirmationScreen() {
             <Text style={styles.totalValue}>₹{booking.displayAmount}</Text>
           </View>
 
-          {Number(booking.freeCashAmount) > 0 && (
+          {Number(booking.freeCashAmount) > 0 && !isStarted && (
             <View style={styles.freeCashBadge}>
               <Sparkles color={Colors.success} size={14} style={{ marginRight: 6 }} />
               <Text style={styles.freeCashText}>
-                You'll earn ₹{booking.freeCashAmount} Free Cash!
+                You'll earn ₹{booking.freeCashAmount} Credits!
               </Text>
+            </View>
+          ) || isStarted && (
+            <View style={styles.secureBadge}>
+              <Check color={Colors.primary} size={14} style={{ marginRight: 6 }} />
+              <Text style={styles.secureText}>Session Verified & Secure</Text>
             </View>
           )}
         </View>
@@ -101,11 +131,12 @@ export default function BookingConfirmationScreen() {
       {/* Footer */}
       <View style={styles.footer}>
         <PrimaryButton
-          title="View Booking Details"
+          title={isStarted ? "View Progress Detail" : "View Booking Record"}
           onPress={() => navigation.replace('BookingDetail', { bookingId })}
+          icon={<ArrowRight color="#FFF" size={18} />}
         />
         <TouchableOpacity style={styles.homeButton} onPress={goHome}>
-          <Text style={styles.homeButtonText}>Back to Home</Text>
+          <Text style={styles.homeButtonText}>Return to Explorer</Text>
         </TouchableOpacity>
       </View>
     </View>
@@ -115,7 +146,7 @@ export default function BookingConfirmationScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: '#F9FAFB',
   },
   bgOrb: {
     position: 'absolute',
@@ -124,147 +155,215 @@ const styles = StyleSheet.create({
     width: 400,
     height: 400,
     borderRadius: 200,
-    backgroundColor: 'rgba(0, 196, 140, 0.06)',
+    backgroundColor: 'rgba(0, 196, 140, 0.08)',
   },
   content: {
     flex: 1,
-    paddingHorizontal: Spacing['2xl'],
-    paddingTop: 60,
+    paddingHorizontal: 24,
+    paddingTop: 80,
     alignItems: 'center',
   },
   successCircle: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
+    width: 110,
+    height: 110,
+    borderRadius: 55,
     backgroundColor: 'rgba(0, 196, 140, 0.15)',
     justifyContent: 'center',
     alignItems: 'center',
-    marginBottom: Spacing['2xl'],
+    marginBottom: 32,
+  },
+  liveCircle: {
+    backgroundColor: 'rgba(59, 130, 246, 0.15)',
   },
   successInner: {
-    width: 70,
-    height: 70,
-    borderRadius: 35,
+    width: 80,
+    height: 80,
+    borderRadius: 40,
     backgroundColor: Colors.success,
     justifyContent: 'center',
     alignItems: 'center',
-    ...Shadows.md,
+    ...Shadows.glow,
   },
-  successCheck: {
-    fontSize: 32,
-    color: '#fff',
-    fontWeight: FontWeights.bold,
+  liveInner: {
+    backgroundColor: Colors.primary,
   },
   title: {
-    fontSize: FontSizes['2xl'],
-    fontWeight: FontWeights.extrabold,
-    color: Colors.textPrimary,
-    marginBottom: Spacing.sm,
+    fontSize: 28,
+    fontWeight: '900',
+    color: '#0F172A',
+    marginBottom: 8,
   },
   subtitle: {
-    fontSize: FontSizes.md,
-    color: Colors.textSecondary,
-    marginBottom: Spacing['3xl'],
+    fontSize: 16,
+    color: '#64748B',
+    marginBottom: 40,
+    fontWeight: '500',
   },
   bookingCard: {
     width: '100%',
-    backgroundColor: Colors.surface,
-    borderRadius: BorderRadius.xl,
-    padding: Spacing.xl,
+    backgroundColor: '#FFF',
+    borderRadius: 28,
+    padding: 24,
     borderWidth: 1,
-    borderColor: Colors.border,
+    borderColor: '#F1F5F9',
+    ...Shadows.md,
+  },
+  liveBookingCard: {
+    borderColor: 'rgba(59, 130, 246, 0.3)',
+    backgroundColor: '#F8FAFC',
+  },
+  liveStatusRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    marginBottom: 20,
+    backgroundColor: '#EFF6FF',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 12,
+    alignSelf: 'flex-start',
+  },
+  liveStatusText: {
+    fontSize: 10,
+    fontWeight: '900',
+    color: Colors.primary,
+    letterSpacing: 1,
   },
   bookingNumber: {
-    fontSize: FontSizes.sm,
-    fontWeight: FontWeights.bold,
+    fontSize: 12,
+    fontWeight: '800',
     color: Colors.primary,
     textAlign: 'center',
-    marginBottom: Spacing.lg,
-    letterSpacing: 1,
+    marginBottom: 20,
+    letterSpacing: 1.5,
+    textTransform: 'uppercase',
   },
   detailRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: Spacing.md,
+    marginBottom: 16,
   },
   detailLabel: {
-    fontSize: FontSizes.sm,
-    color: Colors.textTertiary,
+    fontSize: 13,
+    color: '#94A3B8',
+    fontWeight: '600',
   },
   detailValue: {
-    fontSize: FontSizes.sm,
-    fontWeight: FontWeights.medium,
-    color: Colors.textPrimary,
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#1E293B',
     textAlign: 'right',
     flex: 1,
-    marginLeft: Spacing.lg,
+    marginLeft: 20,
   },
   codeSection: {
     alignItems: 'center',
+    paddingVertical: 10,
   },
   codeLabel: {
-    fontSize: FontSizes.sm,
-    color: Colors.textSecondary,
-    marginBottom: Spacing.md,
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#64748B',
+    marginBottom: 16,
   },
   codeBox: {
-    backgroundColor: Colors.primary,
-    paddingHorizontal: 36,
-    paddingVertical: Spacing.lg,
-    borderRadius: BorderRadius.lg,
-    marginBottom: Spacing.sm,
-    ...Shadows.glow,
+    backgroundColor: '#0F172A',
+    paddingHorizontal: 40,
+    paddingVertical: 20,
+    borderRadius: 20,
+    marginBottom: 12,
+    ...Shadows.lg,
   },
   codeText: {
-    fontSize: 32,
-    fontWeight: FontWeights.extrabold,
-    color: '#fff',
-    letterSpacing: 10,
+    fontSize: 36,
+    fontWeight: '900',
+    color: '#FFF',
+    letterSpacing: 8,
   },
   codeHint: {
-    fontSize: FontSizes.xs,
-    color: Colors.textTertiary,
+    fontSize: 11,
+    color: '#94A3B8',
+    fontWeight: '600',
+  },
+  progressSection: {
+    paddingVertical: 10,
+  },
+  progressBar: {
+    height: 8,
+    backgroundColor: '#E2E8F0',
+    borderRadius: 4,
+    overflow: 'hidden',
+    marginBottom: 12,
+  },
+  progressFill: {
+    height: '100%',
+    backgroundColor: Colors.primary,
+    borderRadius: 4,
+  },
+  progressHint: {
+    fontSize: 12,
+    color: '#64748B',
+    fontWeight: '600',
+    textAlign: 'center',
   },
   totalRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    marginTop: 8,
   },
   totalLabel: {
-    fontSize: FontSizes.md,
-    fontWeight: FontWeights.semibold,
-    color: Colors.textPrimary,
+    fontSize: 15,
+    fontWeight: '700',
+    color: '#1E293B',
   },
   totalValue: {
-    fontSize: FontSizes.xl,
-    fontWeight: FontWeights.extrabold,
-    color: Colors.textPrimary,
+    fontSize: 20,
+    fontWeight: '900',
+    color: '#0F172A',
   },
   freeCashBadge: {
-    backgroundColor: Colors.successLight,
+    backgroundColor: '#F0FDF4',
     flexDirection: 'row',
-    padding: Spacing.md,
-    borderRadius: BorderRadius.md,
-    marginTop: Spacing.md,
+    padding: 12,
+    borderRadius: 14,
+    marginTop: 20,
     alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#DCFCE7',
   },
   freeCashText: {
-    fontSize: FontSizes.sm,
-    color: Colors.success,
-    fontWeight: FontWeights.medium,
+    fontSize: 12,
+    color: '#166534',
+    fontWeight: '700',
+  },
+  secureBadge: {
+    backgroundColor: '#F8FAFC',
+    flexDirection: 'row',
+    padding: 12,
+    borderRadius: 14,
+    marginTop: 20,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  secureText: {
+    fontSize: 12,
+    color: Colors.primary,
+    fontWeight: '700',
   },
   footer: {
-    padding: Spacing['2xl'],
+    padding: 24,
     paddingBottom: 40,
   },
   homeButton: {
-    paddingVertical: Spacing.md,
+    paddingVertical: 16,
     alignItems: 'center',
-    marginTop: Spacing.md,
+    marginTop: 8,
   },
   homeButtonText: {
-    color: Colors.textSecondary,
-    fontSize: FontSizes.md,
-    fontWeight: FontWeights.medium,
+    color: '#64748B',
+    fontSize: 14,
+    fontWeight: '700',
   },
 });

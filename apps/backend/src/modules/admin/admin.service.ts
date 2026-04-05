@@ -8,8 +8,9 @@ import { PrismaService } from '@/common/prisma/prisma.service';
 import { RedisService } from '@/common/redis/redis.service';
 import { QueueService } from '../queue/queue.service';
 import { BookingsService } from '../bookings/bookings.service';
-import { BookingStatus, BookingSource, DayOfWeek, Prisma } from '@prisma/client';
+import { UserRole, StaffRole, BookingStatus, BookingSource, DayOfWeek, Prisma } from '@prisma/client';
 import { CreateWalkInDto } from './dto/create-walk-in.dto';
+import { CreateOwnerShopDto } from './dto/create-owner-shop.dto';
 import { UpdateWorkingHoursDto } from './dto/update-working-hours.dto';
 import { UpdateOwnerShopSettingsDto } from './dto/update-owner-shop-settings.dto';
 import { UpdateOwnerPayoutDto } from './dto/update-owner-payout.dto';
@@ -31,6 +32,98 @@ export class AdminService {
     private queueService: QueueService,
     private bookingsService: BookingsService,
   ) {}
+
+  /**
+   * Create a new shop for an owner (first-time setup)
+   */
+  async createOwnerShop(ownerId: string, dto: CreateOwnerShopDto) {
+    const user = await this.prisma.user.findUnique({
+      where: { id: ownerId },
+      include: { tenant: true },
+    });
+
+    if (!user) {
+      throw new NotFoundException('User not found');
+    }
+
+    // 1. Ensure user has a tenant
+    let tenantId = user.tenantId;
+    if (!tenantId) {
+      const tenant = await this.prisma.tenant.create({
+        data: {
+          name: `${user.name}'s Organization`,
+          type: dto.type,
+        },
+      });
+      tenantId = tenant.id;
+      // Update user role to OWNER and link tenant
+      await this.prisma.user.update({
+        where: { id: ownerId },
+        data: { tenantId, role: UserRole.OWNER },
+      });
+    }
+
+    // 2. Generate slug
+    let slug = this.slugify(`${dto.name} ${dto.city}`);
+    const existingShop = await this.prisma.shop.findUnique({ where: { slug } });
+    if (existingShop) {
+      slug = `${slug}-${Math.floor(1000 + Math.random() * 9000)}`;
+    }
+
+    // 3. Create Shop
+    const shop = await this.prisma.shop.create({
+      data: {
+        tenantId: tenantId!,
+        ownerId,
+        name: dto.name,
+        slug,
+        address: dto.address,
+        city: dto.city,
+        description: dto.description,
+        phone: dto.phone,
+        email: dto.email,
+        isActive: true,
+        maxConcurrentBookings: 1,
+        autoAcceptBookings: true,
+      },
+    });
+
+    // 4. Create Staff Profile for owner (v2)
+    await this.prisma.staffProfile.upsert({
+      where: { userId: ownerId },
+      update: { shopId: shop.id },
+      create: {
+        userId: ownerId,
+        shopId: shop.id,
+        displayName: user.name,
+        staffRole: StaffRole.OWNER,
+        isActive: true,
+      },
+    });
+
+    // 5. Initialize Queue Stats
+    await this.prisma.queueStats.upsert({
+      where: { shopId: shop.id },
+      update: {},
+      create: {
+        shopId: shop.id,
+        currentWaitingCount: 0,
+        estimatedWaitMinutes: 0,
+      },
+    });
+
+    return shop;
+  }
+
+  private slugify(text: string): string {
+    return text
+      .toString()
+      .toLowerCase()
+      .trim()
+      .replace(/\s+/g, '-') // Replace spaces with -
+      .replace(/[^\w-]+/g, '') // Remove all non-word chars
+      .replace(/--+/g, '-'); // Replace multiple - with single -
+  }
 
   /**
    * Get dashboard data for a shop

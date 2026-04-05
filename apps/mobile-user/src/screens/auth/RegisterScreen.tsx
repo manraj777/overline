@@ -9,14 +9,17 @@ import {
   ScrollView,
   Alert,
   Dimensions,
+  StatusBar,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useAuthStore } from '../../stores/authStore';
 import { RootStackParamList } from '../../types';
-import { Colors, Spacing, BorderRadius, FontSizes, FontWeights } from '../../theme';
+import { Colors, Spacing, BorderRadius, FontSizes, FontWeights, Shadows } from '../../theme';
 import { InputField, PrimaryButton } from '../../components/ui';
-import { ArrowLeft, Eye, EyeOff, KeyRound, Mail, User, UserPlus } from 'lucide-react-native';
+import { ArrowLeft, User, Mail, Lock, Eye, EyeOff, Sparkles, ChevronRight } from 'lucide-react-native';
+
+const { width, height } = Dimensions.get('window');
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList, 'Register'>;
 
@@ -31,12 +34,11 @@ export default function RegisterScreen() {
 
   const handleRegister = async () => {
     if (!name.trim() || !email.trim() || !password.trim()) {
-      Alert.alert('Error', 'Please fill in all required fields');
+      Alert.alert('Incomplete Form', 'Every detail matters. Please fill all fields.');
       return;
     }
-
     if (password.length < 8) {
-      Alert.alert('Error', 'Password must be at least 8 characters');
+      Alert.alert('Too Short', 'Security first! Use at least 8 characters for your password.');
       return;
     }
 
@@ -49,229 +51,237 @@ export default function RegisterScreen() {
 
   return (
     <View style={styles.container}>
-      <View style={styles.bgOrb1} />
-      <View style={styles.bgOrb2} />
+      <StatusBar barStyle="light-content" />
+      
+      {/* Background Aesthetic */}
+      <View style={styles.headerAura}>
+        <View style={styles.aura1} />
+      </View>
 
       <KeyboardAvoidingView
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
         style={{ flex: 1 }}>
         <ScrollView
           contentContainerStyle={styles.scrollContent}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}>
 
-          {/* Back button */}
           <TouchableOpacity
-            style={styles.backButton}
+            style={styles.backBtn}
             onPress={() => navigation.goBack()}>
-            <ArrowLeft color={Colors.textPrimary} size={20} />
+            <ArrowLeft color="#FFF" size={24} />
           </TouchableOpacity>
 
-          {/* Welcome Text */}
-          <View style={styles.welcomeSection}>
-            <Text style={styles.stepPill}>STEP 1 OF 4</Text>
-            <Text style={styles.welcomeTitle}>Begin your journey.</Text>
-            <Text style={styles.welcomeSubtitle}>
-              Enter your details to create an Overline profile and start your concierge experience.
-            </Text>
+          <View style={styles.titleSection}>
+            <View style={styles.stepBadge}>
+              <Text style={styles.stepText}>STEP 1 OF 3</Text>
+            </View>
+            <Text style={styles.title}>Join the</Text>
+            <Text style={styles.emphasis}>Exclusive Circle</Text>
+            <Text style={styles.subtitle}>Create your profile to access premium services nearby.</Text>
           </View>
 
-          {/* Form */}
-          <View style={styles.form}>
-            {error && (
-              <TouchableOpacity
-                style={styles.errorContainer}
-                onPress={clearError}
-                activeOpacity={0.8}>
-                <Text style={{ fontSize: 16, marginRight: 8 }}>⚠️</Text>
-                <Text style={styles.errorText}>{error}</Text>
-                <Text style={styles.dismissError}>✕</Text>
-              </TouchableOpacity>
-            )}
+          <View style={styles.formCard}>
+            <View style={styles.inputStack}>
+              <View style={styles.inputBox}>
+                <User size={18} color={Colors.textTertiary} />
+                <InputField
+                  placeholder="Full name"
+                  value={name}
+                  onChangeText={setName}
+                  autoCapitalize="words"
+                  containerStyle={styles.cleanInput}
+                />
+              </View>
 
-            <InputField
-              label="Full Name"
-              icon={<User color={Colors.textSecondary} size={18} />}
-              placeholder="John Doe"
-              value={name}
-              onChangeText={setName}
-              autoCapitalize="words"
-            />
+              <View style={[styles.inputBox, { marginTop: 16 }]}>
+                <Mail size={18} color={Colors.textTertiary} />
+                <InputField
+                  placeholder="Email address"
+                  value={email}
+                  onChangeText={setEmail}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  containerStyle={styles.cleanInput}
+                />
+              </View>
 
-            <InputField
-              label="Email"
-              icon={<Mail color={Colors.textSecondary} size={18} />}
-              placeholder="you@example.com"
-              value={email}
-              onChangeText={setEmail}
-              keyboardType="email-address"
-              autoCapitalize="none"
-            />
-
-            <View>
-              <InputField
-                label="Password"
-                icon={<KeyRound color={Colors.textSecondary} size={18} />}
-                placeholder="Min. 8 characters"
-                value={password}
-                onChangeText={setPassword}
-                secureTextEntry={!showPassword}
-              />
-              <TouchableOpacity
-                style={styles.eyeButton}
-                onPress={() => setShowPassword(!showPassword)}>
-                {showPassword ? (
-                  <EyeOff color={Colors.textSecondary} size={20} />
-                ) : (
-                  <Eye color={Colors.textSecondary} size={20} />
-                )}
-              </TouchableOpacity>
+              <View style={[styles.inputBox, { marginTop: 16 }]}>
+                <Lock size={18} color={Colors.textTertiary} />
+                <InputField
+                  placeholder="Create password"
+                  value={password}
+                  onChangeText={setPassword}
+                  secureTextEntry={!showPassword}
+                  containerStyle={styles.cleanInput}
+                />
+                <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+                  {showPassword ? <EyeOff size={18} color={Colors.textSecondary} /> : <Eye size={18} color={Colors.textSecondary} />}
+                </TouchableOpacity>
+              </View>
             </View>
 
-            <Text style={styles.termsText}>
-              By signing up, you agree to our{' '}
-              <Text style={styles.termsLink}>Terms</Text> and{' '}
-              <Text style={styles.termsLink}>Privacy Policy</Text>
-            </Text>
+            <TouchableOpacity style={styles.primaryBtn} onPress={handleRegister}>
+              <Text style={styles.primaryBtnText}>NEXT STEP</Text>
+              <ChevronRight size={18} color="#FFF" strokeWidth={3} />
+            </TouchableOpacity>
 
-            <PrimaryButton
-              title="Continue"
-              onPress={handleRegister}
-              loading={isLoading}
-              icon={<UserPlus color="#fff" size={18} />}
-              style={{ marginTop: Spacing.lg }}
-            />
+            <View style={styles.legalBox}>
+              <Sparkles size={14} color={Colors.primary} />
+              <Text style={styles.legalText}>Join for free. Cancel anytime.</Text>
+            </View>
           </View>
 
-          {/* Footer */}
           <View style={styles.footer}>
-            <Text style={styles.footerText}>Already have an account? </Text>
+            <Text style={styles.footerText}>Found your way back? </Text>
             <TouchableOpacity onPress={() => navigation.goBack()}>
-              <Text style={styles.linkText}>Sign In</Text>
+              <Text style={styles.link}>Sign In</Text>
             </TouchableOpacity>
           </View>
+
         </ScrollView>
       </KeyboardAvoidingView>
     </View>
   );
 }
 
-const { height } = Dimensions.get('window');
-
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: Colors.background,
+    backgroundColor: '#0F172A',
   },
-  bgOrb1: {
-    position: 'absolute',
-    top: -60,
-    left: -100,
-    width: 280,
-    height: 280,
-    borderRadius: 140,
-    backgroundColor: 'rgba(255, 140, 66, 0.12)',
+  headerAura: {
+    ...StyleSheet.absoluteFillObject,
+    overflow: 'hidden',
   },
-  bgOrb2: {
+  aura1: {
     position: 'absolute',
-    bottom: 80,
-    right: -80,
-    width: 200,
-    height: 200,
-    borderRadius: 100,
-    backgroundColor: 'rgba(84, 28, 191, 0.08)',
+    top: -height * 0.05,
+    right: -width * 0.1,
+    width: width * 1.2,
+    height: width * 1.2,
+    borderRadius: (width * 1.2) / 2,
+    backgroundColor: 'rgba(59, 130, 246, 0.12)',
   },
   scrollContent: {
     flexGrow: 1,
-    padding: Spacing['2xl'],
-    paddingTop: height * 0.06,
+    paddingHorizontal: 28,
+    paddingTop: 60,
   },
-  backButton: {
-    width: 44,
-    height: 44,
-    borderRadius: 22,
-    backgroundColor: Colors.surface,
+  backBtn: {
+    width: 50,
+    height: 50,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.05)',
     justifyContent: 'center',
     alignItems: 'center',
+    marginBottom: 40,
     borderWidth: 1,
-    borderColor: Colors.border,
-    marginBottom: Spacing['2xl'],
+    borderColor: 'rgba(255,255,255,0.05)',
   },
-  welcomeSection: {
-    marginBottom: Spacing['3xl'],
+  titleSection: {
+    marginBottom: 40,
   },
-  stepPill: {
-    fontSize: FontSizes.xs,
-    color: Colors.primary600,
-    letterSpacing: 1,
-    fontWeight: FontWeights.bold,
-    marginBottom: Spacing.sm,
+  stepBadge: {
+    backgroundColor: 'rgba(59, 130, 246, 0.2)',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 8,
+    alignSelf: 'flex-start',
+    marginBottom: 16,
   },
-  welcomeTitle: {
-    fontSize: FontSizes['3xl'],
-    fontWeight: FontWeights.extrabold,
-    color: Colors.textPrimary,
+  stepText: {
+    fontSize: 9,
+    fontWeight: '900',
+    color: '#3B82F6',
+    letterSpacing: 1.5,
+  },
+  title: {
+    fontSize: 32,
+    fontWeight: '900',
+    color: '#FFF',
     lineHeight: 38,
-    marginBottom: Spacing.md,
   },
-  welcomeSubtitle: {
-    fontSize: FontSizes.md,
-    color: Colors.textSecondary,
+  emphasis: {
+    fontSize: 32,
+    fontWeight: '900',
+    color: Colors.primary,
+    lineHeight: 38,
+  },
+  subtitle: {
+    fontSize: 15,
+    color: 'rgba(255,255,255,0.5)',
+    fontWeight: '600',
+    marginTop: 12,
     lineHeight: 22,
   },
-  form: {
-    marginBottom: Spacing['2xl'],
+  formCard: {
+    backgroundColor: '#FFF',
+    borderRadius: 36,
+    padding: 28,
+    ...Shadows.lg,
   },
-  errorContainer: {
-    backgroundColor: Colors.errorLight,
-    padding: Spacing.lg,
-    borderRadius: BorderRadius.md,
+  inputStack: {
+    marginBottom: 24,
+  },
+  inputBox: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: Spacing.xl,
-    borderWidth: 1,
-    borderColor: 'rgba(255, 107, 107, 0.2)',
+    backgroundColor: '#F8FAFC',
+    borderRadius: 20,
+    paddingHorizontal: 16,
+    height: 64,
+    borderWidth: 1.5,
+    borderColor: '#F1F5F9',
   },
-  errorText: {
-    color: Colors.error,
+  cleanInput: {
     flex: 1,
-    fontSize: FontSizes.sm,
+    marginBottom: 0,
+    borderWidth: 0,
+    backgroundColor: 'transparent',
   },
-  dismissError: {
-    color: Colors.error,
-    fontWeight: FontWeights.bold,
-    paddingLeft: Spacing.sm,
-    fontSize: 16,
+  primaryBtn: {
+    backgroundColor: Colors.primary,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 18,
+    borderRadius: 20,
+    gap: 10,
+    ...Shadows.glow,
   },
-  eyeButton: {
-    position: 'absolute',
-    right: 16,
-    top: 42,
+  primaryBtnText: {
+    color: '#FFF',
+    fontSize: 14,
+    fontWeight: '900',
+    letterSpacing: 2,
   },
-  termsText: {
-    fontSize: FontSizes.sm,
-    color: Colors.textTertiary,
-    lineHeight: 20,
-    marginTop: -Spacing.sm,
-    marginBottom: Spacing.md,
+  legalBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    marginTop: 24,
   },
-  termsLink: {
-    color: Colors.primary,
-    fontWeight: FontWeights.medium,
+  legalText: {
+    fontSize: 11,
+    fontWeight: '700',
+    color: '#94A3B8',
   },
   footer: {
     flexDirection: 'row',
+    marginTop: 32,
     justifyContent: 'center',
-    paddingBottom: Spacing['4xl'],
+    marginBottom: 40,
   },
   footerText: {
-    color: Colors.textSecondary,
-    fontSize: FontSizes.md,
+    color: 'rgba(255,255,255,0.5)',
+    fontSize: 14,
+    fontWeight: '600',
   },
-  linkText: {
+  link: {
     color: Colors.primary,
-    fontWeight: FontWeights.semibold,
-    fontSize: FontSizes.md,
+    fontWeight: '800',
+    fontSize: 14,
   },
 });
-

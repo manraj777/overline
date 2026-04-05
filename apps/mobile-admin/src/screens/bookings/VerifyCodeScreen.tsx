@@ -1,13 +1,15 @@
-import React, {useState, useRef} from 'react';
+import React, {useState, useRef, useEffect} from 'react';
 import {
   View,
   Text,
-  TextInput,
   StyleSheet,
   TouchableOpacity,
   Alert,
   ActivityIndicator,
   Vibration,
+  SafeAreaView,
+  Animated,
+  Dimensions,
 } from 'react-native';
 import {useMutation, useQuery, useQueryClient} from '@tanstack/react-query';
 import {useNavigation} from '@react-navigation/native';
@@ -15,18 +17,30 @@ import {bookingsApi, dashboardApi} from '../../api/client';
 import {useAuthStore} from '../../stores/authStore';
 import {Booking} from '../../types';
 import {format} from 'date-fns';
-import {CircleCheck, Play} from 'lucide-react-native';
+import {
+  CheckCircle2,
+  Play,
+  X,
+  Keyboard as KeyboardIcon,
+  User,
+  Clock,
+  ShieldCheck,
+  ChevronRight,
+  RefreshCcw
+} from 'lucide-react-native';
+
+const {width} = Dimensions.get('window');
 
 export default function VerifyCodeScreen() {
   const navigation = useNavigation();
   const queryClient = useQueryClient();
   const {selectedShopId} = useAuthStore();
-  const [code, setCode] = useState(['', '', '', '']);
+  const [digits, setDigits] = useState<string[]>([]);
   const [verifiedBooking, setVerifiedBooking] = useState<Booking | null>(null);
   const [isVerifying, setIsVerifying] = useState(false);
-  const inputRefs = useRef<(TextInput | null)[]>([]);
+  const shakeAnim = useRef(new Animated.Value(0)).current;
 
-  // Fetch today's bookings to match verification codes
+  // Fetch today's bookings
   const today = format(new Date(), 'yyyy-MM-dd');
   const {data: todayBookings = []} = useQuery<Booking[]>({
     queryKey: ['todayBookingsForVerify', selectedShopId],
@@ -42,244 +56,195 @@ export default function VerifyCodeScreen() {
       bookingsApi.updateStatus(bookingId, 'IN_PROGRESS'),
     onSuccess: () => {
       queryClient.invalidateQueries({queryKey: ['adminBookings']});
-      queryClient.invalidateQueries({queryKey: ['todayBookings']});
-      queryClient.invalidateQueries({queryKey: ['dashboardStats']});
       Alert.alert('Success', 'Service started successfully!', [
         {text: 'OK', onPress: () => navigation.goBack()},
       ]);
     },
     onError: (error: any) => {
-      Alert.alert(
-        'Error',
-        error.response?.data?.message || 'Failed to start service',
-      );
+      Alert.alert('Error', error.response?.data?.message || 'Failed to start service');
     },
   });
 
-  const resetCode = () => {
-    setCode(['', '', '', '']);
-    setVerifiedBooking(null);
-    inputRefs.current[0]?.focus();
+  const shake = () => {
+    Animated.sequence([
+      Animated.timing(shakeAnim, { toValue: 10, duration: 50, useNativeDriver: true }),
+      Animated.timing(shakeAnim, { toValue: -10, duration: 50, useNativeDriver: true }),
+      Animated.timing(shakeAnim, { toValue: 10, duration: 50, useNativeDriver: true }),
+      Animated.timing(shakeAnim, { toValue: 0, duration: 50, useNativeDriver: true }),
+    ]).start();
+  };
+
+  const handleKeyPress = (val: string) => {
+    if (digits.length < 4) {
+      const next = [...digits, val];
+      setDigits(next);
+      if (next.length === 4) {
+        verifyCode(next.join(''));
+      }
+    }
+  };
+
+  const handleDelete = () => {
+    setDigits(digits.slice(0, -1));
   };
 
   const verifyCode = (fullCode: string) => {
     setIsVerifying(true);
-    // Find booking with matching verification code from today's bookings
     const matchingBooking = todayBookings.find(
       (b: Booking) =>
         b.verificationCode === fullCode &&
         ['PENDING', 'CONFIRMED', 'IN_PROGRESS'].includes(b.status),
     );
 
-    if (matchingBooking) {
-      Vibration.vibrate(100);
-      setVerifiedBooking(matchingBooking);
-
-      // Also call the verify-code endpoint on the backend
-      bookingsApi
-        .verifyCode(matchingBooking.id, fullCode)
-        .catch(() => { /* verification code already matched client-side */ });
-    } else {
-      Vibration.vibrate([0, 100, 100, 100]);
-      Alert.alert(
-        'Invalid Code',
-        'No active booking found with this code for today',
-      );
-      resetCode();
-    }
-    setIsVerifying(false);
-  };
-
-  const handleCodeChange = (value: string, index: number) => {
-    if (!/^\d*$/.test(value)) return;
-
-    const newCode = [...code];
-    newCode[index] = value;
-    setCode(newCode);
-
-    // Auto focus next input
-    if (value && index < 3) {
-      inputRefs.current[index + 1]?.focus();
-    }
-
-    // Auto verify when complete
-    if (value && index === 3) {
-      const fullCode = [...newCode.slice(0, 3), value].join('');
-      if (fullCode.length === 4) {
-        verifyCode(fullCode);
+    setTimeout(() => {
+      if (matchingBooking) {
+        Vibration.vibrate(100);
+        setVerifiedBooking(matchingBooking);
+        bookingsApi.verifyCode(matchingBooking.id, fullCode).catch(() => {});
+      } else {
+        Vibration.vibrate([0, 100, 100, 100]);
+        shake();
+        Alert.alert('Invalid Code', 'No matching booking for today.');
+        setDigits([]);
       }
-    }
+      setIsVerifying(false);
+    }, 600);
   };
 
-  const handleKeyPress = (e: any, index: number) => {
-    if (e.nativeEvent.key === 'Backspace' && !code[index] && index > 0) {
-      inputRefs.current[index - 1]?.focus();
-    }
+  const reset = () => {
+    setDigits([]);
+    setVerifiedBooking(null);
   };
 
-  const handleStartService = () => {
-    if (verifiedBooking) {
-      startMutation.mutate(verifiedBooking.id);
-    }
-  };
-
-  const statusColors: Record<string, string> = {
-    PENDING: '#F59E0B',
-    CONFIRMED: '#10B981',
-    IN_PROGRESS: '#3B82F6',
-  };
+  const Keypad = () => (
+    <View style={styles.keypad}>
+      {[1, 2, 3, 4, 5, 6, 7, 8, 9].map(num => (
+        <TouchableOpacity key={num} style={styles.key} onPress={() => handleKeyPress(num.toString())}>
+          <Text style={styles.keyText}>{num}</Text>
+        </TouchableOpacity>
+      ))}
+      <View style={styles.key} />
+      <TouchableOpacity style={styles.key} onPress={() => handleKeyPress('0')}>
+        <Text style={styles.keyText}>0</Text>
+      </TouchableOpacity>
+      <TouchableOpacity style={styles.key} onPress={handleDelete}>
+        <X size={24} color="#0F172A" />
+      </TouchableOpacity>
+    </View>
+  );
 
   return (
     <View style={styles.container}>
-      {!verifiedBooking ? (
-        <>
-          {/* Code Entry */}
-          <View style={styles.header}>
-            <Text style={styles.title}>Enter Verification Code</Text>
-            <Text style={styles.subtitle}>
-              Ask the customer for their 4-digit code
-            </Text>
-          </View>
+      <SafeAreaView style={styles.safeArea}>
+        <View style={styles.topHeader}>
+          <TouchableOpacity onPress={() => navigation.goBack()} style={styles.closeButton}>
+            <X size={24} color="#0F172A" />
+          </TouchableOpacity>
+          <Text style={styles.headerTitle}>Check-in</Text>
+          <View style={{width: 44}} />
+        </View>
 
-          <View style={styles.codeContainer}>
-            {code.map((digit, index) => (
-              <TextInput
-                key={index}
-                ref={ref => {
-                  inputRefs.current[index] = ref;
-                }}
-                style={[
-                  styles.codeInput,
-                  digit ? styles.codeInputFilled : null,
-                ]}
-                value={digit}
-                onChangeText={value => handleCodeChange(value, index)}
-                onKeyPress={e => handleKeyPress(e, index)}
-                keyboardType="number-pad"
-                maxLength={1}
-                selectTextOnFocus
-                autoFocus={index === 0}
-              />
-            ))}
-          </View>
-
-          {isVerifying && (
-            <View style={styles.loadingContainer}>
-              <ActivityIndicator size="large" color="#4F46E5" />
-              <Text style={styles.loadingText}>Verifying...</Text>
-            </View>
-          )}
-
-          <Text style={styles.hint}>
-            The code is shown to customers after they book
-          </Text>
-        </>
-      ) : (
-        <>
-          {/* Booking Found */}
-          <View style={styles.successHeader}>
-            <View style={styles.successIcon}>
-              <CircleCheck size={34} color="#fff" />
-            </View>
-            <Text style={styles.successTitle}>Code Verified!</Text>
-          </View>
-
-          <View style={styles.bookingCard}>
-            <View style={styles.bookingHeader}>
-              <View
-                style={[
-                  styles.statusBadge,
-                  {
-                    backgroundColor:
-                      (statusColors[verifiedBooking.status] || '#6B7280') + '20',
-                  },
-                ]}>
-                <Text
-                  style={[
-                    styles.statusText,
-                    {
-                      color:
-                        statusColors[verifiedBooking.status] || '#6B7280',
-                    },
-                  ]}>
-                  {verifiedBooking.status.replace('_', ' ')}
-                </Text>
-              </View>
-              <Text style={styles.bookingNumber}>
-                {verifiedBooking.bookingNumber}
-              </Text>
+        {!verifiedBooking ? (
+          <View style={styles.entryView}>
+            <View style={styles.instruction}>
+              <KeyboardIcon size={32} color="#3B82F6" />
+              <Text style={styles.instructionTitle}>Enter Customer Code</Text>
+              <Text style={styles.instructionDesc}>Ask the customer for the 4-digit code shown in their app</Text>
             </View>
 
-            <View style={styles.customerSection}>
-              <View style={styles.customerAvatar}>
-                <Text style={styles.avatarText}>
-                  {(verifiedBooking.user?.name || 'G').charAt(0).toUpperCase()}
-                </Text>
-              </View>
-              <View>
-                <Text style={styles.customerName}>
-                  {verifiedBooking.user?.name || 'Guest'}
-                </Text>
-                {verifiedBooking.user?.phone && (
-                  <Text style={styles.customerPhone}>
-                    {verifiedBooking.user.phone}
-                  </Text>
-                )}
-              </View>
-            </View>
-
-            <View style={styles.divider} />
-
-            <View style={styles.servicesSection}>
-              <Text style={styles.sectionLabel}>Services</Text>
-              {verifiedBooking.services?.map(service => (
-                <View key={service.id} style={styles.serviceRow}>
-                  <Text style={styles.serviceName}>{service.serviceName}</Text>
-                  <Text style={styles.servicePrice}>₹{service.price}</Text>
+            <Animated.View style={[styles.digitsRow, {transform: [{translateX: shakeAnim}]}]}>
+              {[0, 1, 2, 3].map(i => (
+                <View key={i} style={[styles.digitBox, digits[i] ? styles.digitBoxActive : null]}>
+                  <Text style={styles.digitText}>{digits[i] || ''}</Text>
+                  {!digits[i] && <View style={styles.digitDot} />}
                 </View>
               ))}
-            </View>
+            </Animated.View>
 
-            <View style={styles.divider} />
-
-            <View style={styles.totalRow}>
-              <Text style={styles.totalLabel}>Total Amount</Text>
-              <Text style={styles.totalValue}>
-                ₹{verifiedBooking.displayAmount}
-              </Text>
-            </View>
-          </View>
-
-          <View style={styles.actions}>
-            {verifiedBooking.status === 'IN_PROGRESS' ? (
-              <View style={styles.inProgressNote}>
-                <Play size={15} color="#3B82F6" style={styles.inProgressIcon} />
-                <Text style={styles.inProgressText}>
-                  Service is already in progress
-                </Text>
+            {isVerifying ? (
+              <View style={styles.verifyingContainer}>
+                <ActivityIndicator color="#3B82F6" />
+                <Text style={styles.verifyingText}>Searching Bookings...</Text>
               </View>
-            ) : (
-              <TouchableOpacity
-                style={styles.startButton}
-                onPress={handleStartService}
-                disabled={startMutation.isPending}>
-                {startMutation.isPending ? (
-                  <ActivityIndicator color="#fff" />
-                ) : (
-                  <View style={styles.startButtonContent}>
-                    <Play size={15} color="#fff" />
-                    <Text style={styles.startButtonText}>Start Service</Text>
-                  </View>
-                )}
-              </TouchableOpacity>
-            )}
+            ) : <View style={{height: 60}} />}
 
-            <TouchableOpacity style={styles.scanAgainButton} onPress={resetCode}>
-              <Text style={styles.scanAgainText}>Enter Another Code</Text>
-            </TouchableOpacity>
+            <Keypad />
           </View>
-        </>
-      )}
+        ) : (
+          <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.successView}>
+            <View style={styles.successBadge}>
+              <CheckCircle2 size={64} color="#10B981" />
+              <Text style={styles.successTitle}>Verified Successfully</Text>
+            </View>
+
+            <View style={styles.bookingCard}>
+              <View style={styles.bookingHeader}>
+                <View style={styles.typeBadge}>
+                  <Text style={styles.typeText}>CONFIRMED</Text>
+                </View>
+                <Text style={styles.bookingID}>#{verifiedBooking.bookingNumber}</Text>
+              </View>
+
+              <View style={styles.userRow}>
+                <View style={styles.avatar}>
+                  <Text style={styles.avatarText}>{verifiedBooking.user?.name?.charAt(0) || 'G'}</Text>
+                </View>
+                <View>
+                  <Text style={styles.userName}>{verifiedBooking.user?.name || 'Guest Customer'}</Text>
+                  <Text style={styles.userPhone}>{verifiedBooking.user?.phone || 'No phone provided'}</Text>
+                </View>
+              </View>
+
+              <View style={styles.divider} />
+
+              <View style={styles.detailsRow}>
+                <View style={styles.detailItem}>
+                  <Clock size={16} color="#64748B" />
+                  <Text style={styles.detailText}>{verifiedBooking.startTime ? format(new Date(verifiedBooking.startTime), 'hh:mm a') : 'TBD'}</Text>
+                </View>
+                <View style={styles.detailItem}>
+                  <ShieldCheck size={16} color="#64748B" />
+                  <Text style={styles.detailText}>Secure Pay</Text>
+                </View>
+              </View>
+
+              <View style={styles.servicesList}>
+                {verifiedBooking.services?.map((s, idx) => (
+                  <View key={idx} style={styles.serviceItem}>
+                    <Text style={styles.serviceName}>{s.serviceName}</Text>
+                    <Text style={styles.servicePrice}>₹{s.price}</Text>
+                  </View>
+                ))}
+              </View>
+
+              <View style={styles.totalRow}>
+                <Text style={styles.totalLabel}>Total</Text>
+                <Text style={styles.totalValue}>₹{verifiedBooking.displayAmount}</Text>
+              </View>
+            </View>
+
+            <TouchableOpacity 
+              style={styles.startBtn} 
+              onPress={() => startMutation.mutate(verifiedBooking.id)}
+              disabled={startMutation.isPending}
+            >
+              {startMutation.isPending ? (
+                <ActivityIndicator color="#FFF" />
+              ) : (
+                <>
+                  <Text style={styles.startBtnText}>Start Service Now</Text>
+                  <ChevronRight size={24} color="#FFF" />
+                </>
+              )}
+            </TouchableOpacity>
+
+            <TouchableOpacity style={styles.resetBtn} onPress={reset}>
+              <RefreshCcw size={18} color="#64748B" />
+              <Text style={styles.resetBtnText}>Verify Another Guest</Text>
+            </TouchableOpacity>
+          </ScrollView>
+        )}
+      </SafeAreaView>
     </View>
   );
 }
@@ -287,219 +252,274 @@ export default function VerifyCodeScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: '#FFFFFF',
+  },
+  safeArea: {
+    flex: 1,
+  },
+  topHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  closeButton: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: '#F8FAFC',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  headerTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#0F172A',
+  },
+  entryView: {
+    flex: 1,
+    alignItems: 'center',
+    paddingTop: 40,
+  },
+  instruction: {
+    alignItems: 'center',
+    marginBottom: 40,
+    paddingHorizontal: 40,
+  },
+  instructionTitle: {
+    fontSize: 22,
+    fontWeight: '800',
+    color: '#0F172A',
+    marginTop: 16,
+  },
+  instructionDesc: {
+    fontSize: 14,
+    color: '#64748B',
+    textAlign: 'center',
+    marginTop: 8,
+    lineHeight: 20,
+  },
+  digitsRow: {
+    flexDirection: 'row',
+    gap: 16,
+    marginBottom: 40,
+  },
+  digitBox: {
+    width: 60,
+    height: 72,
+    borderRadius: 16,
+    backgroundColor: '#F1F5F9',
+    justifyContent: 'center',
+    alignItems: 'center',
+    borderWidth: 2,
+    borderColor: 'transparent',
+  },
+  digitBoxActive: {
+    borderColor: '#3B82F6',
+    backgroundColor: '#EFF6FF',
+  },
+  digitText: {
+    fontSize: 32,
+    fontWeight: '700',
+    color: '#0F172A',
+  },
+  digitDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    backgroundColor: '#CBD5E1',
+  },
+  verifyingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+    height: 60,
+  },
+  verifyingText: {
+    color: '#3B82F6',
+    fontWeight: '600',
+  },
+  keypad: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    width: width * 0.85,
+    justifyContent: 'center',
+    gap: 12,
+    marginTop: 'auto',
+    marginBottom: 40,
+  },
+  key: {
+    width: (width * 0.85 - 36) / 3,
+    height: 60,
+    backgroundColor: '#F8FAFC',
+    borderRadius: 16,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  keyText: {
+    fontSize: 24,
+    fontWeight: '600',
+    color: '#0F172A',
+  },
+  successView: {
+    alignItems: 'center',
     padding: 24,
   },
-  header: {
+  successBadge: {
     alignItems: 'center',
-    marginTop: 40,
-    marginBottom: 48,
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#111827',
-    marginBottom: 8,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: '#6B7280',
-  },
-  codeContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    gap: 16,
     marginBottom: 32,
-  },
-  codeInput: {
-    width: 64,
-    height: 80,
-    borderWidth: 2,
-    borderColor: '#E5E7EB',
-    borderRadius: 16,
-    fontSize: 32,
-    fontWeight: 'bold',
-    textAlign: 'center',
-    color: '#111827',
-    backgroundColor: '#F9FAFB',
-  },
-  codeInputFilled: {
-    borderColor: '#4F46E5',
-    backgroundColor: '#EEF2FF',
-  },
-  loadingContainer: {
-    alignItems: 'center',
-    marginVertical: 24,
-  },
-  loadingText: {
-    marginTop: 12,
-    fontSize: 16,
-    color: '#6B7280',
-  },
-  hint: {
-    textAlign: 'center',
-    fontSize: 14,
-    color: '#9CA3AF',
-    paddingHorizontal: 32,
-  },
-  successHeader: {
-    alignItems: 'center',
-    marginTop: 24,
-    marginBottom: 32,
-  },
-  successIcon: {
-    width: 72,
-    height: 72,
-    borderRadius: 36,
-    backgroundColor: '#10B981',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 16,
   },
   successTitle: {
     fontSize: 24,
-    fontWeight: 'bold',
-    color: '#111827',
+    fontWeight: '800',
+    color: '#0F172A',
+    marginTop: 16,
   },
   bookingCard: {
-    backgroundColor: '#F9FAFB',
-    borderRadius: 20,
-    padding: 20,
-    marginBottom: 24,
+    width: '100%',
+    backgroundColor: '#F8FAFC',
+    borderRadius: 24,
+    padding: 24,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    marginBottom: 32,
   },
   bookingHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 20,
   },
-  statusBadge: {
+  typeBadge: {
+    backgroundColor: '#ECFDF5',
     paddingHorizontal: 12,
     paddingVertical: 4,
-    borderRadius: 12,
+    borderRadius: 8,
   },
-  statusText: {
+  typeText: {
     fontSize: 12,
+    fontWeight: '700',
+    color: '#10B981',
+  },
+  bookingID: {
+    fontSize: 14,
+    color: '#64748B',
     fontWeight: '600',
-    textTransform: 'uppercase',
   },
-  bookingNumber: {
-    fontSize: 13,
-    color: '#6B7280',
-  },
-  customerSection: {
+  userRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 16,
+    marginBottom: 24,
   },
-  customerAvatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: '#4F46E5',
+  avatar: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: '#3B82F6',
     justifyContent: 'center',
     alignItems: 'center',
-    marginRight: 12,
+    marginRight: 16,
   },
   avatarText: {
+    fontSize: 20,
+    fontWeight: '800',
+    color: '#FFF',
+  },
+  userName: {
     fontSize: 18,
-    fontWeight: 'bold',
-    color: '#fff',
+    fontWeight: '700',
+    color: '#0F172A',
   },
-  customerName: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#111827',
-  },
-  customerPhone: {
+  userPhone: {
     fontSize: 14,
-    color: '#6B7280',
+    color: '#64748B',
+    marginTop: 2,
   },
   divider: {
     height: 1,
-    backgroundColor: '#E5E7EB',
-    marginVertical: 16,
+    backgroundColor: '#E2E8F0',
+    marginBottom: 20,
   },
-  servicesSection: {},
-  sectionLabel: {
-    fontSize: 12,
+  detailsRow: {
+    flexDirection: 'row',
+    gap: 20,
+    marginBottom: 24,
+  },
+  detailItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+  },
+  detailText: {
+    fontSize: 14,
+    color: '#475569',
     fontWeight: '600',
-    color: '#6B7280',
-    textTransform: 'uppercase',
-    marginBottom: 12,
   },
-  serviceRow: {
+  servicesList: {
+    gap: 12,
+    marginBottom: 24,
+  },
+  serviceItem: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 8,
   },
   serviceName: {
     fontSize: 15,
-    color: '#111827',
+    color: '#1E293B',
   },
   servicePrice: {
     fontSize: 15,
-    fontWeight: '500',
-    color: '#111827',
+    fontWeight: '700',
+    color: '#0F172A',
   },
   totalRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    paddingTop: 20,
+    borderTopWidth: 1,
+    borderTopColor: '#E2E8F0',
   },
   totalLabel: {
     fontSize: 16,
     fontWeight: '600',
-    color: '#111827',
+    color: '#64748B',
   },
   totalValue: {
     fontSize: 24,
-    fontWeight: 'bold',
-    color: '#111827',
+    fontWeight: '800',
+    color: '#0F172A',
   },
-  actions: {
-    gap: 12,
-  },
-  startButton: {
-    backgroundColor: '#4F46E5',
+  startBtn: {
+    width: '100%',
+    backgroundColor: '#3B82F6',
+    borderRadius: 16,
     padding: 18,
-    borderRadius: 14,
+    flexDirection: 'row',
+    justifyContent: 'center',
     alignItems: 'center',
+    gap: 12,
+    shadowColor: '#3B82F6',
+    shadowOffset: { width: 0, height: 8 },
+    shadowOpacity: 0.2,
+    shadowRadius: 16,
+    elevation: 8,
   },
-  startButtonText: {
-    color: '#fff',
+  startBtnText: {
+    color: '#FFF',
     fontSize: 18,
-    fontWeight: '600',
+    fontWeight: '700',
   },
-  startButtonContent: {
+  resetBtn: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 8,
+    marginTop: 32,
   },
-  scanAgainButton: {
-    padding: 14,
-    borderRadius: 12,
-    alignItems: 'center',
-  },
-  scanAgainText: {
-    color: '#4F46E5',
-    fontSize: 16,
-    fontWeight: '500',
-  },
-  inProgressNote: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#DBEAFE',
-    padding: 16,
-    borderRadius: 12,
-  },
-  inProgressIcon: {
-    marginRight: 8,
-  },
-  inProgressText: {
+  resetBtnText: {
+    color: '#64748B',
     fontSize: 15,
-    color: '#3B82F6',
-    fontWeight: '500',
+    fontWeight: '600',
   },
 });

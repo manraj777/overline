@@ -25,6 +25,7 @@ import { FraudDetectionModule } from './modules/fraud-detection/fraud-detection.
 import { AiModule } from './modules/ai/ai.module';
 import { WalletModule } from './modules/wallet/wallet.module';
 import { OtpModule } from './modules/otp/otp.module';
+import { CartModule } from './modules/cart/cart.module';
 
 // Workers
 import { WorkersModule } from './workers/workers.module';
@@ -74,6 +75,7 @@ import configuration from './config/configuration';
     WalletModule,
     OtpModule,
     AiModule,
+    CartModule,
 
     // Background Workers
     WorkersModule,

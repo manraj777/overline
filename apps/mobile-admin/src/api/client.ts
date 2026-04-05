@@ -228,6 +228,7 @@ export const servicesApi = {
 
 // Shop APIs
 export const shopApi = {
+  createShop: (data: any) => apiClient.post('/owner/shops', data),
   getMyShops: () => apiClient.get('/admin/my-shops'),
   getById: (id: string) => apiClient.get(`/shops/${id}`),
   getSettings: (shopId: string) =>

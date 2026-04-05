@@ -23,6 +23,7 @@ import {
 import SplashScreen from '../screens/auth/SplashScreen';
 import LoginScreen from '../screens/auth/LoginScreen';
 import OtpVerifyScreen from '../screens/auth/OtpVerifyScreen';
+import ShopSetupScreen from '../screens/onboarding/ShopSetupScreen';
 import BookingDetailScreen from '../screens/bookings/BookingDetailScreen';
 import VerifyCodeScreen from '../screens/bookings/VerifyCodeScreen';
 import ServiceFormScreen from '../screens/services/ServiceFormScreen';
@@ -48,6 +49,8 @@ import PaymentUPIScreen from '../screens/staff/PaymentUPIScreen';
 import PendingApprovalsScreen from '../screens/staff/PendingApprovalsScreen';
 import LocationMapScreen from '../screens/staff/LocationMapScreen';
 import PreArrivalChatScreen from '../screens/staff/PreArrivalChatScreen';
+import AddStaffScreen from '../screens/settings/AddStaffScreen';
+
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 const OwnerTab = createBottomTabNavigator<OwnerTabParamList>();
@@ -258,6 +261,8 @@ export default function RootNavigator() {
             initialParams={{phone: otpPhone, flow: 'LOGIN_2FA'}}
             options={{headerShown: true, title: 'Verify Identity'}}
           />
+        ) : needsShopSetup ? (
+          <Stack.Screen name="ShopSetup" component={ShopSetupScreen} />
         ) : (
           <>
             <Stack.Screen
@@ -297,6 +302,11 @@ export default function RootNavigator() {
               name="WorkingHours"
               component={WorkingHoursScreen}
               options={{headerShown: true, title: 'Working Hours'}}
+            />
+            <Stack.Screen
+              name="AddStaff"
+              component={AddStaffScreen}
+              options={{headerShown: false}}
             />
             <Stack.Screen
               name="StaffManagement"

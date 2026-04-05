@@ -256,3 +256,15 @@ export const paymentsApi = {
   }) => api.post('/payments/verify', data),
   getStatus: (id: string) => api.get(`/payments/${id}`),
 };
+
+// Cart API
+export const cartApi = {
+  get: () => api.get('/cart'),
+  update: (data: { shopId: string; items: Array<{ serviceId: string; staffId?: string }> }) =>
+    api.post('/cart', data),
+  add: (data: { shopId: string; items: Array<{ serviceId: string; staffId?: string }> }) =>
+    api.post('/cart/add', data),
+  clear: () => api.delete('/cart'),
+};
+
+export default api;

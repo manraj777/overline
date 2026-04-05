@@ -8,6 +8,7 @@ export type RootStackParamList = {
     requestedRole?: 'OWNER' | 'STAFF' | 'USER' | 'SUPER_ADMIN';
   };
   Main: undefined;
+  ShopSetup: undefined;
   BookingDetail: {bookingId: string};
   VerifyCode: undefined;
   ServiceForm: {shopId: string; serviceId?: string};

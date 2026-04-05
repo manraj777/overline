@@ -34,6 +34,7 @@ interface AuthState {
   selectedShopId: string | null;
   isOwner: boolean;
   isStaff: boolean;
+  token: string | null;
 
   // OTP 2FA state
   pendingOtpVerification: boolean;
@@ -94,6 +95,7 @@ export const useAuthStore = create<AuthState>((set) => ({
   selectedShopId: null,
   isOwner: false,
   isStaff: false,
+  token: null,
   pendingOtpVerification: false,
   otpPhone: null,
 
@@ -128,6 +130,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       selectedShopId: defaultShopId,
       isOwner: user.role === 'OWNER' || user.role === 'SUPER_ADMIN',
       isStaff: user.role === 'STAFF',
+      token: accessToken,
       pendingOtpVerification: false,
       otpPhone: null,
     });
@@ -172,6 +175,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       selectedShopId: defaultShopId,
       isOwner: user.role === 'OWNER' || user.role === 'SUPER_ADMIN',
       isStaff: user.role === 'STAFF',
+      token: accessToken,
       pendingOtpVerification: false,
       otpPhone: null,
     });
@@ -219,6 +223,7 @@ export const useAuthStore = create<AuthState>((set) => ({
             selectedShopId: defaultShopId,
             isOwner,
             isStaff,
+            token: accessToken,
           });
           return;
         } catch (error: unknown) {
@@ -233,6 +238,7 @@ export const useAuthStore = create<AuthState>((set) => ({
         selectedShopId: defaultShopId,
         isOwner,
         isStaff,
+        token: accessToken,
       });
     } catch (error) {
       throw error;
@@ -280,6 +286,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       otpPhone: null,
       isOwner: false,
       isStaff: false,
+      token: null,
     });
   },
 
@@ -322,6 +329,7 @@ export const useAuthStore = create<AuthState>((set) => ({
         selectedShopId: defaultShopId,
         isOwner,
         isStaff,
+        token,
       });
     } catch {
       await AsyncStorage.removeItem('admin_token');
@@ -332,6 +340,7 @@ export const useAuthStore = create<AuthState>((set) => ({
         isLoading: false,
         isOwner: false,
         isStaff: false,
+        token: null,
       });
     }
   },
