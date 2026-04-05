@@ -13,15 +13,29 @@ import {
   Image,
   Dimensions,
   StatusBar,
+  Modal,
+  FlatList,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import axios from 'axios';
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import { useAuthStore } from '../../stores/authStore';
-import { Colors, FontSize, FontWeight, Radius, Spacing, Shadows } from '../../theme';
+import { Colors, Shadows, Radius } from '../../theme';
 import { RootStackParamList } from '../../types';
-import { Smartphone, Mail, Lock, ShieldCheck, ChevronRight, Zap } from 'lucide-react-native';
+import { 
+  Smartphone, 
+  Lock, 
+  ShieldCheck, 
+  ChevronRight, 
+  Zap, 
+  Store, 
+  Search, 
+  X,
+  UserCheck,
+  Building2
+} from 'lucide-react-native';
+import { shopApi } from '../../api/client';
+import { useQuery } from '@tanstack/react-query';
 
 const { width, height } = Dimensions.get('window');
 const BRAND_LOGO = require('../../../assets/branding/overline-logo.png');
@@ -31,15 +45,27 @@ type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 export default function LoginScreen() {
   const navigation = useNavigation<NavigationProp>();
   const [role, setRole] = useState<'OWNER' | 'STAFF'>('OWNER');
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
-  const [phone, setPhone] = useState('');
+  
+  // Owner Fields
+  const [ownerPhone, setOwnerPhone] = useState('');
+  
+  // Staff Fields
+  const [staffPhone, setStaffPhone] = useState('');
+  const [staffPin, setStaffPin] = useState('');
+  const [selectedShop, setSelectedShop] = useState<any>(null);
+  const [showShopPicker, setShowShopPicker] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
+
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
-  const [isPhoneLoading, setIsPhoneLoading] = useState(false);
-  const [errors, setErrors] = useState<{ email?: string; password?: string }>({});
 
-  const { login, loginWithGoogle, sendPhoneLoginOtp } = useAuthStore();
+  const { loginWithGoogle, sendPhoneLoginOtp, staffLogin } = useAuthStore();
+
+  const { data: shops = [] } = useQuery({
+    queryKey: ['publicShops', searchQuery],
+    queryFn: () => shopApi.searchShops(searchQuery).then(res => res.data),
+    enabled: role === 'STAFF' && searchQuery.length > 2,
+  });
 
   useEffect(() => {
     GoogleSignin.configure({
@@ -48,21 +74,35 @@ export default function LoginScreen() {
     });
   }, []);
 
-  const validate = () => {
-    const newErrors: { email?: string; password?: string } = {};
-    if (!email.trim() || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) newErrors.email = 'Valid email is required';
-    if (!password || password.length < 6) newErrors.password = 'Min 6 characters required';
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
-  };
-
-  const handleLogin = async () => {
-    if (!validate()) return;
+  const handleOwnerPhoneLogin = async () => {
+    const digits = ownerPhone.replace(/\D/g, '');
+    if (digits.length < 10) return Alert.alert('Invalid Phone', 'Enter 10 digits');
     setIsLoading(true);
     try {
-      await login(email, password, { requestedRole: role });
-    } catch (error: any) {
-      Alert.alert('Login Failed', error.response?.data?.message || 'Invalid credentials');
+      const normalized = `+91${digits}`;
+      await sendPhoneLoginOtp(normalized);
+      navigation.navigate('OtpVerify', { phone: normalized, flow: 'PHONE_LOGIN', requestedRole: 'OWNER' });
+    } catch (e: any) {
+      Alert.alert('Error', e.response?.data?.message || 'Failed to send OTP');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleStaffLogin = async () => {
+    if (!selectedShop) return Alert.alert('Missing Shop', 'Please select your shop first');
+    if (staffPhone.length < 10) return Alert.alert('Invalid Phone', 'Enter 10 digits');
+    if (staffPin.length !== 6) return Alert.alert('Invalid PIN', 'Enter 6-digit employee code');
+    
+    setIsLoading(true);
+    try {
+      await staffLogin({
+        shopId: selectedShop.id,
+        phone: `+91${staffPhone.replace(/\D/g, '')}`,
+        password: staffPin
+      });
+    } catch (e: any) {
+      Alert.alert('Access Denied', e.response?.data?.message || 'Invalid Mobile or PIN for this shop.');
     } finally {
       setIsLoading(false);
     }
@@ -73,37 +113,11 @@ export default function LoginScreen() {
     try {
       await GoogleSignin.hasPlayServices();
       const googleUser = await GoogleSignin.signIn();
-      const idToken = googleUser.data?.idToken;
-      if (!idToken) throw new Error('No ID token from Google');
-      await loginWithGoogle(idToken, { requestedRole: 'OWNER' });
-    } catch (error: any) {
-      Alert.alert('Google Error', error.message || 'Login failed');
+      await loginWithGoogle(googleUser.data?.idToken!, { requestedRole: 'OWNER' });
+    } catch (e: any) {
+      Alert.alert('Google Error', e.message);
     } finally {
       setIsGoogleLoading(false);
-    }
-  };
-
-  const handleSendPhoneOtp = async () => {
-    const digits = phone.replace(/\D/g, '');
-    const normalized = digits.length === 10 ? `+91${digits}` : `+${digits}`;
-    
-    if (digits.length < 10) {
-      Alert.alert('Invalid Phone', 'Enter a valid 10-digit number');
-      return;
-    }
-
-    setIsPhoneLoading(true);
-    try {
-      await sendPhoneLoginOtp(normalized);
-      navigation.navigate('OtpVerify', {
-        phone: normalized,
-        flow: 'PHONE_LOGIN',
-        requestedRole: 'OWNER',
-      });
-    } catch (error: any) {
-      Alert.alert('OTP Error', error.response?.data?.message || 'Failed to send OTP');
-    } finally {
-      setIsPhoneLoading(false);
     }
   };
 
@@ -112,51 +126,36 @@ export default function LoginScreen() {
       <StatusBar barStyle="dark-content" />
       <View style={styles.topCurtain} />
       
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
-        <ScrollView
-          contentContainerStyle={styles.scrollContent}
-          showsVerticalScrollIndicator={false}
-          keyboardShouldPersistTaps="handled">
+      <KeyboardAvoidingView style={{ flex: 1 }} behavior={Platform.OS === 'ios' ? 'padding' : undefined}>
+        <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
           
           <View style={styles.header}>
             <Image source={BRAND_LOGO} style={styles.logo} resizeMode="contain" />
             <Text style={styles.title}>Overline Business</Text>
-            <Text style={styles.subtitle}>Partner Dashboard & Management</Text>
+            <Text style={styles.subtitle}>Enterprise Operations Cloud</Text>
           </View>
 
-          {/* Role Toggle */}
-          <View style={styles.toggleContainer}>
+          <View style={styles.roleTabs}>
             <TouchableOpacity 
-              style={[styles.toggleBtn, role === 'OWNER' && styles.toggleBtnActive]}
+              style={[styles.roleTab, role === 'OWNER' && styles.roleTabActive]}
               onPress={() => setRole('OWNER')}
             >
-              <Text style={[styles.toggleText, role === 'OWNER' && styles.toggleTextActive]}>OWNER</Text>
+              <Text style={[styles.roleTabText, role === 'OWNER' && styles.roleTabTextActive]}>OWNER</Text>
             </TouchableOpacity>
             <TouchableOpacity 
-              style={[styles.toggleBtn, role === 'STAFF' && styles.toggleBtnActive]}
+              style={[styles.roleTab, role === 'STAFF' && styles.roleTabActive]}
               onPress={() => setRole('STAFF')}
             >
-              <Text style={[styles.toggleText, role === 'STAFF' && styles.toggleTextActive]}>STAFF</Text>
+              <Text style={[styles.roleTabText, role === 'STAFF' && styles.roleTabTextActive]}>STAFF</Text>
             </TouchableOpacity>
           </View>
 
           <View style={styles.card}>
-            <Text style={styles.formTitle}>
-              {role === 'OWNER' ? 'Shop Proprietor Login' : 'Team Member Access'}
-            </Text>
-            
             {role === 'OWNER' ? (
               <View>
-                <TouchableOpacity 
-                  style={styles.googleBtn} 
-                  onPress={handleGoogleLogin}
-                  disabled={isGoogleLoading}
-                >
-                  {isGoogleLoading ? (
-                    <ActivityIndicator color={Colors.textPrimary} />
-                  ) : (
+                <Text style={styles.cardHeader}>Proprietor Console</Text>
+                <TouchableOpacity style={styles.googleBtn} onPress={handleGoogleLogin} disabled={isGoogleLoading}>
+                  {isGoogleLoading ? <ActivityIndicator color={Colors.primary} /> : (
                     <>
                       <Image source={require('../../../assets/icons/google-icon.png')} style={styles.socialIcon} />
                       <Text style={styles.googleBtnText}>Continue with Google</Text>
@@ -165,280 +164,176 @@ export default function LoginScreen() {
                 </TouchableOpacity>
 
                 <View style={styles.dividerRow}>
-                  <View style={styles.divider} />
-                  <Text style={styles.dividerText}>SECURE PHONE LOGIN</Text>
-                  <View style={styles.divider} />
+                  <View style={styles.divider} /><Text style={styles.dividerText}>SECURE PHONE LOGIN</Text><View style={styles.divider} />
                 </View>
 
-                <View style={styles.inputWrapper}>
-                  <Smartphone size={20} color={Colors.textTertiary} />
-                  <TextInput
-                    style={styles.input}
-                    placeholder="Mobile Number"
-                    placeholderTextColor={Colors.textMuted}
+                <View style={styles.inputBox}>
+                  <Smartphone size={18} color="#94A3B8" />
+                  <TextInput 
+                    style={styles.input} 
+                    placeholder="Mobile Number" 
                     keyboardType="phone-pad"
-                    value={phone}
-                    onChangeText={setPhone}
+                    value={ownerPhone}
+                    onChangeText={setOwnerPhone}
                   />
                 </View>
 
-                <TouchableOpacity 
-                  style={[styles.primaryBtn, isPhoneLoading && { opacity: 0.7 }]}
-                  onPress={handleSendPhoneOtp}
-                  disabled={isPhoneLoading}
-                >
-                  {isPhoneLoading ? (
-                    <ActivityIndicator color="#FFF" />
-                  ) : (
+                <TouchableOpacity style={styles.primaryBtn} onPress={handleOwnerPhoneLogin} disabled={isLoading}>
+                  {isLoading ? <ActivityIndicator color="#FFF" /> : (
                     <>
                       <Text style={styles.primaryBtnText}>GET LOGIN CODE</Text>
-                      <Zap size={16} color="#FFF" fill="#FFF" />
+                      <Zap size={16} color="#FFF" />
                     </>
                   )}
                 </TouchableOpacity>
               </View>
             ) : (
               <View>
-                <View style={[styles.inputWrapper, errors.email && styles.inputError]}>
-                  <Mail size={20} color={Colors.textTertiary} />
-                  <TextInput
-                    style={styles.input}
-                    placeholder="Staff Email"
-                    placeholderTextColor={Colors.textMuted}
-                    keyboardType="email-address"
-                    autoCapitalize="none"
-                    value={email}
-                    onChangeText={setEmail}
+                <Text style={styles.cardHeader}>Team Member Portal</Text>
+                
+                <TouchableOpacity style={styles.shopTrigger} onPress={() => setShowShopPicker(true)}>
+                  <View style={styles.shopTriggerMain}>
+                    <Building2 size={18} color={selectedShop ? Colors.primary : "#94A3B8"} />
+                    <Text style={[styles.shopTriggerText, selectedShop && { color: '#0F172A' }]}>
+                      {selectedShop ? selectedShop.name : "Select your Shop"}
+                    </Text>
+                  </View>
+                  <ChevronRight size={18} color="#CBD5E1" />
+                </TouchableOpacity>
+
+                <View style={[styles.inputBox, { marginTop: 16 }]}>
+                  <Smartphone size={18} color="#94A3B8" />
+                  <TextInput 
+                    style={styles.input} 
+                    placeholder="Registered Mobile" 
+                    keyboardType="phone-pad"
+                    value={staffPhone}
+                    onChangeText={setStaffPhone}
                   />
                 </View>
-                {errors.email && <Text style={styles.errorText}>{errors.email}</Text>}
 
-                <View style={[styles.inputWrapper, { marginTop: 16 }, errors.password && styles.inputError]}>
-                  <Lock size={20} color={Colors.textTertiary} />
-                  <TextInput
-                    style={styles.input}
-                    placeholder="Password"
-                    placeholderTextColor={Colors.textMuted}
+                <View style={[styles.inputBox, { marginTop: 16 }]}>
+                  <Lock size={18} color="#94A3B8" />
+                  <TextInput 
+                    style={styles.input} 
+                    placeholder="6-Digit Employee PIN" 
+                    keyboardType="number-pad"
+                    maxLength={6}
                     secureTextEntry
-                    value={password}
-                    onChangeText={setPassword}
+                    value={staffPin}
+                    onChangeText={setStaffPin}
                   />
                 </View>
-                {errors.password && <Text style={styles.errorText}>{errors.password}</Text>}
 
-                <TouchableOpacity 
-                  style={[styles.primaryBtn, isLoading && { opacity: 0.7 }]}
-                  onPress={handleLogin}
-                  disabled={isLoading}
-                >
-                  {isLoading ? (
-                    <ActivityIndicator color="#FFF" />
-                  ) : (
-                    <Text style={styles.primaryBtnText}>SIGN IN TO SHIFT</Text>
+                <TouchableOpacity style={styles.primaryBtn} onPress={handleStaffLogin} disabled={isLoading}>
+                  {isLoading ? <ActivityIndicator color="#FFF" /> : (
+                    <>
+                      <Text style={styles.primaryBtnText}>SIGN IN TO SHIFT</Text>
+                      <UserCheck size={16} color="#FFF" />
+                    </>
                   )}
                 </TouchableOpacity>
               </View>
             )}
 
-            <View style={styles.securityBox}>
+            <View style={styles.footerWrap}>
               <ShieldCheck size={14} color={Colors.primary} />
-              <Text style={styles.securityText}>End-to-end encrypted session</Text>
+              <Text style={styles.footerText}>Secure Business Session</Text>
             </View>
           </View>
-
-          <Text style={styles.footerInfo}>Overline v2.0 Enterprise Cloud</Text>
         </ScrollView>
       </KeyboardAvoidingView>
+
+      {/* Shop Picker Modal */}
+      <Modal visible={showShopPicker} animationType="slide" transparent>
+        <View style={styles.modal}>
+          <View style={styles.modalSheet}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Find your Shop</Text>
+              <TouchableOpacity onPress={() => setShowShopPicker(false)}><X size={24} color="#0F172A" /></TouchableOpacity>
+            </View>
+            <View style={styles.modalSearch}>
+              <Search size={18} color="#94A3B8" />
+              <TextInput 
+                placeholder="Type shop name (e.g. Aura Salon)" 
+                style={styles.modalInput} 
+                value={searchQuery}
+                onChangeText={setSearchQuery}
+              />
+            </View>
+            <FlatList 
+              data={shops}
+              keyExtractor={item => item.id}
+              contentContainerStyle={{ padding: 20 }}
+              renderItem={({ item }) => (
+                <TouchableOpacity 
+                   style={styles.shopItem} 
+                   onPress={() => { setSelectedShop(item); setShowShopPicker(false); }}
+                >
+                  <View style={styles.shopIcon}><Store size={20} color={Colors.primary} /></View>
+                  <View>
+                    <Text style={styles.shopItemName}>{item.name}</Text>
+                    <Text style={styles.shopItemLoc}>{item.address}</Text>
+                  </View>
+                  <ChevronRight size={18} color="#CBD5E1" style={{ marginLeft: 'auto' }} />
+                </TouchableOpacity>
+              )}
+              ListEmptyComponent={() => (
+                <View style={styles.modalEmpty}>
+                  <Building2 size={48} color="#F1F5F9" />
+                  <Text style={{ color: '#94A3B8', marginTop: 12, fontWeight: '600' }}>
+                    {searchQuery.length > 2 ? "No matching shops found" : "Search for your workplace"}
+                  </Text>
+                </View>
+              )}
+            />
+          </View>
+        </View>
+      </Modal>
+
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F8FAFC',
-  },
-  topCurtain: {
-    position: 'absolute',
-    top: 0,
-    width: '100%',
-    height: height * 0.35,
-    backgroundColor: '#FFF',
-    borderBottomLeftRadius: 60,
-    borderBottomRightRadius: 60,
-    elevation: 2,
-    shadowColor: '#000',
-    shadowOpacity: 0.05,
-    shadowRadius: 10,
-  },
-  scrollContent: {
-    flexGrow: 1,
-    paddingHorizontal: 24,
-    paddingTop: height * 0.08,
-    paddingBottom: 40,
-  },
-  header: {
-    alignItems: 'center',
-    marginBottom: 40,
-  },
-  logo: {
-    width: 90,
-    height: 90,
-    borderRadius: Radius.xl,
-    marginBottom: 16,
-  },
-  title: {
-    fontSize: 26,
-    fontWeight: '900',
-    color: '#0F172A',
-    letterSpacing: -0.5,
-  },
-  subtitle: {
-    fontSize: 14,
-    color: '#64748B',
-    fontWeight: '600',
-    marginTop: 4,
-  },
-  toggleContainer: {
-    flexDirection: 'row',
-    backgroundColor: '#F1F5F9',
-    borderRadius: 20,
-    padding: 6,
-    marginBottom: 32,
-  },
-  toggleBtn: {
-    flex: 1,
-    paddingVertical: 12,
-    borderRadius: 16,
-    alignItems: 'center',
-  },
-  toggleBtnActive: {
-    backgroundColor: '#FFF',
-    ...Shadows.sm,
-  },
-  toggleText: {
-    fontSize: 12,
-    fontWeight: '800',
-    color: '#94A3B8',
-    letterSpacing: 1,
-  },
-  toggleTextActive: {
-    color: Colors.primary,
-  },
-  card: {
-    backgroundColor: '#FFF',
-    borderRadius: 32,
-    padding: 24,
-    borderWidth: 1,
-    borderColor: '#F1F5F9',
-    ...Shadows.md,
-  },
-  formTitle: {
-    fontSize: 18,
-    fontWeight: '900',
-    color: '#1E293B',
-    marginBottom: 24,
-    textAlign: 'center',
-  },
-  googleBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 16,
-    borderRadius: 20,
-    borderWidth: 1.5,
-    borderColor: '#E2E8F0',
-    gap: 12,
-  },
-  socialIcon: {
-    width: 20,
-    height: 20,
-  },
-  googleBtnText: {
-    fontSize: 15,
-    fontWeight: '700',
-    color: '#1E293B',
-  },
-  dividerRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginVertical: 24,
-    gap: 12,
-  },
-  divider: {
-    flex: 1,
-    height: 1,
-    backgroundColor: '#F1F5F9',
-  },
-  dividerText: {
-    fontSize: 10,
-    fontWeight: '800',
-    color: '#CBD5E1',
-    letterSpacing: 1,
-  },
-  inputWrapper: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F8FAFC',
-    borderRadius: 20,
-    paddingHorizontal: 16,
-    borderWidth: 1,
-    borderColor: '#F1F5F9',
-    height: 60,
-  },
-  inputError: {
-    borderColor: '#FECACA',
-    backgroundColor: '#FFF5F5',
-  },
-  input: {
-    flex: 1,
-    marginLeft: 12,
-    fontSize: 15,
-    fontWeight: '600',
-    color: '#0F172A',
-  },
-  primaryBtn: {
-    backgroundColor: Colors.primary,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 18,
-    borderRadius: 20,
-    marginTop: 24,
-    gap: 8,
-    ...Shadows.glow,
-  },
-  primaryBtnText: {
-    color: '#FFF',
-    fontSize: 14,
-    fontWeight: '900',
-    letterSpacing: 1,
-  },
-  errorText: {
-    fontSize: 11,
-    color: '#EF4444',
-    marginTop: 6,
-    marginLeft: 12,
-    fontWeight: '600',
-  },
-  securityBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 6,
-    marginTop: 20,
-  },
-  securityText: {
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#94A3B8',
-  },
-  footerInfo: {
-    textAlign: 'center',
-    marginTop: 40,
-    fontSize: 11,
-    fontWeight: '700',
-    color: '#CBD5E1',
-    letterSpacing: 0.5,
-  },
+  container: { flex: 1, backgroundColor: '#F8FAFC' },
+  topCurtain: { position: 'absolute', top: 0, width: '100%', height: height * 0.3, backgroundColor: '#FFF', borderBottomLeftRadius: 60, borderBottomRightRadius: 60, ...Shadows.sm },
+  scrollContent: { paddingHorizontal: 24, paddingTop: height * 0.06, paddingBottom: 40 },
+  header: { alignItems: 'center', marginBottom: 32 },
+  logo: { width: 80, height: 80, borderRadius: 24, marginBottom: 16 },
+  title: { fontSize: 24, fontWeight: '900', color: '#0F172A', letterSpacing: -0.5 },
+  subtitle: { fontSize: 13, color: '#64748B', fontWeight: '700', marginTop: 4 },
+  roleTabs: { flexDirection: 'row', backgroundColor: '#F1F5F9', borderRadius: 20, padding: 6, marginBottom: 24 },
+  roleTab: { flex: 1, paddingVertical: 12, borderRadius: 16, alignItems: 'center' },
+  roleTabActive: { backgroundColor: '#FFF', ...Shadows.sm },
+  roleTabText: { fontSize: 12, fontWeight: '900', color: '#94A3B8', letterSpacing: 1 },
+  roleTabTextActive: { color: Colors.primary },
+  card: { backgroundColor: '#FFF', borderRadius: 32, padding: 24, borderWidth: 1, borderColor: '#F1F5F9', ...Shadows.md },
+  cardHeader: { fontSize: 18, fontWeight: '900', color: '#1E293B', marginBottom: 24, textAlign: 'center' },
+  googleBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', height: 56, borderRadius: 18, borderWidth: 1.5, borderColor: '#F1F5F9', gap: 12 },
+  socialIcon: { width: 20, height: 20 },
+  googleBtnText: { fontSize: 15, fontWeight: '700', color: '#1E293B' },
+  dividerRow: { flexDirection: 'row', alignItems: 'center', marginVertical: 24, gap: 12 },
+  divider: { flex: 1, height: 1, backgroundColor: '#F1F5F9' },
+  dividerText: { fontSize: 10, fontWeight: '900', color: '#CBD5E1', letterSpacing: 1 },
+  inputBox: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F8FAFC', borderRadius: 20, paddingHorizontal: 16, height: 60, borderWidth: 1, borderColor: '#F1F5F9' },
+  input: { flex: 1, marginLeft: 12, fontSize: 15, fontWeight: '700', color: '#0F172A' },
+  primaryBtn: { backgroundColor: Colors.primary, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', height: 60, borderRadius: 20, marginTop: 24, gap: 8, ...Shadows.glow },
+  primaryBtnText: { color: '#FFF', fontSize: 14, fontWeight: '900', letterSpacing: 1 },
+  footerWrap: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 20 },
+  footerText: { fontSize: 11, fontWeight: '800', color: '#94A3B8' },
+  shopTrigger: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#F8FAFC', borderRadius: 20, paddingHorizontal: 16, height: 60, borderWidth: 1, borderColor: '#F1F5F9' },
+  shopTriggerMain: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+  shopTriggerText: { fontSize: 15, fontWeight: '700', color: '#94A3B8' },
+  modal: { flex: 1, backgroundColor: 'rgba(15, 23, 42, 0.4)', justifyContent: 'flex-end' },
+  modalSheet: { backgroundColor: '#FFF', borderTopLeftRadius: 40, borderTopRightRadius: 40, height: '80%' },
+  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 24, borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
+  modalTitle: { fontSize: 20, fontWeight: '900', color: '#0F172A' },
+  modalSearch: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F8FAFC', margin: 20, paddingHorizontal: 16, height: 50, borderRadius: 16, borderWidth: 1, borderColor: '#F1F5F9' },
+  modalInput: { flex: 1, marginLeft: 12, fontSize: 14, fontWeight: '700', color: '#0F172A' },
+  shopItem: { flexDirection: 'row', alignItems: 'center', padding: 16, borderRadius: 20, marginBottom: 12, backgroundColor: '#F8FAFC' },
+  shopIcon: { width: 44, height: 44, borderRadius: 14, backgroundColor: Colors.primary100, alignItems: 'center', justifyContent: 'center', marginRight: 16 },
+  shopItemName: { fontSize: 15, fontWeight: '800', color: '#1E293B' },
+  shopItemLoc: { fontSize: 11, color: '#94A3B8', fontWeight: '600', marginTop: 2 },
+  modalEmpty: { marginTop: 60, alignItems: 'center' },
 });

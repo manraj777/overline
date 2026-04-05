@@ -42,6 +42,7 @@ interface AuthState {
 
   // Actions
   login: (email: string, password: string, options?: {requestedRole?: string}) => Promise<void>;
+  staffLogin: (params: {shopId: string; phone: string; password: string}) => Promise<void>; // New
   loginWithGoogle: (idToken: string, options?: {requestedRole?: AuthRequestedRole}) => Promise<void>;
   sendPhoneLoginOtp: (phone: string) => Promise<void>;
   verifyPhoneLoginOtp: (phone: string, otp: string, options?: {requestedRole?: AuthRequestedRole}) => Promise<void>;
@@ -98,6 +99,32 @@ export const useAuthStore = create<AuthState>((set) => ({
   token: null,
   pendingOtpVerification: false,
   otpPhone: null,
+
+  staffLogin: async ({shopId, phone, password}) => {
+    // Implement staff login using the specialized 6-digit PIN flow for the specific shop
+    const response = await authApi.staffLogin({ shopId, phone, password });
+    const { accessToken, refreshToken, user } = response.data as AuthLoginResponse;
+
+    await AsyncStorage.setItem('admin_token', accessToken);
+    if (refreshToken) {
+      await AsyncStorage.setItem('admin_refresh_token', refreshToken);
+    }
+    await AsyncStorage.setItem('selected_shop_id', shopId);
+
+    // Staff only belongs to one shop in this context
+    const shops = [{ id: shopId, name: 'Assigned Shop' }];
+    const userWithShops = { ...user, shops };
+
+    set({
+      user: userWithShops,
+      isAuthenticated: true,
+      selectedShopId: shopId,
+      isOwner: false,
+      isStaff: true,
+      token: accessToken,
+      pendingOtpVerification: false,
+    });
+  },
 
   loginWithGoogle: async (idToken: string, options?: {requestedRole?: AuthRequestedRole}) => {
     const response = await authApi.googleLogin(idToken, options);

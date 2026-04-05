@@ -1,4 +1,4 @@
-import React, {useState} from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -12,35 +12,50 @@ import {
   KeyboardAvoidingView,
   Platform,
   RefreshControl,
+  SafeAreaView,
+  StatusBar,
 } from 'react-native';
-import {UsersRound, X} from 'lucide-react-native';
-import {useQuery, useMutation, useQueryClient} from '@tanstack/react-query';
-import {useRoute, RouteProp} from '@react-navigation/native';
-import {staffApi} from '../../api/client';
-import {RootStackParamList, Staff} from '../../types';
+import { 
+  UsersRound, 
+  X, 
+  Plus, 
+  UserPlus2, 
+  Trash2, 
+  ChevronRight, 
+  Phone, 
+  Fingerprint, 
+  User, 
+  Calendar,
+  Lock,
+  Search
+} from 'lucide-react-native';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useRoute, RouteProp } from '@react-navigation/native';
+import { staffApi } from '../../api/client';
+import { RootStackParamList, Staff } from '../../types';
+import { Colors, Shadows, Spacing, Radius } from '../../theme';
 
 type RouteProps = RouteProp<RootStackParamList, 'StaffManagement'>;
 
 interface StaffFormData {
   name: string;
-  email: string;
   phone: string;
-  role: string;
+  age: string;
+  password: string; // 6-digit number
 }
 
 const emptyForm: StaffFormData = {
   name: '',
-  email: '',
   phone: '',
-  role: 'STAFF',
+  age: '',
+  password: '',
 };
 
 export default function StaffManagementScreen() {
   const route = useRoute<RouteProps>();
   const queryClient = useQueryClient();
-  const {shopId} = route.params;
+  const { shopId } = route.params;
   const [showForm, setShowForm] = useState(false);
-  const [editingStaff, setEditingStaff] = useState<Staff | null>(null);
   const [formData, setFormData] = useState<StaffFormData>(emptyForm);
   const [errors, setErrors] = useState<Record<string, string>>({});
 
@@ -56,484 +71,253 @@ export default function StaffManagementScreen() {
   });
 
   const createMutation = useMutation({
-    mutationFn: (data: StaffFormData) => staffApi.create(shopId, data),
+    mutationFn: (data: StaffFormData) => staffApi.create(shopId, { 
+      ...data, 
+      age: parseInt(data.age) || undefined,
+      role: 'STAFF' 
+    }),
     onSuccess: () => {
-      queryClient.invalidateQueries({queryKey: ['adminStaff', shopId]});
+      queryClient.invalidateQueries({ queryKey: ['adminStaff', shopId] });
       setShowForm(false);
       setFormData(emptyForm);
-      Alert.alert('Success', 'Staff member added');
+      Alert.alert('Onboarding Successful', `${formData.name} is now a part of your shop.`);
     },
     onError: (error: any) => {
-      Alert.alert(
-        'Error',
-        error.response?.data?.message || 'Failed to add staff',
-      );
-    },
-  });
-
-  const updateMutation = useMutation({
-    mutationFn: ({id, data}: {id: string; data: StaffFormData}) =>
-      staffApi.update(shopId, id, data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({queryKey: ['adminStaff', shopId]});
-      setShowForm(false);
-      setEditingStaff(null);
-      setFormData(emptyForm);
-      Alert.alert('Success', 'Staff member updated');
-    },
-    onError: (error: any) => {
-      Alert.alert(
-        'Error',
-        error.response?.data?.message || 'Failed to update staff',
-      );
+      Alert.alert('Onboarding Failed', error.response?.data?.message || 'Check connection.');
     },
   });
 
   const deleteMutation = useMutation({
     mutationFn: (staffId: string) => staffApi.delete(shopId, staffId),
     onSuccess: () => {
-      queryClient.invalidateQueries({queryKey: ['adminStaff', shopId]});
-      Alert.alert('Success', 'Staff member removed');
-    },
-    onError: (error: any) => {
-      Alert.alert(
-        'Error',
-        error.response?.data?.message || 'Failed to remove staff',
-      );
+      queryClient.invalidateQueries({ queryKey: ['adminStaff', shopId] });
+      Alert.alert('Removed', 'Staff member has been successfully offboarded.');
     },
   });
 
   const validate = () => {
-    const newErrors: Record<string, string> = {};
-    if (!formData.name.trim()) newErrors.name = 'Name is required';
-    if (!formData.email.trim()) newErrors.email = 'Email is required';
-    else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email))
-      newErrors.email = 'Invalid email';
-    setErrors(newErrors);
-    return Object.keys(newErrors).length === 0;
+    const e: Record<string, string> = {};
+    if (!formData.name.trim()) e.name = 'Required';
+    if (!formData.phone.trim()) e.phone = 'Required';
+    if (!/^\d{6}$/.test(formData.password)) e.password = 'Must be 6 digits';
+    setErrors(e);
+    return Object.keys(e).length === 0;
   };
 
-  const handleSubmit = () => {
-    if (!validate()) return;
-    if (editingStaff) {
-      updateMutation.mutate({id: editingStaff.id, data: formData});
-    } else {
-      createMutation.mutate(formData);
-    }
-  };
-
-  const handleEdit = (staff: Staff) => {
-    setEditingStaff(staff);
-    setFormData({
-      name: staff.name,
-      email: staff.email,
-      phone: '',
-      role: staff.role,
-    });
-    setShowForm(true);
-  };
-
-  const handleDelete = (staff: Staff) => {
+  const handleRemove = (staff: Staff) => {
     Alert.alert(
-      'Remove Staff',
-      `Are you sure you want to remove ${staff.name}?`,
+      'Offboard Staff',
+      `Are you sure you want to remove ${staff.name}? This action cannot be undone.`,
       [
-        {text: 'Cancel', style: 'cancel'},
-        {
-          text: 'Remove',
-          style: 'destructive',
-          onPress: () => deleteMutation.mutate(staff.id),
-        },
-      ],
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Remove Staff', style: 'destructive', onPress: () => deleteMutation.mutate(staff.id) },
+      ]
     );
   };
 
-  const handleAdd = () => {
-    setEditingStaff(null);
-    setFormData(emptyForm);
-    setErrors({});
-    setShowForm(true);
-  };
-
-  const renderStaffItem = ({item}: {item: Staff}) => (
+  const renderStaffItem = ({ item }: { item: Staff }) => (
     <View style={styles.staffCard}>
-      <View style={styles.staffAvatar}>
-        <Text style={styles.avatarText}>
-          {item.name.charAt(0).toUpperCase()}
-        </Text>
-      </View>
-      <View style={styles.staffInfo}>
-        <Text style={styles.staffName}>{item.name}</Text>
-        <Text style={styles.staffEmail}>{item.email}</Text>
-        <View style={styles.roleBadge}>
-          <Text style={styles.roleText}>
-            {item.role === 'OWNER' ? 'Owner' : 'Staff'}
-          </Text>
+      <View style={styles.staffMain}>
+        <View style={styles.avatar}>
+          <Text style={styles.avatarText}>{item.name.charAt(0).toUpperCase()}</Text>
+        </View>
+        <View style={styles.info}>
+          <Text style={styles.name}>{item.name}</Text>
+          <Text style={styles.phoneText}>{item.phone || 'No phone'}</Text>
+          <View style={styles.tagRow}>
+            <View style={styles.ageTag}>
+              <Text style={styles.tagText}>{item.age || 24} YRS</Text>
+            </View>
+            <View style={styles.roleTag}>
+              <Text style={styles.tagText}>{item.role}</Text>
+            </View>
+          </View>
         </View>
       </View>
-      <View style={styles.staffActions}>
-        <TouchableOpacity
-          style={styles.editButton}
-          onPress={() => handleEdit(item)}>
-          <Text style={styles.editButtonText}>Edit</Text>
-        </TouchableOpacity>
-        {item.role !== 'OWNER' && (
-          <TouchableOpacity
-            style={styles.deleteButton}
-            onPress={() => handleDelete(item)}>
-            <Text style={styles.deleteButtonText}>Remove</Text>
-          </TouchableOpacity>
-        )}
-      </View>
+      <TouchableOpacity style={styles.removeBtn} onPress={() => handleRemove(item)}>
+        <Trash2 size={18} color="#F43F5E" />
+      </TouchableOpacity>
     </View>
   );
 
-  if (isLoading) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#4F46E5" />
-      </View>
-    );
-  }
-
   return (
     <View style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>
-          {staffList.length} Staff Member{staffList.length !== 1 ? 's' : ''}
-        </Text>
-        <TouchableOpacity style={styles.addButton} onPress={handleAdd}>
-          <Text style={styles.addButtonText}>+ Add</Text>
-        </TouchableOpacity>
-      </View>
-
-      <FlatList
-        data={staffList}
-        keyExtractor={item => item.id}
-        renderItem={renderStaffItem}
-        contentContainerStyle={styles.listContent}
-        refreshControl={
-          <RefreshControl refreshing={isRefetching} onRefresh={refetch} />
-        }
-        ListEmptyComponent={
-          <View style={styles.emptyState}>
-            <UsersRound size={46} color="#9CA3AF" style={styles.emptyIcon} />
-            <Text style={styles.emptyTitle}>No Staff Members</Text>
-            <Text style={styles.emptySubtitle}>
-              Add staff to help manage your shop
-            </Text>
-            <TouchableOpacity style={styles.emptyButton} onPress={handleAdd}>
-              <Text style={styles.emptyButtonText}>Add First Staff</Text>
-            </TouchableOpacity>
+      <StatusBar barStyle="dark-content" />
+      <SafeAreaView style={{ flex: 1 }} edges={['top']}>
+        
+        <View style={styles.topBar}>
+          <View>
+            <Text style={styles.title}>Team Management</Text>
+            <Text style={styles.subtitle}>{staffList.length} Active specialists on-site</Text>
           </View>
-        }
-      />
+          <TouchableOpacity style={styles.addTrigger} onPress={() => setShowForm(true)}>
+            <Plus size={20} color="#FFF" />
+          </TouchableOpacity>
+        </View>
 
-      {/* Add/Edit Modal */}
-      <Modal visible={showForm} animationType="slide" transparent>
-        <KeyboardAvoidingView
-          style={styles.modalOverlay}
-          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>
-                {editingStaff ? 'Edit Staff' : 'Add Staff'}
-              </Text>
-              <TouchableOpacity
-                onPress={() => {
-                  setShowForm(false);
-                  setEditingStaff(null);
-                  setErrors({});
-                }}>
-                <X size={20} color="#6B7280" style={styles.modalClose} />
-              </TouchableOpacity>
+        <View style={styles.searchBar}>
+          <Search size={18} color="#94A3B8" />
+          <TextInput placeholder="Search staff members..." style={styles.searchInput} placeholderTextColor="#94A3B8" />
+        </View>
+
+        {isLoading ? (
+          <ActivityIndicator style={{ marginTop: 40 }} color={Colors.primary} />
+        ) : (
+          <FlatList
+            data={staffList}
+            keyExtractor={item => item.id}
+            renderItem={renderStaffItem}
+            contentContainerStyle={styles.list}
+            refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={refetch} />}
+            ListEmptyComponent={
+              <View style={styles.empty}>
+                <UserPlus2 size={48} color="#CBD5E1" strokeWidth={1} />
+                <Text style={styles.emptyTitle}>Empty Workspace</Text>
+                <Text style={styles.emptySubtitle}>You haven't onboarded any staff members to this shop yet.</Text>
+                <TouchableOpacity style={styles.emptyBtn} onPress={() => setShowForm(true)}>
+                  <Text style={styles.emptyBtnText}>START ONBOARDING</Text>
+                </TouchableOpacity>
+              </View>
+            }
+          />
+        )}
+
+        <Modal visible={showForm} animationType="slide" transparent>
+          <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : undefined} style={styles.modal}>
+            <View style={styles.modalSheet}>
+              <View style={styles.modalHeader}>
+                <View>
+                  <Text style={styles.modalTitle}>Onboard Specialist</Text>
+                  <Text style={styles.modalSubtitle}>Initialize a new staff profile</Text>
+                </View>
+                <TouchableOpacity style={styles.closeBtn} onPress={() => setShowForm(false)}>
+                  <X size={20} color="#64748B" />
+                </TouchableOpacity>
+              </View>
+
+              <ScrollView style={styles.modalForm} showsVerticalScrollIndicator={false}>
+                <View style={styles.inputGroup}>
+                  <Text style={styles.label}>FULL NAME</Text>
+                  <View style={[styles.inputBox, errors.name && styles.inputError]}>
+                    <User size={16} color="#94A3B8" />
+                    <TextInput 
+                      style={styles.input} 
+                      placeholder="e.g. Rahul Sharma" 
+                      value={formData.name}
+                      onChangeText={t => setFormData({ ...formData, name: t })}
+                    />
+                  </View>
+                </View>
+
+                <View style={styles.row}>
+                  <View style={[styles.inputGroup, { flex: 1 }]}>
+                    <Text style={styles.label}>MOBILE NUMBER</Text>
+                    <View style={[styles.inputBox, errors.phone && styles.inputError]}>
+                      <Phone size={16} color="#94A3B8" />
+                      <TextInput 
+                        style={styles.input} 
+                        placeholder="+91" 
+                        keyboardType="phone-pad"
+                        value={formData.phone}
+                        onChangeText={t => setFormData({ ...formData, phone: t })}
+                      />
+                    </View>
+                  </View>
+                  <View style={[styles.inputGroup, { width: 100, marginLeft: 12 }]}>
+                    <Text style={styles.label}>AGE</Text>
+                    <View style={styles.inputBox}>
+                      <Calendar size={16} color="#94A3B8" />
+                      <TextInput 
+                        style={styles.input} 
+                        placeholder="24" 
+                        keyboardType="number-pad"
+                        value={formData.age}
+                        onChangeText={t => setFormData({ ...formData, age: t })}
+                      />
+                    </View>
+                  </View>
+                </View>
+
+                <View style={styles.inputGroup}>
+                  <Text style={styles.label}>ASSING AUTH PASSWORD (6-DIGIT)</Text>
+                  <View style={[styles.inputBox, errors.password && styles.inputError]}>
+                    <Lock size={16} color="#94A3B8" />
+                    <TextInput 
+                      style={styles.input} 
+                      placeholder="123456" 
+                      keyboardType="number-pad"
+                      maxLength={6}
+                      secureTextEntry
+                      value={formData.password}
+                      onChangeText={t => setFormData({ ...formData, password: t })}
+                    />
+                  </View>
+                  <Text style={styles.helpText}>Staff will use this code to login after selecting the shop.</Text>
+                </View>
+
+                <TouchableOpacity 
+                  style={[styles.submitBtn, createMutation.isPending && { opacity: 0.7 }]}
+                  onPress={() => validate() && createMutation.mutate(formData)}
+                >
+                  {createMutation.isPending ? (
+                    <ActivityIndicator color="#FFF" />
+                  ) : (
+                    <>
+                      <Text style={styles.submitText}>FINALIZE ONBOARDING</Text>
+                      <Fingerprint size={18} color="#FFF" />
+                    </>
+                  )}
+                </TouchableOpacity>
+              </ScrollView>
             </View>
+          </KeyboardAvoidingView>
+        </Modal>
 
-            <View style={styles.modalForm}>
-              <View style={styles.inputGroup}>
-                <Text style={styles.label}>Name *</Text>
-                <TextInput
-                  style={[styles.input, errors.name && styles.inputError]}
-                  value={formData.name}
-                  onChangeText={text =>
-                    setFormData({...formData, name: text})
-                  }
-                  placeholder="Staff member name"
-                />
-                {errors.name && (
-                  <Text style={styles.errorText}>{errors.name}</Text>
-                )}
-              </View>
-
-              <View style={styles.inputGroup}>
-                <Text style={styles.label}>Email *</Text>
-                <TextInput
-                  style={[styles.input, errors.email && styles.inputError]}
-                  value={formData.email}
-                  onChangeText={text =>
-                    setFormData({...formData, email: text})
-                  }
-                  placeholder="staff@example.com"
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                />
-                {errors.email && (
-                  <Text style={styles.errorText}>{errors.email}</Text>
-                )}
-              </View>
-
-              <View style={styles.inputGroup}>
-                <Text style={styles.label}>Phone</Text>
-                <TextInput
-                  style={styles.input}
-                  value={formData.phone}
-                  onChangeText={text =>
-                    setFormData({...formData, phone: text})
-                  }
-                  placeholder="Phone number"
-                  keyboardType="phone-pad"
-                />
-              </View>
-
-              <TouchableOpacity
-                style={[
-                  styles.submitButton,
-                  (createMutation.isPending || updateMutation.isPending) &&
-                    styles.submitButtonDisabled,
-                ]}
-                onPress={handleSubmit}
-                disabled={
-                  createMutation.isPending || updateMutation.isPending
-                }>
-                {createMutation.isPending || updateMutation.isPending ? (
-                  <ActivityIndicator color="#fff" />
-                ) : (
-                  <Text style={styles.submitButtonText}>
-                    {editingStaff ? 'Update Staff' : 'Add Staff'}
-                  </Text>
-                )}
-              </TouchableOpacity>
-            </View>
-          </View>
-        </KeyboardAvoidingView>
-      </Modal>
+      </SafeAreaView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F9FAFB',
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    backgroundColor: '#fff',
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
-  },
-  headerTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#111827',
-  },
-  addButton: {
-    backgroundColor: '#4F46E5',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8,
-  },
-  addButtonText: {
-    color: '#fff',
-    fontWeight: '600',
-    fontSize: 14,
-  },
-  listContent: {
-    padding: 16,
-  },
-  staffCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#fff',
-    padding: 16,
-    borderRadius: 12,
-    marginBottom: 8,
-  },
-  staffAvatar: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: '#4F46E5',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  avatarText: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    color: '#fff',
-  },
-  staffInfo: {
-    flex: 1,
-  },
-  staffName: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#111827',
-  },
-  staffEmail: {
-    fontSize: 13,
-    color: '#6B7280',
-    marginTop: 2,
-  },
-  roleBadge: {
-    backgroundColor: '#EEF2FF',
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: 8,
-    alignSelf: 'flex-start',
-    marginTop: 4,
-  },
-  roleText: {
-    fontSize: 11,
-    color: '#4F46E5',
-    fontWeight: '500',
-  },
-  staffActions: {
-    alignItems: 'flex-end',
-    gap: 8,
-  },
-  editButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 6,
-    backgroundColor: '#F3F4F6',
-  },
-  editButtonText: {
-    fontSize: 13,
-    color: '#4B5563',
-    fontWeight: '500',
-  },
-  deleteButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 6,
-  },
-  deleteButtonText: {
-    fontSize: 13,
-    color: '#EF4444',
-    fontWeight: '500',
-  },
-  emptyState: {
-    alignItems: 'center',
-    padding: 48,
-  },
-  emptyIcon: {
-    marginBottom: 16,
-  },
-  emptyTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#111827',
-    marginBottom: 8,
-  },
-  emptySubtitle: {
-    fontSize: 14,
-    color: '#6B7280',
-    textAlign: 'center',
-    marginBottom: 24,
-  },
-  emptyButton: {
-    backgroundColor: '#4F46E5',
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 10,
-  },
-  emptyButtonText: {
-    color: '#fff',
-    fontWeight: '600',
-  },
-  // Modal
-  modalOverlay: {
-    flex: 1,
-    backgroundColor: 'rgba(0,0,0,0.5)',
-    justifyContent: 'flex-end',
-  },
-  modalContent: {
-    backgroundColor: '#fff',
-    borderTopLeftRadius: 20,
-    borderTopRightRadius: 20,
-    maxHeight: '80%',
-  },
-  modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 20,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
-  },
-  modalTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#111827',
-  },
-  modalClose: {
-    padding: 4,
-  },
-  modalForm: {
-    padding: 20,
-  },
-  inputGroup: {
-    marginBottom: 20,
-  },
-  label: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#374151',
-    marginBottom: 8,
-  },
-  input: {
-    backgroundColor: '#F9FAFB',
-    borderWidth: 1,
-    borderColor: '#D1D5DB',
-    borderRadius: 12,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    fontSize: 16,
-    color: '#111827',
-  },
-  inputError: {
-    borderColor: '#EF4444',
-  },
-  errorText: {
-    color: '#EF4444',
-    fontSize: 12,
-    marginTop: 4,
-  },
-  submitButton: {
-    backgroundColor: '#4F46E5',
-    borderRadius: 12,
-    paddingVertical: 16,
-    alignItems: 'center',
-    marginTop: 8,
-  },
-  submitButtonDisabled: {
-    opacity: 0.7,
-  },
-  submitButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
+  container: { flex: 1, backgroundColor: '#F8FAFC' },
+  topBar: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 24, paddingBottom: 16 },
+  title: { fontSize: 24, fontWeight: '900', color: '#0F172A', letterSpacing: -0.5 },
+  subtitle: { fontSize: 13, color: '#64748B', fontWeight: '600', marginTop: 2 },
+  addTrigger: { width: 44, height: 44, borderRadius: 15, backgroundColor: Colors.primary, alignItems: 'center', justifyContent: 'center', ...Shadows.sm },
+  searchBar: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF', marginHorizontal: 24, paddingHorizontal: 16, height: 50, borderRadius: 16, borderWidth: 1, borderColor: '#F1F5F9', ...Shadows.sm },
+  searchInput: { flex: 1, marginLeft: 12, fontSize: 14, fontWeight: '600', color: '#0F172A' },
+  list: { padding: 24 },
+  staffCard: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#FFF', padding: 16, borderRadius: 24, marginBottom: 16, borderWidth: 1, borderColor: '#F1F5F9', ...Shadows.sm },
+  staffMain: { flexDirection: 'row', alignItems: 'center', flex: 1 },
+  avatar: { width: 50, height: 50, borderRadius: 18, backgroundColor: '#F8FAFC', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#F1F5F9' },
+  avatarText: { fontSize: 18, fontWeight: '900', color: Colors.primary },
+  info: { marginLeft: 16, flex: 1 },
+  name: { fontSize: 16, fontWeight: '800', color: '#1E293B' },
+  phoneText: { fontSize: 12, color: '#94A3B8', fontWeight: '600', marginTop: 2 },
+  tagRow: { flexDirection: 'row', gap: 6, marginTop: 8 },
+  ageTag: { backgroundColor: '#F1F5F9', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6 },
+  roleTag: { backgroundColor: '#EEF2FF', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6 },
+  tagText: { fontSize: 9, fontWeight: '900', color: '#64748B', letterSpacing: 0.5 },
+  removeBtn: { width: 40, height: 40, borderRadius: 12, backgroundColor: '#FFF1F2', alignItems: 'center', justifyContent: 'center' },
+  empty: { marginTop: 60, alignItems: 'center' },
+  emptyTitle: { fontSize: 18, fontWeight: '900', color: '#1E293B', marginTop: 16 },
+  emptySubtitle: { fontSize: 14, color: '#94A3B8', textAlign: 'center', marginTop: 8, paddingHorizontal: 40, lineHeight: 20 },
+  emptyBtn: { backgroundColor: '#FFF', borderWidth: 1, borderColor: Colors.primary, paddingHorizontal: 24, paddingVertical: 12, borderRadius: 16, marginTop: 24 },
+  emptyBtnText: { color: Colors.primary, fontSize: 12, fontWeight: '900', letterSpacing: 1 },
+  modal: { flex: 1, backgroundColor: 'rgba(15, 23, 42, 0.4)', justifyContent: 'flex-end' },
+  modalSheet: { backgroundColor: '#FFF', borderTopLeftRadius: 40, borderTopRightRadius: 40, padding: 32, maxHeight: '85%' },
+  modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'flex-start', marginBottom: 32 },
+  modalTitle: { fontSize: 22, fontWeight: '900', color: '#0F172A' },
+  modalSubtitle: { fontSize: 13, color: '#64748B', fontWeight: '600', marginTop: 2 },
+  closeBtn: { width: 40, height: 40, borderRadius: 20, backgroundColor: '#F8FAFC', alignItems: 'center', justifyContent: 'center' },
+  modalForm: { flex: 0 },
+  inputGroup: { marginBottom: 24 },
+  label: { fontSize: 10, fontWeight: '900', color: '#94A3B8', letterSpacing: 1, marginBottom: 8, marginLeft: 4 },
+  inputBox: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F8FAFC', borderRadius: 18, paddingHorizontal: 16, height: 56, borderWidth: 1.5, borderColor: '#F1F5F9' },
+  inputError: { borderColor: '#FECACA', backgroundColor: '#FFF1F2' },
+  input: { flex: 1, marginLeft: 12, fontSize: 15, fontWeight: '700', color: '#0F172A' },
+  row: { flexDirection: 'row' },
+  helpText: { fontSize: 11, color: '#94A3B8', marginTop: 8, marginLeft: 4, fontWeight: '600' },
+  submitBtn: { backgroundColor: Colors.primary, height: 60, borderRadius: 20, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 12, marginTop: 12, ...Shadows.glow },
+  submitText: { color: '#FFF', fontSize: 14, fontWeight: '900', letterSpacing: 1.5 },
 });

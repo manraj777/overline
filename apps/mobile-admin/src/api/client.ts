@@ -4,9 +4,6 @@ import { Platform } from 'react-native';
 import DeviceInfo from '../utils/deviceInfo';
 
 // Backend URL configuration
-// For local dev on device: set DEV_HOST to your computer's LAN IP
-// For emulators/simulators: defaults to 10.0.2.2 (Android) or localhost (iOS)
-// For production: the Railway URL is used automatically
 const DEV_HOST =
   process.env.DEV_HOST ||
   (Platform.OS === 'android' ? '10.0.2.2' : 'localhost');
@@ -118,6 +115,8 @@ apiClient.interceptors.response.use(
 export const authApi = {
   login: (email: string, password: string, options?: { requestedRole?: string }) =>
     apiClient.post('/auth/login', { email, password, requestedRole: options?.requestedRole }),
+  staffLogin: (params: { shopId: string; phone: string; password: string }) =>
+    apiClient.post('/auth/staff-login', params), // New specialized staff login
   googleLogin: (idToken: string, options?: { requestedRole?: string }) =>
     apiClient.post('/auth/google', { idToken, requestedRole: options?.requestedRole }),
   getProfile: () => apiClient.get('/users/me'),
@@ -191,6 +190,10 @@ export const queueApi = {
 };
 
 export const reviewsApi = {
+  getStaffReviews: (
+    shopId: string,
+    params?: {page?: number; limit?: number},
+  ) => apiClient.get(`/reviews/shop/${shopId}/staff`, {params}),
   getMyStaffReviews: (
     shopId: string,
     params?: {page?: number; limit?: number},
@@ -223,7 +226,7 @@ export const servicesApi = {
       category?: string;
     },
   ) => apiClient.patch(`/services/${id}`, data),
-  delete: (id: string) => apiClient.delete(`/services/${id}`),
+  delete: (shopId: string, id: string) => apiClient.delete(`/services/${id}`), // Match schema
 };
 
 // Shop APIs
@@ -231,17 +234,15 @@ export const shopApi = {
   createShop: (data: any) => apiClient.post('/owner/shops', data),
   getMyShops: () => apiClient.get('/admin/my-shops'),
   getById: (id: string) => apiClient.get(`/shops/${id}`),
+  searchShops: (query: string) => apiClient.get('/shops/search', { params: { q: query } }), // New
   getSettings: (shopId: string) =>
     apiClient.get(`/admin/shops/${shopId}/settings`),
   updateSettings: (shopId: string, data: any) =>
     apiClient.patch(`/admin/shops/${shopId}/settings`, data),
   getWorkingHours: (shopId: string) =>
     apiClient.get(`/admin/shops/${shopId}/working-hours`),
-  updateWorkingHours: (shopId: string, dayOfWeek: string, data: any) =>
-    apiClient.patch(
-      `/admin/shops/${shopId}/working-hours/${dayOfWeek}`,
-      data,
-    ),
+  updateWorkingHours: (shopId: string, data: any) =>
+    apiClient.patch(`/admin/shops/${shopId}/working-hours`, data),
   getPayoutDetails: (shopId: string) =>
     apiClient.get(`/admin/shops/${shopId}/payout-details`),
   updatePayoutDetails: (shopId: string, data: any) =>
@@ -254,7 +255,7 @@ export const staffApi = {
     apiClient.get(`/admin/shops/${shopId}/staff`),
   create: (
     shopId: string,
-    data: { name: string; email: string; role?: string; phone?: string },
+    data: { name: string; age: number; phone: string; password?: string, role?: string }, // Updated
   ) => apiClient.post(`/admin/shops/${shopId}/staff`, data),
   update: (shopId: string, staffId: string, data: any) =>
     apiClient.patch(`/admin/shops/${shopId}/staff/${staffId}`, data),

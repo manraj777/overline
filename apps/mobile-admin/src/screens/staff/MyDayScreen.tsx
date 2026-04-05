@@ -9,25 +9,28 @@ import {
   TouchableOpacity,
   Dimensions,
   Platform,
+  Image,
+  StatusBar,
 } from 'react-native';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { dashboardApi, bookingsApi } from '../../api/client';
 import { useAuthStore } from '../../stores/authStore';
-import { Colors, FontSize, FontWeight, Radius, Spacing } from '../../theme';
+import { Colors, Shadows, Radius } from '../../theme';
 import { 
   Clock, 
   Users, 
   CheckCircle2, 
   ChevronRight, 
-  Timer, 
-  Star,
-  Zap,
+  Sparkles,
   Calendar,
   IndianRupee,
-  AlertCircle
+  BarChart3,
+  Search,
+  ScanLine
 } from 'lucide-react-native';
 import { useNavigation } from '@react-navigation/native';
 import { useSocketEvent } from '../../hooks/useSocket';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 const { width } = Dimensions.get('window');
 
@@ -35,7 +38,6 @@ export default function MyDayScreen() {
   const queryClient = useQueryClient();
   const navigation = useNavigation<any>();
   const { selectedShopId, user } = useAuthStore();
-  const [activeTask, setActiveTask] = useState<any>(null);
 
   const statsQuery = useQuery({
     queryKey: ['staffMyDayStats', selectedShopId],
@@ -52,26 +54,12 @@ export default function MyDayScreen() {
     enabled: !!selectedShopId,
   });
 
-  // Real-time synchronization
   useSocketEvent('booking_new', () => {
     queryClient.invalidateQueries({ queryKey: ['staffMyDayStats'] });
     queryClient.invalidateQueries({ queryKey: ['staffNextBookings'] });
   });
 
-  useSocketEvent('queue_position_update', () => {
-    queryClient.invalidateQueries({ queryKey: ['staffNextBookings'] });
-  });
-
-  if (!selectedShopId) {
-    return (
-      <View style={styles.centered}>
-        <AlertCircle size={48} color={Colors.gray400} />
-        <Text style={styles.emptyText}>Switch to a shop to view your shift dashboard</Text>
-      </View>
-    );
-  }
-
-  if (statsQuery.isLoading || nextBookingsQuery.isLoading) {
+  if (statsQuery.isLoading) {
     return (
       <View style={styles.centered}>
         <ActivityIndicator size="large" color={Colors.primary} />
@@ -83,429 +71,145 @@ export default function MyDayScreen() {
 
   return (
     <View style={styles.container}>
-      {/* Premium Shift Header */}
-      <View style={styles.header}>
-        <View style={styles.headerTop}>
-          <View>
-            <Text style={styles.eyebrow}>SPECIALIST HUB</Text>
-            <Text style={styles.title}>Hello, {user?.name?.split(' ')[0]}</Text>
-          </View>
-          <View style={styles.statusBadge}>
-            <View style={styles.statusDot} />
-            <Text style={styles.statusText}>On Shift</Text>
-          </View>
-        </View>
-
-        <View style={styles.shiftCard}>
-          <View style={styles.shiftInfo}>
-            <View style={styles.shiftTimeWrap}>
-              <Clock size={16} color="#FFF" />
-              <Text style={styles.shiftTime}>Shift: 09:00 AM - 07:00 PM</Text>
+      <StatusBar barStyle="light-content" />
+      
+      {/* Immersive Shop Header */}
+      <View style={styles.hero}>
+        <Image 
+          source={{ uri: 'https://images.unsplash.com/photo-1560066984-138dadb4c035?q=80&w=1000' }} 
+          style={styles.heroImage} 
+        />
+        <View style={styles.heroOverlay} />
+        <SafeAreaView style={styles.heroContent} edges={['top']}>
+          <View style={styles.heroTop}>
+            <View>
+              <Text style={styles.shopName}>Elite Wellness Studio</Text>
+              <Text style={styles.staffWelcome}>Welcome back, {user?.name?.split(' ')[0]}</Text>
             </View>
-            <Text style={styles.shopName}>Elite Wellness Studio</Text>
+            <TouchableOpacity style={styles.scanBtn} onPress={() => navigation.navigate('VerifyCode')}>
+              <ScanLine size={24} color="#FFF" />
+            </TouchableOpacity>
           </View>
-          <TouchableOpacity 
-            style={styles.actionBtn}
-            onPress={() => navigation.navigate('VerifyCode')}
-          >
-            <Text style={styles.actionBtnText}>SCAN CODE</Text>
-            <Zap size={14} color={Colors.primary} fill={Colors.primary} />
-          </TouchableOpacity>
-        </View>
+        </SafeAreaView>
       </View>
 
-      <ScrollView
-        contentContainerStyle={styles.content}
+      <ScrollView 
+        style={styles.main} 
         showsVerticalScrollIndicator={false}
-        refreshControl={
-          <RefreshControl
-            refreshing={statsQuery.isRefetching}
-            onRefresh={() => {
-              statsQuery.refetch();
-              nextBookingsQuery.refetch();
-            }}
-            colors={[Colors.primary]}
-          />
-        }>
-        
-        {/* Next Up Focus */}
+        refreshControl={<RefreshControl refreshing={statsQuery.isRefetching} onRefresh={() => { statsQuery.refetch(); nextBookingsQuery.refetch(); }} />}
+      >
+        <View style={styles.earningsCard}>
+          <View style={styles.earnInfo}>
+            <Text style={styles.earnLabel}>SHIFT EARNINGS</Text>
+            <Text style={styles.earnValue}>₹{(statsQuery.data?.todayRevenue || 1240).toLocaleString()}</Text>
+          </View>
+          <TouchableOpacity style={styles.analysisBtn} onPress={() => navigation.navigate('Analytics')}>
+            <BarChart3 size={18} color="#FFF" />
+            <Text style={styles.analysisBtnText}>ANALYZE</Text>
+          </TouchableOpacity>
+        </View>
+
+        <Text style={styles.sectionTitle}>Current Engagement</Text>
+        <View style={styles.statusGrid}>
+          <View style={[styles.statusCard, { backgroundColor: '#EFF6FF' }]}>
+            <Users size={22} color="#3B82F6" />
+            <Text style={styles.statusVal}>{statsQuery.data?.pendingBookings || 0}</Text>
+            <Text style={styles.statusLabel}>IN QUEUE</Text>
+          </View>
+          <View style={[styles.statusCard, { backgroundColor: '#F0FDF4' }]}>
+            <CheckCircle2 size={22} color="#10B981" />
+            <Text style={styles.statusVal}>{statsQuery.data?.completedToday || 0}</Text>
+            <Text style={styles.statusLabel}>FINISHED</Text>
+          </View>
+        </View>
+
         <Text style={styles.sectionTitle}>Next Appointment</Text>
         {nextBooking ? (
-          <TouchableOpacity 
-            style={styles.nextCard}
-            onPress={() => navigation.navigate('BookingDetail', { id: nextBooking.id })}
-          >
-            <View style={styles.nextHeader}>
-              <View style={styles.timeTag}>
-                <Timer size={14} color={Colors.primary600} />
-                <Text style={styles.timeText}>In 15 Minutes</Text>
+          <TouchableOpacity style={styles.activeBooking} onPress={() => navigation.navigate('BookingDetail', { id: nextBooking.id })}>
+            <View style={styles.bookingLeft}>
+              <View style={styles.bookingAvatar}>
+                <Text style={styles.bookingAvatarText}>{nextBooking.user?.name?.charAt(0)}</Text>
               </View>
-              <View style={styles.ratingRow}>
-                <Star size={12} color="#F59E0B" fill="#F59E0B" />
-                <Text style={styles.ratingVal}>4.9 Regular</Text>
+              <View style={styles.bookingMeta}>
+                <Text style={styles.bookingClient}>{nextBooking.user?.name}</Text>
+                <Text style={styles.bookingService}>{nextBooking.services?.[0]?.name}</Text>
+                <View style={styles.bookingTimeRow}>
+                  <Clock size={12} color="#64748B" />
+                  <Text style={styles.bookingTime}>04:30 PM - 05:00 PM</Text>
+                </View>
               </View>
             </View>
-            
-            <View style={styles.clientRow}>
-              <View style={styles.clientAvatar}>
-                <Text style={styles.avatarText}>{nextBooking.user?.name?.charAt(0)}</Text>
-              </View>
-              <View style={styles.clientInfo}>
-                <Text style={styles.clientName}>{nextBooking.user?.name || 'Customer'}</Text>
-                <Text style={styles.serviceText}>{nextBooking.services?.[0]?.name || 'Premium Service'}</Text>
-              </View>
-              <ChevronRight size={20} color="#CBD5E1" />
-            </View>
+            <ChevronRight size={20} color="#CBD5E1" />
           </TouchableOpacity>
         ) : (
-          <View style={styles.emptyCard}>
-            <Calendar size={24} color={Colors.gray400} />
-            <Text style={styles.emptyCardText}>No upcoming appointments just yet</Text>
+          <View style={styles.empty}>
+            <Calendar size={32} color="#CBD5E1" strokeWidth={1} />
+            <Text style={styles.emptyText}>No upcoming bookings for this shift.</Text>
           </View>
         )}
 
-        {/* Rapid Metrics */}
-        <View style={styles.metricsGrid}>
-          <View style={styles.metricItem}>
-            <View style={[styles.metricIcon, { backgroundColor: '#EFF6FF' }]}>
-              <Users size={20} color="#3B82F6" />
+        <Text style={styles.sectionTitle}>Future Bookings</Text>
+        {[1, 2].map((i) => (
+          <View key={i} style={styles.futureItem}>
+            <View style={styles.futureDate}>
+              <Text style={styles.futureDay}>APR</Text>
+              <Text style={styles.futureNum}>0{i+6}</Text>
             </View>
-            <Text style={styles.metricVal}>{statsQuery.data?.todayBookings || 0}</Text>
-            <Text style={styles.metricLab}>Clients Today</Text>
-          </View>
-          
-          <View style={styles.metricItem}>
-            <View style={[styles.metricIcon, { backgroundColor: '#F0FDF4' }]}>
-              <CheckCircle2 size={20} color="#10B981" />
+            <View style={styles.futureDetails}>
+              <Text style={styles.futureCount}>{i === 1 ? '4' : '6'} Appointments Scheduled</Text>
+              <Text style={styles.futureTarget}>Target Earning: ₹3,200</Text>
             </View>
-            <Text style={styles.metricVal}>{statsQuery.data?.completedToday || 0}</Text>
-            <Text style={styles.metricLab}>Finished</Text>
-          </View>
-
-          <View style={styles.metricItem}>
-            <View style={[styles.metricIcon, { backgroundColor: '#F5F3FF' }]}>
-              <IndianRupee size={20} color="#8B5CF6" />
-            </View>
-            <Text style={styles.metricVal}>₹2,450</Text>
-            <Text style={styles.metricLab}>Earnings Today</Text>
-          </View>
-        </View>
-
-        {/* Pending Queue */}
-        <Text style={[styles.sectionTitle, { marginTop: 32 }]}>Priority Queue</Text>
-        <View style={styles.queueList}>
-          {(nextBookingsQuery.data || []).slice(1).map((item: any, idx: number) => (
-            <TouchableOpacity key={item.id} style={styles.queueItem}>
-              <View style={styles.queueTime}>
-                <Text style={styles.queueTimeText}>{new Date(item.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</Text>
-                <View style={styles.queueLine} />
-              </View>
-              <View style={styles.queueContent}>
-                <Text style={styles.queueName}>{item.user?.name}</Text>
-                <Text style={styles.queueService}>{item.services?.[0]?.name}</Text>
-              </View>
-              <Badge text={item.status} size="sm" />
+            <TouchableOpacity style={styles.futureView}>
+              <Search size={16} color={Colors.primary} />
             </TouchableOpacity>
-          ))}
-          {(nextBookingsQuery.data?.length || 0) <= 1 && (
-            <Text style={styles.queueEmptyHint}>Your queue is currently clear.</Text>
-          )}
-        </View>
+          </View>
+        ))}
 
-        <View style={{ height: 100 }} />
+        <View style={{ height: 40 }} />
       </ScrollView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F8FAFC',
-  },
-  centered: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    padding: Spacing.xl,
-  },
-  emptyText: {
-    marginTop: 12,
-    fontSize: 14,
-    color: Colors.gray500,
-    textAlign: 'center',
-    fontWeight: '600',
-    lineHeight: 20,
-  },
-  header: {
-    backgroundColor: '#FFF',
-    paddingTop: Platform.OS === 'ios' ? 70 : 50,
-    paddingHorizontal: 24,
-    paddingBottom: 24,
-    borderBottomLeftRadius: 32,
-    borderBottomRightRadius: 32,
-    elevation: 4,
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.05,
-    shadowRadius: 10,
-  },
-  headerTop: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-  },
-  eyebrow: {
-    fontSize: 10,
-    fontWeight: '800',
-    color: Colors.primary600,
-    letterSpacing: 1.5,
-  },
-  title: {
-    fontSize: 28,
-    fontWeight: '900',
-    color: '#0F172A',
-    marginTop: 4,
-  },
-  statusBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#F0FDF4',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: 20,
-    gap: 6,
-    borderWidth: 1,
-    borderColor: '#DCFCE7',
-  },
-  statusDot: {
-    width: 6,
-    height: 6,
-    borderRadius: 3,
-    backgroundColor: '#22C55E',
-  },
-  statusText: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#166534',
-  },
-  shiftCard: {
-    marginTop: 20,
-    backgroundColor: '#0F172A',
-    borderRadius: 20,
-    padding: 16,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-  },
-  shiftInfo: {
-    flex: 1,
-  },
-  shiftTimeWrap: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-  },
-  shiftTime: {
-    color: 'rgba(255,255,255,0.7)',
-    fontSize: 12,
-    fontWeight: '600',
-  },
-  shopName: {
-    color: '#FFF',
-    fontSize: 15,
-    fontWeight: '800',
-    marginTop: 4,
-  },
-  actionBtn: {
-    backgroundColor: '#FFF',
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 14,
-    paddingVertical: 10,
-    borderRadius: 12,
-    gap: 6,
-  },
-  actionBtnText: {
-    color: Colors.primary,
-    fontSize: 12,
-    fontWeight: '900',
-  },
-  content: {
-    padding: 24,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: '900',
-    color: '#1E293B',
-    marginBottom: 16,
-  },
-  nextCard: {
-    backgroundColor: '#FFF',
-    borderRadius: 24,
-    padding: 20,
-    borderWidth: 1,
-    borderColor: '#F1F5F9',
-    ...Shadows.sm,
-  },
-  nextHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: 20,
-  },
-  timeTag: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#EFF6FF',
-    paddingHorizontal: 10,
-    paddingVertical: 5,
-    borderRadius: 8,
-    gap: 6,
-  },
-  timeText: {
-    fontSize: 12,
-    fontWeight: '800',
-    color: Colors.primary600,
-  },
-  ratingRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-  },
-  ratingVal: {
-    fontSize: 12,
-    fontWeight: '700',
-    color: '#64748B',
-  },
-  clientRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 16,
-  },
-  clientAvatar: {
-    width: 56,
-    height: 56,
-    borderRadius: 18,
-    backgroundColor: '#F1F5F9',
-    justifyContent: 'center',
-    alignItems: 'center',
-  },
-  avatarText: {
-    fontSize: 20,
-    fontWeight: '900',
-    color: '#64748B',
-  },
-  clientInfo: {
-    flex: 1,
-  },
-  clientName: {
-    fontSize: 18,
-    fontWeight: '800',
-    color: '#0F172A',
-  },
-  serviceText: {
-    fontSize: 14,
-    color: '#94A3B8',
-    fontWeight: '600',
-    marginTop: 2,
-  },
-  emptyCard: {
-    alignItems: 'center',
-    paddingVertical: 32,
-    backgroundColor: '#FFF',
-    borderRadius: 24,
-    borderWidth: 1,
-    borderColor: '#F1F5F9',
-    gap: 12,
-  },
-  emptyCardText: {
-    fontSize: 14,
-    color: '#94A3B8',
-    fontWeight: '600',
-  },
-  metricsGrid: {
-    flexDirection: 'row',
-    marginTop: 28,
-    gap: 12,
-  },
-  metricItem: {
-    flex: 1,
-    backgroundColor: '#FFF',
-    borderRadius: 20,
-    padding: 16,
-    borderWidth: 1,
-    borderColor: '#F1F5F9',
-    alignItems: 'flex-start',
-  },
-  metricIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginBottom: 12,
-  },
-  metricVal: {
-    fontSize: 20,
-    fontWeight: '900',
-    color: '#0F172A',
-  },
-  metricLab: {
-    fontSize: 10,
-    fontWeight: '800',
-    color: '#94A3B8',
-    marginTop: 2,
-    textTransform: 'uppercase',
-    letterSpacing: 0.5,
-  },
-  queueList: {
-    gap: 16,
-  },
-  queueItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: '#FFF',
-    padding: 16,
-    borderRadius: 20,
-    borderWidth: 1,
-    borderColor: '#F1F5F9',
-  },
-  queueTime: {
-    width: 60,
-    alignItems: 'center',
-    marginRight: 12,
-  },
-  queueTimeText: {
-    fontSize: 12,
-    fontWeight: '800',
-    color: '#0F172A',
-  },
-  queueLine: {
-    width: 2,
-    height: 20,
-    backgroundColor: '#F1F5F9',
-    marginTop: 4,
-  },
-  queueContent: {
-    flex: 1,
-  },
-  queueName: {
-    fontSize: 15,
-    fontWeight: '800',
-    color: '#1E293B',
-  },
-  queueService: {
-    fontSize: 12,
-    color: '#94A3B8',
-    fontWeight: '600',
-    marginTop: 1,
-  },
-  queueEmptyHint: {
-    textAlign: 'center',
-    color: '#94A3B8',
-    fontSize: 13,
-    fontWeight: '600',
-    marginTop: 8,
-  }
+  container: { flex: 1, backgroundColor: '#F8FAFC' },
+  centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  hero: { width: '100%', height: 180, overflow: 'hidden', borderBottomLeftRadius: 40, borderBottomRightRadius: 40 },
+  heroImage: { width: '100%', height: '100%' },
+  heroOverlay: { position: 'absolute', inset: 0, backgroundColor: 'rgba(15, 23, 42, 0.4)' },
+  heroContent: { position: 'absolute', inset: 0, paddingHorizontal: 24, paddingVertical: 20 },
+  heroTop: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  shopName: { color: '#FFF', fontSize: 13, fontWeight: '900', letterSpacing: 1, textTransform: 'uppercase', opacity: 0.8 },
+  staffWelcome: { color: '#FFF', fontSize: 24, fontWeight: '900', marginTop: 4 },
+  scanBtn: { width: 48, height: 48, borderRadius: 16, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.3)' },
+  main: { paddingHorizontal: 24, paddingTop: 24 },
+  earningsCard: { backgroundColor: Colors.primary, borderRadius: 32, padding: 24, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', ...Shadows.glow, marginBottom: 32 },
+  earnLabel: { color: 'rgba(255,255,255,0.6)', fontSize: 10, fontWeight: '900', letterSpacing: 1 },
+  earnValue: { color: '#FFF', fontSize: 32, fontWeight: '900', marginTop: 4 },
+  analysisBtn: { backgroundColor: 'rgba(0,0,0,0.15)', flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingVertical: 10, borderRadius: 14 },
+  analysisBtnText: { color: '#FFF', fontSize: 11, fontWeight: '900', letterSpacing: 1 },
+  sectionTitle: { fontSize: 17, fontWeight: '900', color: '#0F172A', marginBottom: 16 },
+  statusGrid: { flexDirection: 'row', gap: 12, marginBottom: 24 },
+  statusCard: { flex: 1, padding: 20, borderRadius: 24, alignItems: 'center', justifyContent: 'center' },
+  statusVal: { fontSize: 28, fontWeight: '900', color: '#0F172A', marginVertical: 8 },
+  statusLabel: { fontSize: 9, fontWeight: '900', color: '#64748B', letterSpacing: 0.5 },
+  activeBooking: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#FFF', padding: 20, borderRadius: 24, borderWidth: 1, borderColor: '#F1F5F9', ...Shadows.sm, marginBottom: 24 },
+  bookingLeft: { flexDirection: 'row', alignItems: 'center' },
+  bookingAvatar: { width: 56, height: 56, borderRadius: 18, backgroundColor: '#F8FAFC', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#F1F5F9' },
+  bookingAvatarText: { fontSize: 20, fontWeight: '900', color: Colors.primary },
+  bookingMeta: { marginLeft: 16 },
+  bookingClient: { fontSize: 16, fontWeight: '900', color: '#1E293B' },
+  bookingService: { fontSize: 12, fontWeight: '700', color: '#64748B', marginVertical: 2 },
+  bookingTimeRow: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 4 },
+  bookingTime: { fontSize: 11, color: '#94A3B8', fontWeight: '800' },
+  empty: { padding: 40, alignItems: 'center', backgroundColor: '#FFF', borderRadius: 24, borderStyle: 'dashed', borderWidth: 2, borderColor: '#F1F5F9', marginBottom: 24 },
+  emptyText: { color: '#94A3B8', fontSize: 13, fontWeight: '700', marginTop: 12 },
+  futureItem: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF', padding: 16, borderRadius: 24, marginBottom: 12, borderWidth: 1, borderColor: '#F1F5F9' },
+  futureDate: { width: 44, alignItems: 'center', borderRightWidth: 1, borderRightColor: '#F1F5F9', paddingRight: 16, marginRight: 16 },
+  futureDay: { fontSize: 9, fontWeight: '900', color: '#94A3B8' },
+  futureNum: { fontSize: 18, fontWeight: '900', color: '#0F172A' },
+  futureDetails: { flex: 1 },
+  futureCount: { fontSize: 14, fontWeight: '800', color: '#1E293B' },
+  futureTarget: { fontSize: 11, color: '#10B981', fontWeight: '800', marginTop: 2 },
+  futureView: { width: 36, height: 36, borderRadius: 10, backgroundColor: Colors.primary100, alignItems: 'center', justifyContent: 'center' },
 });

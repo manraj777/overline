@@ -68,16 +68,20 @@ function TabIcon({
   focused: boolean;
 }) {
   const IconComponent = {
-    dashboard: BarChart3,
-    queue: Clock3,
-    bookings: Calendar,
-    analytics: ChartColumn,
+    dashboard: LayoutDashboard,
+    staff: Users,
+    shop: Store,
+    payments: CreditCard,
+    settings: Settings,
+    services: Scissors,
+    timing: Clock,
+    reviews: Star,
     profile: UserRound,
-  }[name] || BarChart3;
+  }[name] || LayoutDashboard;
 
   return (
     <View style={[styles.tabIconWrap, focused && styles.tabIconWrapActive]}>
-      <IconComponent color={color} size={size - 1} />
+      <IconComponent color={color} size={size - 2} />
     </View>
   );
 }
@@ -127,42 +131,42 @@ function OwnerTabs() {
         }}
       />
       <OwnerTab.Screen
-        name="Queue"
-        component={LiveQueueScreen}
+        name="Staff"
+        component={StaffManagementScreen}
         options={{
-          tabBarLabel: 'Queue',
+          tabBarLabel: 'Staff',
           tabBarIcon: ({color, size, focused}) => (
-            <TabIcon name="queue" color={color} size={size} focused={focused} />
+            <TabIcon name="staff" color={color} size={size} focused={focused} />
           ),
         }}
       />
       <OwnerTab.Screen
-        name="Bookings"
-        component={AllBookingsScreen}
+        name="Shop"
+        component={ShopSettingsScreen}
         options={{
-          tabBarLabel: 'Bookings',
+          tabBarLabel: 'Shop',
           tabBarIcon: ({color, size, focused}) => (
-            <TabIcon name="bookings" color={color} size={size} focused={focused} />
+            <TabIcon name="shop" color={color} size={size} focused={focused} />
           ),
         }}
       />
       <OwnerTab.Screen
-        name="Earnings"
-        component={OwnerEarningsScreen}
+        name="Payments"
+        component={PayoutDetailsScreen}
         options={{
-          tabBarLabel: 'Earnings',
+          tabBarLabel: 'Payments',
           tabBarIcon: ({color, size, focused}) => (
-            <TabIcon name="analytics" color={color} size={size} focused={focused} />
+            <TabIcon name="payments" color={color} size={size} focused={focused} />
           ),
         }}
       />
       <OwnerTab.Screen
-        name="Profile"
+        name="Settings"
         component={SettingsScreen}
         options={{
-          tabBarLabel: 'Profile',
+          tabBarLabel: 'Settings',
           tabBarIcon: ({color, size, focused}) => (
-            <TabIcon name="profile" color={color} size={size} focused={focused} />
+            <TabIcon name="settings" color={color} size={size} focused={focused} />
           ),
         }}
       />
@@ -174,42 +178,52 @@ function StaffTabs() {
   return (
     <StaffTab.Navigator screenOptions={tabScreenOptions}>
       <StaffTab.Screen
-        name="MyDay"
+        name="Dashboard"
         component={MyDayScreen}
         options={{
-          tabBarLabel: 'My Day',
+          tabBarLabel: 'Dashboard',
           tabBarIcon: ({color, size, focused}) => (
             <TabIcon name="dashboard" color={color} size={size} focused={focused} />
           ),
         }}
       />
       <StaffTab.Screen
-        name="Queue"
-        component={MyQueueScreen}
+        name="Services"
+        component={MyServicesScreen}
         options={{
-          tabBarLabel: 'Queue',
+          tabBarLabel: 'Services',
           tabBarIcon: ({color, size, focused}) => (
-            <TabIcon name="queue" color={color} size={size} focused={focused} />
+            <TabIcon name="services" color={color} size={size} focused={focused} />
           ),
         }}
       />
       <StaffTab.Screen
-        name="Earn"
-        component={MyEarningsScreen}
+        name="Timing"
+        component={MyScheduleScreen}
         options={{
-          tabBarLabel: 'Earn',
+          tabBarLabel: 'Timing',
           tabBarIcon: ({color, size, focused}) => (
-            <TabIcon name="analytics" color={color} size={size} focused={focused} />
+            <TabIcon name="timing" color={color} size={size} focused={focused} />
           ),
         }}
       />
       <StaffTab.Screen
-        name="Profile"
+        name="Reviews"
+        component={MyReviewsScreen}
+        options={{
+          tabBarLabel: 'Reviews',
+          tabBarIcon: ({color, size, focused}) => (
+            <TabIcon name="reviews" color={color} size={size} focused={focused} />
+          ),
+        }}
+      />
+      <StaffTab.Screen
+        name="Settings"
         component={MyProfileScreen}
         options={{
-          tabBarLabel: 'Profile',
+          tabBarLabel: 'Settings',
           tabBarIcon: ({color, size, focused}) => (
-            <TabIcon name="profile" color={color} size={size} focused={focused} />
+            <TabIcon name="settings" color={color} size={size} focused={focused} />
           ),
         }}
       />

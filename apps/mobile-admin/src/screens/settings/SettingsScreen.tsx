@@ -2,382 +2,189 @@ import React from 'react';
 import {
   View,
   Text,
-  ScrollView,
   StyleSheet,
   TouchableOpacity,
+  ScrollView,
+  StatusBar,
+  Platform,
   Alert,
 } from 'react-native';
-import {useNavigation} from '@react-navigation/native';
-import {NativeStackNavigationProp} from '@react-navigation/native-stack';
-import {useAuthStore} from '../../stores/authStore';
-import {RootStackParamList} from '../../types';
-import {
-  Bell,
-  ChartColumn,
-  ChevronRight,
-  CircleCheck,
-  CircleHelp,
-  Clock3,
-  CreditCard,
-  FileText,
-  Store,
-  Users,
+import { useAuthStore } from '../../stores/authStore';
+import { Colors, Shadows, Spacing, Radius } from '../../theme';
+import { 
+  User, 
+  ChevronRight, 
+  Globe, 
+  Moon, 
+  Share2, 
+  Info, 
+  ShieldAlert, 
+  LogOut, 
+  Camera,
+  CheckCircle2,
+  Sparkles
 } from 'lucide-react-native';
-
-type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function SettingsScreen() {
-  const navigation = useNavigation<NavigationProp>();
-  const {user, selectedShopId, setSelectedShop, logout, isOwner} = useAuthStore();
-
-  const selectedShop = user?.shops?.find(s => s.id === selectedShopId);
+  const { user, logout } = useAuthStore();
 
   const handleLogout = () => {
-    Alert.alert('Logout', 'Are you sure you want to logout?', [
-      {text: 'Cancel', style: 'cancel'},
-      {text: 'Logout', style: 'destructive', onPress: () => logout()},
+    Alert.alert('Session Closure', 'Are you sure you want to exit the admin console?', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Logout', style: 'destructive', onPress: logout },
     ]);
   };
 
-  const handleShopSelect = (shopId: string) => {
-    setSelectedShop(shopId);
-    Alert.alert('Success', 'Shop changed successfully');
-  };
+  const SettingItem = ({ icon: Icon, title, subtitle, value, onPress, color = '#64748B' }: any) => (
+    <TouchableOpacity style={styles.item} onPress={onPress}>
+      <View style={styles.itemMain}>
+        <View style={[styles.itemIcon, { backgroundColor: `${color}10` }]}>
+          <Icon size={20} color={color} />
+        </View>
+        <View>
+          <Text style={styles.itemTitle}>{title}</Text>
+          {subtitle && <Text style={styles.itemSubtitle}>{subtitle}</Text>}
+        </View>
+      </View>
+      {value ? (
+        <View style={styles.valueWrap}>
+          <Text style={styles.valueText}>{value}</Text>
+          <ChevronRight size={16} color="#CBD5E1" />
+        </View>
+      ) : (
+        <ChevronRight size={18} color="#CBD5E1" />
+      )}
+    </TouchableOpacity>
+  );
 
   return (
     <View style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <Text style={styles.headerTitle}>Profile</Text>
-      </View>
+      <StatusBar barStyle="dark-content" />
+      <SafeAreaView style={{ flex: 1 }} edges={['top']}>
+        
+        <View style={styles.header}>
+          <Text style={styles.title}>System Settings</Text>
+          <Text style={styles.subtitle}>Configure permissions & preferences</Text>
+        </View>
 
-      <ScrollView showsVerticalScrollIndicator={false}>
-        {/* Profile Section */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Profile</Text>
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
+          
           <View style={styles.profileCard}>
-            <View style={styles.avatar}>
-              <Text style={styles.avatarText}>
-                {(user?.name || 'A').charAt(0).toUpperCase()}
-              </Text>
-            </View>
-            <View style={styles.profileInfo}>
-              <Text style={styles.profileName}>{user?.name}</Text>
-              <Text style={styles.profileEmail}>{user?.email}</Text>
-              <View style={styles.roleBadge}>
-                <Text style={styles.roleText}>
-                  {user?.role === 'SUPER_ADMIN'
-                    ? 'Super Admin'
-                    : user?.role === 'OWNER'
-                    ? 'Shop Owner'
-                    : 'Staff'}
-                </Text>
+            <View style={styles.profileTop}>
+              <View style={styles.avatar}>
+                <User size={32} color={Colors.primary} />
+                <View style={styles.avatarBadge}>
+                  <Camera size={10} color="#FFF" />
+                </View>
+              </View>
+              <View style={styles.profileMeta}>
+                <View style={styles.nameRow}>
+                  <Text style={styles.profileName}>{user?.name || 'Admin Owner'}</Text>
+                  <CheckCircle2 size={16} color="#10B981" />
+                </View>
+                <Text style={styles.profileStatus}>Verified Business Owner • Shop ID: 7721</Text>
               </View>
             </View>
+            <TouchableOpacity style={styles.editBtn}>
+              <Text style={styles.editBtnText}>Edit Profile</Text>
+            </TouchableOpacity>
           </View>
-        </View>
 
-        {/* Current Shop */}
-        {selectedShop && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Current Shop</Text>
-            <View style={styles.shopCard}>
-              <View style={styles.shopInfo}>
-                <Text style={styles.shopName}>{selectedShop.name}</Text>
-                <Text style={styles.shopStatus}>Active</Text>
-              </View>
-              <TouchableOpacity
-                style={styles.shopSettingsButton}
-                onPress={() =>
-                  navigation.navigate('ShopSettings', {
-                    shopId: selectedShopId || '',
-                  })
-                }>
-                <Text style={styles.shopSettingsText}>Manage</Text>
-              </TouchableOpacity>
+            <Text style={styles.sectionLabel}>EXPERIENCE</Text>
+            <View style={styles.card}>
+              <SettingItem 
+                icon={Globe} 
+                title="Language" 
+                value="English" 
+                color="#3B82F6" 
+              />
+              <View style={styles.divider} />
+              <SettingItem 
+                icon={Moon} 
+                title="Appearance" 
+                value="System (Dark)" 
+                color="#8B5CF6" 
+              />
             </View>
           </View>
-        )}
 
-        {/* Switch Shop (if multiple) */}
-        {user?.shops && user.shops.length > 1 && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Switch Shop</Text>
-            {user.shops.map(shop => (
-              <TouchableOpacity
-                key={shop.id}
-                style={[
-                  styles.shopOption,
-                  shop.id === selectedShopId && styles.shopOptionSelected,
-                ]}
-                onPress={() => handleShopSelect(shop.id)}>
-                <Text
-                  style={[
-                    styles.shopOptionName,
-                    shop.id === selectedShopId && styles.shopOptionNameSelected,
-                  ]}>
-                  {shop.name}
-                </Text>
-                {shop.id === selectedShopId && (
-                  <CircleCheck size={18} color="#4F46E5" />
-                )}
-              </TouchableOpacity>
-            ))}
+            <Text style={styles.sectionLabel}>GROWTH & SUPPORT</Text>
+            <View style={styles.card}>
+              <SettingItem 
+                icon={Share2} 
+                title="Refer" 
+                subtitle="Invite another business to Overline"
+                color="#0EA5E9" 
+              />
+              <View style={styles.divider} />
+              <SettingItem 
+                icon={Info} 
+                title="About Us" 
+                color="#F59E0B" 
+              />
+            </View>
           </View>
-        )}
 
-        {/* Shop Settings */}
-        {isOwner && (
           <View style={styles.section}>
-            <Text style={styles.sectionTitle}>Shop Management</Text>
-            <TouchableOpacity
-              style={styles.menuItem}
-              onPress={() =>
-                navigation.navigate('ShopSettings', {shopId: selectedShopId || ''})
-              }>
-              <Store size={20} color="#6B7280" style={styles.menuIcon} />
-              <Text style={styles.menuText}>Shop Details</Text>
-              <ChevronRight size={18} color="#9CA3AF" />
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.menuItem}
-              onPress={() =>
-                navigation.navigate('WorkingHours', {shopId: selectedShopId || ''})
-              }>
-              <Clock3 size={20} color="#6B7280" style={styles.menuIcon} />
-              <Text style={styles.menuText}>Working Hours</Text>
-              <ChevronRight size={18} color="#9CA3AF" />
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.menuItem}
-              onPress={() =>
-                navigation.navigate('StaffManagement', {
-                  shopId: selectedShopId || '',
-                })
-              }>
-              <Users size={20} color="#6B7280" style={styles.menuIcon} />
-              <Text style={styles.menuText}>Staff Management</Text>
-              <ChevronRight size={18} color="#9CA3AF" />
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.menuItem}
-              onPress={() =>
-                navigation.navigate('Analytics', {
-                  shopId: selectedShopId || '',
-                })
-              }>
-              <ChartColumn size={20} color="#6B7280" style={styles.menuIcon} />
-              <Text style={styles.menuText}>Analytics</Text>
-              <ChevronRight size={18} color="#9CA3AF" />
-            </TouchableOpacity>
-            <TouchableOpacity
-              style={styles.menuItem}
-              onPress={() =>
-                navigation.navigate('PayoutDetails', {
-                  shopId: selectedShopId || '',
-                })
-              }>
-              <CreditCard size={20} color="#6B7280" style={styles.menuIcon} />
-              <Text style={styles.menuText}>Payout Details</Text>
-              <ChevronRight size={18} color="#9CA3AF" />
-            </TouchableOpacity>
+            <Text style={styles.sectionLabel}>LEGAL & SECURITY</Text>
+            <View style={styles.card}>
+              <SettingItem 
+                icon={ShieldAlert} 
+                title="Privacy & Terms" 
+                color="#10B981" 
+              />
+            </View>
           </View>
-        )}
 
-        {/* App Settings */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>App</Text>
-          <TouchableOpacity style={styles.menuItem}>
-            <Bell size={20} color="#6B7280" style={styles.menuIcon} />
-            <Text style={styles.menuText}>Notifications</Text>
-            <ChevronRight size={18} color="#9CA3AF" />
+          <TouchableOpacity style={styles.logoutBtn} onPress={handleLogout}>
+            <LogOut size={20} color="#F43F5E" />
+            <Text style={styles.logoutText}>Sign Out of Console</Text>
           </TouchableOpacity>
-          <TouchableOpacity style={styles.menuItem}>
-            <CircleHelp size={20} color="#6B7280" style={styles.menuIcon} />
-            <Text style={styles.menuText}>Help & Support</Text>
-            <ChevronRight size={18} color="#9CA3AF" />
-          </TouchableOpacity>
-          <TouchableOpacity style={styles.menuItem}>
-            <FileText size={20} color="#6B7280" style={styles.menuIcon} />
-            <Text style={styles.menuText}>Terms & Privacy</Text>
-            <ChevronRight size={18} color="#9CA3AF" />
-          </TouchableOpacity>
-        </View>
 
-        {/* Logout */}
-        <TouchableOpacity style={styles.logoutButton} onPress={handleLogout}>
-          <Text style={styles.logoutText}>Logout</Text>
-        </TouchableOpacity>
+          <View style={styles.footer}>
+            <Sparkles size={20} color="#CBD5E1" strokeWidth={1} />
+            <Text style={styles.footerText}>Overline Admin Portal v2.4.0 (Dev 777)</Text>
+          </View>
 
-        <Text style={styles.version}>Version 1.0.0</Text>
-
-        <View style={{height: 40}} />
-      </ScrollView>
+          <View style={{ height: 60 }} />
+        </ScrollView>
+      </SafeAreaView>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#F9FAFB',
-  },
-  header: {
-    backgroundColor: '#fff',
-    paddingTop: 60,
-    paddingHorizontal: 20,
-    paddingBottom: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#E5E7EB',
-  },
-  headerTitle: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#111827',
-  },
-  section: {
-    marginTop: 16,
-  },
-  sectionTitle: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: '#6B7280',
-    paddingHorizontal: 20,
-    marginBottom: 8,
-    textTransform: 'uppercase',
-  },
-  profileCard: {
-    backgroundColor: '#fff',
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: 20,
-  },
-  avatar: {
-    width: 60,
-    height: 60,
-    borderRadius: 30,
-    backgroundColor: '#4F46E5',
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: 16,
-  },
-  avatarText: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#fff',
-  },
-  profileInfo: {
-    flex: 1,
-  },
-  profileName: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#111827',
-    marginBottom: 2,
-  },
-  profileEmail: {
-    fontSize: 14,
-    color: '#6B7280',
-    marginBottom: 8,
-  },
-  roleBadge: {
-    backgroundColor: '#EEF2FF',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
-    alignSelf: 'flex-start',
-  },
-  roleText: {
-    fontSize: 12,
-    color: '#4F46E5',
-    fontWeight: '500',
-  },
-  shopCard: {
-    backgroundColor: '#fff',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    padding: 16,
-  },
-  shopInfo: {
-    flex: 1,
-  },
-  shopName: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#111827',
-    marginBottom: 4,
-  },
-  shopStatus: {
-    fontSize: 13,
-    color: '#10B981',
-  },
-  shopSettingsButton: {
-    backgroundColor: '#F3F4F6',
-    paddingHorizontal: 16,
-    paddingVertical: 8,
-    borderRadius: 8,
-  },
-  shopSettingsText: {
-    color: '#4B5563',
-    fontWeight: '500',
-  },
-  shopOption: {
-    backgroundColor: '#fff',
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    padding: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
-  },
-  shopOptionSelected: {
-    backgroundColor: '#EEF2FF',
-  },
-  shopOptionName: {
-    fontSize: 15,
-    color: '#111827',
-  },
-  shopOptionNameSelected: {
-    fontWeight: '600',
-    color: '#4F46E5',
-  },
-  menuItem: {
-    backgroundColor: '#fff',
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    borderBottomWidth: 1,
-    borderBottomColor: '#F3F4F6',
-  },
-  menuIcon: {
-    marginRight: 12,
-    width: 28,
-  },
-  menuText: {
-    flex: 1,
-    fontSize: 15,
-    color: '#111827',
-  },
-  logoutButton: {
-    marginHorizontal: 20,
-    marginTop: 24,
-    paddingVertical: 16,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: '#EF4444',
-    alignItems: 'center',
-  },
-  logoutText: {
-    color: '#EF4444',
-    fontSize: 16,
-    fontWeight: '500',
-  },
-  version: {
-    textAlign: 'center',
-    color: '#9CA3AF',
-    fontSize: 12,
-    marginTop: 24,
-  },
+  container: { flex: 1, backgroundColor: '#F8FAFC' },
+  header: { padding: 24, paddingBottom: 16 },
+  title: { fontSize: 24, fontWeight: '900', color: '#0F172A' },
+  subtitle: { fontSize: 13, color: '#64748B', fontWeight: '600', marginTop: 2 },
+  scrollContent: { paddingHorizontal: 24, paddingBottom: 40 },
+  profileCard: { backgroundColor: '#FFF', borderRadius: 32, padding: 24, marginBottom: 32, borderWidth: 1, borderColor: '#F1F5F9', ...Shadows.sm },
+  profileTop: { flexDirection: 'row', alignItems: 'center', marginBottom: 20 },
+  avatar: { width: 64, height: 64, borderRadius: 24, backgroundColor: Colors.primary100, alignItems: 'center', justifyContent: 'center' },
+  avatarBadge: { position: 'absolute', bottom: -2, right: -2, backgroundColor: Colors.primary, width: 22, height: 22, borderRadius: 11, alignItems: 'center', justifyContent: 'center', borderWidth: 2, borderColor: '#FFF' },
+  profileMeta: { marginLeft: 20 },
+  nameRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  profileName: { fontSize: 18, fontWeight: '900', color: '#1E293B' },
+  profileStatus: { fontSize: 11, color: '#94A3B8', fontWeight: '700', marginTop: 4 },
+  editBtn: { backgroundColor: '#F8FAFC', height: 44, borderRadius: 14, alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: '#F1F5F9' },
+  editBtnText: { fontSize: 13, fontWeight: '800', color: '#1E293B' },
+  section: { marginBottom: 32 },
+  sectionLabel: { fontSize: 10, fontWeight: '900', color: '#94A3B8', letterSpacing: 1.5, marginBottom: 16, marginLeft: 12 },
+  card: { backgroundColor: '#FFF', borderRadius: 24, borderWidth: 1, borderColor: '#F1F5F9', ...Shadows.sm },
+  item: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', padding: 16 },
+  itemMain: { flexDirection: 'row', alignItems: 'center', gap: 16 },
+  itemIcon: { width: 44, height: 44, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
+  itemTitle: { fontSize: 15, fontWeight: '800', color: '#1E293B' },
+  itemSubtitle: { fontSize: 11, color: '#94A3B8', fontWeight: '600', marginTop: 2 },
+  valueWrap: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  valueText: { fontSize: 13, color: '#64748B', fontWeight: '700' },
+  divider: { height: 1, backgroundColor: '#F1F5F9', marginHorizontal: 16 },
+  logoutBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 12, backgroundColor: '#FFF1F2', height: 60, borderRadius: 20, marginBottom: 40 },
+  logoutText: { color: '#F43F5E', fontSize: 15, fontWeight: '900', letterSpacing: 0.5 },
+  footer: { alignItems: 'center', gap: 12 },
+  footerText: { fontSize: 11, color: '#CBD5E1', fontWeight: '800', letterSpacing: 1 },
 });

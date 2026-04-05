@@ -1,4 +1,4 @@
-import React, {useEffect, useState} from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -8,38 +8,43 @@ import {
   TouchableOpacity,
   Alert,
   ActivityIndicator,
+  Switch,
+  Platform,
+  StatusBar,
 } from 'react-native';
-import {useQuery, useMutation, useQueryClient} from '@tanstack/react-query';
-import {useRoute, RouteProp} from '@react-navigation/native';
-import {RootStackParamList} from '../../types';
-import {shopApi} from '../../api/client';
-import {Colors, FontSize, FontWeight, Radius, Spacing} from '../../theme';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useRoute, RouteProp } from '@react-navigation/native';
+import { RootStackParamList } from '../../types';
+import { shopApi } from '../../api/client';
+import { Colors, Shadows, Spacing, Radius } from '../../theme';
+import { 
+  CreditCard, 
+  Wallet, 
+  CircleDollarSign, 
+  Ticket, 
+  Settings2, 
+  ChevronRight,
+  Info,
+  ShieldCheck
+} from 'lucide-react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 type RouteProps = RouteProp<RootStackParamList, 'PayoutDetails'>;
-
-type PayoutForm = {
-  accountHolderName: string;
-  bankName: string;
-  accountNumber: string;
-  ifscCode: string;
-  upiId: string;
-};
-
-const EMPTY_FORM: PayoutForm = {
-  accountHolderName: '',
-  bankName: '',
-  accountNumber: '',
-  ifscCode: '',
-  upiId: '',
-};
 
 export default function PayoutDetailsScreen() {
   const route = useRoute<RouteProps>();
   const queryClient = useQueryClient();
-  const {shopId} = route.params;
-  const [form, setForm] = useState<PayoutForm>(EMPTY_FORM);
+  const { shopId } = route.params;
 
-  const {data, isLoading} = useQuery({
+  const [settings, setSettings] = useState({
+    upiId: '',
+    allowCash: true,
+    promoCode: 'OFF10',
+    extraCharge: '5%',
+    platformFeeVisible: true
+  });
+
+  const { data, isLoading } = useQuery({
     queryKey: ['payoutDetails', shopId],
     queryFn: () => shopApi.getPayoutDetails(shopId).then(res => res.data),
     enabled: !!shopId,
@@ -47,186 +52,152 @@ export default function PayoutDetailsScreen() {
 
   useEffect(() => {
     if (data?.payoutDetails) {
-      setForm({
-        accountHolderName: data.payoutDetails.accountHolderName || '',
-        bankName: data.payoutDetails.bankName || '',
-        accountNumber: data.payoutDetails.accountNumber || '',
-        ifscCode: data.payoutDetails.ifscCode || '',
+      setSettings(prev => ({
+        ...prev,
         upiId: data.payoutDetails.upiId || '',
-      });
+      }));
     }
   }, [data]);
 
   const updateMutation = useMutation({
-    mutationFn: (payload: PayoutForm) => shopApi.updatePayoutDetails(shopId, payload),
+    mutationFn: (payload: any) => shopApi.updatePayoutDetails(shopId, payload),
     onSuccess: () => {
-      queryClient.invalidateQueries({queryKey: ['payoutDetails', shopId]});
-      queryClient.invalidateQueries({queryKey: ['shopSettings', shopId]});
-      Alert.alert('Saved', 'Payout details updated successfully.');
-    },
-    onError: (error: any) => {
-      Alert.alert('Failed', error?.response?.data?.message || 'Could not save payout details.');
+      queryClient.invalidateQueries({ queryKey: ['payoutDetails', shopId] });
+      Alert.alert('Financial Registry Updated', 'Your payment preferences have been securely synchronized.');
     },
   });
 
-  const onSave = () => {
-    if (!form.upiId.trim() && (!form.accountNumber.trim() || !form.ifscCode.trim())) {
-      Alert.alert(
-        'Incomplete details',
-        'Add either a valid UPI ID or both bank account number and IFSC code.',
-      );
-      return;
-    }
-
-    updateMutation.mutate({
-      accountHolderName: form.accountHolderName.trim(),
-      bankName: form.bankName.trim(),
-      accountNumber: form.accountNumber.trim(),
-      ifscCode: form.ifscCode.trim().toUpperCase(),
-      upiId: form.upiId.trim(),
-    });
-  };
-
   if (isLoading) {
     return (
-      <View style={styles.loadingContainer}>
+      <View style={styles.centered}>
         <ActivityIndicator size="large" color={Colors.primary} />
       </View>
     );
   }
 
   return (
-    <ScrollView style={styles.container} contentContainerStyle={styles.content}>
-      <Text style={styles.headerTitle}>Owner payout details</Text>
-      <Text style={styles.headerSubtitle}>
-        Set where shop earnings should be transferred. You can keep both bank and UPI.
-      </Text>
+    <View style={styles.container}>
+      <StatusBar barStyle="dark-content" />
+      <SafeAreaView style={{ flex: 1 }} edges={['top']}>
+        
+        <View style={styles.topNav}>
+          <View>
+            <Text style={styles.navTitle}>Payments</Text>
+            <Text style={styles.navSubtitle}>Configure revenue receiving channels</Text>
+          </View>
+          <TouchableOpacity style={styles.saveBtn} onPress={() => updateMutation.mutate(settings)}>
+            <Text style={styles.saveBtnText}>SYNC</Text>
+          </TouchableOpacity>
+        </View>
 
-      <View style={styles.card}>
-        <Text style={styles.sectionTitle}>Bank Transfer</Text>
+        <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
+          
+          <View style={styles.section}>
+            <Text style={styles.sectionLabel}>DIGITAL SETTLEMENTS</Text>
+            <View style={styles.inputCard}>
+              <View style={styles.inputRow}>
+                <Wallet size={20} color={Colors.primary} />
+                <TextInput 
+                  style={styles.input} 
+                  placeholder="UPI ID (e.g. shopname@okicici)" 
+                  value={settings.upiId}
+                  onChangeText={t => setSettings({...settings, upiId: t})}
+                />
+              </View>
+              <View style={styles.cardInfo}>
+                <ShieldCheck size={12} color="#10B981" />
+                <Text style={styles.infoText}>Direct settlements to this ID after platform fee deduction.</Text>
+              </View>
+            </View>
+          </View>
 
-        <TextInput
-          style={styles.input}
-          placeholder="Account holder name"
-          value={form.accountHolderName}
-          onChangeText={value => setForm(current => ({...current, accountHolderName: value}))}
-          placeholderTextColor={Colors.gray400}
-        />
-        <TextInput
-          style={styles.input}
-          placeholder="Bank name"
-          value={form.bankName}
-          onChangeText={value => setForm(current => ({...current, bankName: value}))}
-          placeholderTextColor={Colors.gray400}
-        />
-        <TextInput
-          style={styles.input}
-          placeholder="Account number"
-          value={form.accountNumber}
-          onChangeText={value => setForm(current => ({...current, accountNumber: value}))}
-          keyboardType="number-pad"
-          placeholderTextColor={Colors.gray400}
-        />
-        <TextInput
-          style={styles.input}
-          placeholder="IFSC code"
-          value={form.ifscCode}
-          onChangeText={value => setForm(current => ({...current, ifscCode: value}))}
-          autoCapitalize="characters"
-          placeholderTextColor={Colors.gray400}
-        />
-      </View>
+          <View style={styles.section}>
+            <Text style={styles.sectionLabel}>SHOP FLOOR PAYMENTS</Text>
+            <View style={styles.toggleCard}>
+              <View style={styles.toggleInfo}>
+                <CircleDollarSign size={20} color="#F59E0B" />
+                <View style={{ marginLeft: 16 }}>
+                  <Text style={styles.toggleTitle}>Cash on Shop</Text>
+                  <Text style={styles.toggleSubtitle}>Allow customers to pay at your counter</Text>
+                </View>
+              </View>
+              <Switch 
+                value={settings.allowCash} 
+                onValueChange={v => setSettings({...settings, allowCash: v})}
+                trackColor={{ false: '#CBD5E1', true: '#10B981' }}
+              />
+            </View>
+          </View>
 
-      <View style={styles.card}>
-        <Text style={styles.sectionTitle}>UPI</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="example@bank"
-          value={form.upiId}
-          onChangeText={value => setForm(current => ({...current, upiId: value}))}
-          autoCapitalize="none"
-          placeholderTextColor={Colors.gray400}
-        />
-      </View>
+          <View style={styles.section}>
+            <Text style={styles.sectionLabel}>REVENUE OPTIMIZATION</Text>
+            
+            <TouchableOpacity style={styles.configItem}>
+              <View style={styles.configMain}>
+                <View style={[styles.configIcon, { backgroundColor: '#F0F9FF' }]}>
+                  <Ticket size={20} color="#0EA5E9" />
+                </View>
+                <View>
+                  <Text style={styles.configTitle}>Active Promo Code</Text>
+                  <Text style={styles.configValue}>{settings.promoCode}</Text>
+                </View>
+              </View>
+              <ChevronRight size={18} color="#CBD5E1" />
+            </TouchableOpacity>
 
-      <TouchableOpacity
-        style={[styles.saveButton, updateMutation.isPending && styles.saveButtonDisabled]}
-        onPress={onSave}
-        disabled={updateMutation.isPending}>
-        {updateMutation.isPending ? (
-          <ActivityIndicator color={Colors.white} />
-        ) : (
-          <Text style={styles.saveButtonText}>Save Payout Details</Text>
-        )}
-      </TouchableOpacity>
-    </ScrollView>
+            <TouchableOpacity style={styles.configItem}>
+              <View style={styles.configMain}>
+                <View style={[styles.configIcon, { backgroundColor: '#FDF2F8' }]}>
+                  <Settings2 size={20} color="#DB2777" />
+                </View>
+                <View>
+                  <Text style={styles.configTitle}>Other Service Charges</Text>
+                  <Text style={styles.configValue}>{settings.extraCharge} handling fee</Text>
+                </View>
+              </View>
+              <ChevronRight size={18} color="#CBD5E1" />
+            </TouchableOpacity>
+          </View>
+
+          <View style={styles.notice}>
+            <Info size={16} color="#64748B" />
+            <Text style={styles.noticeText}>
+              Platform fees are automatically calculated per booking. Detailed breakdown available in Earnings Analysis.
+            </Text>
+          </View>
+
+          <View style={{ height: 40 }} />
+        </ScrollView>
+      </SafeAreaView>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: Colors.background,
-  },
-  content: {
-    padding: Spacing.xl,
-    gap: Spacing.md,
-  },
-  loadingContainer: {
-    flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: Colors.background,
-  },
-  headerTitle: {
-    color: Colors.gray900,
-    fontSize: FontSize.h2,
-    fontWeight: FontWeight.bold,
-    marginBottom: 4,
-  },
-  headerSubtitle: {
-    color: Colors.gray500,
-    fontSize: FontSize.body,
-    lineHeight: 20,
-    marginBottom: Spacing.sm,
-  },
-  card: {
-    backgroundColor: Colors.surface,
-    borderRadius: Radius.lg,
-    borderWidth: 1,
-    borderColor: Colors.border,
-    padding: Spacing.lg,
-    gap: Spacing.sm,
-  },
-  sectionTitle: {
-    color: Colors.gray800,
-    fontSize: FontSize.h3,
-    fontWeight: FontWeight.semibold,
-    marginBottom: 4,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: Colors.border,
-    borderRadius: Radius.md,
-    paddingHorizontal: Spacing.md,
-    paddingVertical: 12,
-    fontSize: FontSize.body,
-    color: Colors.gray900,
-    backgroundColor: Colors.white,
-  },
-  saveButton: {
-    marginTop: Spacing.sm,
-    backgroundColor: Colors.primary,
-    borderRadius: Radius.md,
-    paddingVertical: 14,
-    alignItems: 'center',
-  },
-  saveButtonDisabled: {
-    opacity: 0.65,
-  },
-  saveButtonText: {
-    color: Colors.white,
-    fontSize: FontSize.body,
-    fontWeight: FontWeight.semibold,
-  },
+  container: { flex: 1, backgroundColor: '#F8FAFC' },
+  centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
+  topNav: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 24 },
+  navTitle: { fontSize: 24, fontWeight: '900', color: '#0F172A' },
+  navSubtitle: { fontSize: 13, color: '#64748B', fontWeight: '600', marginTop: 2 },
+  saveBtn: { backgroundColor: Colors.primary, paddingHorizontal: 24, paddingVertical: 12, borderRadius: 16, ...Shadows.glow },
+  saveBtnText: { color: '#FFF', fontSize: 12, fontWeight: '900', letterSpacing: 1 },
+  scrollContent: { paddingHorizontal: 24, paddingBottom: 40 },
+  section: { marginBottom: 32 },
+  sectionLabel: { fontSize: 10, fontWeight: '900', color: '#94A3B8', letterSpacing: 1.5, marginBottom: 16, marginLeft: 4 },
+  inputCard: { backgroundColor: '#FFF', borderRadius: 24, padding: 20, borderWidth: 1, borderColor: '#F1F5F9', ...Shadows.sm },
+  inputRow: { flexDirection: 'row', alignItems: 'center', height: 40 },
+  input: { flex: 1, marginLeft: 16, fontSize: 15, fontWeight: '700', color: '#1E293B' },
+  cardInfo: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: 16, paddingTop: 16, borderTopWidth: 1, borderTopColor: '#F1F5F9' },
+  infoText: { fontSize: 11, color: '#64748B', fontWeight: '600' },
+  toggleCard: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#FFF', padding: 20, borderRadius: 24, borderWidth: 1, borderColor: '#F1F5F9', ...Shadows.sm },
+  toggleInfo: { flexDirection: 'row', alignItems: 'center' },
+  toggleTitle: { fontSize: 15, fontWeight: '800', color: '#1E293B' },
+  toggleSubtitle: { fontSize: 12, color: '#94A3B8', fontWeight: '600', marginTop: 2 },
+  configItem: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#FFF', padding: 16, borderRadius: 24, marginBottom: 12, borderWidth: 1, borderColor: '#F1F5F9', ...Shadows.sm },
+  configMain: { flexDirection: 'row', alignItems: 'center', gap: 16 },
+  configIcon: { width: 44, height: 44, borderRadius: 14, alignItems: 'center', justifyContent: 'center' },
+  configTitle: { fontSize: 13, fontWeight: '700', color: '#64748B' },
+  configValue: { fontSize: 15, fontWeight: '800', color: '#1E293B', marginTop: 2 },
+  notice: { flexDirection: 'row', gap: 12, backgroundColor: '#F1F5F9', padding: 20, borderRadius: 24 },
+  noticeText: { flex: 1, fontSize: 12, color: '#64748B', lineHeight: 18, fontWeight: '600' },
 });
