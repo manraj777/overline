@@ -125,25 +125,12 @@ export class OtpService {
   }
 
   /** Verify OTP then issue JWT tokens (phone-OTP login flow) */
-  async loginWithOtp(phone: string, otp: string): Promise<TokenResponse> {
+  async loginWithOtp(phone: string, otp: string, requestedRole?: string): Promise<TokenResponse> {
     const result = await this.verifyOtp(phone, otp, 'LOGIN');
     if (!result.verified) throw new BadRequestException('OTP verification failed');
 
-    let user = await this.prisma.user.findUnique({ where: { phone } });
-    if (!user) {
-      user = await this.prisma.user.create({
-        data: {
-          phone,
-          name: `User ${phone.slice(-4)}`,
-          email: `${phone.slice(3)}@phone.overline.app`,
-          authProvider: 'phone',
-          isPhoneVerified: true,
-        },
-      });
-      this.logger.log(`Created new user via OTP login: ${user.id}`);
-    }
-
-    return this.authService.generateTokens(user);
+    // Delegate to AuthService which handles role enforcement
+    return this.authService.verifyPhoneOtp(phone, otp, requestedRole);
   }
 
   /** Validate Indian phone number (+91XXXXXXXXXX / 91XXXXXXXXXX / 10 digits) */

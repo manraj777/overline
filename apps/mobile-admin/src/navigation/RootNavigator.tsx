@@ -221,7 +221,13 @@ export default function RootNavigator() {
     pendingOtpVerification,
     otpPhone,
     isStaff,
+    isOwner,
+    user,
   } = useAuthStore();
+
+  // Owner has no shops yet → needs the shop setup wizard
+  const needsShopSetup =
+    isAuthenticated && isOwner && (!user?.shops || user.shops.length === 0);
 
   if (isLoading) {
     return (
@@ -237,7 +243,14 @@ export default function RootNavigator() {
     <NavigationContainer theme={AppTheme}>
       <Stack.Navigator screenOptions={{headerShown: false}}>
         {!isAuthenticated && !pendingOtpVerification ? (
-          <Stack.Screen name="Login" component={LoginScreen} />
+          <>
+            <Stack.Screen name="Login" component={LoginScreen} />
+            <Stack.Screen
+              name="OtpVerify"
+              component={OtpVerifyScreen}
+              options={{headerShown: true, title: 'Verify Phone'}}
+            />
+          </>
         ) : pendingOtpVerification && otpPhone ? (
           <Stack.Screen
             name="OtpVerify"
@@ -247,7 +260,15 @@ export default function RootNavigator() {
           />
         ) : (
           <>
-            <Stack.Screen name="Main" component={isStaff ? StaffTabs : OwnerTabs} />
+            <Stack.Screen
+              name="Main"
+              component={isStaff ? StaffTabs : OwnerTabs}
+            />
+            <Stack.Screen
+              name="OtpVerify"
+              component={OtpVerifyScreen}
+              options={{headerShown: true, title: 'Verify Phone'}}
+            />
             <Stack.Screen
               name="BookingDetail"
               component={BookingDetailScreen}

@@ -1,6 +1,6 @@
 import { Controller, Post, Body, HttpCode, HttpStatus } from '@nestjs/common';
 import { OtpService, OtpPurpose } from './otp.service';
-import { IsString, IsIn, IsNotEmpty, Matches } from 'class-validator';
+import { IsString, IsIn, IsNotEmpty, IsOptional, Matches } from 'class-validator';
 
 class SendOtpDto {
   @IsString()
@@ -28,6 +28,11 @@ class VerifyOtpDto {
   @IsString()
   @IsIn(['LOGIN', 'REGISTER', 'VERIFY_PHONE'])
   purpose: OtpPurpose;
+
+  @IsOptional()
+  @IsString()
+  @IsIn(['OWNER', 'STAFF', 'USER', 'SUPER_ADMIN'])
+  requestedRole?: string;
 }
 
 @Controller('otp')
@@ -51,6 +56,10 @@ export class OtpController {
   @HttpCode(HttpStatus.OK)
   async verifyOtp(@Body() dto: VerifyOtpDto) {
     const normalizedPhone = this.otpService.normalizePhone(dto.phone);
+    // If purpose is LOGIN, delegate to loginWithOtp for token generation + role enforcement
+    if (dto.purpose === 'LOGIN') {
+      return this.otpService.loginWithOtp(normalizedPhone, dto.otp, dto.requestedRole);
+    }
     return this.otpService.verifyOtp(normalizedPhone, dto.otp, dto.purpose);
   }
 
@@ -61,6 +70,6 @@ export class OtpController {
   @HttpCode(HttpStatus.OK)
   async loginWithOtp(@Body() dto: VerifyOtpDto) {
     const normalizedPhone = this.otpService.normalizePhone(dto.phone);
-    return this.otpService.loginWithOtp(normalizedPhone, dto.otp);
+    return this.otpService.loginWithOtp(normalizedPhone, dto.otp, dto.requestedRole);
   }
 }
