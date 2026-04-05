@@ -75,9 +75,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           {/* Left: Logo & Nav */}
           <div className="flex items-center gap-8">
             <Link href="/" className="flex items-center gap-2 group">
-              <span className="text-xl font-black tracking-tighter text-primary">
-                Overline Portal
-              </span>
+              <img src="/overline-logo.png" alt="Overline" className="w-8 h-8 rounded-lg object-cover" />
+              <span className="text-xl font-black tracking-tighter text-primary">Overline</span>
             </Link>
 
             {/* Desktop Navigation */}
@@ -102,7 +101,11 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           {/* Right: Actions */}
           <div className="flex items-center gap-4">
             {/* Notifications */}
-            <button className="p-2 text-on-surface-variant hover:text-primary rounded-full hover:bg-surface-container-low transition-all active:scale-90">
+            <button
+              onClick={() => router.push('/profile/notifications')}
+              aria-label="Open notifications"
+              className="p-2 text-on-surface-variant hover:text-primary rounded-full hover:bg-surface-container-low transition-all active:scale-90"
+            >
               <Bell className="w-5 h-5" />
             </button>
 

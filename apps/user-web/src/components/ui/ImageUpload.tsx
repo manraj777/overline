@@ -102,9 +102,19 @@ export const ImageUpload: React.FC<ImageUploadProps> = ({
           disabled={isUploading}
           className="rounded-lg border border-gray-300 px-3 py-1.5 text-sm font-medium hover:bg-gray-50 disabled:cursor-not-allowed disabled:opacity-50"
         >
-          {isUploading ? 'Uploading...' : label}
+          {isUploading ? 'Uploading...' : preview ? 'Change Photo' : label}
         </button>
-        <p className="mt-1 text-xs text-gray-500">{hint}</p>
+        {preview ? (
+          <button
+            type="button"
+            onClick={() => setPreview(null)}
+            className="mt-1 text-xs font-medium text-gray-500 hover:text-gray-700"
+          >
+            Remove Photo
+          </button>
+        ) : (
+          <p className="mt-1 text-xs text-gray-500">{hint}</p>
+        )}
         {error && <p className="mt-1 text-xs text-red-500">{error}</p>}
       </div>
 

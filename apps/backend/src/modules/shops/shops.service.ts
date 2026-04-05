@@ -28,6 +28,8 @@ export class ShopsService {
 
   async search(dto: SearchShopsDto) {
     const { query, city, type, page = 1, limit = 20 } = dto;
+    const minRating = dto.minRating !== undefined ? Number(dto.minRating) : undefined;
+    const maxPrice = dto.maxPrice !== undefined ? Number(dto.maxPrice) : undefined;
 
     // Explicitly cast coordinates intercepting from the URL so JS bounding box math
     // doesn't accidentally do string-concatenation and crash the Prisma Driver
@@ -58,6 +60,26 @@ export class ShopsService {
     // Type filter (tenant type)
     if (type) {
       andFilters.push({ tenant: { type } });
+    }
+
+    if (minRating !== undefined) {
+      andFilters.push({
+        OR: [
+          { googleRating: { gte: minRating } },
+          { googleRating: null },
+        ],
+      });
+    }
+
+    if (maxPrice !== undefined) {
+      andFilters.push({
+        services: {
+          some: {
+            isActive: true,
+            price: { lte: maxPrice },
+          },
+        },
+      });
     }
 
     // If location is provided, keep geo-filtered shops and include shops that do not

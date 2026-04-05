@@ -50,6 +50,21 @@ export default function ShopDetailScreen() {
     .filter((s: Service) => selectedServices.includes(s.id))
     .reduce((sum: number, s: Service) => sum + s.durationMinutes, 0);
 
+  const servicesByCategory = React.useMemo(() => {
+    const grouped = new Map<string, Service[]>();
+    const source = (shop?.services || []) as Service[];
+
+    source.forEach((service) => {
+      const category = (service.category || 'Popular').trim();
+      if (!grouped.has(category)) {
+        grouped.set(category, []);
+      }
+      grouped.get(category)!.push(service);
+    });
+
+    return Array.from(grouped.entries()).map(([category, services]) => ({ category, services }));
+  }, [shop?.services]);
+
   if (isLoading) {
     return (
       <View style={styles.loadingContainer}>
@@ -147,48 +162,53 @@ export default function ShopDetailScreen() {
             Pick one or more services for your appointment
           </Text>
 
-          {(shop.services || []).map((service: Service) => {
-            const isSelected = selectedServices.includes(service.id);
-            return (
-              <TouchableOpacity
-                key={service.id}
-                style={[
-                  styles.serviceCard,
-                  isSelected && styles.serviceSelected,
-                ]}
-                onPress={() => toggleService(service.id)}
-                activeOpacity={0.8}>
-                <View style={styles.serviceInfo}>
-                  <Text style={styles.serviceName}>{service.name}</Text>
-                  {service.description && (
-                    <Text style={styles.serviceDesc} numberOfLines={2}>
-                      {service.description}
-                    </Text>
-                  )}
-                  <View style={styles.serviceMetaRow}>
-                    <Clock color={Colors.textSecondary} size={14} style={{ marginRight: 4 }} />
-                    <Text style={styles.serviceDuration}>
-                      {service.durationMinutes} min
-                    </Text>
-                  </View>
-                </View>
-                <View style={styles.servicePriceCol}>
-                  <Text style={[styles.servicePrice, isSelected && styles.servicePriceSelected]}>
-                    ₹{service.price}
-                  </Text>
-                  <View
+          {servicesByCategory.map((group) => (
+            <View key={group.category} style={{ marginBottom: Spacing.xl }}>
+              <Text style={styles.categoryTitle}>{group.category}</Text>
+              {group.services.map((service: Service) => {
+                const isSelected = selectedServices.includes(service.id);
+                return (
+                  <TouchableOpacity
+                    key={service.id}
                     style={[
-                      styles.checkbox,
-                      isSelected && styles.checkboxChecked,
-                    ]}>
-                    {isSelected && (
-                      <Check color="#fff" size={14} />
-                    )}
-                  </View>
-                </View>
-              </TouchableOpacity>
-            );
-          })}
+                      styles.serviceCard,
+                      isSelected && styles.serviceSelected,
+                    ]}
+                    onPress={() => toggleService(service.id)}
+                    activeOpacity={0.8}>
+                    <View style={styles.serviceInfo}>
+                      <Text style={styles.serviceName}>{service.name}</Text>
+                      {service.description && (
+                        <Text style={styles.serviceDesc} numberOfLines={2}>
+                          {service.description}
+                        </Text>
+                      )}
+                      <View style={styles.serviceMetaRow}>
+                        <Clock color={Colors.textSecondary} size={14} style={{ marginRight: 4 }} />
+                        <Text style={styles.serviceDuration}>
+                          {service.durationMinutes} min
+                        </Text>
+                      </View>
+                    </View>
+                    <View style={styles.servicePriceCol}>
+                      <Text style={[styles.servicePrice, isSelected && styles.servicePriceSelected]}>
+                        ₹{service.price}
+                      </Text>
+                      <View
+                        style={[
+                          styles.checkbox,
+                          isSelected && styles.checkboxChecked,
+                        ]}>
+                        {isSelected && (
+                          <Check color="#fff" size={14} />
+                        )}
+                      </View>
+                    </View>
+                  </TouchableOpacity>
+                );
+              })}
+            </View>
+          ))}
         </View>
 
         <View style={{ height: 120 }} />
@@ -379,6 +399,12 @@ const styles = StyleSheet.create({
     fontSize: FontSizes.sm,
     color: Colors.textTertiary,
     marginBottom: Spacing.xl,
+  },
+  categoryTitle: {
+    fontSize: FontSizes.lg,
+    fontWeight: FontWeights.bold,
+    color: Colors.textPrimary,
+    marginBottom: Spacing.md,
   },
   serviceCard: {
     flexDirection: 'row',

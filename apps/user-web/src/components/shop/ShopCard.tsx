@@ -14,6 +14,8 @@ interface ShopCardProps {
 
 const ShopCard: React.FC<ShopCardProps> = ({ shop, queueInfo, userLocation }) => {
   const isOpen = isShopOpenNow(shop);
+  const ratingValue = getShopRating(shop);
+  const ratingCount = Number(shop.googleReviewsCount || 0);
 
   let distanceKm = shop.distance;
   let travelTime: string | undefined;
@@ -128,8 +130,10 @@ const ShopCard: React.FC<ShopCardProps> = ({ shop, queueInfo, userLocation }) =>
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-1.5">
               <Star className="w-4 h-4 text-amber-500 fill-amber-500" />
-              <span className="font-bold text-on-surface text-sm">4.8</span>
-              <span className="text-outline text-xs">(120)</span>
+              <span className="font-bold text-on-surface text-sm">
+                {ratingValue !== null ? ratingValue.toFixed(1) : 'New'}
+              </span>
+              <span className="text-outline text-xs">({ratingCount})</span>
             </div>
 
             <div className="opacity-0 group-hover:opacity-100 transition-opacity duration-200">
@@ -164,6 +168,18 @@ function formatTravelTime(distanceKm: number): string {
   if (minutes < 1) return '< 1 min';
   if (minutes >= 60) return `${Math.round(minutes / 60)}h ${minutes % 60}min`;
   return `${minutes} min`;
+}
+
+function getShopRating(shop: Shop): number | null {
+  if (shop.googleRating === undefined || shop.googleRating === null) {
+    return null;
+  }
+
+  const rating = typeof shop.googleRating === 'string'
+    ? Number.parseFloat(shop.googleRating)
+    : Number(shop.googleRating);
+
+  return Number.isFinite(rating) ? rating : null;
 }
 
 function parseTimeToMinutes(value: string): number {

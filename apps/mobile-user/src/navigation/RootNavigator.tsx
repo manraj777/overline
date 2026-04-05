@@ -29,6 +29,7 @@ import MyBookingsScreen from '../screens/booking/MyBookingsScreen';
 import ChatScreen from '../screens/chat/ChatScreen';
 import ProfileScreen from '../screens/profile/ProfileScreen';
 import EditProfileScreen from '../screens/profile/EditProfileScreen';
+import NotificationsScreen from '../screens/profile/NotificationsScreen';
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 const Tab = createBottomTabNavigator<MainTabParamList>();
@@ -237,6 +238,14 @@ export default function RootNavigator() {
               options={{
                 headerShown: true,
                 title: 'Edit Profile',
+              }}
+            />
+            <Stack.Screen
+              name="Notifications"
+              component={NotificationsScreen}
+              options={{
+                headerShown: true,
+                title: 'Notifications',
               }}
             />
           </>

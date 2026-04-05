@@ -126,8 +126,27 @@ export const shopsApi = {
     city?: string;
     lat?: number;
     lng?: number;
+    latitude?: number;
+    longitude?: number;
+    radiusKm?: number;
+    minRating?: number;
+    maxPrice?: number;
+    type?: string;
     search?: string;
-  }) => api.get('/shops', { params }),
+  }) => {
+    const mappedParams = {
+      city: params?.city,
+      latitude: params?.latitude ?? params?.lat,
+      longitude: params?.longitude ?? params?.lng,
+      radiusKm: params?.radiusKm,
+      minRating: params?.minRating,
+      maxPrice: params?.maxPrice,
+      type: params?.type,
+      query: params?.search,
+    };
+
+    return api.get('/shops', { params: mappedParams });
+  },
   getBySlug: (slug: string) => api.get(`/shops/${slug}`),
   getServices: (shopId: string) => api.get(`/shops/${shopId}/services`),
   getQueue: (shopId: string) => api.get(`/shops/${shopId}/queue`),
@@ -186,7 +205,7 @@ export const walletApi = {
 // User API
 export const userApi = {
   getProfile: () => api.get('/users/me'),
-  updateProfile: (data: { name?: string; phone?: string }) =>
+  updateProfile: (data: { name?: string; phone?: string; avatarUrl?: string }) =>
     api.patch('/users/me', data),
   sendOtp: () => api.post('/users/me/otp/send'),
   verifyOtp: (data: { otp: string }) => api.post('/users/me/otp/verify', data),

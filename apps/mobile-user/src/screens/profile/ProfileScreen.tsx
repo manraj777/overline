@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, ScrollView, StyleSheet, TouchableOpacity, Alert, ActivityIndicator, Share, Linking } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, TouchableOpacity, Alert, ActivityIndicator, Share, Linking, Image } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -13,6 +13,7 @@ import { RootStackParamList } from '../../types';
 
 interface UserProfile {
   id: string; name: string; email: string; phone: string;
+  avatarUrl?: string;
   referralCode: string; walletBalance: number; totalBookings: number; createdAt: string;
 }
 
@@ -53,9 +54,13 @@ export default function ProfileScreen() {
         {/* Header */}
         <View style={styles.header}>
           <View style={styles.avatar}>
-            <Text style={styles.avatarText}>
-              {(profile?.name || user?.name || 'U').charAt(0).toUpperCase()}
-            </Text>
+            {profile?.avatarUrl || user?.avatarUrl ? (
+              <Image source={{ uri: profile?.avatarUrl || user?.avatarUrl }} style={styles.avatarImage} />
+            ) : (
+              <Text style={styles.avatarText}>
+                {(profile?.name || user?.name || 'U').charAt(0).toUpperCase()}
+              </Text>
+            )}
           </View>
           <Text style={styles.name}>{profile?.name || user?.name}</Text>
           <Text style={styles.email}>{profile?.email || user?.email}</Text>
@@ -100,7 +105,7 @@ export default function ProfileScreen() {
             title: 'ACCOUNT',
             items: [
               { icon: <User color={Colors.textSecondary} size={20} />, label: 'Edit Profile', onPress: () => navigation.navigate('EditProfile') },
-              { icon: <Bell color={Colors.textSecondary} size={20} />, label: 'Notifications', onPress: () => Alert.alert('Coming Soon', 'Notification settings will be available in the next update.') },
+              { icon: <Bell color={Colors.textSecondary} size={20} />, label: 'Notifications', onPress: () => navigation.navigate('Notifications') },
               { icon: <MapPin color={Colors.textSecondary} size={20} />, label: 'Saved Addresses', onPress: () => Alert.alert('Coming Soon', 'Address management will be available in the next update.') },
             ],
           },
@@ -155,6 +160,11 @@ const styles = StyleSheet.create({
   avatar: {
     width: 88, height: 88, borderRadius: 44, backgroundColor: Colors.primary,
     justifyContent: 'center', alignItems: 'center', marginBottom: Spacing.lg, ...Shadows.glow,
+  },
+  avatarImage: {
+    width: '100%',
+    height: '100%',
+    borderRadius: 44,
   },
   avatarText: { fontSize: 36, fontWeight: FontWeights.extrabold, color: '#fff' },
   name: { fontSize: FontSizes.xl, fontWeight: FontWeights.bold, color: Colors.textPrimary, marginBottom: 4 },

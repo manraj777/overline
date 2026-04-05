@@ -105,6 +105,21 @@ export default function ShopDetailPage() {
     return photos;
   }, [shop]);
 
+  const servicesByCategory = React.useMemo(() => {
+    const grouped = new Map<string, any[]>();
+    const source = shop?.services || [];
+
+    source.forEach((service) => {
+      const category = (service.category || 'Popular').trim();
+      if (!grouped.has(category)) {
+        grouped.set(category, []);
+      }
+      grouped.get(category)!.push(service);
+    });
+
+    return Array.from(grouped.entries()).map(([category, services]) => ({ category, services }));
+  }, [shop?.services]);
+
   const steps: BookingStep[] = ['services', 'staff', 'datetime', 'confirm'];
 
   const handleNextStep = () => {
@@ -333,11 +348,18 @@ export default function ShopDetailPage() {
                     )}
                     <h2 className="text-2xl font-black tracking-tight text-on-surface mb-6">Curated Services</h2>
                     {shop.services && shop.services.length > 0 ? (
-                      <ServiceList
-                        services={shop.services}
-                        selectedServices={selectedServices}
-                        onToggleService={toggleService}
-                      />
+                      <div className="space-y-10">
+                        {servicesByCategory.map((group) => (
+                          <section key={group.category}>
+                            <h3 className="text-lg font-black tracking-tight text-on-surface mb-4">{group.category}</h3>
+                            <ServiceList
+                              services={group.services}
+                              selectedServices={selectedServices}
+                              onToggleService={toggleService}
+                            />
+                          </section>
+                        ))}
+                      </div>
                     ) : (
                       <div className="p-10 text-center bg-surface-container-low rounded-2xl border border-dashed border-outline-variant/20">
                         <p className="text-on-surface-variant font-medium">No services currently available.</p>
@@ -374,6 +396,12 @@ export default function ShopDetailPage() {
                 {step === 'datetime' && (
                   <div className="animate-fade-in">
                     <h2 className="text-2xl font-black tracking-tight text-on-surface mb-6">When is good?</h2>
+                    {queueStats && (
+                      <p className="text-sm text-on-surface-variant mb-4">
+                        Current queue: {queueStats.waitingCount} waiting, estimated {queueStats.estimatedWaitMinutes} min.
+                        Slots shown are live and only include present/future availability.
+                      </p>
+                    )}
                     <DatePicker selectedDate={selectedDate} onSelectDate={setDate} />
                     {selectedDate && (
                       <div className="mt-10 animate-fade-in-up">
@@ -495,6 +523,20 @@ export default function ShopDetailPage() {
                   </Button>
                 )}
               </div>
+
+              {step === 'services' && (
+                <div className="sticky bottom-0 left-0 right-0 mt-4 -mx-6 sm:-mx-8 p-4 sm:p-6 bg-white/95 backdrop-blur-xl border-t border-outline-variant/10 lg:hidden">
+                  <button
+                    onClick={handleNextStep}
+                    disabled={!canProceed()}
+                    className="btn-primary w-full py-3.5 rounded-xl font-black disabled:opacity-40 disabled:cursor-not-allowed"
+                  >
+                    {selectedServices.length > 0
+                      ? `Add ${selectedServices.length} item${selectedServices.length > 1 ? 's' : ''} to cart`
+                      : 'Select services to continue'}
+                  </button>
+                </div>
+              )}
             </div>
 
             {/* ── Sticky Sidebar Summary ── */}

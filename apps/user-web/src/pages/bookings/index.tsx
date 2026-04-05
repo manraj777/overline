@@ -34,7 +34,7 @@ interface RecoveredQueueSession extends ActiveQueueSession {
 
 export default function BookingsPage() {
   const router = useRouter();
-  const { isAuthenticated, isLoading: authLoading } = useAuthStore();
+  const { user, isAuthenticated, isLoading: authLoading } = useAuthStore();
   const [activeTab, setActiveTab] = React.useState<FilterTab>('upcoming');
   const [activeSessions, setActiveSessions] = React.useState<RecoveredQueueSession[]>([]);
   const [isRefreshingSessions, setIsRefreshingSessions] = React.useState(true);
@@ -126,6 +126,22 @@ export default function BookingsPage() {
 
   if (authLoading || !isAuthenticated) {
     return <Loading text="Loading..." />;
+  }
+
+  if (!user?.isPhoneVerified) {
+    return (
+      <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-10">
+        <div className="card-m3 p-8 md:p-10 text-center">
+          <h1 className="text-2xl font-black tracking-tight text-on-surface mb-3">Verify mobile number first</h1>
+          <p className="text-on-surface-variant mb-7 max-w-xl mx-auto">
+            To view your latest and past bookings, please verify your phone number from profile settings.
+          </p>
+          <button onClick={() => router.push('/profile')} className="btn-primary px-8 py-3">
+            Open Profile
+          </button>
+        </div>
+      </div>
+    );
   }
 
   const tabs: { value: FilterTab; label: string }[] = [

@@ -62,6 +62,8 @@ export interface Shop {
   logoUrl?: string;
   coverUrl?: string;
   photoUrls: string[];
+  googleRating?: number | string;
+  googleReviewsCount?: number;
   maxConcurrentBookings: number;
   autoAcceptBookings: boolean;
   isActive: boolean;

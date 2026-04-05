@@ -9,6 +9,8 @@ interface SearchParams {
   latitude?: number;
   longitude?: number;
   radiusKm?: number;
+  minRating?: number;
+  maxPrice?: number;
   page?: number;
   limit?: number;
 }
@@ -25,6 +27,8 @@ export function useShops(params: SearchParams = {}) {
       if (params.latitude) queryParams.latitude = params.latitude;
       if (params.longitude) queryParams.longitude = params.longitude;
       if (params.radiusKm) queryParams.radiusKm = params.radiusKm;
+      if (params.minRating !== undefined) queryParams.minRating = params.minRating;
+      if (params.maxPrice !== undefined) queryParams.maxPrice = params.maxPrice;
       if (params.page) queryParams.page = params.page;
       if (params.limit) queryParams.limit = params.limit;
 

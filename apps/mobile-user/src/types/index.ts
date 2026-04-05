@@ -4,6 +4,7 @@ export interface User {
   email: string;
   name: string;
   phone?: string;
+  avatarUrl?: string;
   role: 'USER' | 'OWNER' | 'STAFF' | 'ADMIN';
   isEmailVerified?: boolean;
   isPhoneVerified?: boolean;
@@ -162,6 +163,7 @@ export type RootStackParamList = {
   BookingDetail: {bookingId: string};
   BookingConfirmation: {bookingId: string};
   EditProfile: undefined;
+  Notifications: undefined;
   PhoneVerification: undefined;
 };
 

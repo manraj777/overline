@@ -10,7 +10,7 @@ import { cn } from '@/lib/utils';
 
 export default function ExplorePage() {
   const router = useRouter();
-  const { q, type, city } = router.query;
+  const { q, type, city, radiusKm, minRating, maxPrice } = router.query;
 
   const [searchQuery, setSearchQuery] = React.useState((q as string) || '');
   const [selectedType, setSelectedType] = React.useState<string | undefined>(type as string);
@@ -18,6 +18,9 @@ export default function ExplorePage() {
   const [showFilters, setShowFilters] = React.useState(false);
   const [viewMode, setViewMode] = React.useState<'list' | 'map'>('list');
   const [location, setLocation] = React.useState<{ lat: number; lng: number; address?: string } | undefined>();
+  const [selectedRadiusKm, setSelectedRadiusKm] = React.useState<number>(Number(radiusKm || 5));
+  const [selectedMaxPrice, setSelectedMaxPrice] = React.useState<number>(Number(maxPrice || 1500));
+  const [selectedMinRating, setSelectedMinRating] = React.useState<number>(Number(minRating || 4));
 
   const extractCityFromAddress = React.useCallback((address?: string) => {
     if (!address) return '';
@@ -33,6 +36,12 @@ export default function ExplorePage() {
   }, [city]);
 
   React.useEffect(() => {
+    setSelectedRadiusKm(Number(radiusKm || 5));
+    setSelectedMaxPrice(Number(maxPrice || 1500));
+    setSelectedMinRating(Number(minRating || 4));
+  }, [radiusKm, maxPrice, minRating]);
+
+  React.useEffect(() => {
     const cityFromLocation = extractCityFromAddress(location?.address);
     if (cityFromLocation && cityFromLocation.toLowerCase() !== 'current location') {
       setSelectedCity(cityFromLocation);
@@ -43,6 +52,9 @@ export default function ExplorePage() {
     query: searchQuery,
     city: selectedCity || undefined,
     type: selectedType as 'SALON' | 'CLINIC' | undefined,
+    radiusKm: selectedRadiusKm,
+    minRating: selectedMinRating,
+    maxPrice: selectedMaxPrice,
     limit: 20,
     latitude: location?.lat || undefined,
     longitude: location?.lng || undefined,
@@ -56,6 +68,9 @@ export default function ExplorePage() {
         ...(searchQuery && { q: searchQuery }),
         ...(selectedType && { type: selectedType }),
         ...(selectedCity && { city: selectedCity }),
+        ...(selectedRadiusKm && { radiusKm: selectedRadiusKm }),
+        ...(selectedMinRating && { minRating: selectedMinRating }),
+        ...(selectedMaxPrice && { maxPrice: selectedMaxPrice }),
         ...(location && location.address && { address: location.address }),
       },
     });
@@ -65,6 +80,9 @@ export default function ExplorePage() {
     setSearchQuery('');
     setSelectedType(undefined);
     setSelectedCity('');
+    setSelectedRadiusKm(5);
+    setSelectedMaxPrice(1500);
+    setSelectedMinRating(4);
     setLocation(undefined);
     router.push('/explore');
   };
@@ -141,18 +159,19 @@ export default function ExplorePage() {
             <div className="space-y-3">
               <label className="label-m3">Distance</label>
               <div className="flex flex-wrap gap-2">
-                {['Under 1km', '5km', '10km'].map((d, i) => (
-                  <span
-                    key={d}
+                {[1, 5, 10, 25].map((km) => (
+                  <button
+                    key={km}
+                    onClick={() => setSelectedRadiusKm(km)}
                     className={cn(
                       'px-4 py-2 rounded-full text-xs font-medium cursor-pointer transition-all',
-                      i === 0
+                      selectedRadiusKm === km
                         ? 'bg-primary text-white shadow-sm'
                         : 'bg-surface-container-low text-on-surface-variant border border-outline-variant/10 hover:bg-surface-container-high'
                     )}
                   >
-                    {d}
-                  </span>
+                    {km}km
+                  </button>
                 ))}
               </div>
             </div>
@@ -161,17 +180,22 @@ export default function ExplorePage() {
             <div className="space-y-3">
               <label className="label-m3">Price Range</label>
               <div className="flex items-center gap-2">
-                {['₹', '₹₹', '₹₹₹'].map((p, i) => (
+                {[
+                  { label: '₹', value: 500 },
+                  { label: '₹₹', value: 1500 },
+                  { label: '₹₹₹', value: 3000 },
+                ].map((option) => (
                   <button
-                    key={p}
+                    key={option.label}
+                    onClick={() => setSelectedMaxPrice(option.value)}
                     className={cn(
                       'flex-1 py-2.5 rounded-xl text-sm font-bold transition-all active:scale-95',
-                      i === 1
+                      selectedMaxPrice === option.value
                         ? 'bg-primary text-white shadow-button'
                         : 'bg-surface-container-low text-on-surface-variant border border-outline-variant/10 hover:border-primary/30'
                     )}
                   >
-                    {p}
+                    {option.label}
                   </button>
                 ))}
               </div>
@@ -181,15 +205,19 @@ export default function ExplorePage() {
             <div className="space-y-3">
               <label className="label-m3">Rating</label>
               <div className="flex flex-col gap-2">
-                {['4.5+ Stars', '4.0+ Stars'].map((label, i) => (
-                  <label key={label} className="flex items-center gap-3 cursor-pointer group">
-                    <input
-                      type="checkbox"
-                      defaultChecked={i === 0}
-                      className="rounded border-outline-variant text-primary focus:ring-primary w-4 h-4"
-                    />
-                    <span className="text-sm text-on-surface font-medium">{label}</span>
-                  </label>
+                {[4.8, 4.5, 4.0, 3.5].map((rating) => (
+                  <button
+                    key={rating}
+                    onClick={() => setSelectedMinRating(rating)}
+                    className={cn(
+                      'px-3 py-2 rounded-xl text-sm font-semibold text-left transition-colors',
+                      selectedMinRating === rating
+                        ? 'bg-primary text-white'
+                        : 'bg-surface-container-low text-on-surface-variant hover:bg-surface-container-high'
+                    )}
+                  >
+                    {rating}+ Stars
+                  </button>
                 ))}
               </div>
             </div>
@@ -267,7 +295,7 @@ export default function ExplorePage() {
             </header>
 
             {/* Active Filter Tags */}
-            {(selectedType || selectedCity || searchQuery) && (
+            {(selectedType || selectedCity || searchQuery || selectedRadiusKm || selectedMaxPrice || selectedMinRating) && (
               <div className="flex items-center gap-2 mb-6 flex-wrap">
                 {selectedCity && (
                   <button
@@ -291,6 +319,30 @@ export default function ExplorePage() {
                     className="inline-flex items-center gap-1 px-3 py-1.5 bg-surface-container-high text-on-surface rounded-full text-xs font-bold"
                   >
                     &quot;{searchQuery}&quot; <X className="w-3 h-3" />
+                  </button>
+                )}
+                {!!selectedRadiusKm && (
+                  <button
+                    onClick={() => setSelectedRadiusKm(5)}
+                    className="inline-flex items-center gap-1 px-3 py-1.5 bg-tertiary-fixed text-tertiary rounded-full text-xs font-bold"
+                  >
+                    {selectedRadiusKm}km <X className="w-3 h-3" />
+                  </button>
+                )}
+                {!!selectedMaxPrice && (
+                  <button
+                    onClick={() => setSelectedMaxPrice(1500)}
+                    className="inline-flex items-center gap-1 px-3 py-1.5 bg-surface-container-high text-on-surface rounded-full text-xs font-bold"
+                  >
+                    up to ₹{selectedMaxPrice} <X className="w-3 h-3" />
+                  </button>
+                )}
+                {!!selectedMinRating && (
+                  <button
+                    onClick={() => setSelectedMinRating(4)}
+                    className="inline-flex items-center gap-1 px-3 py-1.5 bg-secondary-fixed text-secondary rounded-full text-xs font-bold"
+                  >
+                    {selectedMinRating}+ stars <X className="w-3 h-3" />
                   </button>
                 )}
               </div>

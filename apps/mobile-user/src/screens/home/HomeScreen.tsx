@@ -27,6 +27,13 @@ import { PermissionManager } from '../../utils/PermissionManager';
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 const CATEGORIES = ['All', 'Salon', 'Spa', 'Clinic', 'Barber', 'Beauty'];
+const DISTANCE_OPTIONS = [1, 5, 10, 25];
+const RATING_OPTIONS = [4.8, 4.5, 4.0, 3.5];
+const PRICE_OPTIONS = [
+  { label: '₹', value: 500 },
+  { label: '₹₹', value: 1500 },
+  { label: '₹₹₹', value: 3000 },
+];
 
 export default function HomeScreen() {
   const navigation = useNavigation<NavigationProp>();
@@ -34,6 +41,9 @@ export default function HomeScreen() {
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState('All');
   const [viewMode, setViewMode] = useState<'list' | 'map'>('list');
+  const [radiusKm, setRadiusKm] = useState(5);
+  const [minRating, setMinRating] = useState(4.0);
+  const [maxPrice, setMaxPrice] = useState(1500);
   const scrollY = useRef(new Animated.Value(0)).current;
 
   React.useEffect(() => {
@@ -46,9 +56,17 @@ export default function HomeScreen() {
     refetch,
     isRefetching,
   } = useQuery({
-    queryKey: ['shops', searchQuery],
+    queryKey: ['shops', searchQuery, activeCategory, radiusKm, minRating, maxPrice],
     queryFn: () =>
-      shopsApi.list({ search: searchQuery || undefined }).then(res => res.data),
+      shopsApi
+        .list({
+          search: searchQuery || undefined,
+          radiusKm,
+          minRating,
+          maxPrice,
+          type: mapCategoryToType(activeCategory),
+        })
+        .then(res => res.data),
   });
 
   const shops: Shop[] = React.useMemo(() => {
@@ -68,6 +86,12 @@ export default function HomeScreen() {
       return byName || Boolean(byDescription) || byService;
     });
   }, [shopsData?.data, activeCategory]);
+
+  const clearFilters = () => {
+    setRadiusKm(5);
+    setMinRating(4.0);
+    setMaxPrice(1500);
+  };
 
   const headerOpacity = scrollY.interpolate({
     inputRange: [0, 80],
@@ -238,6 +262,46 @@ export default function HomeScreen() {
               </TouchableOpacity>
             </View>
           </View>
+
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.quickFiltersRow}
+          >
+            {DISTANCE_OPTIONS.map((distance) => (
+              <Chip
+                key={`distance-${distance}`}
+                label={`${distance}km`}
+                selected={radiusKm === distance}
+                onPress={() => setRadiusKm(distance)}
+                style={{ marginRight: Spacing.sm }}
+              />
+            ))}
+
+            {RATING_OPTIONS.map((rating) => (
+              <Chip
+                key={`rating-${rating}`}
+                label={`${rating}+`}
+                selected={minRating === rating}
+                onPress={() => setMinRating(rating)}
+                style={{ marginRight: Spacing.sm }}
+              />
+            ))}
+
+            {PRICE_OPTIONS.map((option) => (
+              <Chip
+                key={`price-${option.value}`}
+                label={option.label}
+                selected={maxPrice === option.value}
+                onPress={() => setMaxPrice(option.value)}
+                style={{ marginRight: Spacing.sm }}
+              />
+            ))}
+
+            <TouchableOpacity onPress={clearFilters} style={styles.clearFiltersChip}>
+              <Text style={styles.clearFiltersText}>Reset</Text>
+            </TouchableOpacity>
+          </ScrollView>
         </Animated.View>
 
         {viewMode === 'list' ? (
@@ -438,6 +502,24 @@ const styles = StyleSheet.create({
   filterRow: {
     flexDirection: 'row',
     alignItems: 'center',
+  },
+  quickFiltersRow: {
+    paddingHorizontal: Spacing.xl,
+    alignItems: 'center',
+    paddingBottom: Spacing.sm,
+  },
+  clearFiltersChip: {
+    paddingHorizontal: Spacing.md,
+    paddingVertical: 8,
+    borderRadius: BorderRadius.full,
+    backgroundColor: Colors.surface,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  clearFiltersText: {
+    color: Colors.textSecondary,
+    fontSize: FontSizes.sm,
+    fontWeight: FontWeights.semibold,
   },
   viewToggle: {
     flexDirection: 'row',
@@ -714,3 +796,15 @@ const styles = StyleSheet.create({
     fontSize: FontSizes.sm,
   },
 });
+
+function mapCategoryToType(category: string): string | undefined {
+  if (category === 'All') return undefined;
+
+  const mapping: Record<string, string> = {
+    Salon: 'SALON',
+    Clinic: 'CLINIC',
+    Spa: 'SPA',
+  };
+
+  return mapping[category];
+}

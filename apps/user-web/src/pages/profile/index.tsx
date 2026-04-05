@@ -18,7 +18,7 @@ import {
 } from 'lucide-react';
 import { Button, Input, Card, Alert, Loading, ImageUpload } from '@/components/ui';
 import { ReviewModal } from '@/components/reviews/ReviewModal';
-import { useUser, useUpdateProfile, useLogout, useMyBookings, useTrendingShops } from '@/hooks';
+import { useUser, useUpdateProfile, useLogout, useMyBookings, useTrendingShops, useWallet, useMyReviews } from '@/hooks';
 import { useAuthStore } from '@/stores/auth';
 import api from '@/lib/api';
 import { format } from 'date-fns';
@@ -45,6 +45,8 @@ export default function ProfilePage() {
   const logout = useLogout();
   const { data: bookingsData } = useMyBookings();
   const { data: trendingShops } = useTrendingShops(5);
+  const { data: wallet } = useWallet();
+  const { data: myReviews } = useMyReviews();
 
   const [isEditing, setIsEditing] = React.useState(false);
   const [isLoggingOut, setIsLoggingOut] = React.useState(false);
@@ -123,6 +125,15 @@ export default function ProfilePage() {
   }
 
   const totalBookings = bookingsData?.meta?.total || 0;
+  const totalReviews = Array.isArray(myReviews?.data)
+    ? myReviews.data.length
+    : Array.isArray(myReviews)
+      ? myReviews.length
+      : 0;
+  const earnedPoints = Math.max(0, Math.round(Number(wallet?.totalEarned || 0)));
+  const nextTierTarget = 1000;
+  const pointsToNextTier = Math.max(0, nextTierTarget - earnedPoints);
+  const progressToNextTier = Math.min(100, Math.round((earnedPoints / nextTierTarget) * 100));
   const memberSince = user?.createdAt
     ? format(new Date(user.createdAt), 'MMM yyyy')
     : '—';
@@ -195,8 +206,8 @@ export default function ProfilePage() {
               {[
                 { label: 'Bookings', value: String(totalBookings), color: 'text-primary' },
                 { label: 'Member Since', value: memberSince, color: 'text-secondary' },
-                { label: 'Points', value: '850', color: 'text-tertiary' },
-                { label: 'Reviews', value: '12', color: 'text-on-surface' },
+                { label: 'Points', value: String(earnedPoints), color: 'text-tertiary' },
+                { label: 'Reviews', value: String(totalReviews), color: 'text-on-surface' },
               ].map((stat) => (
                 <div key={stat.label} className="card-m3-flat p-5 text-center">
                   <div className={`text-2xl font-black ${stat.color} mb-1`}>{stat.value}</div>
@@ -204,6 +215,10 @@ export default function ProfilePage() {
                 </div>
               ))}
             </div>
+
+            <Alert variant="info" className="mb-0">
+              Points are calculated from wallet earnings and rewards. They represent your accumulated value on Overline.
+            </Alert>
 
             {/* Alerts */}
             {success && (
@@ -368,20 +383,20 @@ export default function ProfilePage() {
             <div className="card-m3 p-8">
               <div className="flex justify-between items-center mb-6">
                 <span className="label-m3">Loyalty Status</span>
-                <span className="text-secondary font-black tracking-tight text-lg">Gold Member</span>
+                <span className="text-secondary font-black tracking-tight text-lg">Member</span>
               </div>
               <div className="space-y-4">
                 <div className="flex justify-between items-end">
                   <span className="text-3xl font-black text-on-surface leading-none">
-                    850 <span className="text-base font-medium text-outline">pts</span>
+                    {earnedPoints} <span className="text-base font-medium text-outline">pts</span>
                   </span>
-                  <span className="text-sm font-bold text-tertiary">150 to Platinum</span>
+                  <span className="text-sm font-bold text-tertiary">{pointsToNextTier} to next tier</span>
                 </div>
                 <div className="h-3 w-full bg-surface-container-high rounded-full overflow-hidden">
-                  <div className="h-full bg-gradient-to-r from-secondary to-primary-container rounded-full" style={{ width: '85%' }} />
+                  <div className="h-full bg-gradient-to-r from-secondary to-primary-container rounded-full" style={{ width: `${progressToNextTier}%` }} />
                 </div>
                 <p className="text-sm text-on-surface-variant leading-relaxed">
-                  Earning points 1.5x faster this month!
+                  Points are synced from your wallet earnings and update automatically after bookings.
                 </p>
               </div>
             </div>

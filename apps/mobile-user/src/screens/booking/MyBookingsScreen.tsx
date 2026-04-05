@@ -13,12 +13,14 @@ import { RootStackParamList, Booking } from '../../types';
 import { Colors, Spacing, BorderRadius, FontSizes, FontWeights, BookingStatusConfig, Shadows } from '../../theme';
 import { Badge, EmptyState } from '../../components/ui';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { useAuthStore } from '../../stores/authStore';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 type TabType = 'upcoming' | 'past';
 
 export default function MyBookingsScreen() {
   const navigation = useNavigation<NavigationProp>();
+  const { user } = useAuthStore();
   const [activeTab, setActiveTab] = useState<TabType>('upcoming');
 
   const { data: bookingsData, isLoading, refetch, isRefetching } = useQuery({
@@ -82,6 +84,25 @@ export default function MyBookingsScreen() {
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color={Colors.primary} />
       </View>
+    );
+  }
+
+  if (!user?.isPhoneVerified) {
+    return (
+      <SafeAreaView style={styles.container} edges={['top']}>
+        <View style={[styles.loadingContainer, { paddingHorizontal: Spacing.xl }]}> 
+          <Text style={styles.headerTitle}>Verify mobile number first</Text>
+          <Text style={[styles.detailText, { textAlign: 'center', marginTop: Spacing.sm }]}> 
+            Verify your phone from profile to view latest and past bookings.
+          </Text>
+          <TouchableOpacity
+            style={[styles.activeTab, { marginTop: Spacing.lg, paddingHorizontal: Spacing.xl }]}
+            onPress={() => navigation.navigate('Profile' as never)}
+          >
+            <Text style={styles.activeTabText}>Open Profile</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
     );
   }
 

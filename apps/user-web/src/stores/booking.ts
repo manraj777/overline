@@ -46,7 +46,18 @@ const initialState = {
 export const useBookingStore = create<BookingState>((set, get) => ({
   ...initialState,
 
-  setShop: (shop) => set({ shop }),
+  setShop: (shop) =>
+    set((state) => {
+      if (!state.shop || state.shop.id === shop.id) {
+        return { shop };
+      }
+
+      // One cart per shop: switching shop clears previous in-progress selections.
+      return {
+        ...initialState,
+        shop,
+      };
+    }),
 
   addService: (service) =>
     set((state) => ({

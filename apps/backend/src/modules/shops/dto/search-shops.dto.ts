@@ -39,6 +39,21 @@ export class SearchShopsDto {
   @Max(100)
   radiusKm?: number;
 
+  @ApiPropertyOptional({ description: 'Minimum Google rating', default: 4.0 })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  @Max(5)
+  minRating?: number;
+
+  @ApiPropertyOptional({ description: 'Maximum service price' })
+  @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
+  @Min(0)
+  maxPrice?: number;
+
   @ApiPropertyOptional({ description: 'Page number', default: 1 })
   @IsOptional()
   @Type(() => Number)

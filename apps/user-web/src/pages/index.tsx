@@ -47,8 +47,8 @@ export default function HomePage() {
   return (
     <>
       <Head>
-        <title>Overline — Premium Booking Portal</title>
-        <meta name="description" content="Find your next premium experience. Book salons, spas, clinics and gyms with live queue tracking." />
+        <title>Overline — Premium Booking</title>
+        <meta name="description" content="Find your next premium experience. Don't waste your time in line." />
       </Head>
 
       {/* ═══════════════════════════════════════════════════════════ */}
@@ -70,6 +70,11 @@ export default function HomePage() {
               initial="hidden"
               animate="show"
             >
+              <motion.div variants={itemVariants} className="mb-5 inline-flex items-center gap-3 rounded-2xl bg-white/10 backdrop-blur-md px-4 py-2 border border-white/20">
+                <img src="/overline-logo.png" alt="Overline" className="w-8 h-8 rounded-lg object-cover" />
+                <span className="text-sm font-bold tracking-wide">Overline</span>
+              </motion.div>
+
               <motion.h1
                 variants={itemVariants}
                 className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight mb-6 leading-tight"
@@ -78,6 +83,10 @@ export default function HomePage() {
                 <br />
                 premium experience.
               </motion.h1>
+
+              <motion.p variants={itemVariants} className="text-white/85 text-lg md:text-xl font-semibold mb-7">
+                Don't waste your time in line.
+              </motion.p>
 
               {/* Search Bar */}
               <motion.div variants={itemVariants}>

@@ -15,25 +15,9 @@ const BookingSummary: React.FC<BookingSummaryProps> = ({ showPrice = true }) => 
     selectedStaff,
     selectedDate,
     selectedSlot,
-    offerCode,
-    setOfferCode,
     getTotalDuration,
     getTotalPrice,
   } = useBookingStore();
-
-  const [localCode, setLocalCode] = React.useState('');
-  const [offerStatus, setOfferStatus] = React.useState<'idle' | 'success' | 'invalid'>('idle');
-
-  const handleApplyOffer = () => {
-    const validCodes = ['OVERLINE10', 'OVERLINE20', 'WELCOME50'];
-    if (validCodes.includes(localCode.toUpperCase())) {
-      setOfferCode(localCode.toUpperCase());
-      setOfferStatus('success');
-    } else {
-      setOfferStatus('invalid');
-      setOfferCode(null);
-    }
-  };
 
   const totalDuration = getTotalDuration();
   const totalPrice = getTotalPrice();
@@ -115,39 +99,13 @@ const BookingSummary: React.FC<BookingSummaryProps> = ({ showPrice = true }) => 
       {/* Total & Offers */}
       {showPrice && selectedServices.length > 0 && (
         <div className="pt-4">
-
-          <div className="mb-4">
-            <h4 className="text-sm font-medium text-gray-500 mb-2">Offer Code</h4>
-            <div className="flex gap-2">
-              <input
-                type="text"
-                value={localCode}
-                onChange={(e) => {
-                  setLocalCode(e.target.value);
-                  if (offerStatus !== 'idle') setOfferStatus('idle');
-                }}
-                className="flex-1 px-3 py-1.5 border border-gray-300 rounded-md text-sm outline-none focus:border-primary-500 uppercase"
-                placeholder="PROMO CODE"
-              />
-              <button
-                onClick={handleApplyOffer}
-                className="px-3 py-1.5 bg-gray-900 text-white rounded-md text-sm hover:bg-gray-800"
-              >
-                Apply
-              </button>
-            </div>
-            {offerStatus === 'invalid' && <p className="text-xs text-red-500 mt-1">Invalid code</p>}
-            {offerStatus === 'success' && <p className="text-xs text-emerald-600 mt-1 flex gap-1 items-center">✨ Promo code applied</p>}
-          </div>
+          <p className="text-xs text-gray-500 mb-4">
+            Discounts and promo campaigns are applied automatically when available.
+          </p>
 
           <div className="flex justify-between items-center">
             <span className="font-medium text-gray-900">Total</span>
             <div className="text-right">
-              {offerCode && (
-                <span className="text-sm text-gray-400 line-through block -mb-1">
-                  {formatPrice(selectedServices.reduce((acc, s) => acc + Number(s.price || 0), 0))}
-                </span>
-              )}
               <span className="text-xl font-bold text-gray-900">
                 {formatPrice(totalPrice)}
               </span>
