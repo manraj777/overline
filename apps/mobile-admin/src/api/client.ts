@@ -119,6 +119,10 @@ export const authApi = {
     apiClient.post('/auth/staff-login', params),
   getAssignedStaffShops: (phone: string) =>
     apiClient.post('/auth/staff/shops', { phone }),
+  staffSendOtp: (params: { shopId: string; phone: string }) =>
+    apiClient.post('/auth/staff/send-otp', params),
+  staffVerifyOtp: (params: { shopId: string; phone: string; otp: string }) =>
+    apiClient.post('/auth/staff/verify-otp', params),
   googleLogin: (idToken: string, options?: { requestedRole?: string }) =>
     apiClient.post('/auth/google', { idToken, requestedRole: options?.requestedRole }),
   getProfile: () => apiClient.get('/users/me'),

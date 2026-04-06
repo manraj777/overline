@@ -48,6 +48,30 @@ class StaffPinLoginDto {
   password: string;
 }
 
+class StaffSendOtpDto {
+  @IsString()
+  @IsNotEmpty()
+  shopId: string;
+
+  @IsString()
+  @IsNotEmpty()
+  phone: string;
+}
+
+class StaffVerifyOtpDto {
+  @IsString()
+  @IsNotEmpty()
+  shopId: string;
+
+  @IsString()
+  @IsNotEmpty()
+  phone: string;
+
+  @IsString()
+  @Matches(/^\d{6}$/)
+  otp: string;
+}
+
 @ApiTags('auth')
 @Controller('auth')
 export class AuthController {
@@ -242,6 +266,20 @@ export class AuthController {
   @ApiOperation({ summary: 'Staff login via mobile and 6-digit PIN for selected shop' })
   async staffLogin(@Body() dto: StaffPinLoginDto): Promise<TokenResponse> {
     return this.authService.staffPinLogin(dto.shopId, dto.phone, dto.password);
+  }
+
+  @Post('staff/send-otp')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Send staff OTP for selected shop login' })
+  async sendStaffOtp(@Body() dto: StaffSendOtpDto) {
+    return this.authService.sendStaffLoginOtp(dto.shopId, dto.phone);
+  }
+
+  @Post('staff/verify-otp')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Verify staff OTP for selected shop login' })
+  async verifyStaffOtp(@Body() dto: StaffVerifyOtpDto): Promise<TokenResponse> {
+    return this.authService.verifyStaffLoginOtp(dto.shopId, dto.phone, dto.otp);
   }
 
   @Post('firebase/phone-login')

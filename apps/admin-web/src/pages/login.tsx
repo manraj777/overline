@@ -79,8 +79,12 @@ export default function LoginPage() {
     return () => window.clearInterval(timer);
   }, [resendInSeconds]);
 
-  const sendOtp = async (phone: string) => {
-    await api.post('/otp/send', { phone, purpose: 'LOGIN' });
+  const sendOtp = async (phone: string, opts?: { role?: 'OWNER' | 'STAFF'; shopId?: string }) => {
+    if (opts?.role === 'STAFF' && opts.shopId) {
+      await api.post('/auth/staff/send-otp', { phone, shopId: opts.shopId });
+    } else {
+      await api.post('/otp/send', { phone, purpose: 'LOGIN' });
+    }
     setResendInSeconds(60);
   };
 
@@ -109,7 +113,7 @@ export default function LoginPage() {
         router.push(nextRoute);
         return;
       }
-      await sendOtp(phone);
+      await sendOtp(phone, { role: 'OWNER' });
       setOtpRequestedRole('OWNER');
       setOtpSelectedShopId(null);
       setOtpPending(phone);
@@ -196,7 +200,7 @@ export default function LoginPage() {
     setStaffAuthBusy(true);
     try {
       const normalizedPhone = `+91${digits}`;
-      await sendOtp(normalizedPhone);
+      await sendOtp(normalizedPhone, { role: 'STAFF', shopId: selectedShop.id });
       setOtpRequestedRole('STAFF');
       setOtpSelectedShopId(selectedShop.id);
       setOtpPending(normalizedPhone);
@@ -217,12 +221,19 @@ export default function LoginPage() {
     setError(null);
     setOtpBusy(true);
     try {
-      const { data: auth } = await api.post<AuthResponse>('/otp/verify', {
-        phone: otpPhone,
-        otp,
-        purpose: 'LOGIN',
-        requestedRole: otpRequestedRole || undefined,
-      });
+      const { data: auth } =
+        otpRequestedRole === 'STAFF' && otpSelectedShopId
+          ? await api.post<AuthResponse>('/auth/staff/verify-otp', {
+              phone: otpPhone,
+              otp,
+              shopId: otpSelectedShopId,
+            })
+          : await api.post<AuthResponse>('/otp/verify', {
+              phone: otpPhone,
+              otp,
+              purpose: 'LOGIN',
+              requestedRole: otpRequestedRole || undefined,
+            });
       login(auth.user, auth.accessToken, auth.refreshToken, auth.user.shopId);
       if (otpSelectedShopId) {
         setShopId(otpSelectedShopId);
@@ -240,7 +251,10 @@ export default function LoginPage() {
     if (!otpPhone || resendInSeconds > 0) return;
     setError(null);
     try {
-      await sendOtp(otpPhone);
+      await sendOtp(otpPhone, {
+        role: otpRequestedRole || undefined,
+        shopId: otpSelectedShopId || undefined,
+      });
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to resend OTP');
     }

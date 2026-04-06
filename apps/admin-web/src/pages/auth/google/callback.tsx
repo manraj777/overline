@@ -2,6 +2,7 @@ import React from 'react';
 import { useRouter } from 'next/router';
 import { useAuthStore } from '@/stores/auth';
 import { Loading } from '@/components/ui';
+import { getDefaultRouteForRole } from '@/lib/role-routing';
 
 export default function GoogleCallbackPage() {
   const router = useRouter();
@@ -30,7 +31,7 @@ export default function GoogleCallbackPage() {
         return;
       }
 
-      router.replace('/dashboard');
+      router.replace(getDefaultRouteForRole(user.role));
     } catch {
       router.replace('/login?error=google_auth_failed');
     }

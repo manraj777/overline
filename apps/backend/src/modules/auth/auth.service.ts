@@ -297,13 +297,9 @@ export class AuthService {
     };
   }
 
-  async staffPinLogin(shopId: string, phone: string, password: string): Promise<TokenResponse> {
+  private async findActiveStaffForShopAndPhone(shopId: string, phone: string) {
     const normalizedPhone = this.normalizePhone(phone);
     const variants = this.phoneVariants(normalizedPhone);
-
-    if (!/^\d{6}$/.test(password)) {
-      throw new BadRequestException('PIN must be exactly 6 digits.');
-    }
 
     const staffRows = await this.prisma.$queryRawUnsafe<
       Array<{
@@ -332,7 +328,123 @@ export class AuthService {
       variants[3],
     );
 
-    const staff = staffRows[0];
+    return { normalizedPhone, staff: staffRows[0] || null };
+  }
+
+  async sendStaffLoginOtp(
+    shopId: string,
+    phone: string,
+  ): Promise<{ message: string; expiresInSeconds: number; retryAfterSeconds?: number }> {
+    const { normalizedPhone, staff } = await this.findActiveStaffForShopAndPhone(shopId, phone);
+    if (!staff) {
+      throw new ForbiddenException(
+        'No active staff assignment found for this mobile number in the selected shop.',
+      );
+    }
+
+    const rateLimitKey = `otp:rate:staff:${shopId}:${normalizedPhone}`;
+    const otpRequestCount = await this.redis.increment(rateLimitKey, 3600);
+
+    if (otpRequestCount > 3) {
+      const ttl = await this.redis.ttl(rateLimitKey);
+      throw new BadRequestException(
+        `Too many OTP requests. Try again in ${Math.max(ttl, 1)} seconds.`,
+      );
+    }
+
+    const otp = this.generateOtpCode();
+    await this.redis.set(`otp:staff:${shopId}:${normalizedPhone}`, otp, 300);
+    await this.sendOtpSms(normalizedPhone, otp);
+
+    return {
+      message: 'Staff OTP sent successfully',
+      expiresInSeconds: 300,
+      retryAfterSeconds: 60,
+    };
+  }
+
+  async verifyStaffLoginOtp(shopId: string, phone: string, otp: string): Promise<TokenResponse> {
+    const { normalizedPhone, staff } = await this.findActiveStaffForShopAndPhone(shopId, phone);
+    if (!staff) {
+      throw new ForbiddenException(
+        'No active staff assignment found for this mobile number in the selected shop.',
+      );
+    }
+
+    const key = `otp:staff:${shopId}:${normalizedPhone}`;
+    const cachedOtp = await this.redis.get(key);
+
+    if (!cachedOtp) {
+      throw new BadRequestException('OTP expired. Please request a new OTP.');
+    }
+
+    if (cachedOtp !== otp) {
+      throw new BadRequestException('Invalid OTP');
+    }
+
+    await this.redis.del(key);
+    let user = staff.userId
+      ? await this.prisma.user.findUnique({ where: { id: staff.userId } })
+      : null;
+    if (!user) {
+      const existingByPhone = await this.prisma.user.findUnique({
+        where: { phone: normalizedPhone },
+      });
+
+      if (existingByPhone && existingByPhone.role === UserRole.USER) {
+        throw new ForbiddenException(
+          'Access denied. This phone is linked to a customer account. Ask owner to onboard staff account.',
+        );
+      }
+
+      if (existingByPhone) {
+        user = await this.prisma.user.update({
+          where: { id: existingByPhone.id },
+          data: {
+            role: UserRole.STAFF,
+            isPhoneVerified: true,
+            lastLoginAt: new Date(),
+          },
+        });
+      } else {
+        const generatedEmail = `${normalizedPhone.replace(/\D/g, '')}.${Date.now()}@staff.overline.app`;
+        user = await this.prisma.user.create({
+          data: {
+            name: staff.name || `Staff ${normalizedPhone.slice(-4)}`,
+            email: staff.email || generatedEmail,
+            phone: normalizedPhone,
+            role: UserRole.STAFF,
+            authProvider: 'phone',
+            isPhoneVerified: true,
+            lastLoginAt: new Date(),
+          },
+        });
+      }
+
+      await this.prisma.staff.update({
+        where: { id: staff.id },
+        data: { userId: user.id },
+      });
+    } else {
+      user = await this.prisma.user.update({
+        where: { id: user.id },
+        data: {
+          role: UserRole.STAFF,
+          isPhoneVerified: true,
+          lastLoginAt: new Date(),
+        },
+      });
+    }
+
+    return this.generateTokens(user);
+  }
+
+  async staffPinLogin(shopId: string, phone: string, password: string): Promise<TokenResponse> {
+    const { normalizedPhone, staff } = await this.findActiveStaffForShopAndPhone(shopId, phone);
+
+    if (!/^\d{6}$/.test(password)) {
+      throw new BadRequestException('PIN must be exactly 6 digits.');
+    }
 
     if (!staff || !staff.password || staff.password !== password) {
       throw new UnauthorizedException('Invalid mobile number or PIN for this shop.');

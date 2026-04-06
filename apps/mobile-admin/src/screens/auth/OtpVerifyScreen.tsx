@@ -28,7 +28,7 @@ export default function OtpVerifyScreen() {
   const navigation = useNavigation<NavigationProps>();
   const route = useRoute<RouteProps>();
   const {phone, flow, requestedRole, selectedShopId} = route.params;
-  const {completeOtpVerification, verifyPhoneLoginOtp, logout} = useAuthStore();
+  const {completeOtpVerification, verifyPhoneLoginOtp, sendPhoneLoginOtp, logout} = useAuthStore();
 
   const [otp, setOtp] = useState<string[]>(Array(OTP_LENGTH).fill(''));
   const [isVerifying, setIsVerifying] = useState(false);
@@ -101,11 +101,11 @@ export default function OtpVerifyScreen() {
         await otpApi.verify(phone, code, 'LOGIN');
         completeOtpVerification();
       }
-    } catch (error: unknown) {
-      const message = axios.isAxiosError(error)
-        ? ((error.response?.data as {message?: string} | undefined)?.message || 'Invalid OTP. Please try again.')
-        : error instanceof Error
-          ? error.message
+    } catch (caughtError: unknown) {
+      const message = axios.isAxiosError(caughtError)
+        ? ((caughtError.response?.data as {message?: string} | undefined)?.message || 'Invalid OTP. Please try again.')
+        : caughtError instanceof Error
+          ? caughtError.message
           : 'Invalid OTP. Please try again.';
       setError(message);
       setOtp(Array(OTP_LENGTH).fill(''));
@@ -119,16 +119,23 @@ export default function OtpVerifyScreen() {
     if (countdown > 0) return;
     setIsResending(true);
     try {
-      await otpApi.send(phone, 'LOGIN');
+      if (flow === 'PHONE_LOGIN') {
+        await sendPhoneLoginOtp(phone, {
+          requestedRole: requestedRole || 'OWNER',
+          selectedShopId,
+        });
+      } else {
+        await otpApi.send(phone, 'LOGIN');
+      }
       setCountdown(60);
       setOtp(Array(OTP_LENGTH).fill(''));
       setError('');
       Alert.alert('OTP Sent', `A new code has been sent to ${formatPhone(phone)}`);
-    } catch (error: unknown) {
-      const message = axios.isAxiosError(error)
-        ? ((error.response?.data as {message?: string} | undefined)?.message || 'Failed to resend OTP')
-        : error instanceof Error
-          ? error.message
+    } catch (caughtError: unknown) {
+      const message = axios.isAxiosError(caughtError)
+        ? ((caughtError.response?.data as {message?: string} | undefined)?.message || 'Failed to resend OTP')
+        : caughtError instanceof Error
+          ? caughtError.message
           : 'Failed to resend OTP';
       Alert.alert('Error', message);
     } finally {

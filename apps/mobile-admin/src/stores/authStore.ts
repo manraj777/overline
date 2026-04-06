@@ -53,7 +53,10 @@ interface AuthState {
   fetchAssignedStaffShops: (phone: string) => Promise<StaffAssignedShop[]>;
   staffLogin: (params: {shopId: string; phone: string; password: string}) => Promise<void>;
   loginWithGoogle: (idToken: string, options?: {requestedRole?: AuthRequestedRole}) => Promise<void>;
-  sendPhoneLoginOtp: (phone: string) => Promise<void>;
+  sendPhoneLoginOtp: (
+    phone: string,
+    options?: {requestedRole?: AuthRequestedRole; selectedShopId?: string},
+  ) => Promise<void>;
   verifyPhoneLoginOtp: (
     phone: string,
     otp: string,
@@ -183,7 +186,14 @@ export const useAuthStore = create<AuthState>((set) => ({
     });
   },
 
-  sendPhoneLoginOtp: async (phone: string) => {
+  sendPhoneLoginOtp: async (
+    phone: string,
+    options?: {requestedRole?: AuthRequestedRole; selectedShopId?: string},
+  ) => {
+    if (options?.requestedRole === 'STAFF' && options?.selectedShopId) {
+      await authApi.staffSendOtp({shopId: options.selectedShopId, phone});
+      return;
+    }
     await otpApi.send(phone, 'LOGIN');
   },
 
@@ -192,7 +202,14 @@ export const useAuthStore = create<AuthState>((set) => ({
     otp: string,
     options?: {requestedRole?: AuthRequestedRole; selectedShopId?: string},
   ) => {
-    const response = await otpApi.verify(phone, otp, 'LOGIN', options?.requestedRole);
+    const isStaffWithShop = options?.requestedRole === 'STAFF' && !!options?.selectedShopId;
+    const response = isStaffWithShop
+      ? await authApi.staffVerifyOtp({
+          shopId: options!.selectedShopId!,
+          phone,
+          otp,
+        })
+      : await otpApi.verify(phone, otp, 'LOGIN', options?.requestedRole);
     const {accessToken, refreshToken, user} = response.data as AuthLoginResponse;
 
     const adminRoles: AdminRole[] = ['SUPER_ADMIN', 'OWNER', 'STAFF'];

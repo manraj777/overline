@@ -20,7 +20,7 @@ import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { GoogleSignin } from '@react-native-google-signin/google-signin';
 import { useAuthStore } from '../../stores/authStore';
-import { Colors, Shadows, Radius } from '../../theme';
+import { Colors, Shadows } from '../../theme';
 import { RootStackParamList } from '../../types';
 import { 
   Smartphone, 
@@ -34,7 +34,7 @@ import {
   Building2
 } from 'lucide-react-native';
 
-const { width, height } = Dimensions.get('window');
+const { height } = Dimensions.get('window');
 const BRAND_LOGO = require('../../../assets/branding/overline-logo.png');
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
@@ -131,7 +131,10 @@ export default function LoginScreen() {
     setIsLoading(true);
     try {
       const normalized = `+91${digits}`;
-      await sendPhoneLoginOtp(normalized);
+      await sendPhoneLoginOtp(normalized, {
+        requestedRole: 'STAFF',
+        selectedShopId: selectedShop.id,
+      });
       navigation.navigate('OtpVerify', {
         phone: normalized,
         flow: 'PHONE_LOGIN',
