@@ -84,10 +84,12 @@ export default function StaffManagementScreen() {
   }
 
   const createMutation = useMutation({
-    mutationFn: (data: StaffFormData) => staffApi.create(shopId, { 
-      ...data, 
+    mutationFn: (data: StaffFormData) => staffApi.create(shopId, {
+      ...data,
+      phone: data.phone.replace(/\D/g, '').length === 10 ? `+91${data.phone.replace(/\D/g, '')}` : data.phone,
+      password: data.password.replace(/\D/g, '').slice(0, 6),
       age: parseInt(data.age) || undefined,
-      role: 'STAFF' 
+      role: 'STAFF'
     }),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['adminStaff', shopId] });
@@ -116,8 +118,8 @@ export default function StaffManagementScreen() {
   const validate = () => {
     const e: Record<string, string> = {};
     if (!formData.name.trim()) e.name = 'Required';
-    if (!formData.phone.trim()) e.phone = 'Required';
-    if (!/^\d{6}$/.test(formData.password)) e.password = 'Must be 6 digits';
+    if (formData.phone.replace(/\D/g, '').length < 10) e.phone = 'Enter valid mobile number';
+    if (!/^\d{6}$/.test(formData.password.replace(/\D/g, ''))) e.password = 'Must be 6 digits';
     setErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -253,7 +255,7 @@ export default function StaffManagementScreen() {
                         placeholder="+91" 
                         keyboardType="phone-pad"
                         value={formData.phone}
-                        onChangeText={t => setFormData({ ...formData, phone: t })}
+                        onChangeText={t => setFormData({ ...formData, phone: t.replace(/[^\d+\s-]/g, '') })}
                       />
                     </View>
                   </View>
@@ -283,7 +285,7 @@ export default function StaffManagementScreen() {
                       maxLength={6}
                       secureTextEntry
                       value={formData.password}
-                      onChangeText={t => setFormData({ ...formData, password: t })}
+                      onChangeText={t => setFormData({ ...formData, password: t.replace(/\D/g, '').slice(0, 6) })}
                     />
                   </View>
                   <Text style={styles.helpText}>Staff will use this code to login after selecting the shop.</Text>

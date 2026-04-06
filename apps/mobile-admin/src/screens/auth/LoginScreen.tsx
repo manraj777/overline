@@ -214,7 +214,7 @@ export default function LoginScreen() {
                     placeholder="Mobile Number" 
                     keyboardType="phone-pad"
                     value={ownerPhone}
-                    onChangeText={setOwnerPhone}
+                    onChangeText={(t) => setOwnerPhone(t.replace(/[^\d+\s-]/g, ''))}
                   />
                 </View>
 
@@ -256,7 +256,7 @@ export default function LoginScreen() {
                     placeholder="Registered Mobile" 
                     keyboardType="phone-pad"
                     value={staffPhone}
-                    onChangeText={setStaffPhone}
+                    onChangeText={(t) => setStaffPhone(t.replace(/[^\d+\s-]/g, ''))}
                   />
                 </View>
 
@@ -286,7 +286,7 @@ export default function LoginScreen() {
                         maxLength={6}
                         secureTextEntry
                         value={staffPin}
-                        onChangeText={setStaffPin}
+                        onChangeText={(t) => setStaffPin(t.replace(/\D/g, '').slice(0, 6))}
                       />
                     </View>
                     <TouchableOpacity style={styles.primaryBtn} onPress={handleStaffLogin} disabled={isLoading}>

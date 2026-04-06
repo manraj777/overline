@@ -47,9 +47,23 @@ export default function StaffPage() {
   const [formData, setFormData] = React.useState<StaffFormData>({ ...emptyForm });
   const [selectedServiceIds, setSelectedServiceIds] = React.useState<string[]>([]);
   const [initialServiceIds, setInitialServiceIds] = React.useState<string[]>([]);
+  const [formError, setFormError] = React.useState<string>('');
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setFormError('');
+
+    const normalizedPhone = formData.phone.replace(/\D/g, '');
+    if (!editingStaffId && normalizedPhone.length < 10) {
+      setFormError('Staff mobile number is required for login.');
+      return;
+    }
+
+    if (!editingStaffId && !/^\d{6}$/.test(formData.password)) {
+      setFormError('Staff PIN must be exactly 6 digits.');
+      return;
+    }
+
     try {
       let savedStaffId = editingStaffId;
       if (editingStaffId) {
@@ -91,6 +105,8 @@ export default function StaffPage() {
       setInitialServiceIds([]);
     } catch (err) {
       console.error('Failed to save staff:', err);
+      const message = (err as any)?.response?.data?.message;
+      setFormError(Array.isArray(message) ? message.join(', ') : message || 'Failed to save staff');
     }
   };
 
@@ -118,6 +134,7 @@ export default function StaffPage() {
     const assignedServiceIds = (member.staffServices || []).map((item: any) => item.serviceId);
     setSelectedServiceIds(assignedServiceIds);
     setInitialServiceIds(assignedServiceIds);
+    setFormError('');
     setShowForm(true);
   };
 
@@ -127,6 +144,7 @@ export default function StaffPage() {
     setFormData({ ...emptyForm });
     setSelectedServiceIds([]);
     setInitialServiceIds([]);
+    setFormError('');
   };
 
   const toggleServiceSelection = (serviceId: string) => {
@@ -213,7 +231,6 @@ export default function StaffPage() {
                   <label className="label-m3">Email</label>
                   <input
                     type="email"
-                    required
                     placeholder="email@example.com"
                     className="input-m3"
                     value={formData.email}
@@ -229,7 +246,7 @@ export default function StaffPage() {
                     placeholder="+91 9876543210"
                     className="input-m3"
                     value={formData.phone}
-                    onChange={(e) => setFormData({ ...formData, phone: e.target.value })}
+                    onChange={(e) => setFormData({ ...formData, phone: e.target.value.replace(/[^\d+\s-]/g, '') })}
                   />
                 </div>
                 <div className="space-y-2">
@@ -260,7 +277,7 @@ export default function StaffPage() {
                     <label className="label-m3">6-digit Onboarding PIN</label>
                     <input
                       type="text"
-                      pattern="\\d{6}"
+                      inputMode="numeric"
                       maxLength={6}
                       placeholder="Unique 6-digit PIN"
                       className="input-m3"
@@ -270,6 +287,10 @@ export default function StaffPage() {
                   </div>
                 )}
               </div>
+
+              {!!formError && (
+                <p className="text-sm font-medium text-error">{formError}</p>
+              )}
 
               <div>
                 <label className="label-m3 mb-3 block">Assigned Services</label>

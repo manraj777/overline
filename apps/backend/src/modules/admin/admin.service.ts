@@ -125,6 +125,30 @@ export class AdminService {
       .replace(/--+/g, '-'); // Replace multiple - with single -
   }
 
+  private normalizeIndianPhone(phone?: string): string | undefined {
+    if (!phone) return undefined;
+    const cleaned = phone.replace(/\D/g, '');
+    if (cleaned.length === 10) return `+91${cleaned}`;
+    if (cleaned.length === 12 && cleaned.startsWith('91')) return `+${cleaned}`;
+    if (cleaned.length === 11 && cleaned.startsWith('0')) return `+91${cleaned.slice(1)}`;
+    return phone.trim();
+  }
+
+  private async ensureUniqueStaffPin(shopId: string, pin: string, excludeStaffId?: string) {
+    const existing = await this.prisma.staff.findFirst({
+      where: {
+        shopId,
+        password: pin,
+        ...(excludeStaffId ? { id: { not: excludeStaffId } } : {}),
+      },
+      select: { id: true },
+    });
+
+    if (existing) {
+      throw new BadRequestException('This 6-digit PIN is already in use. Please choose a different PIN.');
+    }
+  }
+
   /**
    * Get dashboard data for a shop
    */
@@ -426,35 +450,30 @@ export class AdminService {
   ) {
     await this.verifyShopAccess(shopId, tenantId);
 
-    if (dto.password && !/^\d{6}$/.test(dto.password)) {
+    const normalizedPhone = this.normalizeIndianPhone(dto.phone);
+    if (!normalizedPhone) {
+      throw new BadRequestException('Staff phone number is required for staff login');
+    }
+
+    if (!dto.password || !/^\d{6}$/.test(dto.password)) {
       throw new BadRequestException('Staff PIN must be exactly 6 digits');
     }
+
+    await this.ensureUniqueStaffPin(shopId, dto.password);
 
     const createdStaff = await this.prisma.staff.create({
       data: {
         shopId,
         name: dto.name,
         email: dto.email,
-        phone: dto.phone,
+        phone: normalizedPhone,
+        age: dto.age,
+        password: dto.password,
         avatarUrl: dto.avatarUrl,
         role: dto.role || 'staff',
         isActive: true,
       },
     });
-
-    if (dto.age !== undefined || dto.password !== undefined) {
-      await this.prisma.$executeRawUnsafe(
-        `
-        UPDATE staff
-        SET age = COALESCE($1, age),
-            password = COALESCE($2, password)
-        WHERE id = $3
-        `,
-        dto.age ?? null,
-        dto.password ?? null,
-        createdStaff.id,
-      );
-    }
 
     return createdStaff;
   }
@@ -483,7 +502,7 @@ export class AdminService {
       where: { id: staffId },
       data: {
         ...(dto.name && { name: dto.name }),
-        ...(dto.phone !== undefined && { phone: dto.phone }),
+        ...(dto.phone !== undefined && { phone: this.normalizeIndianPhone(dto.phone) }),
         ...(dto.avatarUrl !== undefined && { avatarUrl: dto.avatarUrl }),
         ...(dto.role && { role: dto.role }),
         ...(dto.isActive !== undefined && { isActive: dto.isActive }),
@@ -528,16 +547,31 @@ export class AdminService {
       throw new NotFoundException('Staff member not found');
     }
 
-    const newPin = password || Math.floor(100000 + Math.random() * 900000).toString();
+    let newPin = password || Math.floor(100000 + Math.random() * 900000).toString();
     if (!/^\d{6}$/.test(newPin)) {
       throw new BadRequestException('Staff PIN must be exactly 6 digits');
     }
 
-    await this.prisma.$executeRawUnsafe(
-      `UPDATE staff SET password = $1, updated_at = NOW() WHERE id = $2`,
-      newPin,
-      staff.id,
-    );
+    if (!password) {
+      // Regenerate until unique or fail after a few attempts.
+      let attempts = 0;
+      while (attempts < 10) {
+        const duplicate = await this.prisma.staff.findFirst({
+          where: { shopId, password: newPin, id: { not: staff.id } },
+          select: { id: true },
+        });
+        if (!duplicate) break;
+        newPin = Math.floor(100000 + Math.random() * 900000).toString();
+        attempts += 1;
+      }
+    } else {
+      await this.ensureUniqueStaffPin(shopId, newPin, staff.id);
+    }
+
+    await this.prisma.staff.update({
+      where: { id: staff.id },
+      data: { password: newPin },
+    });
 
     return { success: true, password: newPin };
   }
