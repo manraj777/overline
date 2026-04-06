@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react';
-import { Upload, X, Loader2 } from 'lucide-react';
+import { Upload, Loader2, Pencil } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface ImageUploadProps {
@@ -93,6 +93,17 @@ export const ImageUpload: React.FC<ImageUploadProps> = ({
           <Upload className="w-8 h-8 text-gray-400" />
         )}
 
+        {preview && !isUploading && (
+          <button
+            type="button"
+            onClick={() => inputRef.current?.click()}
+            className="absolute bottom-1 right-1 inline-flex h-6 w-6 items-center justify-center rounded-full bg-black/40 text-white backdrop-blur-sm hover:bg-black/60"
+            title="Change photo"
+          >
+            <Pencil className="w-3.5 h-3.5" />
+          </button>
+        )}
+
         {isUploading && (
           <div className="absolute inset-0 flex items-center justify-center bg-black/30">
             <Loader2 className="w-6 h-6 text-white animate-spin" />
@@ -101,14 +112,16 @@ export const ImageUpload: React.FC<ImageUploadProps> = ({
       </div>
 
       <div>
-        <button
-          type="button"
-          onClick={() => inputRef.current?.click()}
-          disabled={isUploading}
-          className="px-3 py-1.5 text-sm font-medium border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
-        >
-          {isUploading ? 'Uploading...' : label}
-        </button>
+        {!preview && (
+          <button
+            type="button"
+            onClick={() => inputRef.current?.click()}
+            disabled={isUploading}
+            className="px-3 py-1.5 text-sm font-medium border border-gray-300 rounded-lg hover:bg-gray-50 disabled:opacity-50 disabled:cursor-not-allowed"
+          >
+            {isUploading ? 'Uploading...' : label}
+          </button>
+        )}
         <p className="text-xs text-gray-500 mt-1">{hint}</p>
         {error && <p className="text-xs text-red-500 mt-1">{error}</p>}
       </div>

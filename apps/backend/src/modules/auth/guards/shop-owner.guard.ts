@@ -14,8 +14,8 @@ export class ShopOwnerGuard implements CanActivate {
     const request = context.switchToHttp().getRequest();
     const user = request.user as { id: string; role: string } | undefined;
 
-    if (!user || user.role !== 'OWNER') {
-      throw new ForbiddenException('Owner access required');
+    if (!user) {
+      throw new ForbiddenException('Authentication required');
     }
 
     const shopIdParam = this.reflector.getAllAndOverride<string>(SHOP_ID_PARAM_KEY, [

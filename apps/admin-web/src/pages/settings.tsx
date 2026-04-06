@@ -1,46 +1,36 @@
 import React from 'react';
 import Head from 'next/head';
-import { Save, Upload, Bell, Clock, Globe, CreditCard, Camera, X } from 'lucide-react';
-import { Card, Button, Input, Loading, useToast, ImageUpload } from '@/components/ui';
-import { useShopSettings, useUpdateShopSettings, useWorkingHours, useUpdateWorkingHours, useUser, useStaff } from '@/hooks';
+import { Bell, Camera, Save, Store } from 'lucide-react';
+import { Input, Loading, useToast, ImageUpload } from '@/components/ui';
+import { useShopSettings, useUpdateShopSettings, useStaff } from '@/hooks';
 import api from '@/lib/api';
 
-const DAY_NAMES = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY'];
-const DAY_LABELS: Record<string, string> = {
-  MONDAY: 'Monday', TUESDAY: 'Tuesday', WEDNESDAY: 'Wednesday', THURSDAY: 'Thursday',
-  FRIDAY: 'Friday', SATURDAY: 'Saturday', SUNDAY: 'Sunday',
-};
+type SettingsTab = 'shop' | 'media' | 'settings';
+
+const SHOP_TYPES = ['Salon', 'Medical', 'Gym', 'Spa', 'Clinic', 'Other'];
 
 export default function SettingsPage() {
-  const [activeTab, setActiveTab] = React.useState('general');
+  const [activeTab, setActiveTab] = React.useState<SettingsTab>('shop');
   const { addToast } = useToast();
 
-  // Shop settings
-  const { data: shopData, isLoading: loadingSettings } = useShopSettings();
-  const updateSettings = useUpdateShopSettings();
-  const { data: userData } = useUser();
+  const { data: shopData, isLoading } = useShopSettings();
   const { data: staffData } = useStaff();
+  const updateSettings = useUpdateShopSettings();
 
-  // Working hours
-  const { data: workingHoursData, isLoading: loadingHours } = useWorkingHours();
-  const updateHours = useUpdateWorkingHours();
-
-  // General form state
-  const [generalForm, setGeneralForm] = React.useState({
-    name: '', description: '', phone: '', email: '', address: '', city: '', state: '', postalCode: '', shopType: '', googleMapLink: '',
-  });
-
-  // Profile form state
-  const [profileForm, setProfileForm] = React.useState({
+  const [shopForm, setShopForm] = React.useState({
     name: '',
+    shopType: 'Salon',
     phone: '',
-    avatarUrl: '',
+    email: '',
+    address: '',
+    city: '',
+    state: '',
+    postalCode: '',
+    location: '',
+    googleMapLink: '',
+    workingTime: '09:00 - 21:00',
   });
 
-  // Working hours local state for controlled inputs
-  const [hoursForm, setHoursForm] = React.useState<Record<string, { openTime: string; closeTime: string; isClosed: boolean }>>({});
-
-  // Notification settings state
   const [notificationSettings, setNotificationSettings] = React.useState<Record<string, boolean>>({
     bookingConfirmation: true,
     bookingReminder: true,
@@ -51,108 +41,65 @@ export default function SettingsPage() {
     dailySummary: false,
   });
 
-  // Sync shop data to forms when loaded
   React.useEffect(() => {
-    if (shopData) {
-      setGeneralForm({
-        name: shopData.name || '',
-        description: shopData.description || '',
-        phone: shopData.phone || '',
-        email: shopData.email || '',
-        address: shopData.address || '',
-        city: shopData.city || '',
-        state: shopData.state || '',
-        postalCode: shopData.postalCode || '',
-        shopType: String(shopData.settings?.shopType || ''),
-        googleMapLink: String(shopData.settings?.googleMapLink || ''),
-      });
-      // Load notification settings from shop.settings
-      const savedNotifications = shopData.settings?.notifications || {};
-      setNotificationSettings((prev) => ({ ...prev, ...savedNotifications }));
-    }
+    if (!shopData) return;
+
+    setShopForm({
+      name: shopData.name || '',
+      shopType: String(shopData.settings?.shopType || 'Salon'),
+      phone: shopData.phone || '',
+      email: shopData.email || '',
+      address: shopData.address || '',
+      city: shopData.city || '',
+      state: shopData.state || '',
+      postalCode: shopData.postalCode || '',
+      location: String(shopData.settings?.location || ''),
+      googleMapLink: String(shopData.settings?.googleMapLink || ''),
+      workingTime: String(shopData.settings?.workingTime || '09:00 - 21:00'),
+    });
+
+    const savedNotifications = shopData.settings?.notifications || {};
+    setNotificationSettings((prev) => ({ ...prev, ...savedNotifications }));
   }, [shopData]);
 
-  // Sync working hours data to local state
-  React.useEffect(() => {
-    if (Array.isArray(workingHoursData)) {
-      const map: Record<string, { openTime: string; closeTime: string; isClosed: boolean }> = {};
-      workingHoursData.forEach((wh: any) => {
-        map[wh.dayOfWeek] = {
-          openTime: wh.openTime || '09:00',
-          closeTime: wh.closeTime || '21:00',
-          isClosed: wh.isClosed ?? false,
-        };
-      });
-      // Ensure all days have a default
-      DAY_NAMES.forEach((day) => {
-        if (!map[day]) {
-          map[day] = { openTime: '09:00', closeTime: '21:00', isClosed: day === 'SUNDAY' };
-        }
-      });
-      setHoursForm(map);
-    }
-  }, [workingHoursData]);
-
-  React.useEffect(() => {
-    if (!userData) return;
-
-    setProfileForm({
-      name: userData.name || '',
-      phone: userData.phone || '',
-      avatarUrl: userData.avatarUrl || '',
-    });
-  }, [userData]);
-
-  const handleSaveGeneral = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const saveShopDetails = async (event: React.FormEvent) => {
+    event.preventDefault();
     try {
       await updateSettings.mutateAsync({
-        name: generalForm.name,
-        description: generalForm.description,
-        phone: generalForm.phone,
-        email: generalForm.email,
-        address: generalForm.address,
-        city: generalForm.city,
-        state: generalForm.state,
-        postalCode: generalForm.postalCode,
+        name: shopForm.name,
+        phone: shopForm.phone,
+        email: shopForm.email,
+        address: shopForm.address,
+        city: shopForm.city,
+        state: shopForm.state,
+        postalCode: shopForm.postalCode,
         settings: {
           ...(shopData?.settings || {}),
-          shopType: generalForm.shopType,
-          googleMapLink: generalForm.googleMapLink,
-          timezone: 'UTC+05:30',
+          shopType: shopForm.shopType,
+          location: shopForm.location,
+          googleMapLink: shopForm.googleMapLink,
+          workingTime: shopForm.workingTime,
         },
       });
-      addToast({ type: 'success', title: 'Settings saved!' });
-    } catch (err: any) {
-      addToast({ type: 'error', title: 'Failed to save', message: err.response?.data?.message || 'Try again.' });
+      addToast({ type: 'success', title: 'Shop details saved' });
+    } catch (error: any) {
+      const message = error?.response?.data?.message;
+      addToast({ type: 'error', title: 'Failed to save', message: Array.isArray(message) ? message.join(', ') : message || 'Try again.' });
     }
   };
 
-  const handleHoursChange = (dayOfWeek: string, field: 'openTime' | 'closeTime' | 'isClosed', value: any) => {
-    setHoursForm((prev) => ({
-      ...prev,
-      [dayOfWeek]: { ...prev[dayOfWeek], [field]: value },
-    }));
-  };
-
-  const handleSaveHour = async (dayOfWeek: string, field: string, value: any) => {
+  const saveNotifications = async () => {
     try {
-      await updateHours.mutateAsync({ dayOfWeek, [field]: value });
-      addToast({ type: 'success', title: `${DAY_LABELS[dayOfWeek]} updated!` });
-    } catch (err: any) {
-      addToast({ type: 'error', title: `Failed to update ${DAY_LABELS[dayOfWeek]}` });
-    }
-  };
-
-  const handleSaveNotifications = async () => {
-    try {
-      const currentSettings = shopData?.settings || {};
       await updateSettings.mutateAsync({
-        settings: { ...currentSettings, notifications: notificationSettings },
+        settings: {
+          ...(shopData?.settings || {}),
+          notifications: notificationSettings,
+        },
       });
-      addToast({ type: 'success', title: 'Notification settings saved!' });
-    } catch (err: any) {
-      addToast({ type: 'error', title: 'Failed to save', message: err.response?.data?.message || 'Try again.' });
+      addToast({ type: 'success', title: 'Notification settings saved' });
+    } catch (error: any) {
+      const message = error?.response?.data?.message;
+      addToast({ type: 'error', title: 'Failed to save', message: Array.isArray(message) ? message.join(', ') : message || 'Try again.' });
     }
   };
 
@@ -163,9 +110,22 @@ export default function SettingsPage() {
     const { data } = await api.post('/upload', fd, {
       headers: { 'Content-Type': 'multipart/form-data' },
     });
-    // Update shop with new cover URL
+
     await updateSettings.mutateAsync({ coverUrl: data.url });
-    addToast({ type: 'success', title: 'Cover photo uploaded!' });
+    addToast({ type: 'success', title: 'Cover photo updated' });
+    return data.url;
+  };
+
+  const handleUploadLogo = async (file: File): Promise<string> => {
+    const fd = new FormData();
+    fd.append('file', file);
+    fd.append('folder', 'shops');
+    const { data } = await api.post('/upload', fd, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+
+    await updateSettings.mutateAsync({ logoUrl: data.url });
+    addToast({ type: 'success', title: 'Shop profile photo updated' });
     return data.url;
   };
 
@@ -179,64 +139,45 @@ export default function SettingsPage() {
 
     const currentPhotos = shopData?.photoUrls || [];
     await updateSettings.mutateAsync({ photoUrls: [...currentPhotos, data.url] });
-    addToast({ type: 'success', title: 'Photo added to gallery!' });
+    addToast({ type: 'success', title: 'Photo added to gallery' });
     return data.url;
   };
 
-  const handleRemoveGalleryPhoto = async (indexToRemove: number) => {
-    const currentPhotos = shopData?.photoUrls || [];
-    const updated = currentPhotos.filter((_: string, i: number) => i !== indexToRemove);
-    await updateSettings.mutateAsync({ photoUrls: updated });
-    addToast({ type: 'success', title: 'Photo removed' });
+  const removeGalleryPhoto = async (indexToRemove: number) => {
+    try {
+      const currentPhotos = shopData?.photoUrls || [];
+      const updated = currentPhotos.filter((_: string, index: number) => index !== indexToRemove);
+      await updateSettings.mutateAsync({ photoUrls: updated });
+      addToast({ type: 'success', title: 'Photo removed' });
+    } catch {
+      addToast({ type: 'error', title: 'Failed to remove photo' });
+    }
   };
 
-  const tabs = [
-    { id: 'general', label: 'General', icon: Globe },
+  if (isLoading) {
+    return <Loading text="Loading shop details..." />;
+  }
+
+  const tabs: Array<{ id: SettingsTab; label: string; icon: React.ComponentType<{ className?: string }> }> = [
+    { id: 'shop', label: 'Shop Details', icon: Store },
     { id: 'media', label: 'Shop Media', icon: Camera },
-    { id: 'hours', label: 'Working Hours', icon: Clock },
-    { id: 'profile', label: 'Profile', icon: Upload },
-    { id: 'notifications', label: 'Notifications', icon: Bell },
-    { id: 'payments', label: 'Payments', icon: CreditCard },
+    { id: 'settings', label: 'Settings', icon: Bell },
   ];
-
-  if (loadingSettings) return <Loading text="Loading settings..." />;
-
-  // Build working hours map
-  const hoursMap: Record<string, any> = {};
-  if (Array.isArray(workingHoursData)) {
-    workingHoursData.forEach((wh: any) => { hoursMap[wh.dayOfWeek] = wh; });
-  }
-
-  async function handleSaveProfile(event: React.FormEvent<HTMLFormElement>): Promise<void> {
-    event.preventDefault();
-    try {
-      await api.patch('/users/me', {
-        name: profileForm.name,
-        phone: profileForm.phone,
-        avatarUrl: profileForm.avatarUrl,
-      });
-      addToast({ type: 'success', title: 'Profile updated!' });
-    } catch (err: any) {
-      addToast({ type: 'error', title: 'Failed to update profile', message: err.response?.data?.message || 'Try again.' });
-    }
-  }
 
   return (
     <>
       <Head>
-        <title>Settings - Overline Admin</title>
+        <title>Shop Details - Overline Admin</title>
       </Head>
 
       <div>
-        {/* Header */}
         <div className="mb-8">
-          <span className="label-m3 mb-2 block">Configuration</span>
-          <h1 className="text-3xl font-black tracking-tight text-on-surface">Settings</h1>
-          <p className="text-on-surface-variant text-sm mt-1">Configure your shop preferences</p>
+          <span className="label-m3 mb-2 block">Shop Details</span>
+          <h1 className="text-3xl font-black tracking-tight text-on-surface">Shop Details</h1>
+          <p className="text-on-surface-variant text-sm mt-1">Manage essential shop information and media.</p>
         </div>
 
         <div className="flex flex-col lg:flex-row gap-6">
-          {/* Tabs */}
           <div className="lg:w-64">
             <div className="card-m3 p-2">
               <nav className="space-y-0.5">
@@ -244,10 +185,11 @@ export default function SettingsPage() {
                   <button
                     key={tab.id}
                     onClick={() => setActiveTab(tab.id)}
-                    className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${activeTab === tab.id
+                    className={`w-full flex items-center gap-3 px-4 py-2.5 rounded-xl text-sm font-medium transition-all ${
+                      activeTab === tab.id
                         ? 'bg-primary/10 text-primary font-bold'
                         : 'text-on-surface-variant hover:bg-surface-container-low'
-                      }`}
+                    }`}
                   >
                     <tab.icon className="w-[18px] h-[18px]" />
                     {tab.label}
@@ -257,251 +199,175 @@ export default function SettingsPage() {
             </div>
           </div>
 
-          {/* Content */}
           <div className="flex-1">
-            {activeTab === 'general' && (
+            {activeTab === 'shop' && (
               <div className="card-m3 p-8">
-                <h2 className="text-lg font-bold text-on-surface mb-6">Shop Information</h2>
+                <h2 className="text-lg font-bold text-on-surface mb-6">Shop Details</h2>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                  <div className="rounded-xl border border-outline-variant/15 bg-surface-container-low p-3">
-                    <p className="text-[10px] font-bold text-outline tracking-widest uppercase">Timezone</p>
-                    <p className="mt-1 text-sm font-bold text-on-surface">UTC+05:30 (IST)</p>
-                  </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
                   <div className="rounded-xl border border-outline-variant/15 bg-surface-container-low p-3">
                     <p className="text-[10px] font-bold text-outline tracking-widest uppercase">Total Staff</p>
                     <p className="mt-1 text-sm font-bold text-on-surface">{staffData?.length || 0}</p>
                   </div>
                   <div className="rounded-xl border border-outline-variant/15 bg-surface-container-low p-3">
-                    <p className="text-[10px] font-bold text-outline tracking-widest uppercase">Shop ID</p>
-                    <p className="mt-1 text-sm font-bold text-on-surface">{shopData?.id || '-'}</p>
+                    <p className="text-[10px] font-bold text-outline tracking-widest uppercase">Working Time</p>
+                    <p className="mt-1 text-sm font-bold text-on-surface">{shopForm.workingTime}</p>
                   </div>
                 </div>
 
-                <form className="space-y-6" onSubmit={handleSaveGeneral}>
-                  <ImageUpload
-                    currentUrl={shopData?.logoUrl}
-                    onUpload={async (file) => {
-                      const formData = new FormData();
-                      formData.append('file', file);
-                      const { data } = await api.patch(
-                        `/upload/shop/${shopData?.id}/logo`,
-                        formData,
-                        { headers: { 'Content-Type': 'multipart/form-data' } },
-                      );
-                      addToast({ type: 'success', title: 'Logo uploaded!' });
-                      return data.logoUrl;
-                    }}
-                    label="Upload Logo"
-                    hint="PNG, JPG up to 5MB. Recommended: 200x200px"
-                    shape="circle"
-                  />
-
+                <form className="space-y-6" onSubmit={saveShopDetails}>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <Input
-                      label="Shop Name"
-                      value={generalForm.name}
-                      onChange={(e) => setGeneralForm({ ...generalForm, name: e.target.value })}
+                      label="Name"
+                      value={shopForm.name}
+                      onChange={(e) => setShopForm((prev) => ({ ...prev, name: e.target.value }))}
                     />
-                    <Input label="Slug" value={shopData?.slug || ''} disabled />
-                  </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <Input
-                      label="Shop Type"
-                      value={generalForm.shopType}
-                      onChange={(e) => setGeneralForm({ ...generalForm, shopType: e.target.value })}
-                      placeholder="Salon / Spa / Clinic"
-                    />
-                    <Input
-                      label="Google Maps Link (Optional)"
-                      value={generalForm.googleMapLink}
-                      onChange={(e) => setGeneralForm({ ...generalForm, googleMapLink: e.target.value })}
-                      placeholder="https://maps.google.com/..."
-                    />
-                  </div>
-
-                  <div className="space-y-2">
-                    <label className="label-m3">Description</label>
-                    <textarea
-                      className="input-m3 min-h-[100px] resize-none"
-                      rows={3}
-                      value={generalForm.description}
-                      onChange={(e) => setGeneralForm({ ...generalForm, description: e.target.value })}
-                      placeholder="Tell customers about your shop..."
-                    />
+                    <div className="space-y-2">
+                      <label className="label-m3">Type</label>
+                      <select
+                        className="input-m3"
+                        value={shopForm.shopType}
+                        onChange={(e) => setShopForm((prev) => ({ ...prev, shopType: e.target.value }))}
+                      >
+                        {SHOP_TYPES.map((type) => (
+                          <option key={type} value={type}>
+                            {type}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
                   </div>
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <Input
                       label="Phone"
                       type="tel"
-                      value={generalForm.phone}
-                      onChange={(e) => setGeneralForm({ ...generalForm, phone: e.target.value })}
+                      value={shopForm.phone}
+                      onChange={(e) => setShopForm((prev) => ({ ...prev, phone: e.target.value }))}
                     />
                     <Input
                       label="Email"
                       type="email"
-                      value={generalForm.email}
-                      onChange={(e) => setGeneralForm({ ...generalForm, email: e.target.value })}
+                      value={shopForm.email}
+                      onChange={(e) => setShopForm((prev) => ({ ...prev, email: e.target.value }))}
                     />
                   </div>
 
-                  <div>
-                    <Input
-                      label="Address"
-                      value={generalForm.address}
-                      onChange={(e) => setGeneralForm({ ...generalForm, address: e.target.value })}
-                    />
-                  </div>
+                  <Input
+                    label="Address"
+                    value={shopForm.address}
+                    onChange={(e) => setShopForm((prev) => ({ ...prev, address: e.target.value }))}
+                  />
 
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <Input
                       label="City"
-                      value={generalForm.city}
-                      onChange={(e) => setGeneralForm({ ...generalForm, city: e.target.value })}
+                      value={shopForm.city}
+                      onChange={(e) => setShopForm((prev) => ({ ...prev, city: e.target.value }))}
                     />
                     <Input
                       label="State"
-                      value={generalForm.state}
-                      onChange={(e) => setGeneralForm({ ...generalForm, state: e.target.value })}
+                      value={shopForm.state}
+                      onChange={(e) => setShopForm((prev) => ({ ...prev, state: e.target.value }))}
                     />
                     <Input
                       label="Postal Code"
-                      value={generalForm.postalCode}
-                      onChange={(e) => setGeneralForm({ ...generalForm, postalCode: e.target.value })}
+                      value={shopForm.postalCode}
+                      onChange={(e) => setShopForm((prev) => ({ ...prev, postalCode: e.target.value }))}
                     />
                   </div>
 
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <Input
+                      label="Location"
+                      value={shopForm.location}
+                      onChange={(e) => setShopForm((prev) => ({ ...prev, location: e.target.value }))}
+                    />
+                    <Input
+                      label="Google Link (Optional)"
+                      value={shopForm.googleMapLink}
+                      onChange={(e) => setShopForm((prev) => ({ ...prev, googleMapLink: e.target.value }))}
+                    />
+                  </div>
+
+                  <Input
+                    label="Timing (Working Time)"
+                    value={shopForm.workingTime}
+                    onChange={(e) => setShopForm((prev) => ({ ...prev, workingTime: e.target.value }))}
+                    placeholder="09:00 - 21:00"
+                  />
+
                   <button type="submit" disabled={updateSettings.isPending} className="btn-primary px-8 py-3 disabled:opacity-50">
                     <Save className="w-4 h-4" />
-                    {updateSettings.isPending ? 'Saving...' : 'Save Changes'}
+                    {updateSettings.isPending ? 'Saving...' : 'Save Shop Details'}
                   </button>
                 </form>
               </div>
             )}
 
-            {/* Shop Media Tab */}
             {activeTab === 'media' && (
               <div className="space-y-6">
-                {/* Cover Photo */}
                 <div className="card-m3 p-8">
                   <h2 className="text-sm font-bold text-on-surface mb-2">Cover Photo</h2>
-                  <p className="text-xs text-on-surface-variant mb-4">
-                    This is the main image customers see when they visit your shop page. Use a high-quality photo.
-                  </p>
-
-                  <div className="relative w-full h-48 md:h-64 rounded-2xl overflow-hidden bg-surface-container-low border-2 border-dashed border-outline-variant/20 mb-3">
-                    {shopData?.coverUrl ? (
-                      <img src={shopData.coverUrl} alt="Shop cover" className="w-full h-full object-cover" />
-                    ) : (
-                      <div className="w-full h-full flex flex-col items-center justify-center text-outline-variant">
-                        <Camera className="w-12 h-12 mb-2" />
-                        <p className="text-xs font-bold">No cover photo yet</p>
-                      </div>
-                    )}
-                  </div>
-
+                  <p className="text-xs text-on-surface-variant mb-4">Main image for your shop page.</p>
                   <ImageUpload
                     currentUrl={shopData?.coverUrl}
                     onUpload={handleUploadCover}
                     label="Upload Cover Photo"
-                    hint="Recommended: 1200×400px, JPG or PNG"
-                    size="sm"
+                    hint="Recommended: 1200x400, JPG or PNG"
+                    size="lg"
                   />
                 </div>
 
-                {/* Photo Gallery */}
                 <div className="card-m3 p-8">
-                  <h2 className="text-sm font-bold text-on-surface mb-2">Photo Gallery</h2>
-                  <p className="text-xs text-on-surface-variant mb-4">
-                    Add photos of your shop, interiors, work samples, and ambiance. Customers love seeing real photos!
-                  </p>
+                  <h2 className="text-sm font-bold text-on-surface mb-2">Shop Profile Photo</h2>
+                  <p className="text-xs text-on-surface-variant mb-4">Logo/profile image of your shop.</p>
+                  <ImageUpload
+                    currentUrl={shopData?.logoUrl}
+                    onUpload={handleUploadLogo}
+                    label="Upload Shop Profile Photo"
+                    hint="Recommended: 200x200, JPG or PNG"
+                    size="md"
+                    shape="circle"
+                  />
+                </div>
 
-                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                    {/* Existing photos */}
+                <div className="card-m3 p-8">
+                  <h2 className="text-sm font-bold text-on-surface mb-2">Gallery</h2>
+                  <p className="text-xs text-on-surface-variant mb-4">Add and manage additional shop photos.</p>
+
+                  <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4 mb-4">
                     {shopData?.photoUrls?.map((url: string, index: number) => (
                       <div key={index} className="relative group aspect-square rounded-2xl overflow-hidden bg-surface-container-low">
                         <img src={url} alt={`Shop photo ${index + 1}`} className="w-full h-full object-cover" />
                         <button
-                          onClick={() => handleRemoveGalleryPhoto(index)}
+                          onClick={() => removeGalleryPhoto(index)}
                           className="absolute top-2 right-2 p-1.5 bg-error text-white rounded-xl opacity-0 group-hover:opacity-100 transition-opacity shadow-lg"
+                          title="Remove photo"
                         >
-                          <X className="w-3.5 h-3.5" />
+                          x
                         </button>
                       </div>
                     ))}
-
-                    <ImageUpload
-                      currentUrl={null}
-                      onUpload={handleUploadGalleryPhoto}
-                      label="Add Photo"
-                      hint="JPG, PNG, WebP up to 5MB"
-                      size="sm"
-                    />
                   </div>
 
-                  <p className="text-[10px] text-outline mt-3 font-bold">
-                    {shopData?.photoUrls?.length || 0} photo{(shopData?.photoUrls?.length || 0) !== 1 ? 's' : ''} uploaded · JPG, PNG, WebP up to 5MB each
-                  </p>
+                  <ImageUpload
+                    currentUrl={null}
+                    onUpload={handleUploadGalleryPhoto}
+                    label="Add Gallery Photo"
+                    hint="JPG, PNG, WebP up to 5MB"
+                    size="sm"
+                  />
                 </div>
               </div>
             )}
 
-            {activeTab === 'hours' && (
+            {activeTab === 'settings' && (
               <div className="card-m3 p-8">
-                <h2 className="text-lg font-bold text-on-surface mb-6">Working Hours</h2>
-                {loadingHours ? (
-                  <Loading text="Loading hours..." />
-                ) : (
-                  <div className="space-y-4">
-                    {DAY_NAMES.map((day) => {
-                      const wh = hoursForm[day] || { openTime: '09:00', closeTime: '21:00', isClosed: day === 'SUNDAY' };
-                      return (
-                        <div key={day} className="flex items-center gap-4 py-3.5 border-b border-outline-variant/10 last:border-0">
-                          <div className="w-28 font-bold text-on-surface text-sm">{DAY_LABELS[day]}</div>
-                          <label className="flex items-center gap-2">
-                            <input
-                              type="checkbox"
-                              className="w-4 h-4 text-primary accent-primary rounded"
-                              checked={!wh.isClosed}
-                              onChange={(e) => {
-                                handleHoursChange(day, 'isClosed', !e.target.checked);
-                                handleSaveHour(day, 'isClosed', !e.target.checked);
-                              }}
-                            />
-                            <span className="text-xs text-on-surface-variant font-medium">Open</span>
-                          </label>
-                          <div className="flex items-center gap-2 ml-auto">
-                            <input
-                              type="time"
-                              className="input-m3 w-auto py-1.5 px-3"
-                              value={wh.openTime || '09:00'}
-                              disabled={wh.isClosed}
-                              onChange={(e) => handleHoursChange(day, 'openTime', e.target.value)}
-                              onBlur={(e) => handleSaveHour(day, 'openTime', e.target.value)}
-                            />
-                            <span className="text-outline text-xs">to</span>
-                            <input
-                              type="time"
-                              className="input-m3 w-auto py-1.5 px-3"
-                              value={wh.closeTime || '21:00'}
-                              disabled={wh.isClosed}
-                              onChange={(e) => handleHoursChange(day, 'closeTime', e.target.value)}
-                              onBlur={(e) => handleSaveHour(day, 'closeTime', e.target.value)}
-                            />
-                          </div>
-                        </div>
-                      );
-                    })}
-                  </div>
-                )}
-              </div>
-            )}
+                <h2 className="text-lg font-bold text-on-surface mb-6">Settings</h2>
+                <p className="text-sm text-on-surface-variant mb-6">Notifications moved here as requested.</p>
 
-            {activeTab === 'notifications' && (
-              <div className="card-m3 p-8">
-                <h2 className="text-lg font-bold text-on-surface mb-6">Notification Settings</h2>
                 <div className="space-y-8">
                   <div>
                     <h3 className="text-sm font-bold text-on-surface mb-3">Customer Notifications</h3>
@@ -546,106 +412,13 @@ export default function SettingsPage() {
                     </div>
                   </div>
                 </div>
+
                 <div className="mt-6">
-                  <button onClick={handleSaveNotifications} disabled={updateSettings.isPending} className="btn-primary px-8 py-3 disabled:opacity-50">
+                  <button onClick={saveNotifications} disabled={updateSettings.isPending} className="btn-primary px-8 py-3 disabled:opacity-50">
                     <Save className="w-4 h-4" />
                     {updateSettings.isPending ? 'Saving...' : 'Save Settings'}
                   </button>
                 </div>
-              </div>
-            )}
-
-            {activeTab === 'payments' && (
-              <div className="card-m3 p-8">
-                <h2 className="text-lg font-bold text-on-surface mb-6">Payment Settings</h2>
-                <div className="space-y-6">
-                  <div>
-                    <h3 className="text-sm font-bold text-on-surface mb-3">Payment Provider</h3>
-                    <div className="grid grid-cols-2 gap-4">
-                      <button className="p-5 border-2 border-primary rounded-2xl bg-primary-fixed text-center">
-                        <p className="font-bold text-primary">Razorpay</p>
-                        <p className="text-[10px] text-on-surface-variant mt-1 font-bold">Connected</p>
-                      </button>
-                      <button className="p-5 border-2 border-outline-variant/20 rounded-2xl text-center hover:border-outline-variant/40 transition-colors">
-                        <p className="font-bold text-on-surface">Stripe</p>
-                        <p className="text-[10px] text-outline mt-1 font-bold">Not connected</p>
-                      </button>
-                    </div>
-                  </div>
-
-                  <div>
-                    <Input
-                      label="Razorpay Key ID"
-                      type="password"
-                      defaultValue="rzp_live_xxxxx"
-                      placeholder="rzp_live_..."
-                    />
-                  </div>
-
-                  <div>
-                    <h3 className="text-sm font-bold text-on-surface mb-3">Payment Options</h3>
-                    <div className="space-y-1">
-                      {[
-                        { label: 'Enable online payments', key: 'onlinePayments', enabled: true },
-                        { label: 'Allow pay at counter', key: 'payAtCounter', enabled: true },
-                        { label: 'Require upfront payment', key: 'upfrontPayment', enabled: false },
-                      ].map((item) => (
-                        <label key={item.key} className="flex items-center justify-between py-2">
-                          <span className="text-sm text-on-surface-variant font-medium">{item.label}</span>
-                          <input
-                            type="checkbox"
-                            className="w-4 h-4 accent-primary rounded"
-                            defaultChecked={item.enabled}
-                          />
-                        </label>
-                      ))}
-                    </div>
-                  </div>
-                </div>
-                <div className="mt-6">
-                  <button onClick={() => addToast({ type: 'info', title: 'Payment settings saved (payments module coming soon)' })} className="btn-primary px-8 py-3">
-                    <Save className="w-4 h-4" />
-                    Save Settings
-                  </button>
-                </div>
-              </div>
-            )}
-
-            {activeTab === 'profile' && (
-              <div className="card-m3 p-8">
-                <h2 className="text-lg font-bold text-on-surface mb-6">Admin Profile</h2>
-                <form className="space-y-6" onSubmit={handleSaveProfile}>
-                  <ImageUpload
-                    currentUrl={profileForm.avatarUrl}
-                    onUpload={async (file) => {
-                      const formData = new FormData();
-                      formData.append('file', file);
-                      const { data } = await api.patch(
-                        '/upload/user/avatar',
-                        formData,
-                        { headers: { 'Content-Type': 'multipart/form-data' } },
-                      );
-                      setProfileForm((prev) => ({ ...prev, avatarUrl: data.avatarUrl }));
-                      addToast({ type: 'success', title: 'Profile photo uploaded!' });
-                      return data.avatarUrl;
-                    }}
-                    label="Upload Profile Photo"
-                    hint="PNG, JPG up to 5MB. Recommended: 200x200px"
-                    shape="circle"
-                  />
-                  <div className="space-y-2">
-                    <label className="label-m3">Name</label>
-                    <input className="input-m3" value={profileForm.name} onChange={(e) => setProfileForm({ ...profileForm, name: e.target.value })} />
-                  </div>
-                  <div className="space-y-2">
-                    <label className="label-m3">Phone</label>
-                    <input className="input-m3" type="tel" value={profileForm.phone} onChange={(e) => setProfileForm({ ...profileForm, phone: e.target.value })} />
-                  </div>
-                  <button type="submit" className="btn-primary px-8 py-3">
-                    <Save className="w-4 h-4" />
-                    Save Profile
-                  </button>
-                </form>
               </div>
             )}
           </div>
