@@ -229,30 +229,12 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
             </div>
             {!sidebarCollapsed && <span className="text-lg font-black text-white tracking-tight">Overline</span>}
           </Link>
-          <button
-            onClick={() => {
-              if (window.innerWidth < 1024) {
-                setSidebarOpen(false);
-              } else {
-                setSidebarCollapsed((prev) => !prev);
-              }
-            }}
-            className="text-white/40 hover:text-white"
-            aria-label="Toggle sidebar"
-          >
-            {sidebarCollapsed ? <Menu className="w-5 h-5" /> : <X className="w-5 h-5" />}
-          </button>
         </div>
 
         {/* Navigation */}
         <nav className="flex-1 px-2 lg:px-3 py-4 space-y-4 overflow-y-auto">
           {roleSections.map((section) => (
             <div key={section.title}>
-              {!sidebarCollapsed && (
-                <p className="px-4 mb-2 text-[10px] font-bold tracking-[0.15em] text-white/30 uppercase">
-                {section.title}
-                </p>
-              )}
               <div className="space-y-0.5">
                 {section.items.map((item) => (
                   <Link

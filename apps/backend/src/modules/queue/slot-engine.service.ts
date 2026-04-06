@@ -142,8 +142,13 @@ export class SlotEngineService {
       }
 
       if (staffWorkingHour) {
-        openTime = staffWorkingHour.startTime;
-        closeTime = staffWorkingHour.endTime;
+        const staffIntervals = this.parseStaffIntervals(staffWorkingHour.intervals);
+        if (staffIntervals.length === 0) {
+          return [];
+        }
+
+        openTime = staffIntervals[0].start;
+        closeTime = staffIntervals[staffIntervals.length - 1].end;
       }
 
       const staffTimeOffs = await this.prisma.staffTimeOff.findMany({
@@ -452,10 +457,19 @@ export class SlotEngineService {
     if (staffWorkingHour) {
       const slotStartMinutes = startTime.getHours() * 60 + startTime.getMinutes();
       const slotEndMinutes = endTime.getHours() * 60 + endTime.getMinutes();
-      const workingStartMinutes = this.timeToMinutes(staffWorkingHour.startTime);
-      const workingEndMinutes = this.timeToMinutes(staffWorkingHour.endTime);
 
-      if (slotStartMinutes < workingStartMinutes || slotEndMinutes > workingEndMinutes) {
+      const intervals = this.parseStaffIntervals(staffWorkingHour.intervals);
+      if (intervals.length === 0) {
+        return false;
+      }
+
+      const fallsWithinAnyInterval = intervals.some((interval) => {
+        const workingStartMinutes = this.timeToMinutes(interval.start);
+        const workingEndMinutes = this.timeToMinutes(interval.end);
+        return slotStartMinutes >= workingStartMinutes && slotEndMinutes <= workingEndMinutes;
+      });
+
+      if (!fallsWithinAnyInterval) {
         return false;
       }
     }
@@ -478,6 +492,23 @@ export class SlotEngineService {
       throw new BadRequestException(`Invalid time format: ${time}`);
     }
     return hour * 60 + minute;
+  }
+
+  private parseStaffIntervals(value: unknown): Array<{ start: string; end: string }> {
+    if (!Array.isArray(value)) {
+      return [];
+    }
+
+    return value
+      .filter((interval): interval is { start: string; end: string } => {
+        return (
+          interval !== null &&
+          typeof interval === 'object' &&
+          typeof (interval as { start?: unknown }).start === 'string' &&
+          typeof (interval as { end?: unknown }).end === 'string'
+        );
+      })
+      .sort((a, b) => a.start.localeCompare(b.start));
   }
 
   private clipDateRangeToDay(

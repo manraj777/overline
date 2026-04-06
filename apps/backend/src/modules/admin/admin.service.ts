@@ -652,7 +652,12 @@ export class AdminService {
     shopId: string,
     staffId: string,
     dayOfWeek: DayOfWeek,
-    dto: { startTime?: string; endTime?: string; isOff?: boolean },
+    dto: {
+      startTime?: string;
+      endTime?: string;
+      intervals?: { start: string; end: string }[];
+      isOff?: boolean;
+    },
     tenantId: string,
   ) {
     await this.verifyShopAccess(shopId, tenantId);
@@ -660,12 +665,23 @@ export class AdminService {
 
     const isOff = dto.isOff ?? false;
 
-    if (!isOff && (!dto.startTime || !dto.endTime)) {
-      throw new BadRequestException('startTime and endTime are required when staff is not off');
+    const intervals =
+      dto.intervals && dto.intervals.length > 0
+        ? dto.intervals
+        : dto.startTime && dto.endTime
+          ? [{ start: dto.startTime, end: dto.endTime }]
+          : [];
+
+    if (!isOff && intervals.length === 0) {
+      throw new BadRequestException('intervals or startTime/endTime are required when staff is not off');
     }
 
-    if (!isOff && dto.startTime && dto.endTime && dto.startTime >= dto.endTime) {
-      throw new BadRequestException('endTime must be after startTime');
+    if (!isOff) {
+      for (const interval of intervals) {
+        if (!interval?.start || !interval?.end || interval.start >= interval.end) {
+          throw new BadRequestException('Each interval must have valid start and end time');
+        }
+      }
     }
 
     const result = await this.prisma.staffWorkingHours.upsert({
@@ -676,15 +692,15 @@ export class AdminService {
         },
       },
       update: {
-        intervals: (dto.intervals as any) || [],
+        ...( { intervals: (intervals as any) || [] } as any),
         isOff,
-      },
+      } as any,
       create: {
         staffId,
         dayOfWeek,
-        intervals: (dto.intervals as any) || [],
+        ...( { intervals: (intervals as any) || [] } as any),
         isOff,
-      },
+      } as any,
     });
 
     await this.invalidateSlotCache(shopId);
@@ -1611,11 +1627,19 @@ export class AdminService {
     }
 
     const isOff = dto.isOff ?? false;
-    const startTime = dto.startTime || '09:00';
-    const endTime = dto.endTime || '18:00';
+    const intervals =
+      dto.intervals && dto.intervals.length > 0
+        ? dto.intervals
+        : dto.startTime && dto.endTime
+          ? [{ start: dto.startTime, end: dto.endTime }]
+          : [{ start: '09:00', end: '18:00' }];
 
-    if (!isOff && startTime >= endTime) {
-      throw new BadRequestException('endTime must be after startTime');
+    if (!isOff) {
+      for (const interval of intervals) {
+        if (!interval?.start || !interval?.end || interval.start >= interval.end) {
+          throw new BadRequestException('Each interval must have valid start and end time');
+        }
+      }
     }
 
     const result = await this.prisma.staffWorkingHours.upsert({
@@ -1626,15 +1650,15 @@ export class AdminService {
         },
       },
       update: {
-        intervals: (dto.intervals as any) || [],
+        ...( { intervals: (intervals as any) || [] } as any),
         isOff,
-      },
+      } as any,
       create: {
         staffId: staff.id,
         dayOfWeek,
-        intervals: (dto.intervals as any) || [],
+        ...( { intervals: (intervals as any) || [] } as any),
         isOff,
-      },
+      } as any,
     });
 
     await this.invalidateSlotCache(staff.shopId);
@@ -2268,52 +2292,6 @@ export class AdminService {
         fraudScore: 100 - u.trustScore,
       })),
     };
-  }
-
-  async getShopSettings(shopId: string, tenantId: string) {
-    const shop = await this.verifyShopAccess(shopId, tenantId);
-    return shop.settings || {};
-  }
-
-  async updateShopSettings(shopId: string, tenantId: string, settings: any) {
-    await this.verifyShopAccess(shopId, tenantId);
-    
-    return this.prisma.shop.update({
-      where: { id: shopId },
-      data: {
-        settings: settings as Prisma.InputJsonValue,
-      },
-    });
-  }
-
-  async getPayoutDetails(shopId: string, tenantId: string) {
-    const shop = await this.verifyShopAccess(shopId, tenantId);
-    const settings = (shop.settings as any) || {};
-    
-    return {
-      payoutDetails: settings.payoutDetails || {
-        upiId: '',
-        allowCash: true,
-        promoCode: 'OFF10',
-        extraCharge: '5%',
-        platformFeeVisible: true
-      }
-    };
-  }
-
-  async updatePayoutDetails(shopId: string, tenantId: string, payoutDetails: any) {
-    const shop = await this.verifyShopAccess(shopId, tenantId);
-    const settings = (shop.settings as any) || {};
-    
-    return this.prisma.shop.update({
-      where: { id: shopId },
-      data: {
-        settings: {
-          ...settings,
-          payoutDetails: payoutDetails,
-        } as Prisma.InputJsonValue,
-      },
-    });
   }
 
   async suspendUser(userId: string, isSuspended: boolean) {

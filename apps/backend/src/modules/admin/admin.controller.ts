@@ -307,7 +307,13 @@ export class AdminController {
     @Param('shopId') shopId: string,
     @Param('staffId') staffId: string,
     @Param('dayOfWeek') dayOfWeek: DayOfWeek,
-    @Body() dto: { startTime?: string; endTime?: string; isOff?: boolean },
+    @Body()
+    dto: {
+      startTime?: string;
+      endTime?: string;
+      intervals?: { start: string; end: string }[];
+      isOff?: boolean;
+    },
     @CurrentUser('tenantId') tenantId: string,
   ) {
     return this.adminService.updateStaffWorkingHours(shopId, staffId, dayOfWeek, dto, tenantId);
