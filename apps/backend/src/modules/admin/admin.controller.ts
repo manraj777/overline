@@ -168,7 +168,16 @@ export class AdminController {
   @ApiParam({ name: 'shopId', description: 'Shop ID' })
   async createStaff(
     @Param('shopId') shopId: string,
-    @Body() dto: { name: string; email: string; phone?: string; role: string; avatarUrl?: string },
+    @Body()
+    dto: {
+      name: string;
+      email?: string;
+      phone?: string;
+      age?: number;
+      password?: string;
+      role: string;
+      avatarUrl?: string;
+    },
     @CurrentUser('tenantId') tenantId: string,
   ) {
     return this.adminService.createStaff(shopId, dto, tenantId);
@@ -204,6 +213,22 @@ export class AdminController {
     @CurrentUser('tenantId') tenantId: string,
   ) {
     return this.adminService.deleteStaff(shopId, staffId, tenantId);
+  }
+
+  @Patch('shops/:shopId/staff/:staffId/pin')
+  @UseGuards(ShopOwnerGuard)
+  @ShopIdParam('shopId')
+  @Roles(UserRole.OWNER, UserRole.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Reset staff 6-digit login PIN' })
+  @ApiParam({ name: 'shopId', description: 'Shop ID' })
+  @ApiParam({ name: 'staffId', description: 'Staff ID' })
+  async resetStaffPin(
+    @Param('shopId') shopId: string,
+    @Param('staffId') staffId: string,
+    @CurrentUser('tenantId') tenantId: string,
+    @Body() dto: { password?: string },
+  ) {
+    return this.adminService.resetStaffPin(shopId, staffId, tenantId, dto.password);
   }
 
   @Get('shops/:shopId/staff/:staffId/services')

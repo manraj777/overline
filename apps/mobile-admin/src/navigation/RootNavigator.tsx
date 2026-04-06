@@ -16,7 +16,14 @@ import {
   Calendar,
   ChartColumn,
   Clock3,
+  CreditCard,
+  LayoutDashboard,
+  Scissors,
+  Settings,
+  Star,
+  Store,
   UserRound,
+  Users,
 } from 'lucide-react-native';
 
 // Screens
@@ -74,7 +81,7 @@ function TabIcon({
     payments: CreditCard,
     settings: Settings,
     services: Scissors,
-    timing: Clock,
+    timing: Clock3,
     reviews: Star,
     profile: UserRound,
   }[name] || LayoutDashboard;

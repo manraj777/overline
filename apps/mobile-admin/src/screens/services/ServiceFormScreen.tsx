@@ -136,7 +136,7 @@ export default function ServiceFormScreen() {
                 <Text style={styles.sectionLabel}>BASIC INFORMATION</Text>
                 
                 <View style={[styles.inputBox, errors.name && styles.inputBoxError]}>
-                  <Sparkles size={18} color={Colors.textTertiary} />
+                  <Sparkles size={18} color={Colors.textSecondary} />
                   <TextInput
                     style={styles.input}
                     placeholder="Service name (e.g. Skin Fade)"
@@ -148,7 +148,7 @@ export default function ServiceFormScreen() {
 
                 <View style={styles.priceRow}>
                   <View style={[styles.inputBox, { flex: 1 }, errors.price && styles.inputBoxError]}>
-                    <IndianRupee size={16} color={Colors.textTertiary} />
+                    <IndianRupee size={16} color={Colors.textSecondary} />
                     <TextInput
                       style={styles.input}
                       placeholder="Price"
@@ -158,7 +158,7 @@ export default function ServiceFormScreen() {
                     />
                   </View>
                   <View style={[styles.inputBox, { flex: 1.5, marginLeft: 12 }]}>
-                    <Clock size={16} color={Colors.textTertiary} />
+                    <Clock size={16} color={Colors.textSecondary} />
                     <Text style={styles.durationValue}>{formData.durationMinutes} minutes</Text>
                   </View>
                 </View>
@@ -181,7 +181,7 @@ export default function ServiceFormScreen() {
                 <Text style={styles.sectionLabel}>CATEGORIZATION</Text>
                 
                 <View style={styles.inputBox}>
-                  <LayoutGrid size={18} color={Colors.textTertiary} />
+                  <LayoutGrid size={18} color={Colors.textSecondary} />
                   <TextInput
                     style={styles.input}
                     placeholder="Category"
@@ -206,7 +206,7 @@ export default function ServiceFormScreen() {
               <View style={[styles.inputSection, { marginTop: 32 }]}>
                 <Text style={styles.sectionLabel}>DETAILED DESCRIPTION</Text>
                 <View style={[styles.inputBox, { height: 120, alignItems: 'flex-start', paddingTop: 16 }]}>
-                  <Info size={18} color={Colors.textTertiary} />
+                  <Info size={18} color={Colors.textSecondary} />
                   <TextInput
                     style={[styles.input, { textAlignVertical: 'top' }]}
                     placeholder="Details about inclusions, requirements, etc."

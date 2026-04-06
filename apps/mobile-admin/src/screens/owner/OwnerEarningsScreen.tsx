@@ -97,7 +97,7 @@ export default function OwnerEarningsScreen() {
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.scrollContent}
           refreshControl={
-            <RefreshControl refreshing={isRefetching} onRefresh={refetch} color="#3B82F6" />
+            <RefreshControl refreshing={isRefetching} onRefresh={refetch} colors={["#3B82F6"]} />
           }
         >
           {/* Period Selector */}

@@ -82,7 +82,7 @@ export default function MyServicesScreen() {
   const renderService = ({ item }: { item: Service }) => (
     <View style={styles.card}>
       <Image 
-        source={{ uri: item.imageUrl || 'https://images.unsplash.com/photo-1595475243695-469d2f679b8b?q=80&w=1000' }} 
+        source={{ uri: 'https://images.unsplash.com/photo-1595475243695-469d2f679b8b?q=80&w=1000' }} 
         style={styles.cardImage} 
       />
       <View style={styles.cardMain}>

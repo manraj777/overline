@@ -129,8 +129,8 @@ export class OtpService {
     const result = await this.verifyOtp(phone, otp, 'LOGIN');
     if (!result.verified) throw new BadRequestException('OTP verification failed');
 
-    // Delegate to AuthService which handles role enforcement
-    return this.authService.verifyPhoneOtp(phone, otp, requestedRole);
+    // Delegate to AuthService for role-aware token issuance after OTP has already been verified.
+    return this.authService.loginWithVerifiedPhone(phone, requestedRole);
   }
 
   /** Validate Indian phone number (+91XXXXXXXXXX / 91XXXXXXXXXX / 10 digits) */

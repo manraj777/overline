@@ -6,7 +6,6 @@ import {
   TouchableOpacity,
   Alert,
   ScrollView,
-  SafeAreaView,
   ActivityIndicator,
   Dimensions,
   Image,
@@ -38,6 +37,7 @@ import {
 } from 'lucide-react-native';
 import { useAuthStore } from '../../stores/authStore';
 import { Config } from '../../config';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 const { width } = Dimensions.get('window');
 

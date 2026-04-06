@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   Vibration,
   SafeAreaView,
+  ScrollView,
   Animated,
   Dimensions,
 } from 'react-native';

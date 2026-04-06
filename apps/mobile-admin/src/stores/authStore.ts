@@ -27,6 +27,14 @@ interface ShopApiResponse {
   shops?: ShopSummary[];
 }
 
+interface StaffAssignedShop {
+  id: string;
+  name: string;
+  address: string;
+  city: string;
+  coverPhotoUrl?: string | null;
+}
+
 interface AuthState {
   user: AuthAdminUser | null;
   isAuthenticated: boolean;
@@ -42,10 +50,15 @@ interface AuthState {
 
   // Actions
   login: (email: string, password: string, options?: {requestedRole?: string}) => Promise<void>;
-  staffLogin: (params: {shopId: string; phone: string; password: string}) => Promise<void>; // New
+  fetchAssignedStaffShops: (phone: string) => Promise<StaffAssignedShop[]>;
+  staffLogin: (params: {shopId: string; phone: string; password: string}) => Promise<void>;
   loginWithGoogle: (idToken: string, options?: {requestedRole?: AuthRequestedRole}) => Promise<void>;
   sendPhoneLoginOtp: (phone: string) => Promise<void>;
-  verifyPhoneLoginOtp: (phone: string, otp: string, options?: {requestedRole?: AuthRequestedRole}) => Promise<void>;
+  verifyPhoneLoginOtp: (
+    phone: string,
+    otp: string,
+    options?: {requestedRole?: AuthRequestedRole; selectedShopId?: string},
+  ) => Promise<void>;
   completeOtpVerification: () => void;
   logout: () => Promise<void>;
   checkAuth: () => Promise<void>;
@@ -100,9 +113,16 @@ export const useAuthStore = create<AuthState>((set) => ({
   pendingOtpVerification: false,
   otpPhone: null,
 
+  fetchAssignedStaffShops: async (phone: string) => {
+    const normalizedPhone = phone.startsWith('+91') ? phone : `+91${phone.replace(/\D/g, '')}`;
+    const response = await authApi.getAssignedStaffShops(normalizedPhone);
+    const data = response.data as {shops?: StaffAssignedShop[]};
+    return Array.isArray(data.shops) ? data.shops : [];
+  },
+
   staffLogin: async ({shopId, phone, password}) => {
     // Implement staff login using the specialized 6-digit PIN flow for the specific shop
-    const response = await authApi.staffLogin({ shopId, phone, password });
+    const response = await authApi.staffPinLogin({ shopId, phone, password });
     const { accessToken, refreshToken, user } = response.data as AuthLoginResponse;
 
     await AsyncStorage.setItem('admin_token', accessToken);
@@ -170,7 +190,7 @@ export const useAuthStore = create<AuthState>((set) => ({
   verifyPhoneLoginOtp: async (
     phone: string,
     otp: string,
-    options?: {requestedRole?: AuthRequestedRole},
+    options?: {requestedRole?: AuthRequestedRole; selectedShopId?: string},
   ) => {
     const response = await otpApi.verify(phone, otp, 'LOGIN', options?.requestedRole);
     const {accessToken, refreshToken, user} = response.data as AuthLoginResponse;
@@ -194,7 +214,10 @@ export const useAuthStore = create<AuthState>((set) => ({
     }
 
     const userWithShops = {...user, shops};
-    const defaultShopId = shops[0]?.id || null;
+    const defaultShopId =
+      options?.selectedShopId && shops.some((shop) => shop.id === options.selectedShopId)
+        ? options.selectedShopId
+        : shops[0]?.id || null;
 
     set({
       user: userWithShops,

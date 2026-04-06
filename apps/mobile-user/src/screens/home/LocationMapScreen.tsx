@@ -43,7 +43,7 @@ export default function LocationMapScreen() {
     queryFn: () => shopsApi.list().then(res => res.data),
   });
 
-  const shops = useMemo(() => shopsData?.data || [], [shopsData]);
+  const shops: Shop[] = useMemo(() => shopsData?.data || [], [shopsData]);
 
   const onMarkerPress = (index: number) => {
     setActiveShopIndex(index);
@@ -78,7 +78,7 @@ export default function LocationMapScreen() {
             <Text style={styles.ratingText}>{item.rating?.toFixed(1) || '4.5'}</Text>
           </View>
         </View>
-        <Text style={styles.cardSubtitle}>{item.type || 'Salon'} • 0.8 km</Text>
+        <Text style={styles.cardSubtitle}>{item.services?.[0]?.category || 'Salon'} • 0.8 km</Text>
         <View style={styles.cardFooter}>
           <Text style={styles.priceTag}>from ₹499</Text>
           <View style={styles.bookBtn}>
@@ -168,7 +168,7 @@ export default function LocationMapScreen() {
               if (index !== activeShopIndex) {
                 setActiveShopIndex(index);
                 const shop = shops[index];
-                if (shop?.latitude) {
+                if (shop?.latitude != null && shop?.longitude != null) {
                   mapRef.current?.animateCamera({
                     center: { latitude: shop.latitude, longitude: shop.longitude },
                     zoom: 16

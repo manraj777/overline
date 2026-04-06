@@ -6,6 +6,7 @@ export type RootStackParamList = {
     phone: string;
     flow: 'LOGIN_2FA' | 'PHONE_LOGIN';
     requestedRole?: 'OWNER' | 'STAFF' | 'USER' | 'SUPER_ADMIN';
+    selectedShopId?: string;
   };
   Main: undefined;
   ShopSetup: undefined;
@@ -15,6 +16,7 @@ export type RootStackParamList = {
   ShopSettings: {shopId: string};
   WorkingHours: {shopId: string};
   StaffManagement: {shopId: string};
+  AddStaff: undefined;
   Analytics: {shopId: string};
   PayoutDetails: {shopId: string};
   MyServices: undefined;
@@ -37,17 +39,18 @@ export type MainTabParamList = {
 
 export type OwnerTabParamList = {
   Dashboard: undefined;
-  Queue: undefined;
-  Bookings: undefined;
-  Earnings: undefined;
-  Profile: undefined;
+  Staff: undefined;
+  Shop: undefined;
+  Payments: undefined;
+  Settings: undefined;
 };
 
 export type StaffTabParamList = {
-  MyDay: undefined;
-  Queue: undefined;
-  Earn: undefined;
-  Profile: undefined;
+  Dashboard: undefined;
+  Services: undefined;
+  Timing: undefined;
+  Reviews: undefined;
+  Settings: undefined;
 };
 
 // Data Types
@@ -221,6 +224,8 @@ export interface Staff {
   id: string;
   name: string;
   email: string;
+  phone?: string;
+  age?: number;
   role: 'OWNER' | 'STAFF';
   isActive: boolean;
   createdAt: string;

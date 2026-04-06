@@ -74,16 +74,7 @@ export default function WorkingHoursScreen() {
   }, [shopData]);
 
   const updateMutation = useMutation({
-    mutationFn: async (hours: WorkingHours) => {
-      const promises = DAYS.map(day => {
-        const dayHours = hours[day as keyof WorkingHours];
-        if (dayHours) {
-          return shopApi.updateWorkingHours(shopId, day.toUpperCase(), dayHours);
-        }
-        return Promise.resolve();
-      });
-      await Promise.all(promises);
-    },
+    mutationFn: (hours: WorkingHours) => shopApi.updateWorkingHours(shopId, hours),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['adminShop', shopId] });
       Alert.alert('Settings Synchronized', 'Your shop operating hours are now updated across all systems.');

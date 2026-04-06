@@ -24,7 +24,8 @@ import {
   UserRound, 
   ArrowRight,
   Sparkles,
-  Zap
+  Zap,
+  ShieldCheck,
 } from 'lucide-react-native';
 
 const { width } = Dimensions.get('window');

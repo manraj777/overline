@@ -29,13 +29,10 @@ import {
   ChevronRight, 
   Zap, 
   Store, 
-  Search, 
   X,
   UserCheck,
   Building2
 } from 'lucide-react-native';
-import { shopApi } from '../../api/client';
-import { useQuery } from '@tanstack/react-query';
 
 const { width, height } = Dimensions.get('window');
 const BRAND_LOGO = require('../../../assets/branding/overline-logo.png');
@@ -54,18 +51,13 @@ export default function LoginScreen() {
   const [staffPin, setStaffPin] = useState('');
   const [selectedShop, setSelectedShop] = useState<any>(null);
   const [showShopPicker, setShowShopPicker] = useState(false);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [assignedShops, setAssignedShops] = useState<any[]>([]);
+  const [staffAuthMode, setStaffAuthMode] = useState<'PIN' | 'OTP'>('PIN');
 
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
 
-  const { loginWithGoogle, sendPhoneLoginOtp, staffLogin } = useAuthStore();
-
-  const { data: shops = [] } = useQuery({
-    queryKey: ['publicShops', searchQuery],
-    queryFn: () => shopApi.searchShops(searchQuery).then(res => res.data),
-    enabled: role === 'STAFF' && searchQuery.length > 2,
-  });
+  const { loginWithGoogle, sendPhoneLoginOtp, staffLogin, fetchAssignedStaffShops } = useAuthStore();
 
   useEffect(() => {
     GoogleSignin.configure({
@@ -91,7 +83,7 @@ export default function LoginScreen() {
 
   const handleStaffLogin = async () => {
     if (!selectedShop) return Alert.alert('Missing Shop', 'Please select your shop first');
-    if (staffPhone.length < 10) return Alert.alert('Invalid Phone', 'Enter 10 digits');
+    if (staffPhone.replace(/\D/g, '').length < 10) return Alert.alert('Invalid Phone', 'Enter 10 digits');
     if (staffPin.length !== 6) return Alert.alert('Invalid PIN', 'Enter 6-digit employee code');
     
     setIsLoading(true);
@@ -103,6 +95,51 @@ export default function LoginScreen() {
       });
     } catch (e: any) {
       Alert.alert('Access Denied', e.response?.data?.message || 'Invalid Mobile or PIN for this shop.');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleFindAssignedShops = async () => {
+    const digits = staffPhone.replace(/\D/g, '');
+    if (digits.length < 10) {
+      Alert.alert('Invalid Phone', 'Enter 10 digits to find assigned shops');
+      return;
+    }
+
+    setIsLoading(true);
+    try {
+      const shops = await fetchAssignedStaffShops(`+91${digits}`);
+      setAssignedShops(shops);
+      if (!shops.length) {
+        Alert.alert('No Staff Assignment', 'No active staff assignments found for this mobile number.');
+        return;
+      }
+      setShowShopPicker(true);
+    } catch (e: any) {
+      Alert.alert('Lookup Failed', e.response?.data?.message || 'Unable to fetch assigned shops');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleStaffOtpLogin = async () => {
+    if (!selectedShop) return Alert.alert('Missing Shop', 'Please select your shop first');
+    const digits = staffPhone.replace(/\D/g, '');
+    if (digits.length < 10) return Alert.alert('Invalid Phone', 'Enter 10 digits');
+
+    setIsLoading(true);
+    try {
+      const normalized = `+91${digits}`;
+      await sendPhoneLoginOtp(normalized);
+      navigation.navigate('OtpVerify', {
+        phone: normalized,
+        flow: 'PHONE_LOGIN',
+        requestedRole: 'STAFF',
+        selectedShopId: selectedShop.id,
+      });
+    } catch (e: any) {
+      Alert.alert('Error', e.response?.data?.message || 'Failed to send OTP');
     } finally {
       setIsLoading(false);
     }
@@ -201,6 +238,14 @@ export default function LoginScreen() {
                   <ChevronRight size={18} color="#CBD5E1" />
                 </TouchableOpacity>
 
+                <TouchableOpacity
+                  style={[styles.primaryBtn, {marginTop: 16}]}
+                  onPress={handleFindAssignedShops}
+                  disabled={isLoading}
+                >
+                  {isLoading ? <ActivityIndicator color="#FFF" /> : <Text style={styles.primaryBtnText}>FIND MY SHOPS</Text>}
+                </TouchableOpacity>
+
                 <View style={[styles.inputBox, { marginTop: 16 }]}>
                   <Smartphone size={18} color="#94A3B8" />
                   <TextInput 
@@ -212,27 +257,54 @@ export default function LoginScreen() {
                   />
                 </View>
 
-                <View style={[styles.inputBox, { marginTop: 16 }]}>
-                  <Lock size={18} color="#94A3B8" />
-                  <TextInput 
-                    style={styles.input} 
-                    placeholder="6-Digit Employee PIN" 
-                    keyboardType="number-pad"
-                    maxLength={6}
-                    secureTextEntry
-                    value={staffPin}
-                    onChangeText={setStaffPin}
-                  />
+                <View style={styles.roleTabs}>
+                  <TouchableOpacity
+                    style={[styles.roleTab, staffAuthMode === 'PIN' && styles.roleTabActive]}
+                    onPress={() => setStaffAuthMode('PIN')}
+                  >
+                    <Text style={[styles.roleTabText, staffAuthMode === 'PIN' && styles.roleTabTextActive]}>PIN</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.roleTab, staffAuthMode === 'OTP' && styles.roleTabActive]}
+                    onPress={() => setStaffAuthMode('OTP')}
+                  >
+                    <Text style={[styles.roleTabText, staffAuthMode === 'OTP' && styles.roleTabTextActive]}>OTP</Text>
+                  </TouchableOpacity>
                 </View>
 
-                <TouchableOpacity style={styles.primaryBtn} onPress={handleStaffLogin} disabled={isLoading}>
-                  {isLoading ? <ActivityIndicator color="#FFF" /> : (
-                    <>
-                      <Text style={styles.primaryBtnText}>SIGN IN TO SHIFT</Text>
-                      <UserCheck size={16} color="#FFF" />
-                    </>
-                  )}
-                </TouchableOpacity>
+                {staffAuthMode === 'PIN' ? (
+                  <>
+                    <View style={[styles.inputBox, { marginTop: 8 }]}> 
+                      <Lock size={18} color="#94A3B8" />
+                      <TextInput 
+                        style={styles.input} 
+                        placeholder="6-Digit Employee PIN" 
+                        keyboardType="number-pad"
+                        maxLength={6}
+                        secureTextEntry
+                        value={staffPin}
+                        onChangeText={setStaffPin}
+                      />
+                    </View>
+                    <TouchableOpacity style={styles.primaryBtn} onPress={handleStaffLogin} disabled={isLoading}>
+                      {isLoading ? <ActivityIndicator color="#FFF" /> : (
+                        <>
+                          <Text style={styles.primaryBtnText}>SIGN IN TO SHIFT</Text>
+                          <UserCheck size={16} color="#FFF" />
+                        </>
+                      )}
+                    </TouchableOpacity>
+                  </>
+                ) : (
+                  <TouchableOpacity style={styles.primaryBtn} onPress={handleStaffOtpLogin} disabled={isLoading}>
+                    {isLoading ? <ActivityIndicator color="#FFF" /> : (
+                      <>
+                        <Text style={styles.primaryBtnText}>GET OTP CODE</Text>
+                        <Zap size={16} color="#FFF" />
+                      </>
+                    )}
+                  </TouchableOpacity>
+                )}
               </View>
             )}
 
@@ -249,20 +321,11 @@ export default function LoginScreen() {
         <View style={styles.modal}>
           <View style={styles.modalSheet}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Find your Shop</Text>
+              <Text style={styles.modalTitle}>Select Assigned Shop</Text>
               <TouchableOpacity onPress={() => setShowShopPicker(false)}><X size={24} color="#0F172A" /></TouchableOpacity>
             </View>
-            <View style={styles.modalSearch}>
-              <Search size={18} color="#94A3B8" />
-              <TextInput 
-                placeholder="Type shop name (e.g. Aura Salon)" 
-                style={styles.modalInput} 
-                value={searchQuery}
-                onChangeText={setSearchQuery}
-              />
-            </View>
             <FlatList 
-              data={shops}
+              data={assignedShops}
               keyExtractor={item => item.id}
               contentContainerStyle={{ padding: 20 }}
               renderItem={({ item }) => (
@@ -282,7 +345,7 @@ export default function LoginScreen() {
                 <View style={styles.modalEmpty}>
                   <Building2 size={48} color="#F1F5F9" />
                   <Text style={{ color: '#94A3B8', marginTop: 12, fontWeight: '600' }}>
-                    {searchQuery.length > 2 ? "No matching shops found" : "Search for your workplace"}
+                    No assigned shops found for this mobile number
                   </Text>
                 </View>
               )}

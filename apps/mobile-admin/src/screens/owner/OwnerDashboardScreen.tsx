@@ -157,7 +157,15 @@ export default function OwnerDashboardScreen() {
         </View>
 
         <Text style={styles.sectionTitle}>Business Analysis</Text>
-        <TouchableOpacity style={styles.analysisBtn} onPress={() => navigation.navigate('Analytics', { shopId: selectedShopId })}>
+        <TouchableOpacity
+          style={styles.analysisBtn}
+          onPress={() => {
+            if (!selectedShopId) {
+              return;
+            }
+            navigation.navigate('Analytics', { shopId: selectedShopId });
+          }}
+        >
           <View style={styles.analysisIcon}>
             <BarChart3 size={20} color={Colors.primary} />
           </View>

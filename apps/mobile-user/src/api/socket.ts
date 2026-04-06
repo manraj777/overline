@@ -10,7 +10,7 @@ class SocketService {
     if (this.socket?.connected && this.userId === userId) return;
 
     this.userId = userId;
-    this.socket = io(`${Config.API_URL}/events`, {
+    this.socket = io(`${Config.API_BASE_URL}/events`, {
       auth: { token },
       transports: ['websocket'],
     });

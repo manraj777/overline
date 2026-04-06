@@ -42,7 +42,21 @@ export class StaffGuard implements CanActivate {
     });
 
     if (!staffProfile) {
-      throw new ForbiddenException('You are not an active staff member of this shop');
+      const legacyStaff = await this.prisma.staff.findFirst({
+        where: {
+          userId: user.id,
+          shopId,
+          isActive: true,
+        },
+        select: { id: true },
+      });
+
+      if (!legacyStaff) {
+        throw new ForbiddenException('You are not an active staff member of this shop');
+      }
+
+      request.legacyStaffId = legacyStaff.id;
+      return true;
     }
 
     request.staffProfileId = staffProfile.id;

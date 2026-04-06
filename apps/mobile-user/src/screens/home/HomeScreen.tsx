@@ -12,15 +12,15 @@ import {
   Animated,
   Dimensions,
   StatusBar,
+  ActivityIndicator,
 } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { shopsApi } from '../../api/client';
 import { Shop, RootStackParamList } from '../../types';
-import { SafeAreaView, useSafeAreaInsets } from 'react-native-safe-area-context';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Colors, Spacing, BorderRadius, FontSizes, FontWeights, Shadows } from '../../theme';
-import { Chip, Badge } from '../../components/ui';
 import { useAuthStore } from '../../stores/authStore';
 import { 
   Search, 
@@ -113,6 +113,9 @@ export default function HomeScreen() {
     extrapolate: 'clamp',
   });
 
+  const getShopCategory = (shop: Shop) =>
+    shop.services?.[0]?.category || activeCategory || 'Salon';
+
   const renderShop = ({ item }: { item: Shop }) => (
     <TouchableOpacity
       style={styles.shopCard}
@@ -145,7 +148,7 @@ export default function HomeScreen() {
           <ShieldCheck size={16} color={Colors.primary} />
         </View>
         
-        <Text style={styles.shopCategory}>{item.type || 'Salon'}</Text>
+        <Text style={styles.shopCategory}>{getShopCategory(item)}</Text>
         
         <View style={styles.shopFooter}>
           <View style={styles.locationRow}>
@@ -163,7 +166,7 @@ export default function HomeScreen() {
 
   return (
     <View style={styles.container}>
-      <StatusBar barStyle="dark-content" transparent backgroundColor="transparent" />
+      <StatusBar barStyle="dark-content" translucent backgroundColor="transparent" />
       
       {/* Sticky Premium Header */}
       <Animated.View style={[
@@ -294,7 +297,7 @@ export default function HomeScreen() {
       {/* Floating Map Toggle */}
       <TouchableOpacity 
         style={styles.mapToggle}
-        onPress={() => navigation.navigate('LocationMap' as any)}
+        onPress={() => navigation.navigate('LocationMap')}
       >
         <MapIcon size={20} color="#FFF" />
         <Text style={styles.mapToggleText}>View Map</Text>
@@ -412,6 +415,9 @@ const styles = StyleSheet.create({
   catItem: {
     alignItems: 'center',
     gap: 8,
+  },
+  catItemActive: {
+    transform: [{ scale: 1.03 }],
   },
   catIconWrap: {
     width: 64,

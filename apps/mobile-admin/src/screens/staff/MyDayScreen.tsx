@@ -184,6 +184,7 @@ const styles = StyleSheet.create({
   scanBtn: { width: 48, height: 48, borderRadius: 16, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.3)' },
   main: { paddingHorizontal: 24, paddingTop: 24 },
   earningsCard: { backgroundColor: Colors.primary, borderRadius: 32, padding: 24, flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', ...Shadows.glow, marginBottom: 32 },
+  earnInfo: { flex: 1 },
   earnLabel: { color: 'rgba(255,255,255,0.6)', fontSize: 10, fontWeight: '900', letterSpacing: 1 },
   earnValue: { color: '#FFF', fontSize: 32, fontWeight: '900', marginTop: 4 },
   analysisBtn: { backgroundColor: 'rgba(0,0,0,0.15)', flexDirection: 'row', alignItems: 'center', gap: 8, paddingHorizontal: 16, paddingVertical: 10, borderRadius: 14 },

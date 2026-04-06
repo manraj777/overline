@@ -12,15 +12,17 @@ import {
   KeyboardAvoidingView,
   Platform,
   RefreshControl,
-  SafeAreaView,
   StatusBar,
+  ScrollView,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 import { 
   UsersRound, 
   X, 
   Plus, 
   UserPlus2, 
   Trash2, 
+  RotateCcw,
   ChevronRight, 
   Phone, 
   Fingerprint, 
@@ -95,6 +97,11 @@ export default function StaffManagementScreen() {
     },
   });
 
+  const resetPinMutation = useMutation({
+    mutationFn: ({ staffId, password }: { staffId: string; password?: string }) =>
+      staffApi.resetPin(shopId, staffId, password),
+  });
+
   const validate = () => {
     const e: Record<string, string> = {};
     if (!formData.name.trim()) e.name = 'Required';
@@ -134,9 +141,25 @@ export default function StaffManagementScreen() {
           </View>
         </View>
       </View>
-      <TouchableOpacity style={styles.removeBtn} onPress={() => handleRemove(item)}>
-        <Trash2 size={18} color="#F43F5E" />
-      </TouchableOpacity>
+      <View style={styles.actionCol}>
+        <TouchableOpacity
+          style={styles.resetBtn}
+          onPress={async () => {
+            try {
+              const result = await resetPinMutation.mutateAsync({ staffId: item.id });
+              const pin = result.data?.password;
+              Alert.alert('PIN Reset', `${item.name} new 6-digit PIN: ${pin}`);
+            } catch (error: any) {
+              Alert.alert('Reset Failed', error?.response?.data?.message || 'Unable to reset staff PIN');
+            }
+          }}
+        >
+          <RotateCcw size={16} color={Colors.primary} />
+        </TouchableOpacity>
+        <TouchableOpacity style={styles.removeBtn} onPress={() => handleRemove(item)}>
+          <Trash2 size={18} color="#F43F5E" />
+        </TouchableOpacity>
+      </View>
     </View>
   );
 
@@ -299,6 +322,8 @@ const styles = StyleSheet.create({
   roleTag: { backgroundColor: '#EEF2FF', paddingHorizontal: 8, paddingVertical: 2, borderRadius: 6 },
   tagText: { fontSize: 9, fontWeight: '900', color: '#64748B', letterSpacing: 0.5 },
   removeBtn: { width: 40, height: 40, borderRadius: 12, backgroundColor: '#FFF1F2', alignItems: 'center', justifyContent: 'center' },
+  actionCol: { gap: 8 },
+  resetBtn: { width: 40, height: 40, borderRadius: 12, backgroundColor: '#EEF2FF', alignItems: 'center', justifyContent: 'center' },
   empty: { marginTop: 60, alignItems: 'center' },
   emptyTitle: { fontSize: 18, fontWeight: '900', color: '#1E293B', marginTop: 16 },
   emptySubtitle: { fontSize: 14, color: '#94A3B8', textAlign: 'center', marginTop: 8, paddingHorizontal: 40, lineHeight: 20 },

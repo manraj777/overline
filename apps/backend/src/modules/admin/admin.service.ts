@@ -413,12 +413,24 @@ export class AdminService {
    */
   async createStaff(
     shopId: string,
-    dto: { name: string; email: string; phone?: string; role: string; avatarUrl?: string },
+    dto: {
+      name: string;
+      email?: string;
+      phone?: string;
+      age?: number;
+      password?: string;
+      role: string;
+      avatarUrl?: string;
+    },
     tenantId: string,
   ) {
     await this.verifyShopAccess(shopId, tenantId);
 
-    return this.prisma.staff.create({
+    if (dto.password && !/^\d{6}$/.test(dto.password)) {
+      throw new BadRequestException('Staff PIN must be exactly 6 digits');
+    }
+
+    const createdStaff = await this.prisma.staff.create({
       data: {
         shopId,
         name: dto.name,
@@ -429,6 +441,22 @@ export class AdminService {
         isActive: true,
       },
     });
+
+    if (dto.age !== undefined || dto.password !== undefined) {
+      await this.prisma.$executeRawUnsafe(
+        `
+        UPDATE staff
+        SET age = COALESCE($1, age),
+            password = COALESCE($2, password)
+        WHERE id = $3
+        `,
+        dto.age ?? null,
+        dto.password ?? null,
+        createdStaff.id,
+      );
+    }
+
+    return createdStaff;
   }
 
   /**
@@ -481,6 +509,37 @@ export class AdminService {
     return this.prisma.staff.delete({
       where: { id: staffId },
     });
+  }
+
+  async resetStaffPin(
+    shopId: string,
+    staffId: string,
+    tenantId: string,
+    password?: string,
+  ): Promise<{ success: true; password: string }> {
+    await this.verifyShopAccess(shopId, tenantId);
+
+    const staff = await this.prisma.staff.findFirst({
+      where: { id: staffId, shopId, isActive: true },
+      select: { id: true, name: true },
+    });
+
+    if (!staff) {
+      throw new NotFoundException('Staff member not found');
+    }
+
+    const newPin = password || Math.floor(100000 + Math.random() * 900000).toString();
+    if (!/^\d{6}$/.test(newPin)) {
+      throw new BadRequestException('Staff PIN must be exactly 6 digits');
+    }
+
+    await this.prisma.$executeRawUnsafe(
+      `UPDATE staff SET password = $1, updated_at = NOW() WHERE id = $2`,
+      newPin,
+      staff.id,
+    );
+
+    return { success: true, password: newPin };
   }
 
   async getStaffServices(shopId: string, staffId: string, tenantId: string) {

@@ -164,6 +164,7 @@ export type RootStackParamList = {
   BookingConfirmation: {bookingId: string};
   EditProfile: undefined;
   Notifications: undefined;
+  LocationMap: undefined;
   PhoneVerification: undefined;
 };
 

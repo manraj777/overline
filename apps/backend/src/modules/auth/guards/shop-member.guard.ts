@@ -59,6 +59,20 @@ export class ShopMemberGuard implements CanActivate {
         request.staffProfileId = staffProfile.id;
         return true;
       }
+
+      const legacyStaff = await this.prisma.staff.findFirst({
+        where: {
+          userId: user.id,
+          shopId,
+          isActive: true,
+        },
+        select: { id: true },
+      });
+
+      if (legacyStaff) {
+        request.legacyStaffId = legacyStaff.id;
+        return true;
+      }
     }
 
     throw new ForbiddenException('You are not a member of this shop');

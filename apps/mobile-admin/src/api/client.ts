@@ -115,8 +115,10 @@ apiClient.interceptors.response.use(
 export const authApi = {
   login: (email: string, password: string, options?: { requestedRole?: string }) =>
     apiClient.post('/auth/login', { email, password, requestedRole: options?.requestedRole }),
-  staffLogin: (params: { shopId: string; phone: string; password: string }) =>
-    apiClient.post('/auth/staff-login', params), // New specialized staff login
+  staffPinLogin: (params: { shopId: string; phone: string; password: string }) =>
+    apiClient.post('/auth/staff-login', params),
+  getAssignedStaffShops: (phone: string) =>
+    apiClient.post('/auth/staff/shops', { phone }),
   googleLogin: (idToken: string, options?: { requestedRole?: string }) =>
     apiClient.post('/auth/google', { idToken, requestedRole: options?.requestedRole }),
   getProfile: () => apiClient.get('/users/me'),
@@ -255,12 +257,14 @@ export const staffApi = {
     apiClient.get(`/admin/shops/${shopId}/staff`),
   create: (
     shopId: string,
-    data: { name: string; age: number; phone: string; password?: string, role?: string }, // Updated
+    data: { name: string; age?: number; phone: string; password?: string, role?: string }, // Updated
   ) => apiClient.post(`/admin/shops/${shopId}/staff`, data),
   update: (shopId: string, staffId: string, data: any) =>
     apiClient.patch(`/admin/shops/${shopId}/staff/${staffId}`, data),
   delete: (shopId: string, staffId: string) =>
     apiClient.delete(`/admin/shops/${shopId}/staff/${staffId}`),
+  resetPin: (shopId: string, staffId: string, password?: string) =>
+    apiClient.patch(`/admin/shops/${shopId}/staff/${staffId}/pin`, { password }),
 };
 
 // Analytics APIs

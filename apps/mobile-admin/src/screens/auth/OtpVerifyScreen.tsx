@@ -27,7 +27,7 @@ const OTP_LENGTH = 6;
 export default function OtpVerifyScreen() {
   const navigation = useNavigation<NavigationProps>();
   const route = useRoute<RouteProps>();
-  const {phone, flow, requestedRole} = route.params;
+  const {phone, flow, requestedRole, selectedShopId} = route.params;
   const {completeOtpVerification, verifyPhoneLoginOtp, logout} = useAuthStore();
 
   const [otp, setOtp] = useState<string[]>(Array(OTP_LENGTH).fill(''));
@@ -95,6 +95,7 @@ export default function OtpVerifyScreen() {
       if (flow === 'PHONE_LOGIN') {
         await verifyPhoneLoginOtp(phone, code, {
           requestedRole: requestedRole || 'OWNER',
+          selectedShopId,
         });
       } else {
         await otpApi.verify(phone, code, 'LOGIN');

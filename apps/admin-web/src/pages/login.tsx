@@ -3,17 +3,24 @@ import Head from 'next/head';
 import { useRouter } from 'next/router';
 import { useForm } from 'react-hook-form';
 import { Button, Input, Card } from '@/components/ui';
-import { useLogin } from '@/hooks';
 import { useAuthStore } from '@/stores/auth';
 import api from '@/lib/api';
 import { getDefaultRouteForRole } from '@/lib/role-routing';
-import { Shield, Users, ArrowRight, Lock, Mail, Eye, EyeOff } from 'lucide-react';
+import { Shield, Users, ArrowRight, Lock, Mail, Eye, EyeOff, Smartphone, Building2 } from 'lucide-react';
+import { AuthResponse } from '@/types';
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL?.replace('/api/v1', '') || '';
 
 interface LoginForm {
   email: string;
   password: string;
+}
+
+interface StaffShopSummary {
+  id: string;
+  name: string;
+  address: string;
+  city: string;
 }
 
 type RoleChoice = 'owner' | 'staff' | null;
@@ -26,9 +33,10 @@ export default function LoginPage() {
     otpPhone,
     setOtpPending,
     clearOtpPending,
+    login,
+    setShopId,
     logout,
   } = useAuthStore();
-  const login = useLogin();
 
   const [error, setError] = React.useState<string | null>(null);
   const [otp, setOtp] = React.useState('');
@@ -36,6 +44,15 @@ export default function LoginPage() {
   const [otpBusy, setOtpBusy] = React.useState(false);
   const [roleChoice, setRoleChoice] = React.useState<RoleChoice>(null);
   const [showPassword, setShowPassword] = React.useState(false);
+  const [staffPhone, setStaffPhone] = React.useState('');
+  const [staffPin, setStaffPin] = React.useState('');
+  const [staffAuthMode, setStaffAuthMode] = React.useState<'PIN' | 'OTP'>('PIN');
+  const [staffShops, setStaffShops] = React.useState<StaffShopSummary[]>([]);
+  const [selectedShop, setSelectedShop] = React.useState<StaffShopSummary | null>(null);
+  const [loadingShops, setLoadingShops] = React.useState(false);
+  const [staffAuthBusy, setStaffAuthBusy] = React.useState(false);
+  const [otpRequestedRole, setOtpRequestedRole] = React.useState<'OWNER' | 'STAFF' | null>(null);
+  const [otpSelectedShopId, setOtpSelectedShopId] = React.useState<string | null>(null);
 
   const maskedPhone = React.useMemo(() => {
     if (!otpPhone) return '';
@@ -70,7 +87,22 @@ export default function LoginPage() {
   const onSubmit = async (data: LoginForm) => {
     setError(null);
     try {
-      const auth = await login.mutateAsync(data);
+      const { data: auth } = await api.post<AuthResponse>('/auth/login', {
+        ...data,
+        requestedRole: 'OWNER',
+      });
+
+      login(auth.user, auth.accessToken, auth.refreshToken, auth.user.shopId);
+
+      try {
+        const { data: shops } = await api.get<Array<{ id: string; name: string }>>('/admin/my-shops');
+        if (shops?.length) {
+          setShopId(shops[0].id);
+        }
+      } catch {
+        // Keep login successful even if shops fetch fails; route will handle setup.
+      }
+
       const phone = auth?.user?.phone;
       const nextRoute = getDefaultRouteForRole(auth?.user?.role);
       if (!phone) {
@@ -78,10 +110,101 @@ export default function LoginPage() {
         return;
       }
       await sendOtp(phone);
+      setOtpRequestedRole('OWNER');
+      setOtpSelectedShopId(null);
       setOtpPending(phone);
       setOtp('');
     } catch (err: any) {
       setError(err.response?.data?.message || err.message || 'Login failed');
+    }
+  };
+
+  const handleFindStaffShops = async () => {
+    const digits = staffPhone.replace(/\D/g, '');
+    if (digits.length !== 10) {
+      setError('Enter a valid 10-digit mobile number');
+      return;
+    }
+
+    setError(null);
+    setLoadingShops(true);
+    try {
+      const normalizedPhone = `+91${digits}`;
+      const { data } = await api.post<{ phone: string; shops: StaffShopSummary[] }>('/auth/staff/shops', {
+        phone: normalizedPhone,
+      });
+      const shops = Array.isArray(data.shops) ? data.shops : [];
+      setStaffShops(shops);
+      setSelectedShop(shops[0] || null);
+      if (!shops.length) {
+        setError('No active staff assignment found for this mobile number.');
+      }
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Unable to fetch assigned shops');
+    } finally {
+      setLoadingShops(false);
+    }
+  };
+
+  const handleStaffPinLogin = async () => {
+    if (!selectedShop) {
+      setError('Select your assigned shop first');
+      return;
+    }
+    const digits = staffPhone.replace(/\D/g, '');
+    if (digits.length !== 10) {
+      setError('Enter a valid 10-digit mobile number');
+      return;
+    }
+    if (!/^\d{6}$/.test(staffPin)) {
+      setError('Enter a valid 6-digit staff PIN');
+      return;
+    }
+
+    setError(null);
+    setStaffAuthBusy(true);
+    try {
+      const normalizedPhone = `+91${digits}`;
+      const { data: auth } = await api.post<AuthResponse>('/auth/staff-login', {
+        shopId: selectedShop.id,
+        phone: normalizedPhone,
+        password: staffPin,
+      });
+
+      login(auth.user, auth.accessToken, auth.refreshToken, selectedShop.id);
+      setShopId(selectedShop.id);
+      router.push(getDefaultRouteForRole(auth.user.role));
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Invalid mobile number or PIN for selected shop');
+    } finally {
+      setStaffAuthBusy(false);
+    }
+  };
+
+  const handleStaffOtpLogin = async () => {
+    if (!selectedShop) {
+      setError('Select your assigned shop first');
+      return;
+    }
+    const digits = staffPhone.replace(/\D/g, '');
+    if (digits.length !== 10) {
+      setError('Enter a valid 10-digit mobile number');
+      return;
+    }
+
+    setError(null);
+    setStaffAuthBusy(true);
+    try {
+      const normalizedPhone = `+91${digits}`;
+      await sendOtp(normalizedPhone);
+      setOtpRequestedRole('STAFF');
+      setOtpSelectedShopId(selectedShop.id);
+      setOtpPending(normalizedPhone);
+      setOtp('');
+    } catch (err: any) {
+      setError(err.response?.data?.message || 'Failed to send OTP');
+    } finally {
+      setStaffAuthBusy(false);
     }
   };
 
@@ -94,9 +217,18 @@ export default function LoginPage() {
     setError(null);
     setOtpBusy(true);
     try {
-      await api.post('/otp/verify', { phone: otpPhone, otp, purpose: 'LOGIN' });
+      const { data: auth } = await api.post<AuthResponse>('/otp/verify', {
+        phone: otpPhone,
+        otp,
+        purpose: 'LOGIN',
+        requestedRole: otpRequestedRole || undefined,
+      });
+      login(auth.user, auth.accessToken, auth.refreshToken, auth.user.shopId);
+      if (otpSelectedShopId) {
+        setShopId(otpSelectedShopId);
+      }
       clearOtpPending();
-      router.push(getDefaultRouteForRole(useAuthStore.getState().user?.role));
+      router.push(getDefaultRouteForRole(auth.user.role));
     } catch (err: any) {
       setError(err.response?.data?.message || 'OTP verification failed');
     } finally {
@@ -119,6 +251,8 @@ export default function LoginPage() {
     logout();
     setOtp('');
     setResendInSeconds(0);
+    setOtpRequestedRole(null);
+    setOtpSelectedShopId(null);
   };
 
   return (
@@ -201,7 +335,8 @@ export default function LoginPage() {
                   </span>
                 </div>
 
-                <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
+                {roleChoice === 'owner' ? (
+                  <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
                   <div className="space-y-2">
                     <label className="label-m3">Email</label>
                     <div className="relative">
@@ -246,35 +381,137 @@ export default function LoginPage() {
                   <Button
                     type="submit"
                     className="w-full btn-primary py-3.5"
-                    isLoading={isSubmitting || login.isPending}
+                    isLoading={isSubmitting}
                   >
                     Sign In
                   </Button>
-                </form>
+                  </form>
+                ) : (
+                  <div className="space-y-5">
+                    <div className="space-y-2">
+                      <label className="label-m3">Registered Mobile</label>
+                      <div className="relative">
+                        <Smartphone className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-outline" />
+                        <input
+                          type="tel"
+                          placeholder="10-digit mobile"
+                          className="input-m3 pl-11"
+                          value={staffPhone}
+                          onChange={(e) => setStaffPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
+                        />
+                      </div>
+                    </div>
+
+                    <Button
+                      type="button"
+                      className="w-full btn-primary py-3.5"
+                      isLoading={loadingShops}
+                      onClick={handleFindStaffShops}
+                    >
+                      Find Assigned Shops
+                    </Button>
+
+                    {staffShops.length > 0 && (
+                      <div className="space-y-2">
+                        <label className="label-m3">Assigned Shop</label>
+                        <div className="relative">
+                          <Building2 className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-outline" />
+                          <select
+                            className="input-m3 pl-11"
+                            value={selectedShop?.id || ''}
+                            onChange={(e) => setSelectedShop(staffShops.find((s) => s.id === e.target.value) || null)}
+                          >
+                            {staffShops.map((shop) => (
+                              <option key={shop.id} value={shop.id}>
+                                {shop.name} - {shop.city}
+                              </option>
+                            ))}
+                          </select>
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="flex items-center gap-2 rounded-xl bg-surface-container-low p-1">
+                      <button
+                        type="button"
+                        className={`flex-1 rounded-lg px-3 py-2 text-sm font-bold transition ${staffAuthMode === 'PIN' ? 'bg-white text-primary' : 'text-outline'}`}
+                        onClick={() => setStaffAuthMode('PIN')}
+                      >
+                        PIN
+                      </button>
+                      <button
+                        type="button"
+                        className={`flex-1 rounded-lg px-3 py-2 text-sm font-bold transition ${staffAuthMode === 'OTP' ? 'bg-white text-primary' : 'text-outline'}`}
+                        onClick={() => setStaffAuthMode('OTP')}
+                      >
+                        OTP
+                      </button>
+                    </div>
+
+                    {staffAuthMode === 'PIN' ? (
+                      <>
+                        <div className="space-y-2">
+                          <label className="label-m3">6-digit PIN</label>
+                          <div className="relative">
+                            <Lock className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-outline" />
+                            <input
+                              type="password"
+                              placeholder="Enter staff PIN"
+                              className="input-m3 pl-11"
+                              value={staffPin}
+                              onChange={(e) => setStaffPin(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                            />
+                          </div>
+                        </div>
+                        <Button
+                          type="button"
+                          className="w-full btn-primary py-3.5"
+                          isLoading={staffAuthBusy}
+                          onClick={handleStaffPinLogin}
+                        >
+                          Sign In with PIN
+                        </Button>
+                      </>
+                    ) : (
+                      <Button
+                        type="button"
+                        className="w-full btn-primary py-3.5"
+                        isLoading={staffAuthBusy}
+                        onClick={handleStaffOtpLogin}
+                      >
+                        Send OTP
+                      </Button>
+                    )}
+                  </div>
+                )}
 
                 {/* Divider */}
-                <div className="relative my-6">
-                  <div className="absolute inset-0 flex items-center">
-                    <div className="w-full border-t border-outline-variant/15" />
-                  </div>
-                  <div className="relative flex justify-center text-xs">
-                    <span className="bg-white px-4 text-outline font-bold">OR</span>
-                  </div>
-                </div>
+                {roleChoice === 'owner' && (
+                  <>
+                    <div className="relative my-6">
+                      <div className="absolute inset-0 flex items-center">
+                        <div className="w-full border-t border-outline-variant/15" />
+                      </div>
+                      <div className="relative flex justify-center text-xs">
+                        <span className="bg-white px-4 text-outline font-bold">OR</span>
+                      </div>
+                    </div>
 
-                {/* Google Sign-In */}
-                <a
-                  href={`${BACKEND_URL}/api/v1/auth/google/redirect?from=admin`}
-                  className="flex items-center justify-center gap-3 w-full px-4 py-3 bg-surface-container-low border border-outline-variant/10 rounded-xl hover:bg-surface-container-high transition-all text-sm font-semibold text-on-surface active:scale-[0.98]"
-                >
-                  <svg className="w-5 h-5" viewBox="0 0 24 24">
-                    <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/>
-                    <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
-                    <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
-                    <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
-                  </svg>
-                  Continue with Google
-                </a>
+                    {/* Google Sign-In */}
+                    <a
+                      href={`${BACKEND_URL}/api/v1/auth/google/redirect?from=admin`}
+                      className="flex items-center justify-center gap-3 w-full px-4 py-3 bg-surface-container-low border border-outline-variant/10 rounded-xl hover:bg-surface-container-high transition-all text-sm font-semibold text-on-surface active:scale-[0.98]"
+                    >
+                      <svg className="w-5 h-5" viewBox="0 0 24 24">
+                        <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/>
+                        <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+                        <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
+                        <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+                      </svg>
+                      Continue with Google
+                    </a>
+                  </>
+                )}
               </div>
             )}
 

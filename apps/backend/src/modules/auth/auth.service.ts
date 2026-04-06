@@ -84,6 +84,13 @@ export interface RequestContext {
   userAgent: string;
 }
 
+export interface StaffShopSummary {
+  id: string;
+  name: string;
+  address: string;
+  city: string;
+}
+
 @Injectable()
 export class AuthService {
   private readonly logger = new Logger(AuthService.name);
@@ -120,6 +127,13 @@ export class AuthService {
       return `+91${cleaned.slice(1)}`;
     }
     return phone;
+  }
+
+  private phoneVariants(phone: string): string[] {
+    const normalized = this.normalizePhone(phone);
+    const noPlus = normalized.replace(/^\+/, '');
+    const local10 = normalized.startsWith('+91') ? normalized.slice(3) : normalized.replace(/^91/, '');
+    return Array.from(new Set([normalized, noPlus, local10, `91${local10}`]));
   }
 
   private initializeFirebaseAuth(): admin.auth.Auth {
@@ -243,6 +257,146 @@ export class AuthService {
 
     await this.redis.del(key);
 
+    return this.loginWithVerifiedPhone(normalizedPhone, requestedRole);
+  }
+
+  async getAssignedStaffShops(phone: string): Promise<{ phone: string; shops: StaffShopSummary[] }> {
+    const normalizedPhone = this.normalizePhone(phone);
+    const variants = this.phoneVariants(normalizedPhone);
+
+    const staffRows = await this.prisma.staff.findMany({
+      where: {
+        isActive: true,
+        OR: variants.map((p) => ({ phone: p })),
+      },
+      select: { shopId: true },
+    });
+
+    const shopIds = Array.from(new Set(staffRows.map((row) => row.shopId)));
+    if (shopIds.length === 0) {
+      return { phone: normalizedPhone, shops: [] };
+    }
+
+    const shops = await this.prisma.shop.findMany({
+      where: {
+        id: { in: shopIds },
+        isActive: true,
+      },
+      select: {
+        id: true,
+        name: true,
+        address: true,
+        city: true,
+      },
+      orderBy: { createdAt: 'asc' },
+    });
+
+    return {
+      phone: normalizedPhone,
+      shops,
+    };
+  }
+
+  async staffPinLogin(shopId: string, phone: string, password: string): Promise<TokenResponse> {
+    const normalizedPhone = this.normalizePhone(phone);
+    const variants = this.phoneVariants(normalizedPhone);
+
+    if (!/^\d{6}$/.test(password)) {
+      throw new BadRequestException('PIN must be exactly 6 digits.');
+    }
+
+    const staffRows = await this.prisma.$queryRawUnsafe<
+      Array<{
+        id: string;
+        shopId: string;
+        userId: string | null;
+        name: string;
+        email: string | null;
+        phone: string | null;
+        password: string | null;
+      }>
+    >(
+      `
+      SELECT id, shop_id AS "shopId", user_id AS "userId", name, email, phone, password
+      FROM staff
+      WHERE shop_id = $1
+        AND is_active = true
+        AND phone IN ($2, $3, $4, $5)
+      ORDER BY created_at ASC
+      LIMIT 1
+      `,
+      shopId,
+      variants[0],
+      variants[1],
+      variants[2],
+      variants[3],
+    );
+
+    const staff = staffRows[0];
+
+    if (!staff || !staff.password || staff.password !== password) {
+      throw new UnauthorizedException('Invalid mobile number or PIN for this shop.');
+    }
+
+    let user = staff.userId
+      ? await this.prisma.user.findUnique({ where: { id: staff.userId } })
+      : null;
+    if (!user) {
+      const existingByPhone = await this.prisma.user.findUnique({
+        where: { phone: normalizedPhone },
+      });
+
+      if (existingByPhone && existingByPhone.role === UserRole.USER) {
+        throw new ForbiddenException(
+          'Access denied. This phone is linked to a customer account. Ask owner to onboard staff account.',
+        );
+      }
+
+      if (existingByPhone) {
+        user = await this.prisma.user.update({
+          where: { id: existingByPhone.id },
+          data: {
+            role: UserRole.STAFF,
+            isPhoneVerified: true,
+            lastLoginAt: new Date(),
+          },
+        });
+      } else {
+        const generatedEmail = `${normalizedPhone.replace(/\D/g, '')}.${Date.now()}@staff.overline.app`;
+        user = await this.prisma.user.create({
+          data: {
+            name: staff.name || `Staff ${normalizedPhone.slice(-4)}`,
+            email: staff.email || generatedEmail,
+            phone: normalizedPhone,
+            role: UserRole.STAFF,
+            authProvider: 'phone',
+            isPhoneVerified: true,
+            lastLoginAt: new Date(),
+          },
+        });
+      }
+
+      await this.prisma.staff.update({
+        where: { id: staff.id },
+        data: { userId: user.id },
+      });
+    } else {
+      user = await this.prisma.user.update({
+        where: { id: user.id },
+        data: {
+          role: UserRole.STAFF,
+          isPhoneVerified: true,
+          lastLoginAt: new Date(),
+        },
+      });
+    }
+
+    return this.generateTokens(user);
+  }
+
+  async loginWithVerifiedPhone(phone: string, requestedRole?: string): Promise<TokenResponse> {
+    const normalizedPhone = this.normalizePhone(phone);
+
     const isRequestingAdminRole =
       requestedRole === 'OWNER' || requestedRole === 'STAFF' || requestedRole === 'SUPER_ADMIN';
 
@@ -277,6 +431,47 @@ export class AuthService {
             lastLoginAt: new Date(),
           },
         });
+      }
+
+      if (requestedRole === 'STAFF') {
+        const variants = this.phoneVariants(normalizedPhone);
+        const staffRows = await tx.staff.findMany({
+          where: {
+            isActive: true,
+            OR: variants.map((p) => ({ phone: p })),
+          },
+          orderBy: { createdAt: 'asc' },
+        });
+
+        if (staffRows.length === 0) {
+          throw new ForbiddenException(
+            'No staff account found for this phone number. Ask your owner to onboard you first.',
+          );
+        }
+
+        const generatedEmail = `${normalizedPhone.replace(/\D/g, '')}.${Date.now()}@staff.overline.app`;
+        const provisionedUser = await tx.user.create({
+          data: {
+            phone: normalizedPhone,
+            isPhoneVerified: true,
+            name: staffRows[0].name || `Staff ${normalizedPhone.slice(-4)}`,
+            email: staffRows[0].email || generatedEmail,
+            role: UserRole.STAFF,
+            authProvider: 'phone',
+            lastLoginAt: new Date(),
+          },
+        });
+
+        await tx.staff.updateMany({
+          where: {
+            userId: null,
+            isActive: true,
+            OR: variants.map((p) => ({ phone: p })),
+          },
+          data: { userId: provisionedUser.id },
+        });
+
+        return provisionedUser;
       }
 
       if (isRequestingAdminRole) {
@@ -1032,6 +1227,17 @@ export class AuthService {
         result.staffProfileId = profile.id;
         result.shopId = profile.shopId;
         result.shopIds = [profile.shopId];
+      } else {
+        const legacyStaff = await this.prisma.staff.findMany({
+          where: { userId: user.id, isActive: true },
+          select: { id: true, shopId: true },
+          orderBy: { createdAt: 'asc' },
+        });
+
+        if (legacyStaff.length > 0) {
+          result.shopIds = legacyStaff.map((item) => item.shopId);
+          result.shopId = result.shopIds[0];
+        }
       }
     }
 
@@ -1099,6 +1305,13 @@ export class AuthService {
       if (profile) {
         staffProfileId = profile.id;
         shopIds = [profile.shopId];
+      } else {
+        const legacyStaff = await this.prisma.staff.findMany({
+          where: { userId: user.id, isActive: true },
+          orderBy: { createdAt: 'asc' },
+          select: { shopId: true },
+        });
+        shopIds = legacyStaff.map((row) => row.shopId);
       }
     }
 

@@ -52,7 +52,8 @@ export default function ServicesScreen() {
   });
 
   const deleteMutation = useMutation({
-    mutationFn: (serviceId: string) => servicesApi.delete(serviceId),
+    mutationFn: (serviceId: string) =>
+      servicesApi.delete(selectedShopId || '', serviceId),
     onSuccess: () => {
       queryClient.invalidateQueries({queryKey: ['adminServices']});
       Alert.alert('Success', 'Service deleted');
