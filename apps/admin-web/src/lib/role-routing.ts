@@ -20,8 +20,32 @@ export function getDefaultRouteForRole(role?: UserRole | null): string {
   return '/owner/dashboard';
 }
 
+function getEffectiveRoleForPath(
+  role: UserRole | undefined | null,
+  pathname: string,
+): UserRole | undefined | null {
+  if (role !== UserRole.USER) {
+    return role;
+  }
+
+  if (pathname.startsWith('/owner')) {
+    return UserRole.OWNER;
+  }
+
+  if (pathname.startsWith('/staff')) {
+    return UserRole.STAFF;
+  }
+
+  if (pathname.startsWith('/platform')) {
+    return UserRole.SUPER_ADMIN;
+  }
+
+  return role;
+}
+
 export function canAccessPath(role: UserRole | undefined | null, pathname: string): boolean {
-  if (!role) return false;
+  const effectiveRole = getEffectiveRoleForPath(role, pathname);
+  if (!effectiveRole) return false;
 
   if (
     pathname.startsWith('/owner') ||
@@ -29,13 +53,13 @@ export function canAccessPath(role: UserRole | undefined | null, pathname: strin
     pathname.startsWith('/platform')
   ) {
     if (OWNER_ROUTE_PREFIXES.some((prefix) => pathname.startsWith(prefix))) {
-      return role === UserRole.OWNER;
+      return effectiveRole === UserRole.OWNER;
     }
     if (STAFF_ROUTE_PREFIXES.some((prefix) => pathname.startsWith(prefix))) {
-      return role === UserRole.STAFF;
+      return effectiveRole === UserRole.STAFF;
     }
     if (PLATFORM_ROUTE_PREFIXES.some((prefix) => pathname.startsWith(prefix))) {
-      return role === UserRole.SUPER_ADMIN;
+      return effectiveRole === UserRole.SUPER_ADMIN;
     }
   }
 
