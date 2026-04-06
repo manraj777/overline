@@ -16,6 +16,7 @@ export {
   useStaff,
   useCreateStaff,
   useUpdateStaff,
+  useDeleteStaff,
   useAssignServiceToStaff,
   useUnassignServiceFromStaff,
   useShopSettings,

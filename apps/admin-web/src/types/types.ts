@@ -119,6 +119,7 @@ export interface Staff {
   name: string;
   email?: string;
   phone?: string;
+  age?: number;
   avatarUrl?: string;
   role: StaffRole;
   isActive: boolean;

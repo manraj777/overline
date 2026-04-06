@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Head from 'next/head';
 import { Edit2, ImageIcon, Plus, Trash2, Video } from 'lucide-react';
 import { Badge, Button, Card, Input, Loading, useToast } from '@/components/ui';
@@ -18,7 +18,20 @@ type ServiceFormState = {
   rating: number;
   photoUrls: string[];
   videoUrls: string[];
+  availabilityMode: 'ALL_WEEK' | 'SPECIFIC_DAYS';
+  dayAvailability: Record<string, { enabled: boolean; start: string; end: string }>;
 };
+
+const DAYS = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY'];
+
+const defaultDayAvailability = () =>
+  DAYS.reduce(
+    (acc, day) => {
+      acc[day] = { enabled: true, start: '09:00', end: '18:00' };
+      return acc;
+    },
+    {} as Record<string, { enabled: boolean; start: string; end: string }>,
+  );
 
 const EMPTY_FORM: ServiceFormState = {
   name: '',
@@ -32,6 +45,8 @@ const EMPTY_FORM: ServiceFormState = {
   rating: 4.8,
   photoUrls: [],
   videoUrls: [],
+  availabilityMode: 'ALL_WEEK',
+  dayAvailability: defaultDayAvailability(),
 };
 
 export default function StaffServicesPage() {
@@ -44,6 +59,29 @@ export default function StaffServicesPage() {
   const [showFormModal, setShowFormModal] = useState(false);
   const [showMediaModal, setShowMediaModal] = useState(false);
   const [serviceForm, setServiceForm] = useState<ServiceFormState>(EMPTY_FORM);
+  const [availabilityMeta, setAvailabilityMeta] = useState<
+    Record<string, Pick<ServiceFormState, 'availabilityMode' | 'dayAvailability'>>
+  >({});
+
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      const raw = window.localStorage.getItem('staff-service-availability');
+      if (!raw) return;
+      setAvailabilityMeta(JSON.parse(raw));
+    } catch {
+      setAvailabilityMeta({});
+    }
+  }, []);
+
+  const persistAvailabilityMeta = (
+    next: Record<string, Pick<ServiceFormState, 'availabilityMode' | 'dayAvailability'>>,
+  ) => {
+    setAvailabilityMeta(next);
+    if (typeof window !== 'undefined') {
+      window.localStorage.setItem('staff-service-availability', JSON.stringify(next));
+    }
+  };
 
   const services = useMemo(() => {
     const legacy = Array.isArray(assignedData?.legacyServices) ? assignedData.legacyServices : [];
@@ -69,6 +107,7 @@ export default function StaffServicesPage() {
   };
 
   const openEdit = (service: any) => {
+    const serviceMeta = availabilityMeta[service.id];
     setServiceForm({
       id: service.id,
       name: service.name || '',
@@ -82,6 +121,8 @@ export default function StaffServicesPage() {
       rating: Number(service.rating || 4.8),
       photoUrls: Array.isArray(service.photos) ? service.photos : service.imageUrl ? [service.imageUrl] : [],
       videoUrls: Array.isArray(service.videos) ? service.videos : [],
+      availabilityMode: serviceMeta?.availabilityMode || 'ALL_WEEK',
+      dayAvailability: serviceMeta?.dayAvailability || defaultDayAvailability(),
     });
     setShowFormModal(true);
   };
@@ -104,10 +145,26 @@ export default function StaffServicesPage() {
       };
 
       if (serviceForm.id) {
-        await updateService.mutateAsync({ id: serviceForm.id, ...payload });
+        const updated = await updateService.mutateAsync({ id: serviceForm.id, ...payload });
+        const nextMeta = {
+          ...availabilityMeta,
+          [updated.id]: {
+            availabilityMode: serviceForm.availabilityMode,
+            dayAvailability: serviceForm.dayAvailability,
+          },
+        };
+        persistAvailabilityMeta(nextMeta);
         addToast({ type: 'success', title: 'Service updated' });
       } else {
-        await createService.mutateAsync(payload);
+        const created = await createService.mutateAsync(payload);
+        const nextMeta = {
+          ...availabilityMeta,
+          [created.id]: {
+            availabilityMode: serviceForm.availabilityMode,
+            dayAvailability: serviceForm.dayAvailability,
+          },
+        };
+        persistAvailabilityMeta(nextMeta);
         addToast({ type: 'success', title: 'Service created' });
       }
       resetForm();
@@ -230,6 +287,12 @@ export default function StaffServicesPage() {
                         <p className="text-sm text-gray-500">
                           Max clients/hour: {Number(service.maxClientsPerHour || 1)}
                         </p>
+                        <p className="text-xs text-gray-500 mt-1">
+                          Availability:{' '}
+                          {availabilityMeta[service.id]?.availabilityMode === 'SPECIFIC_DAYS'
+                            ? 'Specific days/timings'
+                            : 'All week'}
+                        </p>
                       </div>
                       <Badge variant={service.isActive === false ? 'warning' : 'success'}>
                         {service.isActive === false ? 'Inactive' : 'Active'}
@@ -329,6 +392,113 @@ export default function StaffServicesPage() {
                     <label htmlFor="staff-service-active" className="text-sm text-gray-700">
                       Active service
                     </label>
+                  </div>
+
+                  <div className="md:col-span-2 rounded-lg border border-gray-200 p-3">
+                    <p className="mb-2 text-sm font-semibold text-gray-900">Availability Model</p>
+                    <div className="flex flex-wrap gap-3 mb-3">
+                      <label className="inline-flex items-center gap-2 text-sm text-gray-700">
+                        <input
+                          type="radio"
+                          checked={serviceForm.availabilityMode === 'ALL_WEEK'}
+                          onChange={() =>
+                            setServiceForm((prev) => ({ ...prev, availabilityMode: 'ALL_WEEK' }))
+                          }
+                        />
+                        Available all week
+                      </label>
+                      <label className="inline-flex items-center gap-2 text-sm text-gray-700">
+                        <input
+                          type="radio"
+                          checked={serviceForm.availabilityMode === 'SPECIFIC_DAYS'}
+                          onChange={() =>
+                            setServiceForm((prev) => ({ ...prev, availabilityMode: 'SPECIFIC_DAYS' }))
+                          }
+                        />
+                        Specific day/time availability
+                      </label>
+                    </div>
+
+                    {serviceForm.availabilityMode === 'SPECIFIC_DAYS' && (
+                      <div className="grid grid-cols-1 gap-2 md:grid-cols-2">
+                        {DAYS.map((day) => (
+                          <div key={day} className="rounded border border-gray-200 p-2">
+                            <div className="mb-2 flex items-center justify-between">
+                              <span className="text-xs font-semibold text-gray-700">{day.slice(0, 3)}</span>
+                              <label className="inline-flex items-center gap-1 text-xs text-gray-600">
+                                <input
+                                  type="checkbox"
+                                  checked={serviceForm.dayAvailability[day]?.enabled}
+                                  onChange={(e) =>
+                                    setServiceForm((prev) => ({
+                                      ...prev,
+                                      dayAvailability: {
+                                        ...prev.dayAvailability,
+                                        [day]: {
+                                          ...(prev.dayAvailability[day] || {
+                                            enabled: true,
+                                            start: '09:00',
+                                            end: '18:00',
+                                          }),
+                                          enabled: e.target.checked,
+                                        },
+                                      },
+                                    }))
+                                  }
+                                />
+                                Available
+                              </label>
+                            </div>
+                            <div className="flex items-center gap-1">
+                              <input
+                                type="time"
+                                value={serviceForm.dayAvailability[day]?.start || '09:00'}
+                                disabled={!serviceForm.dayAvailability[day]?.enabled}
+                                onChange={(e) =>
+                                  setServiceForm((prev) => ({
+                                    ...prev,
+                                    dayAvailability: {
+                                      ...prev.dayAvailability,
+                                      [day]: {
+                                        ...(prev.dayAvailability[day] || {
+                                          enabled: true,
+                                          start: '09:00',
+                                          end: '18:00',
+                                        }),
+                                        start: e.target.value,
+                                      },
+                                    },
+                                  }))
+                                }
+                                className="h-8 w-full rounded border border-gray-300 px-1 text-xs"
+                              />
+                              <input
+                                type="time"
+                                value={serviceForm.dayAvailability[day]?.end || '18:00'}
+                                disabled={!serviceForm.dayAvailability[day]?.enabled}
+                                onChange={(e) =>
+                                  setServiceForm((prev) => ({
+                                    ...prev,
+                                    dayAvailability: {
+                                      ...prev.dayAvailability,
+                                      [day]: {
+                                        ...(prev.dayAvailability[day] || {
+                                          enabled: true,
+                                          start: '09:00',
+                                          end: '18:00',
+                                        }),
+                                        end: e.target.value,
+                                      },
+                                    },
+                                  }))
+                                }
+                                className="h-8 w-full rounded border border-gray-300 px-1 text-xs"
+                              />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
                   </div>
                 </div>
               ) : (

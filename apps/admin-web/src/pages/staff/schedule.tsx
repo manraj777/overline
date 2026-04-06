@@ -51,6 +51,21 @@ export default function StaffSchedulePage() {
         breaks: [],
       };
     }
+
+    if (typeof window !== 'undefined') {
+      try {
+        const raw = window.localStorage.getItem('staff-schedule-gap-windows');
+        if (raw) {
+          const saved = JSON.parse(raw) as Record<string, BreakRow[]>;
+          for (const day of DAYS) {
+            map[day.key].breaks = Array.isArray(saved[day.key]) ? saved[day.key] : [];
+          }
+        }
+      } catch {
+        // ignore broken local cache
+      }
+    }
+
     setDays(map);
   }, [scheduleData?.workingHours]);
 
@@ -105,10 +120,19 @@ export default function StaffSchedulePage() {
           });
         }),
       );
+
+      if (typeof window !== 'undefined') {
+        const serialized = DAYS.reduce((acc, day) => {
+          acc[day.key] = days[day.key]?.breaks || [];
+          return acc;
+        }, {} as Record<string, BreakRow[]>);
+        window.localStorage.setItem('staff-schedule-gap-windows', JSON.stringify(serialized));
+      }
+
       addToast({
         type: 'success',
         title: 'Schedule saved',
-        message: 'Changes visible to users immediately.',
+        message: 'Changes and personal gap windows saved.',
       });
       refetch();
     } catch (error: any) {
@@ -210,7 +234,7 @@ export default function StaffSchedulePage() {
                     onClick={() => addBreak(day.key)}
                     disabled={!item.isWorking}
                   >
-                    Add break
+                    Add gap window
                   </button>
 
                   <div className="mt-2 space-y-2">
@@ -254,7 +278,9 @@ export default function StaffSchedulePage() {
 
                   <div className="mt-3 rounded bg-gray-50 p-2 text-[11px] text-gray-600">
                     Users will see: {item.isWorking ? `Available ${item.startTime} - ${item.endTime}` : 'Unavailable'}
-                    {item.breaks[0] ? `, break ${item.breaks[0].start} - ${item.breaks[0].end}` : ''}
+                    {item.breaks.length > 0
+                      ? `, gaps ${item.breaks.map((br) => `${br.start}-${br.end}`).join(', ')}`
+                      : ''}
                   </div>
 
                   <div className="mt-2 h-2 overflow-hidden rounded bg-gray-200">

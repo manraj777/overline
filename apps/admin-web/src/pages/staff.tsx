@@ -1,11 +1,12 @@
 import React from 'react';
 import Head from 'next/head';
-import { Plus, Edit2, Mail, Phone, Users, Check } from 'lucide-react';
+import { Plus, Edit2, Mail, Phone, Users, Check, Trash2 } from 'lucide-react';
 import { Card, Button, Input, Badge, Loading, ImageUpload } from '@/components/ui';
 import {
   useStaff,
   useCreateStaff,
   useUpdateStaff,
+  useDeleteStaff,
   useServices,
   useAssignServiceToStaff,
   useUnassignServiceFromStaff,
@@ -17,6 +18,8 @@ interface StaffFormData {
   name: string;
   email: string;
   phone: string;
+  age: string;
+  password: string;
   role: string;
   avatarUrl: string;
 }
@@ -25,6 +28,8 @@ const emptyForm: StaffFormData = {
   name: '',
   email: '',
   phone: '',
+  age: '',
+  password: '',
   role: 'STAFF',
   avatarUrl: '',
 };
@@ -34,6 +39,7 @@ export default function StaffPage() {
   const { data: services } = useServices();
   const createStaff = useCreateStaff();
   const updateStaff = useUpdateStaff();
+  const deleteStaff = useDeleteStaff();
   const assignServiceToStaff = useAssignServiceToStaff();
   const unassignServiceFromStaff = useUnassignServiceFromStaff();
   const [showForm, setShowForm] = React.useState(false);
@@ -47,9 +53,25 @@ export default function StaffPage() {
     try {
       let savedStaffId = editingStaffId;
       if (editingStaffId) {
-        await updateStaff.mutateAsync({ staffId: editingStaffId, ...formData });
+        await updateStaff.mutateAsync({
+          staffId: editingStaffId,
+          name: formData.name,
+          email: formData.email || undefined,
+          phone: formData.phone || undefined,
+          age: formData.age ? Number(formData.age) : undefined,
+          role: formData.role,
+          avatarUrl: formData.avatarUrl || undefined,
+        });
       } else {
-        const created = await createStaff.mutateAsync(formData as any);
+        const created = await createStaff.mutateAsync({
+          name: formData.name,
+          email: formData.email || undefined,
+          phone: formData.phone || undefined,
+          age: formData.age ? Number(formData.age) : undefined,
+          password: formData.password || undefined,
+          role: formData.role,
+          avatarUrl: formData.avatarUrl || undefined,
+        });
         savedStaffId = created?.id;
       }
       if (savedStaffId) {
@@ -88,6 +110,8 @@ export default function StaffPage() {
       name: member.name || '',
       email: member.email || '',
       phone: member.phone || '',
+      age: member.age ? String(member.age) : '',
+      password: '',
       role: member.role || 'STAFF',
       avatarUrl: member.avatarUrl || '',
     });
@@ -109,6 +133,17 @@ export default function StaffPage() {
     setSelectedServiceIds((prev) =>
       prev.includes(serviceId) ? prev.filter((id) => id !== serviceId) : [...prev, serviceId],
     );
+  };
+
+  const handleRemove = async (staffId: string) => {
+    if (!window.confirm('Remove this staff member? This action can be undone by re-onboarding.')) {
+      return;
+    }
+    try {
+      await deleteStaff.mutateAsync(staffId);
+    } catch (err) {
+      console.error('Failed to remove staff:', err);
+    }
   };
 
   if (isLoading) return <Loading text="Loading staff..." />;
@@ -198,6 +233,18 @@ export default function StaffPage() {
                   />
                 </div>
                 <div className="space-y-2">
+                  <label className="label-m3">Age</label>
+                  <input
+                    type="number"
+                    min={16}
+                    max={80}
+                    placeholder="Age"
+                    className="input-m3"
+                    value={formData.age}
+                    onChange={(e) => setFormData({ ...formData, age: e.target.value })}
+                  />
+                </div>
+                <div className="space-y-2">
                   <label className="label-m3">Role</label>
                   <select
                     className="input-m3"
@@ -208,6 +255,20 @@ export default function StaffPage() {
                     <option value="OWNER">Owner/Manager</option>
                   </select>
                 </div>
+                {!editingStaffId && (
+                  <div className="space-y-2">
+                    <label className="label-m3">6-digit Onboarding PIN</label>
+                    <input
+                      type="text"
+                      pattern="\\d{6}"
+                      maxLength={6}
+                      placeholder="Unique 6-digit PIN"
+                      className="input-m3"
+                      value={formData.password}
+                      onChange={(e) => setFormData({ ...formData, password: e.target.value.replace(/\D/g, '').slice(0, 6) })}
+                    />
+                  </div>
+                )}
               </div>
 
               <div>
@@ -335,6 +396,12 @@ export default function StaffPage() {
                       {member.isActive ? 'Active' : 'Inactive'}
                     </span>
                   </div>
+                  <button
+                    onClick={() => handleRemove(member.id)}
+                    className="inline-flex items-center gap-1 px-2.5 py-1.5 text-[10px] font-bold text-error bg-error-container/40 rounded-lg hover:bg-error-container/60"
+                  >
+                    <Trash2 className="w-3.5 h-3.5" /> Remove
+                  </button>
                 </div>
               </div>
             ))}

@@ -2,7 +2,7 @@ import React from 'react';
 import Head from 'next/head';
 import { Save, Upload, Bell, Clock, Globe, CreditCard, Camera, X } from 'lucide-react';
 import { Card, Button, Input, Loading, useToast, ImageUpload } from '@/components/ui';
-import { useShopSettings, useUpdateShopSettings, useWorkingHours, useUpdateWorkingHours, useUser } from '@/hooks';
+import { useShopSettings, useUpdateShopSettings, useWorkingHours, useUpdateWorkingHours, useUser, useStaff } from '@/hooks';
 import api from '@/lib/api';
 
 const DAY_NAMES = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY'];
@@ -19,6 +19,7 @@ export default function SettingsPage() {
   const { data: shopData, isLoading: loadingSettings } = useShopSettings();
   const updateSettings = useUpdateShopSettings();
   const { data: userData } = useUser();
+  const { data: staffData } = useStaff();
 
   // Working hours
   const { data: workingHoursData, isLoading: loadingHours } = useWorkingHours();
@@ -26,7 +27,7 @@ export default function SettingsPage() {
 
   // General form state
   const [generalForm, setGeneralForm] = React.useState({
-    name: '', description: '', phone: '', email: '', address: '', city: '', state: '', postalCode: '',
+    name: '', description: '', phone: '', email: '', address: '', city: '', state: '', postalCode: '', shopType: '', googleMapLink: '',
   });
 
   // Profile form state
@@ -62,6 +63,8 @@ export default function SettingsPage() {
         city: shopData.city || '',
         state: shopData.state || '',
         postalCode: shopData.postalCode || '',
+        shopType: String(shopData.settings?.shopType || ''),
+        googleMapLink: String(shopData.settings?.googleMapLink || ''),
       });
       // Load notification settings from shop.settings
       const savedNotifications = shopData.settings?.notifications || {};
@@ -103,7 +106,22 @@ export default function SettingsPage() {
   const handleSaveGeneral = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      await updateSettings.mutateAsync(generalForm);
+      await updateSettings.mutateAsync({
+        name: generalForm.name,
+        description: generalForm.description,
+        phone: generalForm.phone,
+        email: generalForm.email,
+        address: generalForm.address,
+        city: generalForm.city,
+        state: generalForm.state,
+        postalCode: generalForm.postalCode,
+        settings: {
+          ...(shopData?.settings || {}),
+          shopType: generalForm.shopType,
+          googleMapLink: generalForm.googleMapLink,
+          timezone: 'UTC+05:30',
+        },
+      });
       addToast({ type: 'success', title: 'Settings saved!' });
     } catch (err: any) {
       addToast({ type: 'error', title: 'Failed to save', message: err.response?.data?.message || 'Try again.' });
@@ -244,6 +262,22 @@ export default function SettingsPage() {
             {activeTab === 'general' && (
               <div className="card-m3 p-8">
                 <h2 className="text-lg font-bold text-on-surface mb-6">Shop Information</h2>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
+                  <div className="rounded-xl border border-outline-variant/15 bg-surface-container-low p-3">
+                    <p className="text-[10px] font-bold text-outline tracking-widest uppercase">Timezone</p>
+                    <p className="mt-1 text-sm font-bold text-on-surface">UTC+05:30 (IST)</p>
+                  </div>
+                  <div className="rounded-xl border border-outline-variant/15 bg-surface-container-low p-3">
+                    <p className="text-[10px] font-bold text-outline tracking-widest uppercase">Total Staff</p>
+                    <p className="mt-1 text-sm font-bold text-on-surface">{staffData?.length || 0}</p>
+                  </div>
+                  <div className="rounded-xl border border-outline-variant/15 bg-surface-container-low p-3">
+                    <p className="text-[10px] font-bold text-outline tracking-widest uppercase">Shop ID</p>
+                    <p className="mt-1 text-sm font-bold text-on-surface">{shopData?.id || '-'}</p>
+                  </div>
+                </div>
+
                 <form className="space-y-6" onSubmit={handleSaveGeneral}>
                   <ImageUpload
                     currentUrl={shopData?.logoUrl}
@@ -270,6 +304,21 @@ export default function SettingsPage() {
                       onChange={(e) => setGeneralForm({ ...generalForm, name: e.target.value })}
                     />
                     <Input label="Slug" value={shopData?.slug || ''} disabled />
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <Input
+                      label="Shop Type"
+                      value={generalForm.shopType}
+                      onChange={(e) => setGeneralForm({ ...generalForm, shopType: e.target.value })}
+                      placeholder="Salon / Spa / Clinic"
+                    />
+                    <Input
+                      label="Google Maps Link (Optional)"
+                      value={generalForm.googleMapLink}
+                      onChange={(e) => setGeneralForm({ ...generalForm, googleMapLink: e.target.value })}
+                      placeholder="https://maps.google.com/..."
+                    />
                   </div>
 
                   <div className="space-y-2">

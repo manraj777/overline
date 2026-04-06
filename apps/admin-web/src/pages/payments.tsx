@@ -10,7 +10,7 @@ import {
   Clock,
 } from 'lucide-react';
 import { Button, Loading } from '@/components/ui';
-import { useAdminBookings } from '@/hooks';
+import { useAdminBookings, useShopSettings, useUpdateShopSettings } from '@/hooks';
 import { useAuthStore } from '@/stores/auth';
 import api from '@/lib/api';
 import { formatPrice, cn } from '@/lib/utils';
@@ -40,7 +40,27 @@ export default function PaymentsPage() {
   }, [dateRange]);
 
   const { data: bookingsData, isLoading, refetch } = useAdminBookings(queryParams);
+  const { data: shopData } = useShopSettings();
+  const updateSettings = useUpdateShopSettings();
   const { shopId } = useAuthStore();
+  const [paymentSetup, setPaymentSetup] = React.useState({
+    upiId: '',
+    cashOnShop: true,
+    promoCode: '',
+    serviceChargePct: 0,
+    convenienceFee: 0,
+  });
+
+  React.useEffect(() => {
+    const settings = shopData?.settings || {};
+    setPaymentSetup({
+      upiId: String(settings.upiId || ''),
+      cashOnShop: settings.cashOnShop !== false,
+      promoCode: String(settings.promoCode || ''),
+      serviceChargePct: Number(settings.serviceChargePct || 0),
+      convenienceFee: Number(settings.convenienceFee || 0),
+    });
+  }, [shopData?.settings]);
 
   const payments = React.useMemo(() => {
     if (!bookingsData?.data) return [];
@@ -90,6 +110,24 @@ export default function PaymentsPage() {
     a.click();
   };
 
+  const savePaymentSetup = async () => {
+    try {
+      await updateSettings.mutateAsync({
+        settings: {
+          ...(shopData?.settings || {}),
+          upiId: paymentSetup.upiId,
+          cashOnShop: paymentSetup.cashOnShop,
+          promoCode: paymentSetup.promoCode,
+          serviceChargePct: paymentSetup.serviceChargePct,
+          convenienceFee: paymentSetup.convenienceFee,
+        },
+      });
+      alert('Payment setup saved');
+    } catch (err) {
+      alert('Failed to save payment setup');
+    }
+  };
+
   if (isLoading) return <Loading text="Loading payments..." />;
 
   return (
@@ -125,6 +163,79 @@ export default function PaymentsPage() {
         </div>
 
         {/* Summary */}
+        <div className="card-m3 p-6 mb-6">
+          <div className="flex items-center justify-between mb-4">
+            <h2 className="text-lg font-bold text-on-surface">Payment Setup</h2>
+            <button
+              onClick={savePaymentSetup}
+              disabled={updateSettings.isPending}
+              className="btn-primary px-4 py-2 text-xs disabled:opacity-60"
+            >
+              {updateSettings.isPending ? 'Saving...' : 'Save Setup'}
+            </button>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div>
+              <label className="label-m3">UPI ID</label>
+              <input
+                type="text"
+                className="input-m3 mt-1"
+                placeholder="name@bank"
+                value={paymentSetup.upiId}
+                onChange={(e) => setPaymentSetup((prev) => ({ ...prev, upiId: e.target.value }))}
+              />
+            </div>
+            <div>
+              <label className="label-m3">Promo Code</label>
+              <input
+                type="text"
+                className="input-m3 mt-1"
+                placeholder="WELCOME10"
+                value={paymentSetup.promoCode}
+                onChange={(e) => setPaymentSetup((prev) => ({ ...prev, promoCode: e.target.value.toUpperCase() }))}
+              />
+            </div>
+            <div>
+              <label className="label-m3">Service Charge (%)</label>
+              <input
+                type="number"
+                min={0}
+                max={100}
+                className="input-m3 mt-1"
+                value={paymentSetup.serviceChargePct}
+                onChange={(e) =>
+                  setPaymentSetup((prev) => ({ ...prev, serviceChargePct: Number(e.target.value) || 0 }))
+                }
+              />
+            </div>
+            <div>
+              <label className="label-m3">Convenience Fee (INR)</label>
+              <input
+                type="number"
+                min={0}
+                className="input-m3 mt-1"
+                value={paymentSetup.convenienceFee}
+                onChange={(e) =>
+                  setPaymentSetup((prev) => ({ ...prev, convenienceFee: Number(e.target.value) || 0 }))
+                }
+              />
+            </div>
+            <div className="flex items-end">
+              <label className="inline-flex items-center gap-2 text-sm text-on-surface font-medium">
+                <input
+                  type="checkbox"
+                  checked={paymentSetup.cashOnShop}
+                  onChange={(e) =>
+                    setPaymentSetup((prev) => ({ ...prev, cashOnShop: e.target.checked }))
+                  }
+                />
+                Cash on Shop Enabled
+              </label>
+            </div>
+          </div>
+        </div>
+
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
           <div className="card-m3 p-6">
             <p className="metric-label mb-2">Total Collected</p>

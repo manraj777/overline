@@ -41,6 +41,17 @@ export default function OwnerDashboardPage() {
 
 	const todayBookings = useMemo(() => bookingsPage?.data || [], [bookingsPage?.data]);
 	const teamSize = staff?.length || 0;
+	const totalClientsBooked = useMemo(() => {
+		const unique = new Set(
+			todayBookings
+				.map((booking: Booking) => booking.userId || booking.customerPhone || booking.customerName)
+				.filter(Boolean),
+		);
+		return unique.size;
+	}, [todayBookings]);
+	const totalServicesBooked = useMemo(() => {
+		return todayBookings.reduce((sum: number, booking: Booking) => sum + (booking.services?.length || 0), 0);
+	}, [todayBookings]);
 
 	const staffPerformance = useMemo(() => {
 		const bookingsByStaff = new Map<string, number>();
@@ -92,6 +103,8 @@ export default function OwnerDashboardPage() {
 	const metricCards = [
 		{ label: 'Today Bookings', value: String(todayStats.total), icon: Calendar, color: 'text-primary', bgColor: 'bg-primary-fixed' },
 		{ label: 'Queue Active', value: String(todayStats.upcoming + todayStats.inProgress), icon: Users, color: 'text-secondary', bgColor: 'bg-secondary-fixed' },
+		{ label: 'Clients Booked', value: String(totalClientsBooked), icon: Users, color: 'text-on-surface', bgColor: 'bg-surface-container-low' },
+		{ label: 'Services Booked', value: String(totalServicesBooked), icon: Calendar, color: 'text-secondary', bgColor: 'bg-secondary-fixed' },
 		{ label: 'Today Revenue', value: formatPrice(todayStats.revenue), icon: DollarSign, color: 'text-tertiary', bgColor: 'bg-tertiary-fixed' },
 		{ label: 'Pending Settlement', value: formatPrice(Number(financials?.pendingSettlement || 0)), icon: TrendingUp, color: 'text-on-surface', bgColor: 'bg-surface-container-low' },
 	];
@@ -116,7 +129,7 @@ export default function OwnerDashboardPage() {
 				</div>
 
 				{/* Metric Cards */}
-				<div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-4">
+				<div className="grid grid-cols-1 gap-4 sm:grid-cols-2 xl:grid-cols-6">
 					{metricCards.map((metric) => (
 						<div key={metric.label} className="card-m3 p-6">
 							<div className="flex items-start justify-between mb-4">

@@ -290,8 +290,8 @@ export function useCreateStaff() {
   const queryClient = useQueryClient();
   const { shopId } = useAuthStore();
 
-  return useMutation<Staff, Error, { name: string; email: string; phone?: string; role?: string; avatarUrl?: string }>({
-    mutationFn: async (payload: { name: string; email: string; phone?: string; role?: string; avatarUrl?: string }) => {
+  return useMutation<Staff, Error, { name: string; email?: string; phone?: string; age?: number; password?: string; role?: string; avatarUrl?: string }>({
+    mutationFn: async (payload: { name: string; email?: string; phone?: string; age?: number; password?: string; role?: string; avatarUrl?: string }) => {
       const { data } = await api.post(`/admin/shops/${shopId}/staff`, payload);
       return data;
     },
@@ -305,10 +305,24 @@ export function useUpdateStaff() {
   const queryClient = useQueryClient();
   const { shopId } = useAuthStore();
 
-  return useMutation<Staff, Error, { staffId: string; name?: string; email?: string; phone?: string; role?: string; isActive?: boolean; avatarUrl?: string }>({
-    mutationFn: async ({ staffId, ...payload }: { staffId: string; name?: string; email?: string; phone?: string; role?: string; isActive?: boolean; avatarUrl?: string }) => {
+  return useMutation<Staff, Error, { staffId: string; name?: string; email?: string; phone?: string; age?: number; role?: string; isActive?: boolean; avatarUrl?: string }>({
+    mutationFn: async ({ staffId, ...payload }: { staffId: string; name?: string; email?: string; phone?: string; age?: number; role?: string; isActive?: boolean; avatarUrl?: string }) => {
       const { data } = await api.patch(`/admin/shops/${shopId}/staff/${staffId}`, payload);
       return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'staff'] });
+    },
+  });
+}
+
+export function useDeleteStaff() {
+  const queryClient = useQueryClient();
+  const { shopId } = useAuthStore();
+
+  return useMutation<void, Error, string>({
+    mutationFn: async (staffId: string) => {
+      await api.delete(`/admin/shops/${shopId}/staff/${staffId}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin', 'staff'] });
