@@ -3,10 +3,8 @@ import Link from 'next/link';
 import { useRouter } from 'next/router';
 import {
   LayoutDashboard,
-  Calendar,
   Scissors,
   Users,
-  BarChart3,
   Settings,
   LogOut,
   Menu,
@@ -14,11 +12,8 @@ import {
   Bell,
   CreditCard,
   Star,
-  ShieldAlert,
-  Briefcase,
   Clock3,
-  Wallet,
-  User,
+  Store,
   Search,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -146,71 +141,25 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
   const navigationByRole: Record<UserRole, NavigationSection[]> = {
     [UserRole.OWNER]: [
       {
-        title: 'Shop',
+        title: 'Owner Portal',
         items: [
           { name: 'Dashboard', href: '/owner/dashboard', icon: LayoutDashboard },
-          { name: 'All Bookings', href: '/owner/bookings', icon: Calendar },
-          { name: 'Live Queue', href: '/owner/queue', icon: Users },
-        ],
-      },
-      {
-        title: 'Team',
-        items: [
-          { name: 'My Staff', href: '/owner/staff', icon: Users },
-          { name: 'Staff Earnings', href: '/owner/earnings/staff', icon: CreditCard },
-        ],
-      },
-      {
-        title: 'Shop Config',
-        items: [
-          { name: 'Services', href: '/owner/services', icon: Scissors },
-          { name: 'Shop Settings', href: '/owner/settings', icon: Settings },
-          { name: 'Payments Setup', href: '/owner/payments', icon: CreditCard },
-        ],
-      },
-      {
-        title: 'Analytics',
-        items: [
-          { name: 'Revenue Report', href: '/owner/analytics/revenue', icon: BarChart3 },
-          { name: 'Reviews (all)', href: '/owner/analytics/reviews', icon: Star },
-          { name: 'Fraud Alerts', href: '/owner/analytics/fraud', icon: ShieldAlert },
+          { name: 'Staff', href: '/owner/staff', icon: Users },
+          { name: 'Shop', href: '/owner/settings', icon: Store },
+          { name: 'Payments', href: '/owner/payments', icon: CreditCard },
+          { name: 'Settings', href: '/settings', icon: Settings },
         ],
       },
     ],
     [UserRole.STAFF]: [
       {
-        title: 'My Day',
+        title: 'Staff Portal',
         items: [
           { name: 'Dashboard', href: '/staff/dashboard', icon: LayoutDashboard },
-          { name: 'My Queue', href: '/staff/queue', icon: Users },
-          { name: 'My Bookings', href: '/staff/bookings', icon: Calendar },
-        ],
-      },
-      {
-        title: 'My Work',
-        items: [
-          { name: 'My Services', href: '/staff/services', icon: Briefcase },
-          { name: 'My Schedule', href: '/staff/schedule', icon: Clock3 },
-        ],
-      },
-      {
-        title: 'My Money',
-        items: [
-          { name: 'Earnings', href: '/staff/earnings', icon: Wallet },
-          { name: 'Payments (UPI)', href: '/staff/payments', icon: CreditCard },
-        ],
-      },
-      {
-        title: 'Reputation',
-        items: [
-          { name: 'My Reviews', href: '/staff/reviews', icon: Star },
-        ],
-      },
-      {
-        title: 'Settings',
-        items: [
-          { name: 'Notifications', href: '/staff/notifications', icon: Bell },
-          { name: 'Profile', href: '/staff/profile', icon: User },
+          { name: 'Services', href: '/staff/services', icon: Scissors },
+          { name: 'Timing', href: '/staff/schedule', icon: Clock3 },
+          { name: 'Reviews', href: '/staff/reviews', icon: Star },
+          { name: 'Settings', href: '/staff/profile', icon: Settings },
         ],
       },
     ],

@@ -13,7 +13,7 @@ import {
   StatusBar,
 } from 'react-native';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { dashboardApi, bookingsApi } from '../../api/client';
+import { dashboardApi, bookingsApi, shopApi } from '../../api/client';
 import { useAuthStore } from '../../stores/authStore';
 import { Colors, Shadows, Radius } from '../../theme';
 import { 
@@ -54,6 +54,12 @@ export default function MyDayScreen() {
     enabled: !!selectedShopId,
   });
 
+  const shopQuery = useQuery({
+    queryKey: ['staffSelectedShop', selectedShopId],
+    queryFn: () => shopApi.getById(selectedShopId!).then(res => res.data),
+    enabled: !!selectedShopId,
+  });
+
   useSocketEvent('booking_new', () => {
     queryClient.invalidateQueries({ queryKey: ['staffMyDayStats'] });
     queryClient.invalidateQueries({ queryKey: ['staffNextBookings'] });
@@ -76,14 +82,14 @@ export default function MyDayScreen() {
       {/* Immersive Shop Header */}
       <View style={styles.hero}>
         <Image 
-          source={{ uri: 'https://images.unsplash.com/photo-1560066984-138dadb4c035?q=80&w=1000' }} 
+          source={{ uri: shopQuery.data?.coverPhotoUrl || shopQuery.data?.logoUrl || 'https://images.unsplash.com/photo-1560066984-138dadb4c035?q=80&w=1000' }} 
           style={styles.heroImage} 
         />
         <View style={styles.heroOverlay} />
         <SafeAreaView style={styles.heroContent} edges={['top']}>
           <View style={styles.heroTop}>
             <View>
-              <Text style={styles.shopName}>Elite Wellness Studio</Text>
+              <Text style={styles.shopName}>{shopQuery.data?.name || 'Your Assigned Shop'}</Text>
               <Text style={styles.staffWelcome}>Welcome back, {user?.name?.split(' ')[0]}</Text>
             </View>
             <TouchableOpacity style={styles.scanBtn} onPress={() => navigation.navigate('VerifyCode')}>

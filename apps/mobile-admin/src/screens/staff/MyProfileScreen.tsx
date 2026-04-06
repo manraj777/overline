@@ -17,9 +17,10 @@ import { Colors, Shadows, Spacing, Radius } from '../../theme';
 import { 
   ChevronRight, 
   User, 
-  Settings, 
+  Globe,
   Moon, 
   ShieldCheck, 
+  Ticket,
   FileText, 
   MessageSquare, 
   LogOut,
@@ -98,10 +99,24 @@ export default function MyProfileScreen() {
             <Text style={styles.sectionLabel}>VISUALS & PREFERENCES</Text>
             <View style={styles.card}>
               <SettingItem 
+                icon={Globe} 
+                title="Language" 
+                value="English"
+                color="#3B82F6" 
+              />
+              <View style={styles.divider} />
+              <SettingItem 
                 icon={Moon} 
                 title="Appearance" 
                 value="System (Dark)" 
                 color="#8B5CF6" 
+              />
+              <View style={styles.divider} />
+              <SettingItem 
+                icon={Ticket} 
+                title="Promo Codes" 
+                subtitle="View active offers for your services"
+                color="#10B981" 
               />
             </View>
           </View>

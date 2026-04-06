@@ -10,6 +10,7 @@ import {
 	useStaffOwnEarnings,
 	useStaffOwnSchedule,
 	useUpdateStaffOwnBookingStatus,
+	useShopSettings,
 } from '@/hooks';
 import { Booking, BookingStatus } from '@/types';
 import { formatPrice, formatTime } from '@/lib/utils';
@@ -34,6 +35,7 @@ export default function StaffDashboardPage() {
 		breakdown: 'daily',
 	});
 	const { data: scheduleData } = useStaffOwnSchedule();
+	const { data: shopData } = useShopSettings();
 	const updateBooking = useUpdateStaffOwnBookingStatus();
 
 	const bookings = useMemo(() => bookingsData?.data || [], [bookingsData?.data]);
@@ -97,6 +99,20 @@ export default function StaffDashboardPage() {
 			</Head>
 
 			<div className="space-y-6">
+				<div className="card-m3 overflow-hidden">
+					<div
+						className="h-40 w-full bg-cover bg-center"
+						style={{
+							backgroundImage: `url(${shopData?.coverPhotoUrl || shopData?.logoUrl || 'https://images.unsplash.com/photo-1521590832167-7bcbfaa6381f?q=80&w=1600'})`,
+						}}
+					/>
+					<div className="p-5">
+						<p className="label-m3 mb-1">Assigned Shop</p>
+						<h2 className="text-xl font-black text-on-surface">{shopData?.name || 'Your Shop'}</h2>
+						<p className="text-sm text-on-surface-variant mt-1">{shopData?.address || 'Shop location will appear here'}</p>
+					</div>
+				</div>
+
 				<div>
 					<span className="label-m3 mb-2 block">My Day</span>
 					<h1 className="text-3xl font-black tracking-tight text-on-surface">Staff Dashboard</h1>
