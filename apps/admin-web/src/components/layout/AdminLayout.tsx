@@ -58,8 +58,14 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
   const queryClient = useQueryClient();
   const prevQueueLengthRef = React.useRef<number | null>(null);
   const userRole = (user?.role as UserRole) || UserRole.USER;
-  const isStaff = userRole === UserRole.STAFF;
-  const isOwnerLike = userRole === UserRole.OWNER || userRole === UserRole.SUPER_ADMIN;
+  const derivedRole =
+    userRole === UserRole.USER && router.pathname.startsWith('/owner')
+      ? UserRole.OWNER
+      : userRole === UserRole.USER && router.pathname.startsWith('/staff')
+        ? UserRole.STAFF
+        : userRole;
+  const isStaff = derivedRole === UserRole.STAFF;
+  const isOwnerLike = derivedRole === UserRole.OWNER || derivedRole === UserRole.SUPER_ADMIN;
 
   const [pendingBookings, setPendingBookings] = React.useState<PendingBooking[]>([]);
   const updateBookingStatus = useUpdateBookingStatus();
@@ -145,8 +151,8 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
         title: 'Owner Portal',
         items: [
           { name: 'Dashboard', href: '/owner/dashboard', icon: LayoutDashboard },
-          { name: 'Staff Onboarding', href: '/owner/staff', icon: Users },
-          { name: 'Shop', href: '/owner/settings', icon: Store },
+          { name: 'Staff', href: '/owner/staff', icon: Users },
+          { name: 'Shop', href: '/owner/shop', icon: Store },
           { name: 'Payments', href: '/owner/payments', icon: CreditCard },
           { name: 'Settings', href: '/owner/settings', icon: Settings },
         ],
@@ -175,7 +181,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
     [UserRole.USER]: [],
   };
 
-  const roleSections = navigationByRole[userRole] || [];
+  const roleSections = navigationByRole[derivedRole] || [];
   const isActive = (href: string) => router.pathname.startsWith(href);
   const publicRoute = isPublicRoute(router.pathname);
 
@@ -205,7 +211,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
   }
 
   return (
-    <div className="ovl-admin-bg min-h-screen">
+    <div className="ovl-admin-bg h-screen overflow-hidden">
       {/* ── Sidebar ── */}
       <aside
         className={cn(
@@ -217,7 +223,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
       >
         {/* Logo */}
         <div className="flex items-center justify-between h-16 px-3 lg:px-6 border-b border-white/5">
-          <Link href={getDefaultRouteForRole(user?.role as UserRole)} className="flex items-center gap-3">
+          <Link href={getDefaultRouteForRole(derivedRole)} className="flex items-center gap-3">
             <div className="w-9 h-9 bg-gradient-to-br from-primary to-primary-container rounded-xl flex items-center justify-center shadow-button">
               <span className="text-white font-black text-sm">O</span>
             </div>
@@ -280,7 +286,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
             {!sidebarCollapsed && (
               <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold text-white truncate">{user?.name}</p>
-              <p className="text-[10px] font-bold tracking-widest text-white/30 uppercase">{user?.role}</p>
+              <p className="text-[10px] font-bold tracking-widest text-white/30 uppercase">{derivedRole}</p>
               </div>
             )}
           </div>
@@ -304,7 +310,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
       )}
 
       {/* ── Main Content ── */}
-      <div className={cn('transition-all duration-300', sidebarCollapsed ? 'lg:pl-[84px]' : 'lg:pl-[260px]')}>
+      <div className={cn('h-screen flex flex-col transition-all duration-300', sidebarCollapsed ? 'lg:pl-[84px]' : 'lg:pl-[260px]')}>
         {/* Top Header */}
         <header className="sticky top-0 z-30 bg-white/70 backdrop-blur-xl border-b border-outline-variant/10">
           <div className="flex items-center justify-between h-16 px-4 sm:px-6">
@@ -356,7 +362,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
                 </div>
                 <div className="hidden lg:block">
                   <p className="text-sm font-semibold text-on-surface">{user?.name?.split(' ')[0]}</p>
-                  <p className="text-[10px] font-bold text-outline uppercase tracking-widest">{user?.role}</p>
+                  <p className="text-[10px] font-bold text-outline uppercase tracking-widest">{derivedRole}</p>
                 </div>
               </div>
             </div>
@@ -364,7 +370,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
         </header>
 
         {/* Page Content */}
-        <main className="p-4 sm:p-6 lg:p-8">{children}</main>
+        <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">{children}</main>
       </div>
 
       {/* Booking Approval Modal */}
