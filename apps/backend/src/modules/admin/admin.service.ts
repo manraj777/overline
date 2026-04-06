@@ -676,15 +676,13 @@ export class AdminService {
         },
       },
       update: {
-        startTime: dto.startTime || '09:00',
-        endTime: dto.endTime || '18:00',
+        intervals: (dto.intervals as any) || [],
         isOff,
       },
       create: {
         staffId,
         dayOfWeek,
-        startTime: dto.startTime || '09:00',
-        endTime: dto.endTime || '18:00',
+        intervals: (dto.intervals as any) || [],
         isOff,
       },
     });
@@ -773,10 +771,10 @@ export class AdminService {
         shopId_dayOfWeek: { shopId, dayOfWeek },
       },
       update: {
-        openTime: dto.openTime,
-        closeTime: dto.closeTime,
-        isClosed: dto.isClosed,
-        breakWindows: dto.breakWindows || [],
+        openTime: dto.openTime || '09:00',
+        closeTime: dto.closeTime || '18:00',
+        isClosed: dto.isClosed || false,
+        breakWindows: (dto.intervals as any) || (dto.breakWindows as any) || [],
       },
       create: {
         shopId,
@@ -784,7 +782,7 @@ export class AdminService {
         openTime: dto.openTime || '09:00',
         closeTime: dto.closeTime || '18:00',
         isClosed: dto.isClosed || false,
-        breakWindows: dto.breakWindows || [],
+        breakWindows: (dto.intervals as any) || (dto.breakWindows as any) || [],
       },
     });
 
@@ -1627,8 +1625,16 @@ export class AdminService {
           dayOfWeek,
         },
       },
-      update: { startTime, endTime, isOff },
-      create: { staffId: staff.id, dayOfWeek, startTime, endTime, isOff },
+      update: {
+        intervals: (dto.intervals as any) || [],
+        isOff,
+      },
+      create: {
+        staffId: staff.id,
+        dayOfWeek,
+        intervals: (dto.intervals as any) || [],
+        isOff,
+      },
     });
 
     await this.invalidateSlotCache(staff.shopId);
@@ -2262,6 +2268,52 @@ export class AdminService {
         fraudScore: 100 - u.trustScore,
       })),
     };
+  }
+
+  async getShopSettings(shopId: string, tenantId: string) {
+    const shop = await this.verifyShopAccess(shopId, tenantId);
+    return shop.settings || {};
+  }
+
+  async updateShopSettings(shopId: string, tenantId: string, settings: any) {
+    await this.verifyShopAccess(shopId, tenantId);
+    
+    return this.prisma.shop.update({
+      where: { id: shopId },
+      data: {
+        settings: settings as Prisma.InputJsonValue,
+      },
+    });
+  }
+
+  async getPayoutDetails(shopId: string, tenantId: string) {
+    const shop = await this.verifyShopAccess(shopId, tenantId);
+    const settings = (shop.settings as any) || {};
+    
+    return {
+      payoutDetails: settings.payoutDetails || {
+        upiId: '',
+        allowCash: true,
+        promoCode: 'OFF10',
+        extraCharge: '5%',
+        platformFeeVisible: true
+      }
+    };
+  }
+
+  async updatePayoutDetails(shopId: string, tenantId: string, payoutDetails: any) {
+    const shop = await this.verifyShopAccess(shopId, tenantId);
+    const settings = (shop.settings as any) || {};
+    
+    return this.prisma.shop.update({
+      where: { id: shopId },
+      data: {
+        settings: {
+          ...settings,
+          payoutDetails: payoutDetails,
+        } as Prisma.InputJsonValue,
+      },
+    });
   }
 
   async suspendUser(userId: string, isSuspended: boolean) {

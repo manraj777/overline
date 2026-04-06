@@ -36,6 +36,7 @@ import { useRoute, RouteProp } from '@react-navigation/native';
 import { staffApi } from '../../api/client';
 import { RootStackParamList, Staff } from '../../types';
 import { Colors, Shadows, Spacing, Radius } from '../../theme';
+import { useAuthStore } from '../../stores/authStore';
 
 type RouteProps = RouteProp<RootStackParamList, 'StaffManagement'>;
 
@@ -56,7 +57,8 @@ const emptyForm: StaffFormData = {
 export default function StaffManagementScreen() {
   const route = useRoute<RouteProps>();
   const queryClient = useQueryClient();
-  const { shopId } = route.params;
+  const { selectedShopId } = useAuthStore();
+  const shopId = (route.params as any)?.shopId || selectedShopId || '';
   const [showForm, setShowForm] = useState(false);
   const [formData, setFormData] = useState<StaffFormData>(emptyForm);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -71,6 +73,15 @@ export default function StaffManagementScreen() {
     queryFn: () => staffApi.getAll(shopId).then(res => res.data || []),
     enabled: !!shopId,
   });
+
+  if (!shopId) {
+    return (
+      <View style={styles.empty}>
+        <Text style={styles.emptyTitle}>No shop selected</Text>
+        <Text style={styles.emptySubtitle}>Select a shop first to manage staff.</Text>
+      </View>
+    );
+  }
 
   const createMutation = useMutation({
     mutationFn: (data: StaffFormData) => staffApi.create(shopId, { 

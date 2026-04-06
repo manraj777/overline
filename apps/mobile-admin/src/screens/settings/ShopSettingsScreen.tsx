@@ -14,10 +14,11 @@ import {
   StatusBar,
 } from 'react-native';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useRoute, RouteProp } from '@react-navigation/native';
+import { useRoute, RouteProp, useNavigation } from '@react-navigation/native';
 import { shopApi } from '../../api/client';
 import { RootStackParamList } from '../../types';
 import { Colors, Shadows, Spacing, Radius } from '../../theme';
+import { useAuthStore } from '../../stores/authStore';
 import { 
   Store, 
   MapPin, 
@@ -37,8 +38,10 @@ const { width } = Dimensions.get('window');
 
 export default function ShopSettingsScreen() {
   const route = useRoute<RouteProps>();
+  const navigation = useNavigation<any>();
   const queryClient = useQueryClient();
-  const { shopId } = route.params;
+  const { selectedShopId } = useAuthStore();
+  const shopId = (route.params as any)?.shopId || selectedShopId || '';
 
   const [formData, setFormData] = useState({
     name: '',
@@ -82,6 +85,14 @@ export default function ShopSettingsScreen() {
     return (
       <View style={styles.centered}>
         <ActivityIndicator size="large" color={Colors.primary} />
+      </View>
+    );
+  }
+
+  if (!shopId) {
+    return (
+      <View style={styles.centered}>
+        <Text style={{color: Colors.textSecondary, fontWeight: '700'}}>No shop selected yet.</Text>
       </View>
     );
   }
@@ -187,7 +198,10 @@ export default function ShopSettingsScreen() {
               </View>
             </View>
 
-            <TouchableOpacity style={styles.timingTrigger}>
+            <TouchableOpacity
+              style={styles.timingTrigger}
+              onPress={() => navigation.navigate('WorkingHours', {shopId})}
+            >
               <View style={styles.timingInfo}>
                 <Clock size={18} color="#64748B" />
                 <View style={{ marginLeft: 12 }}>

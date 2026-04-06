@@ -37,7 +37,7 @@ export type MainTabParamList = {
   Profile: undefined;
 };
 
-export type OwnerTabParamList = {
+export type OwnerDrawerParamList = {
   Dashboard: undefined;
   Staff: undefined;
   Shop: undefined;

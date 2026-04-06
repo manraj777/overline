@@ -53,6 +53,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
   const { user, isAuthenticated, shopId, pendingOtpVerification } = useAuthStore();
   const logout = useLogout();
   const [sidebarOpen, setSidebarOpen] = React.useState(false);
+  const [sidebarCollapsed, setSidebarCollapsed] = React.useState(false);
   const { addToast } = useToast();
   const queryClient = useQueryClient();
   const prevQueueLengthRef = React.useRef<number | null>(null);
@@ -144,10 +145,10 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
         title: 'Owner Portal',
         items: [
           { name: 'Dashboard', href: '/owner/dashboard', icon: LayoutDashboard },
-          { name: 'Staff', href: '/owner/staff', icon: Users },
+          { name: 'Staff Onboarding', href: '/owner/staff', icon: Users },
           { name: 'Shop', href: '/owner/settings', icon: Store },
           { name: 'Payments', href: '/owner/payments', icon: CreditCard },
-          { name: 'Settings', href: '/settings', icon: Settings },
+          { name: 'Settings', href: '/owner/settings', icon: Settings },
         ],
       },
     ],
@@ -208,7 +209,8 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
       {/* ── Sidebar ── */}
       <aside
         className={cn(
-          'fixed inset-y-0 left-0 z-50 w-16 lg:w-[260px] transform transition-transform duration-300 lg:translate-x-0',
+          'fixed inset-y-0 left-0 z-50 transform transition-all duration-300 lg:translate-x-0',
+          sidebarCollapsed ? 'w-[84px]' : 'w-[260px]',
           'bg-inverse-surface',
           sidebarOpen ? 'translate-x-0' : '-translate-x-full'
         )}
@@ -219,23 +221,32 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
             <div className="w-9 h-9 bg-gradient-to-br from-primary to-primary-container rounded-xl flex items-center justify-center shadow-button">
               <span className="text-white font-black text-sm">O</span>
             </div>
-            <span className="hidden lg:inline text-lg font-black text-white tracking-tight">Overline</span>
+            {!sidebarCollapsed && <span className="text-lg font-black text-white tracking-tight">Overline</span>}
           </Link>
           <button
-            onClick={() => setSidebarOpen(false)}
-            className="lg:hidden text-white/40 hover:text-white"
+            onClick={() => {
+              if (window.innerWidth < 1024) {
+                setSidebarOpen(false);
+              } else {
+                setSidebarCollapsed((prev) => !prev);
+              }
+            }}
+            className="text-white/40 hover:text-white"
+            aria-label="Toggle sidebar"
           >
-            <X className="w-5 h-5" />
+            {sidebarCollapsed ? <Menu className="w-5 h-5" /> : <X className="w-5 h-5" />}
           </button>
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 px-2 lg:px-3 py-5 space-y-5 overflow-y-auto">
+        <nav className="flex-1 px-2 lg:px-3 py-4 space-y-4 overflow-y-auto">
           {roleSections.map((section) => (
             <div key={section.title}>
-              <p className="hidden lg:block px-4 mb-2 text-[10px] font-bold tracking-[0.15em] text-white/30 uppercase">
+              {!sidebarCollapsed && (
+                <p className="px-4 mb-2 text-[10px] font-bold tracking-[0.15em] text-white/30 uppercase">
                 {section.title}
-              </p>
+                </p>
+              )}
               <div className="space-y-0.5">
                 {section.items.map((item) => (
                   <Link
@@ -243,7 +254,8 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
                     href={item.href}
                     onClick={() => setSidebarOpen(false)}
                     className={cn(
-                      'flex items-center justify-center lg:justify-start gap-3 px-3 lg:px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-200',
+                      'flex items-center gap-3 px-3 lg:px-4 py-2.5 rounded-xl text-sm font-medium transition-all duration-200',
+                      sidebarCollapsed ? 'justify-center' : 'justify-start',
                       isActive(item.href)
                         ? 'sidebar-link-active'
                         : 'sidebar-link-idle'
@@ -251,7 +263,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
                     title={item.name}
                   >
                     <item.icon className="w-[18px] h-[18px]" />
-                    <span className="hidden lg:inline">{item.name}</span>
+                    {!sidebarCollapsed && <span>{item.name}</span>}
                   </Link>
                 ))}
               </div>
@@ -261,14 +273,16 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
 
         {/* User Section */}
         <div className="p-2 lg:p-3 border-t border-white/5">
-          <div className="flex items-center justify-center lg:justify-start gap-3 px-2 lg:px-4 py-2">
+          <div className={cn('flex items-center gap-3 px-2 lg:px-4 py-2', sidebarCollapsed ? 'justify-center' : 'justify-start')}>
             <div className="w-9 h-9 rounded-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center text-white font-bold text-sm">
               {user?.name?.charAt(0) || 'A'}
             </div>
-            <div className="hidden lg:block flex-1 min-w-0">
+            {!sidebarCollapsed && (
+              <div className="flex-1 min-w-0">
               <p className="text-sm font-semibold text-white truncate">{user?.name}</p>
               <p className="text-[10px] font-bold tracking-widest text-white/30 uppercase">{user?.role}</p>
-            </div>
+              </div>
+            )}
           </div>
           <button
             onClick={handleLogout}
@@ -276,7 +290,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
             title="Sign Out"
           >
             <LogOut className="w-[18px] h-[18px]" />
-            <span className="hidden lg:inline">Sign Out</span>
+            {!sidebarCollapsed && <span>Sign Out</span>}
           </button>
         </div>
       </aside>
@@ -290,13 +304,20 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
       )}
 
       {/* ── Main Content ── */}
-      <div className="lg:pl-[260px]">
+      <div className={cn('transition-all duration-300', sidebarCollapsed ? 'lg:pl-[84px]' : 'lg:pl-[260px]')}>
         {/* Top Header */}
         <header className="sticky top-0 z-30 bg-white/70 backdrop-blur-xl border-b border-outline-variant/10">
           <div className="flex items-center justify-between h-16 px-4 sm:px-6">
             <button
-              onClick={() => setSidebarOpen(true)}
-              className="lg:hidden p-2 rounded-xl hover:bg-surface-container-low transition-colors"
+              onClick={() => {
+                if (window.innerWidth < 1024) {
+                  setSidebarOpen(true);
+                } else {
+                  setSidebarCollapsed((prev) => !prev);
+                }
+              }}
+              className="p-2 rounded-xl hover:bg-surface-container-low transition-colors"
+              aria-label="Open or close sidebar"
             >
               <Menu className="w-5 h-5 text-on-surface" />
             </button>

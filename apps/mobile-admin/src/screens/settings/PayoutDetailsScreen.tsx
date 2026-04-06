@@ -17,6 +17,7 @@ import { useRoute, RouteProp } from '@react-navigation/native';
 import { RootStackParamList } from '../../types';
 import { shopApi } from '../../api/client';
 import { Colors, Shadows, Spacing, Radius } from '../../theme';
+import { useAuthStore } from '../../stores/authStore';
 import { 
   CreditCard, 
   Wallet, 
@@ -34,13 +35,15 @@ type RouteProps = RouteProp<RootStackParamList, 'PayoutDetails'>;
 export default function PayoutDetailsScreen() {
   const route = useRoute<RouteProps>();
   const queryClient = useQueryClient();
-  const { shopId } = route.params;
+  const { selectedShopId } = useAuthStore();
+  const shopId = (route.params as any)?.shopId || selectedShopId || '';
 
   const [settings, setSettings] = useState({
     upiId: '',
     allowCash: true,
-    promoCode: 'OFF10',
-    extraCharge: '5%',
+    promoCode: '',
+    extraCharge: '',
+    revenueSplit: '70/30',
     platformFeeVisible: true
   });
 
@@ -52,10 +55,7 @@ export default function PayoutDetailsScreen() {
 
   useEffect(() => {
     if (data?.payoutDetails) {
-      setSettings(prev => ({
-        ...prev,
-        upiId: data.payoutDetails.upiId || '',
-      }));
+      setSettings(data.payoutDetails);
     }
   }, [data]);
 
@@ -71,6 +71,14 @@ export default function PayoutDetailsScreen() {
     return (
       <View style={styles.centered}>
         <ActivityIndicator size="large" color={Colors.primary} />
+      </View>
+    );
+  }
+
+  if (!shopId) {
+    return (
+      <View style={styles.centered}>
+        <Text style={{color: Colors.textSecondary, fontWeight: '700'}}>No shop selected yet.</Text>
       </View>
     );
   }
@@ -147,12 +155,12 @@ export default function PayoutDetailsScreen() {
 
             <TouchableOpacity style={styles.configItem}>
               <View style={styles.configMain}>
-                <View style={[styles.configIcon, { backgroundColor: '#FDF2F8' }]}>
-                  <Settings2 size={20} color="#DB2777" />
+                <View style={[styles.configIcon, { backgroundColor: '#F0FDF4' }]}>
+                  <CreditCard size={20} color="#10B981" />
                 </View>
                 <View>
-                  <Text style={styles.configTitle}>Other Service Charges</Text>
-                  <Text style={styles.configValue}>{settings.extraCharge} handling fee</Text>
+                  <Text style={styles.configTitle}>Revenue Split (Owner/Staff)</Text>
+                  <Text style={styles.configValue}>{settings.revenueSplit} ratio</Text>
                 </View>
               </View>
               <ChevronRight size={18} color="#CBD5E1" />

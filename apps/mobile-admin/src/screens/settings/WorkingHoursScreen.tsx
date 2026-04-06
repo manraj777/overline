@@ -133,7 +133,7 @@ export default function WorkingHoursScreen() {
       <SafeAreaView style={styles.safeArea}>
         <View style={styles.header}>
           <Text style={styles.title}>Operating Hours</Text>
-          <Text style={styles.subtitle}>Manage your business schedule and intervals.</Text>
+          <Text style={styles.subtitle}>Manage IST (+05:30) business schedule and intervals.</Text>
         </View>
 
         {/* Day Selector Hub */}
@@ -235,8 +235,8 @@ export default function WorkingHoursScreen() {
                 <Copy size={20} color={Colors.primary} />
               </View>
               <View style={styles.optionTextContent}>
-                <Text style={styles.optionTitle}>Bulk Apply Schedule</Text>
-                <Text style={styles.optionSubtitle}>Apply this day's timing to all other days.</Text>
+                <Text style={styles.optionTitle}>One-Click Sync (All 7 Days)</Text>
+                <Text style={styles.optionSubtitle}>Apply selected day timing to all weekdays in IST.</Text>
               </View>
               <ChevronRight size={18} color="#CBD5E1" />
             </TouchableOpacity>

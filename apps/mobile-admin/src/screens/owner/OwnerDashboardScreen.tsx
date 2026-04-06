@@ -58,6 +58,11 @@ export default function OwnerDashboardScreen() {
     enabled: !!selectedShopId,
   });
 
+  const incompleteEarnings = Math.max(
+    0,
+    Number(stats?.pendingRevenue ?? stats?.incompleteEarnings ?? 0),
+  );
+
   useSocketEvent('booking_new', (booking) => {
     setNewBookingAlert(booking);
     queryClient.invalidateQueries({ queryKey: ['ownerDashboardStats'] });
@@ -147,13 +152,19 @@ export default function OwnerDashboardScreen() {
           </View>
 
           <View style={styles.statCard}>
-            <Text style={styles.statSmallLabel}>TOTAL SERVICES</Text>
+            <Text style={styles.statSmallLabel}>CUMULATIVE SERVICES</Text>
             <View style={styles.statMainRow}>
               <Text style={styles.statVal}>{stats?.totalServices || 12}</Text>
               <Briefcase size={16} color="#94A3B8" />
             </View>
             <Text style={styles.statSubText}>Booked this month</Text>
           </View>
+        </View>
+
+        <View style={styles.incompleteCard}>
+          <Text style={styles.incompleteLabel}>INCOMPLETE EARNINGS</Text>
+          <Text style={styles.incompleteValue}>₹{incompleteEarnings.toLocaleString()}</Text>
+          <Text style={styles.incompleteSub}>Pending completion or settlement</Text>
         </View>
 
         <Text style={styles.sectionTitle}>Business Analysis</Text>
@@ -239,4 +250,15 @@ const styles = StyleSheet.create({
   insightHeader: { flexDirection: 'row', alignItems: 'center', gap: 8, marginBottom: 8 },
   insightTitle: { fontSize: 10, fontWeight: '900', color: Colors.primary, letterSpacing: 1 },
   insightBody: { fontSize: 12, color: '#475569', lineHeight: 18, fontWeight: '600' },
+  incompleteCard: {
+    backgroundColor: '#FFF7ED',
+    borderRadius: 20,
+    padding: 18,
+    borderWidth: 1,
+    borderColor: '#FFEDD5',
+    marginBottom: 20,
+  },
+  incompleteLabel: { fontSize: 10, fontWeight: '900', color: '#9A3412', letterSpacing: 1 },
+  incompleteValue: { fontSize: 28, fontWeight: '900', color: '#7C2D12', marginTop: 6 },
+  incompleteSub: { fontSize: 11, color: '#C2410C', fontWeight: '600', marginTop: 4 },
 });

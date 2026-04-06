@@ -551,8 +551,10 @@ model StaffWorkingHours {
   staffId   String    @map("staff_id")
   staff     Staff     @relation(fields: [staffId], references: [id], onDelete: Cascade)
   dayOfWeek DayOfWeek @map("day_of_week")
-  startTime String    @map("start_time") // Format: "09:00"
-  endTime   String    @map("end_time") // Format: "18:00"
+  
+  // Format: [{"start": "09:00", "end": "13:00"}, {"start": "16:00", "end": "20:00"}]
+  intervals Json      @default("[]") @map("intervals")
+  
   isOff     Boolean   @default(false) @map("is_off")
   createdAt DateTime  @default(now()) @map("created_at")
   updatedAt DateTime  @updatedAt @map("updated_at")

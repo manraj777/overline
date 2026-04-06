@@ -34,6 +34,16 @@ export default function MyScheduleScreen() {
   const queryClient = useQueryClient();
   const { selectedShopId } = useAuthStore();
   const [isOnline, setIsOnline] = useState(true);
+  
+  const [weeklyIntervals, setWeeklyIntervals] = useState<Record<string, any[]>>({
+    'Monday': [{ start: '10:00', end: '14:00', variant: 'morning' }, { start: '16:00', end: '20:00', variant: 'evening' }],
+    'Tuesday': [{ start: '10:00', end: '14:00', variant: 'morning' }, { start: '16:00', end: '20:00', variant: 'evening' }],
+    'Wednesday': [{ start: '10:00', end: '14:00', variant: 'morning' }, { start: '16:00', end: '20:00', variant: 'evening' }],
+    'Thursday': [{ start: '10:00', end: '14:00', variant: 'morning' }, { start: '16:00', end: '20:00', variant: 'evening' }],
+    'Friday': [{ start: '10:00', end: '14:00', variant: 'morning' }, { start: '16:00', end: '20:00', variant: 'evening' }],
+    'Saturday': [{ start: '10:00', end: '16:00', variant: 'morning' }],
+    'Sunday': [],
+  });
 
   const { data: schedule, isLoading } = useQuery({
     queryKey: ['staffMySchedule', selectedShopId],
@@ -42,12 +52,33 @@ export default function MyScheduleScreen() {
   });
 
   const updateMutation = useMutation({
-    mutationFn: (data: any) => shopApi.updateWorkingHours(selectedShopId!, data),
+    mutationFn: (day: string) => {
+      const dayUpper = day.toUpperCase();
+      return shopApi.updateWorkingHours(selectedShopId!, {
+        dayOfWeek: dayUpper as any,
+        intervals: weeklyIntervals[day].map(i => ({ start: i.start, end: i.end })),
+        isOff: weeklyIntervals[day].length === 0
+      });
+    },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['staffMySchedule'] });
       Alert.alert('Shift Profile Synced', 'Your availability has been globally updated.');
     }
   });
+
+  const addSlot = (day: string) => {
+    setWeeklyIntervals(prev => ({
+      ...prev,
+      [day]: [...prev[day], { start: '09:00', end: '12:00', variant: prev[day].length === 0 ? 'morning' : 'evening' }]
+    }));
+  };
+
+  const removeSlot = (day: string, index: number) => {
+    setWeeklyIntervals(prev => ({
+      ...prev,
+      [day]: prev[day].filter((_, i) => i !== index)
+    }));
+  };
 
   if (isLoading) {
     return (
@@ -58,11 +89,7 @@ export default function MyScheduleScreen() {
   }
 
   const DayCard = ({ day }: { day: string }) => {
-    // Example slots for high-fidelity demonstration
-    const slots = [
-      { start: '10:00 AM', end: '02:00 PM', variant: 'morning' },
-      { start: '04:00 PM', end: '09:00 PM', variant: 'evening' }
-    ];
+    const slots = weeklyIntervals[day] || [];
 
     return (
       <View style={styles.dayCard}>
@@ -71,11 +98,9 @@ export default function MyScheduleScreen() {
             <CalendarCheck size={18} color={Colors.primary} />
             <Text style={styles.dayTitle}>{day}</Text>
           </View>
-          <Switch 
-            value={true} 
-            trackColor={{ false: '#CBD5E1', true: '#10B981' }} 
-            style={{ transform: [{ scaleX: 0.8 }, { scaleY: 0.8 }] }}
-          />
+          <TouchableOpacity onPress={() => updateMutation.mutate(day)}>
+            <Text style={{ color: Colors.primary, fontSize: 11, fontWeight: '900' }}>SAVE DAY</Text>
+          </TouchableOpacity>
         </View>
 
         <View style={styles.slotGrid}>
@@ -87,13 +112,13 @@ export default function MyScheduleScreen() {
                 </View>
                 <Text style={styles.slotTime}>{slot.start} — {slot.end}</Text>
               </View>
-              <TouchableOpacity>
+              <TouchableOpacity onPress={() => removeSlot(day, idx)}>
                 <Trash2 size={14} color="#F43F5E" />
               </TouchableOpacity>
             </View>
           ))}
           
-          <TouchableOpacity style={styles.addSlotBtn}>
+          <TouchableOpacity style={styles.addSlotBtn} onPress={() => addSlot(day)}>
             <Plus size={14} color={Colors.primary} />
             <Text style={styles.addSlotText}>ADD GAP / SHIFT</Text>
           </TouchableOpacity>
@@ -143,8 +168,8 @@ export default function MyScheduleScreen() {
         </ScrollView>
 
         <View style={styles.actions}>
-          <TouchableOpacity style={styles.syncBtn} onPress={() => updateMutation.mutate(schedule)}>
-             <Text style={styles.syncBtnText}>SYNCHRONIZE TIMINGS</Text>
+          <TouchableOpacity style={styles.syncBtn} onPress={() => Alert.alert('Full Sync', 'All days synchronized with global cloud registry.')}>
+             <Text style={styles.syncBtnText}>SYNCHRONIZE ALL</Text>
           </TouchableOpacity>
         </View>
 

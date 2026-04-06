@@ -1,20 +1,24 @@
 import React from 'react';
-import {View, StyleSheet} from 'react-native';
+import {View, StyleSheet, Text, TouchableOpacity} from 'react-native';
 import {NavigationContainer} from '@react-navigation/native';
 import {createNativeStackNavigator} from '@react-navigation/native-stack';
 import {createBottomTabNavigator} from '@react-navigation/bottom-tabs';
+import {
+  createDrawerNavigator,
+  DrawerContentScrollView,
+  DrawerContentComponentProps,
+} from '@react-navigation/drawer';
+import { DrawerActions } from '@react-navigation/native';
 import {DefaultTheme} from '@react-navigation/native';
 import {useAuthStore} from '../stores/authStore';
 import {
   RootStackParamList,
-  OwnerTabParamList,
+  OwnerDrawerParamList,
   StaffTabParamList,
 } from '../types';
 import {Colors, FontSize, FontWeight} from '../theme';
 import {
-  BarChart3,
-  Calendar,
-  ChartColumn,
+  Menu,
   Clock3,
   CreditCard,
   LayoutDashboard,
@@ -60,7 +64,7 @@ import AddStaffScreen from '../screens/settings/AddStaffScreen';
 
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
-const OwnerTab = createBottomTabNavigator<OwnerTabParamList>();
+const OwnerDrawer = createDrawerNavigator<OwnerDrawerParamList>();
 const StaffTab = createBottomTabNavigator<StaffTabParamList>();
 
 function TabIcon({
@@ -124,60 +128,115 @@ const tabScreenOptions = {
   headerShown: false,
 } as const;
 
-function OwnerTabs() {
+function OwnerDrawerContent(props: DrawerContentComponentProps) {
+  const items: Array<{name: keyof OwnerDrawerParamList; label: string; icon: keyof typeof styles}> = [
+    {name: 'Dashboard', label: 'Dashboard Hub', icon: 'drawerIconBase'},
+    {name: 'Staff', label: 'Specialist Suite', icon: 'drawerIconBase'},
+    {name: 'Shop', label: 'Shop Registry', icon: 'drawerIconBase'},
+    {name: 'Payments', label: 'Financial Vault', icon: 'drawerIconBase'},
+    {name: 'Settings', label: 'System Settings', icon: 'drawerIconBase'},
+  ];
+
+  const iconByName = {
+    Dashboard: LayoutDashboard,
+    Staff: Users,
+    Shop: Store,
+    Payments: CreditCard,
+    Settings: Settings,
+  };
+
+  const current = props.state.routeNames[props.state.index] as keyof OwnerDrawerParamList;
+
   return (
-    <OwnerTab.Navigator screenOptions={tabScreenOptions}>
-      <OwnerTab.Screen
+    <View style={styles.drawerContainer}>
+      <DrawerContentScrollView {...props} contentContainerStyle={styles.drawerScrollContent}>
+        <Text style={styles.drawerTitle}>Owner Portal</Text>
+        <Text style={styles.drawerSubtitle}>Swipe or tap to navigate</Text>
+
+        <View style={styles.drawerNavGroup}>
+          {items.map((item) => {
+            const Icon = iconByName[item.name];
+            const isActive = current === item.name;
+            return (
+              <TouchableOpacity
+                key={item.name}
+                style={[styles.drawerItem, isActive && styles.drawerItemActive]}
+                onPress={() => props.navigation.navigate(item.name)}
+              >
+                <Icon size={18} color={isActive ? Colors.primary : Colors.textSecondary} />
+                <Text style={[styles.drawerItemLabel, isActive && styles.drawerItemLabelActive]}>
+                  {item.label}
+                </Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+      </DrawerContentScrollView>
+
+      <View style={styles.drawerQuickActions}>
+        <TouchableOpacity
+          style={styles.quickActionPrimary}
+          onPress={() => props.navigation.getParent()?.navigate('VerifyCode')}
+        >
+          <Text style={styles.quickActionPrimaryText}>VERIFY CODE</Text>
+        </TouchableOpacity>
+        <TouchableOpacity
+          style={styles.quickActionSecondary}
+          onPress={() => props.navigation.navigate('Staff')}
+        >
+          <Text style={styles.quickActionSecondaryText}>ONBOARD STAFF</Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
+}
+
+function OwnerDrawerNavigator() {
+  return (
+    <OwnerDrawer.Navigator
+      drawerContent={(props) => <OwnerDrawerContent {...props} />}
+      screenOptions={({navigation}) => ({
+        headerStyle: {backgroundColor: Colors.surface},
+        headerTintColor: Colors.textPrimary,
+        headerTitleStyle: {fontWeight: '800'},
+        drawerType: 'slide',
+        swipeEnabled: true,
+        headerLeft: () => (
+          <TouchableOpacity
+            onPress={() => navigation.dispatch(DrawerActions.toggleDrawer())}
+            style={{marginLeft: 16}}
+          >
+            <Menu size={20} color={Colors.textPrimary} />
+          </TouchableOpacity>
+        ),
+      })}
+    >
+      <OwnerDrawer.Screen
         name="Dashboard"
         component={OwnerDashboardScreen}
-        options={{
-          tabBarLabel: 'Dashboard',
-          tabBarIcon: ({color, size, focused}) => (
-            <TabIcon name="dashboard" color={color} size={size} focused={focused} />
-          ),
-        }}
+        options={{title: 'Dashboard Hub'}}
       />
-      <OwnerTab.Screen
+      <OwnerDrawer.Screen
         name="Staff"
         component={StaffManagementScreen}
-        options={{
-          tabBarLabel: 'Staff',
-          tabBarIcon: ({color, size, focused}) => (
-            <TabIcon name="staff" color={color} size={size} focused={focused} />
-          ),
-        }}
+        options={{title: 'Specialist Suite'}}
       />
-      <OwnerTab.Screen
+      <OwnerDrawer.Screen
         name="Shop"
         component={ShopSettingsScreen}
-        options={{
-          tabBarLabel: 'Shop',
-          tabBarIcon: ({color, size, focused}) => (
-            <TabIcon name="shop" color={color} size={size} focused={focused} />
-          ),
-        }}
+        options={{title: 'Shop Registry'}}
       />
-      <OwnerTab.Screen
+      <OwnerDrawer.Screen
         name="Payments"
         component={PayoutDetailsScreen}
-        options={{
-          tabBarLabel: 'Payments',
-          tabBarIcon: ({color, size, focused}) => (
-            <TabIcon name="payments" color={color} size={size} focused={focused} />
-          ),
-        }}
+        options={{title: 'Financial Vault'}}
       />
-      <OwnerTab.Screen
+      <OwnerDrawer.Screen
         name="Settings"
         component={SettingsScreen}
-        options={{
-          tabBarLabel: 'Settings',
-          tabBarIcon: ({color, size, focused}) => (
-            <TabIcon name="settings" color={color} size={size} focused={focused} />
-          ),
-        }}
+        options={{title: 'System Settings'}}
       />
-    </OwnerTab.Navigator>
+    </OwnerDrawer.Navigator>
   );
 }
 
@@ -288,7 +347,7 @@ export default function RootNavigator() {
           <>
             <Stack.Screen
               name="Main"
-              component={isStaff ? StaffTabs : OwnerTabs}
+              component={isStaff ? StaffTabs : OwnerDrawerNavigator}
             />
             <Stack.Screen
               name="OtpVerify"
@@ -402,4 +461,78 @@ const styles = StyleSheet.create({
   tabIconWrapActive: {
     backgroundColor: Colors.primary100,
   },
+  drawerContainer: {
+    flex: 1,
+    backgroundColor: Colors.surface,
+  },
+  drawerScrollContent: {
+    paddingHorizontal: 16,
+    paddingTop: 12,
+  },
+  drawerTitle: {
+    fontSize: 20,
+    fontWeight: '900',
+    color: Colors.textPrimary,
+  },
+  drawerSubtitle: {
+    fontSize: 12,
+    color: Colors.textSecondary,
+    marginTop: 4,
+    marginBottom: 18,
+  },
+  drawerNavGroup: {
+    gap: 8,
+  },
+  drawerItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    paddingHorizontal: 12,
+    paddingVertical: 12,
+    borderRadius: 14,
+  },
+  drawerItemActive: {
+    backgroundColor: Colors.primary100,
+  },
+  drawerItemLabel: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: Colors.textSecondary,
+  },
+  drawerItemLabelActive: {
+    color: Colors.primary,
+  },
+  drawerQuickActions: {
+    borderTopWidth: 1,
+    borderTopColor: Colors.border,
+    padding: 16,
+    gap: 10,
+  },
+  quickActionPrimary: {
+    backgroundColor: Colors.primary,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+  },
+  quickActionPrimaryText: {
+    color: Colors.white,
+    fontSize: 12,
+    fontWeight: '900',
+    letterSpacing: 0.8,
+  },
+  quickActionSecondary: {
+    backgroundColor: Colors.primary100,
+    borderRadius: 14,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingVertical: 12,
+  },
+  quickActionSecondaryText: {
+    color: Colors.primary,
+    fontSize: 12,
+    fontWeight: '900',
+    letterSpacing: 0.8,
+  },
+  drawerIconBase: {},
 });

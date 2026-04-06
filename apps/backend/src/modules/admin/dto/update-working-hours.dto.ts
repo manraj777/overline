@@ -14,6 +14,10 @@ export class UpdateWorkingHoursDto {
   @Matches(/^([01]?[0-9]|2[0-3]):[0-5][0-9]$/, { message: 'Invalid time format' })
   closeTime?: string;
 
+  @ApiPropertyOptional({ type: 'array', items: { type: 'object', properties: { start: { type: 'string' }, end: { type: 'string' } } } })
+  @IsOptional()
+  intervals?: { start: string; end: string }[];
+
   @ApiPropertyOptional({ description: 'Is closed for this day' })
   @IsOptional()
   @IsBoolean()
