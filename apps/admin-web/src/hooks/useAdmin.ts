@@ -3,6 +3,22 @@ import api from '@/lib/api';
 import { useAuthStore } from '@/stores/auth';
 import type { Booking, PaginatedResponse, Staff } from '@/types';
 
+async function resolveActiveShopId(): Promise<string> {
+  const state = useAuthStore.getState();
+  if (state.shopId) {
+    return state.shopId;
+  }
+
+  const { data: shops } = await api.get<Array<{ id: string }>>('/admin/my-shops');
+  const firstShopId = shops?.[0]?.id;
+  if (!firstShopId) {
+    throw new Error('No shop found for this account');
+  }
+
+  state.setShopId(firstShopId);
+  return firstShopId;
+}
+
 interface GetBookingsParams {
   status?: string;
   date?: string;
@@ -361,15 +377,16 @@ export function useUnassignServiceFromStaff() {
 }
 
 export function useShopSettings() {
-  const { shopId } = useAuthStore();
+  const { shopId, isAuthenticated } = useAuthStore();
 
   return useQuery({
     queryKey: ['admin', 'settings', shopId],
     queryFn: async () => {
-      const { data } = await api.get(`/admin/shops/${shopId}/settings`);
+      const activeShopId = shopId || (await resolveActiveShopId());
+      const { data } = await api.get(`/admin/shops/${activeShopId}/settings`);
       return data;
     },
-    enabled: !!shopId,
+    enabled: isAuthenticated,
   });
 }
 
@@ -379,10 +396,14 @@ export function useUpdateShopSettings() {
 
   return useMutation({
     mutationFn: async (payload: Record<string, any>) => {
-      const { data } = await api.patch(`/admin/shops/${shopId}/settings`, payload);
+      const activeShopId = shopId || (await resolveActiveShopId());
+      const { data } = await api.patch(`/admin/shops/${activeShopId}/settings`, payload);
       return data;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      if (data?.id) {
+        queryClient.setQueryData(['admin', 'settings', data.id], data);
+      }
       queryClient.invalidateQueries({ queryKey: ['admin', 'settings'] });
     },
   });

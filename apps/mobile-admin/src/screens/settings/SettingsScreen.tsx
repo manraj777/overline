@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   View,
   Text,
@@ -9,13 +9,18 @@ import {
   Platform,
   Alert,
 } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuthStore } from '../../stores/authStore';
 import { Colors, Shadows, Spacing, Radius } from '../../theme';
+import { RootStackParamList } from '../../types';
 import { 
   User, 
   ChevronRight, 
   Globe, 
   Moon, 
+  Bell,
   Share2, 
   Info, 
   ShieldAlert, 
@@ -26,8 +31,29 @@ import {
 } from 'lucide-react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
+type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
+const NOTIFICATION_SETTINGS_KEY = 'staff_notification_settings';
+
 export default function SettingsScreen() {
+  const navigation = useNavigation<NavigationProp>();
   const { user, logout } = useAuthStore();
+  const [notificationSendTime, setNotificationSendTime] = useState('09:00');
+
+  useEffect(() => {
+    AsyncStorage.getItem(NOTIFICATION_SETTINGS_KEY).then(raw => {
+      if (!raw) {
+        return;
+      }
+      try {
+        const parsed = JSON.parse(raw) as { sendTime?: string };
+        if (parsed.sendTime) {
+          setNotificationSendTime(parsed.sendTime);
+        }
+      } catch {
+        // Ignore malformed local settings.
+      }
+    });
+  }, []);
 
   const handleLogout = () => {
     Alert.alert('Session Closure', 'Are you sure you want to exit the admin console?', [
@@ -106,6 +132,15 @@ export default function SettingsScreen() {
                 title="Appearance" 
                 value="System (Dark)" 
                 color="#8B5CF6" 
+              />
+              <View style={styles.divider} />
+              <SettingItem
+                icon={Bell}
+                title="Notification Send Time"
+                subtitle="Set the daily alert delivery time"
+                value={notificationSendTime}
+                color="#0EA5E9"
+                onPress={() => navigation.navigate('NotificationSettings')}
               />
             </View>
           </View>

@@ -12,7 +12,7 @@ export class ShopOwnerGuard implements CanActivate {
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     const request = context.switchToHttp().getRequest();
-    const user = request.user as { id: string; role: string } | undefined;
+    const user = request.user as { id: string; role: string; tenantId?: string | null } | undefined;
 
     if (!user) {
       throw new ForbiddenException('Authentication required');
@@ -31,18 +31,31 @@ export class ShopOwnerGuard implements CanActivate {
       throw new ForbiddenException('shopId is required for owner access checks');
     }
 
-    const ownsShop = await this.prisma.shop.findFirst({
-      where: {
-        id: shopId,
-        ownerId: user.id,
-      },
-      select: { id: true },
-    });
-
-    if (!ownsShop) {
-      throw new ForbiddenException('You do not own this shop');
+    if (user.role === 'SUPER_ADMIN') {
+      return true;
     }
 
-    return true;
+    const shop = await this.prisma.shop.findUnique({
+      where: { id: shopId },
+      select: { id: true, ownerId: true, tenantId: true },
+    });
+
+    if (!shop) {
+      throw new ForbiddenException('Shop not found');
+    }
+
+    if (shop.ownerId === user.id) {
+      return true;
+    }
+
+    if (
+      (user.role === 'OWNER' || user.role === 'USER') &&
+      user.tenantId &&
+      shop.tenantId === user.tenantId
+    ) {
+      return true;
+    }
+
+    throw new ForbiddenException('You do not own this shop');
   }
 }

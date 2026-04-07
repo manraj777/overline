@@ -2,7 +2,7 @@
 
 set -euo pipefail
 
-MODE="${1:-debug}"
+MODE="${1:-release}"
 ROOT_DIR="$(cd "$(dirname "$0")" && pwd)"
 
 if [[ "$MODE" != "debug" && "$MODE" != "release" ]]; then
@@ -16,6 +16,7 @@ if [[ "$MODE" == "release" ]]; then
 else
 	TASK="assembleDebug"
 	APK_DIR="debug"
+	echo "WARNING: Debug APK requires Metro server at runtime and is not for standalone emulator/device testing."
 fi
 
 echo "Building $MODE APKs for Overline apps..."

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import {
   ScrollView,
   StyleSheet,
@@ -11,6 +11,7 @@ import {
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuthStore } from '../../stores/authStore';
 import { RootStackParamList } from '../../types';
 import { Colors, Shadows, Spacing, Radius } from '../../theme';
@@ -19,6 +20,7 @@ import {
   User, 
   Globe,
   Moon, 
+  Bell,
   ShieldCheck, 
   Ticket,
   FileText, 
@@ -30,10 +32,28 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
+const NOTIFICATION_SETTINGS_KEY = 'staff_notification_settings';
 
 export default function MyProfileScreen() {
   const navigation = useNavigation<NavigationProp>();
   const { user, logout } = useAuthStore();
+  const [notificationSendTime, setNotificationSendTime] = useState('09:00');
+
+  useEffect(() => {
+    AsyncStorage.getItem(NOTIFICATION_SETTINGS_KEY).then(raw => {
+      if (!raw) {
+        return;
+      }
+      try {
+        const parsed = JSON.parse(raw) as { sendTime?: string };
+        if (parsed.sendTime) {
+          setNotificationSendTime(parsed.sendTime);
+        }
+      } catch {
+        // Ignore malformed local settings.
+      }
+    });
+  }, []);
 
   const handleLogout = () => {
     Alert.alert('End Shift', 'Are you sure you want to log out of your specialist console?', [
@@ -110,6 +130,15 @@ export default function MyProfileScreen() {
                 title="Appearance" 
                 value="System (Dark)" 
                 color="#8B5CF6" 
+              />
+              <View style={styles.divider} />
+              <SettingItem
+                icon={Bell}
+                title="Notification Send Time"
+                subtitle="Choose when reminders are delivered"
+                value={notificationSendTime}
+                color="#0EA5E9"
+                onPress={() => navigation.navigate('NotificationSettings')}
               />
               <View style={styles.divider} />
               <SettingItem 

@@ -543,42 +543,70 @@ export class QueueService {
     const endOfDay = new Date(now);
     endOfDay.setHours(23, 59, 59, 999);
 
-    const bookings = await this.prisma.booking.findMany({
-      where: {
-        shopId,
-        startTime: { gte: startOfDay, lte: endOfDay },
-        status: { notIn: ['CANCELLED', 'REJECTED'] },
-      },
-      include: {
-        user: {
-          select: {
-            id: true,
-            name: true,
-            phone: true,
-            // Trust Score fields for admin dashboard warnings
-            trustScore: true,
-            noShowBookings: true,
-            totalBookings: true,
-          },
-        },
-        services: {
-          include: {
-            service: {
-              select: {
-                name: true,
-              },
+    const baseWhere = {
+      shopId,
+      startTime: { gte: startOfDay, lte: endOfDay },
+      status: { notIn: [BookingStatus.CANCELLED, BookingStatus.REJECTED] },
+    };
+
+    const baseInclude = {
+      services: {
+        include: {
+          service: {
+            select: {
+              name: true,
             },
           },
         },
-        staff: {
-          select: {
-            id: true,
-            name: true,
-          },
+      },
+      staff: {
+        select: {
+          id: true,
+          name: true,
         },
       },
-      orderBy: { startTime: 'asc' },
-    });
+    };
+
+    let bookings: any[] = [];
+    try {
+      bookings = await this.prisma.booking.findMany({
+        where: baseWhere,
+        include: {
+          ...baseInclude,
+          user: {
+            select: {
+              id: true,
+              name: true,
+              phone: true,
+              // Trust fields are optional at runtime in older DBs.
+              trustScore: true,
+              noShowBookings: true,
+              totalBookings: true,
+            },
+          },
+        },
+        orderBy: { startTime: 'asc' },
+      });
+    } catch (error: any) {
+      if (error?.code !== 'P2022') {
+        throw error;
+      }
+
+      bookings = await this.prisma.booking.findMany({
+        where: baseWhere,
+        include: {
+          ...baseInclude,
+          user: {
+            select: {
+              id: true,
+              name: true,
+              phone: true,
+            },
+          },
+        },
+        orderBy: { startTime: 'asc' },
+      });
+    }
 
     // Group by status
     const upcoming = bookings.filter(

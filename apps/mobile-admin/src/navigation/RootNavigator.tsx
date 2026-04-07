@@ -128,77 +128,18 @@ const tabScreenOptions = {
   headerShown: false,
 } as const;
 
-function OwnerDrawerContent(props: DrawerContentComponentProps) {
-  const items: Array<{name: keyof OwnerDrawerParamList; label: string; icon: keyof typeof styles}> = [
-    {name: 'Dashboard', label: 'Dashboard Hub', icon: 'drawerIconBase'},
-    {name: 'Staff', label: 'Specialist Suite', icon: 'drawerIconBase'},
-    {name: 'Shop', label: 'Shop Registry', icon: 'drawerIconBase'},
-    {name: 'Payments', label: 'Financial Vault', icon: 'drawerIconBase'},
-    {name: 'Settings', label: 'System Settings', icon: 'drawerIconBase'},
-  ];
+// OwnerDrawerContent moved to CustomSidebar.tsx
 
-  const iconByName = {
-    Dashboard: LayoutDashboard,
-    Staff: Users,
-    Shop: Store,
-    Payments: CreditCard,
-    Settings: Settings,
-  };
-
-  const current = props.state.routeNames[props.state.index] as keyof OwnerDrawerParamList;
-
-  return (
-    <View style={styles.drawerContainer}>
-      <DrawerContentScrollView {...props} contentContainerStyle={styles.drawerScrollContent}>
-        <Text style={styles.drawerTitle}>Owner Portal</Text>
-        <Text style={styles.drawerSubtitle}>Swipe or tap to navigate</Text>
-
-        <View style={styles.drawerNavGroup}>
-          {items.map((item) => {
-            const Icon = iconByName[item.name];
-            const isActive = current === item.name;
-            return (
-              <TouchableOpacity
-                key={item.name}
-                style={[styles.drawerItem, isActive && styles.drawerItemActive]}
-                onPress={() => props.navigation.navigate(item.name)}
-              >
-                <Icon size={18} color={isActive ? Colors.primary : Colors.textSecondary} />
-                <Text style={[styles.drawerItemLabel, isActive && styles.drawerItemLabelActive]}>
-                  {item.label}
-                </Text>
-              </TouchableOpacity>
-            );
-          })}
-        </View>
-      </DrawerContentScrollView>
-
-      <View style={styles.drawerQuickActions}>
-        <TouchableOpacity
-          style={styles.quickActionPrimary}
-          onPress={() => props.navigation.getParent()?.navigate('VerifyCode')}
-        >
-          <Text style={styles.quickActionPrimaryText}>VERIFY CODE</Text>
-        </TouchableOpacity>
-        <TouchableOpacity
-          style={styles.quickActionSecondary}
-          onPress={() => props.navigation.navigate('Staff')}
-        >
-          <Text style={styles.quickActionSecondaryText}>ONBOARD STAFF</Text>
-        </TouchableOpacity>
-      </View>
-    </View>
-  );
-}
+import CustomSidebar from '../components/layout/CustomSidebar';
 
 function OwnerDrawerNavigator() {
   return (
     <OwnerDrawer.Navigator
-      drawerContent={(props) => <OwnerDrawerContent {...props} />}
+      drawerContent={(props) => <CustomSidebar {...props} />}
       screenOptions={({navigation}) => ({
-        headerStyle: {backgroundColor: Colors.surface},
+        headerStyle: {backgroundColor: Colors.surface, elevation: 0, shadowOpacity: 0, borderBottomWidth: 1, borderBottomColor: Colors.border},
         headerTintColor: Colors.textPrimary,
-        headerTitleStyle: {fontWeight: '800'},
+        headerTitleStyle: {fontWeight: '900', fontSize: 16},
         drawerType: 'slide',
         swipeEnabled: true,
         headerLeft: () => (
@@ -206,7 +147,7 @@ function OwnerDrawerNavigator() {
             onPress={() => navigation.dispatch(DrawerActions.toggleDrawer())}
             style={{marginLeft: 16}}
           >
-            <Menu size={20} color={Colors.textPrimary} />
+            <Menu size={22} color={Colors.textPrimary} />
           </TouchableOpacity>
         ),
       })}
@@ -461,78 +402,4 @@ const styles = StyleSheet.create({
   tabIconWrapActive: {
     backgroundColor: Colors.primary100,
   },
-  drawerContainer: {
-    flex: 1,
-    backgroundColor: Colors.surface,
-  },
-  drawerScrollContent: {
-    paddingHorizontal: 16,
-    paddingTop: 12,
-  },
-  drawerTitle: {
-    fontSize: 20,
-    fontWeight: '900',
-    color: Colors.textPrimary,
-  },
-  drawerSubtitle: {
-    fontSize: 12,
-    color: Colors.textSecondary,
-    marginTop: 4,
-    marginBottom: 18,
-  },
-  drawerNavGroup: {
-    gap: 8,
-  },
-  drawerItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 10,
-    paddingHorizontal: 12,
-    paddingVertical: 12,
-    borderRadius: 14,
-  },
-  drawerItemActive: {
-    backgroundColor: Colors.primary100,
-  },
-  drawerItemLabel: {
-    fontSize: 14,
-    fontWeight: '700',
-    color: Colors.textSecondary,
-  },
-  drawerItemLabelActive: {
-    color: Colors.primary,
-  },
-  drawerQuickActions: {
-    borderTopWidth: 1,
-    borderTopColor: Colors.border,
-    padding: 16,
-    gap: 10,
-  },
-  quickActionPrimary: {
-    backgroundColor: Colors.primary,
-    borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 12,
-  },
-  quickActionPrimaryText: {
-    color: Colors.white,
-    fontSize: 12,
-    fontWeight: '900',
-    letterSpacing: 0.8,
-  },
-  quickActionSecondary: {
-    backgroundColor: Colors.primary100,
-    borderRadius: 14,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 12,
-  },
-  quickActionSecondaryText: {
-    color: Colors.primary,
-    fontSize: 12,
-    fontWeight: '900',
-    letterSpacing: 0.8,
-  },
-  drawerIconBase: {},
 });

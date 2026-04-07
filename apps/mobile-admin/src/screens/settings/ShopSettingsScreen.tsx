@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -9,77 +9,138 @@ import {
   Alert,
   ActivityIndicator,
   Image,
-  Dimensions,
-  Platform,
   StatusBar,
 } from 'react-native';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useRoute, RouteProp, useNavigation } from '@react-navigation/native';
-import { shopApi } from '../../api/client';
+import { useRoute, RouteProp } from '@react-navigation/native';
+import { shopApi, staffApi } from '../../api/client';
 import { RootStackParamList } from '../../types';
-import { Colors, Shadows, Spacing, Radius } from '../../theme';
+import { Colors, Shadows } from '../../theme';
 import { useAuthStore } from '../../stores/authStore';
-import { 
-  Store, 
-  MapPin, 
-  Link2, 
-  Clock, 
-  Camera, 
-  ChevronRight, 
-  Users, 
-  Info,
-  Globe,
-  Navigation
-} from 'lucide-react-native';
+import { Bell, Camera, MapPin, Pencil, Save, Store, Users } from 'lucide-react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 type RouteProps = RouteProp<RootStackParamList, 'ShopSettings'>;
-const { width } = Dimensions.get('window');
+type ShopTab = 'shop' | 'media' | 'settings';
+
+const SHOP_TYPES = ['Salon', 'Medical', 'Gym', 'Spa', 'Clinic', 'Other'];
 
 export default function ShopSettingsScreen() {
   const route = useRoute<RouteProps>();
-  const navigation = useNavigation<any>();
   const queryClient = useQueryClient();
   const { selectedShopId } = useAuthStore();
   const shopId = (route.params as any)?.shopId || selectedShopId || '';
 
+  const [activeTab, setActiveTab] = useState<ShopTab>('shop');
   const [formData, setFormData] = useState({
     name: '',
-    description: '',
+    shopType: 'Salon',
+    phone: '',
+    email: '',
     address: '',
     city: '',
-    phone: '',
-    googleLink: '', // New field
-    type: 'SALON', // Category
+    state: '',
+    postalCode: '',
+    location: '',
+    googleMapLink: '',
+    workingTime: '09:00 - 21:00',
+  });
+
+  const [notificationSettings, setNotificationSettings] = useState<Record<string, boolean>>({
+    bookingConfirmation: true,
+    bookingReminder: true,
+    bookingCancellation: true,
+    queueUpdates: false,
+    newBooking: true,
+    adminCancellation: true,
+    dailySummary: false,
   });
 
   const { data: shop, isLoading } = useQuery({
-    queryKey: ['adminShop', shopId],
-    queryFn: () => shopApi.getById(shopId).then(res => res.data),
+    queryKey: ['adminShopSettings', shopId],
+    queryFn: () => shopApi.getSettings(shopId).then(res => res.data),
+    enabled: !!shopId,
+  });
+
+  const { data: staffRows = [] } = useQuery({
+    queryKey: ['adminStaff', shopId],
+    queryFn: () => staffApi.getAll(shopId).then(res => res.data || []),
     enabled: !!shopId,
   });
 
   useEffect(() => {
-    if (shop) {
-      setFormData({
-        name: shop.name || '',
-        description: shop.description || '',
-        address: shop.address || '',
-        city: shop.city || '',
-        phone: shop.phone || '',
-        googleLink: shop.googlePlaceId || '',
-        type: shop.type || 'SALON',
-      });
-    }
+    if (!shop) return;
+
+    setFormData({
+      name: shop.name || '',
+      shopType: String(shop.settings?.shopType || 'Salon'),
+      phone: shop.phone || '',
+      email: shop.email || '',
+      address: shop.address || '',
+      city: shop.city || '',
+      state: shop.state || '',
+      postalCode: shop.postalCode || '',
+      location: String(shop.settings?.location || ''),
+      googleMapLink: String(shop.settings?.googleMapLink || ''),
+      workingTime: String(shop.settings?.workingTime || '09:00 - 21:00'),
+    });
+
+    const savedNotifications = shop.settings?.notifications || {};
+    setNotificationSettings(prev => ({ ...prev, ...savedNotifications }));
   }, [shop]);
 
   const updateMutation = useMutation({
-    mutationFn: (data: any) => shopApi.updateSettings(shopId, data),
+    mutationFn: (payload: any) => shopApi.updateSettings(shopId, payload),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['adminShop', shopId] });
-      Alert.alert('Success', 'Business profiles synchronized.');
+      queryClient.invalidateQueries({ queryKey: ['adminShopSettings', shopId] });
+      Alert.alert('Success', 'Shop details updated successfully.');
+    },
+    onError: (error: any) => {
+      const message = error?.response?.data?.message;
+      Alert.alert('Update failed', Array.isArray(message) ? message.join(', ') : message || 'Please try again.');
     },
   });
+
+  const saveShopDetails = () => {
+    updateMutation.mutate({
+      name: formData.name,
+      phone: formData.phone,
+      email: formData.email,
+      address: formData.address,
+      city: formData.city,
+      state: formData.state,
+      postalCode: formData.postalCode,
+      settings: {
+        ...(shop?.settings || {}),
+        shopType: formData.shopType,
+        location: formData.location,
+        googleMapLink: formData.googleMapLink,
+        workingTime: formData.workingTime,
+      },
+    });
+  };
+
+  const saveNotifications = () => {
+    updateMutation.mutate({
+      settings: {
+        ...(shop?.settings || {}),
+        notifications: notificationSettings,
+      },
+    });
+  };
+
+  const onReuploadPress = () => {
+    Alert.alert('Re-upload', 'Mobile image re-upload will use this edit action.');
+  };
+
+  const tabs = useMemo(
+    () => [
+      { id: 'shop' as ShopTab, label: 'Shop Details', icon: Store },
+      { id: 'media' as ShopTab, label: 'Shop Media', icon: Camera },
+      { id: 'settings' as ShopTab, label: 'Settings', icon: Bell },
+    ],
+    [],
+  );
 
   if (isLoading) {
     return (
@@ -92,7 +153,7 @@ export default function ShopSettingsScreen() {
   if (!shopId) {
     return (
       <View style={styles.centered}>
-        <Text style={{color: Colors.textSecondary, fontWeight: '700'}}>No shop selected yet.</Text>
+        <Text style={styles.emptyText}>No shop selected yet.</Text>
       </View>
     );
   }
@@ -101,119 +162,172 @@ export default function ShopSettingsScreen() {
     <View style={styles.container}>
       <StatusBar barStyle="dark-content" />
       <SafeAreaView style={{ flex: 1 }} edges={['top']}>
-        
         <View style={styles.topNav}>
           <View>
-            <Text style={styles.navTitle}>Shop Profile</Text>
-            <Text style={styles.navSubtitle}>Establish your brand identity</Text>
+            <Text style={styles.navTitle}>Shop Details</Text>
+            <Text style={styles.navSubtitle}>Manage shop essentials and media</Text>
           </View>
-          <TouchableOpacity style={styles.saveBtn} onPress={() => updateMutation.mutate(formData)}>
-            <Text style={styles.saveBtnText}>SAVE</Text>
+          <TouchableOpacity
+            style={[styles.saveBtn, updateMutation.isPending && { opacity: 0.7 }]}
+            onPress={activeTab === 'settings' ? saveNotifications : saveShopDetails}
+            disabled={updateMutation.isPending}
+          >
+            {updateMutation.isPending ? (
+              <ActivityIndicator color="#FFF" />
+            ) : (
+              <View style={styles.saveWrap}>
+                <Save size={14} color="#FFF" />
+                <Text style={styles.saveBtnText}>SAVE</Text>
+              </View>
+            )}
           </TouchableOpacity>
         </View>
 
+        <View style={styles.tabRow}>
+          {tabs.map(tab => {
+            const Icon = tab.icon;
+            const active = activeTab === tab.id;
+            return (
+              <TouchableOpacity
+                key={tab.id}
+                style={[styles.tabBtn, active && styles.tabBtnActive]}
+                onPress={() => setActiveTab(tab.id)}
+              >
+                <Icon size={14} color={active ? Colors.primary : '#64748B'} />
+                <Text style={[styles.tabText, active && styles.tabTextActive]}>{tab.label}</Text>
+              </TouchableOpacity>
+            );
+          })}
+        </View>
+
         <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={styles.scrollContent}>
-          
-          {/* Shop Photo Section */}
-          <TouchableOpacity style={styles.photoContainer}>
-            <Image 
-              source={{ uri: shop?.coverUrl || 'https://images.unsplash.com/photo-1521590832167-7bcbfaa6381f?q=80&w=1000' }} 
-              style={styles.coverImage} 
-            />
-            <View style={styles.photoOverlay}>
-              <View style={styles.cameraIcon}>
-                <Camera size={20} color="#FFF" />
-              </View>
-              <Text style={styles.photoHint}>Upldate Shop Photo</Text>
-            </View>
-          </TouchableOpacity>
-
-          <View style={styles.section}>
-            <Text style={styles.sectionLabel}>BASIC IDENTITY</Text>
-            
-            <View style={styles.inputWrap}>
-              <Store size={18} color="#94A3B8" />
-              <TextInput 
-                style={styles.input} 
-                value={formData.name} 
-                onChangeText={t => setFormData({ ...formData, name: t })} 
-                placeholder="Business Name"
-              />
-            </View>
-
-            <View style={styles.inputWrap}>
-              <Info size={18} color="#94A3B8" />
-              <TextInput 
-                style={[styles.input, { height: 80, textAlignVertical: 'top' }]} 
-                value={formData.description} 
-                onChangeText={t => setFormData({ ...formData, description: t })} 
-                placeholder="Brief details about your shop..."
-                multiline
-              />
-            </View>
-          </View>
-
-          <View style={styles.section}>
-            <Text style={styles.sectionLabel}>GEOGRAPHIC DISCOVERY</Text>
-            
-            <View style={styles.inputWrap}>
-              <MapPin size={18} color="#94A3B8" />
-              <TextInput 
-                style={styles.input} 
-                value={formData.address} 
-                onChangeText={t => setFormData({ ...formData, address: t })} 
-                placeholder="Full Street Address"
-              />
-            </View>
-
-            <View style={styles.inputWrap}>
-              <Link2 size={18} color="#94A3B8" />
-              <TextInput 
-                style={styles.input} 
-                value={formData.googleLink} 
-                onChangeText={t => setFormData({ ...formData, googleLink: t })} 
-                placeholder="Google Maps Link (Optional)"
-              />
-            </View>
-          </View>
-
-          <View style={styles.section}>
-            <Text style={styles.sectionLabel}>OPERATIONS & TIMING</Text>
-            
-            <View style={styles.statsCard}>
-              <View style={styles.statItem}>
-                <Users size={20} color={Colors.primary} />
-                <View>
-                  <Text style={styles.statVal}>{shop?.staff?.length || 0}</Text>
-                  <Text style={styles.statLabel}>Total Staff</Text>
+          {activeTab === 'shop' && (
+            <View style={styles.section}>
+              <View style={styles.statsCard}>
+                <View style={styles.statItem}>
+                  <Users size={18} color={Colors.primary} />
+                  <View>
+                    <Text style={styles.statValue}>{staffRows.length}</Text>
+                    <Text style={styles.statLabel}>Total Staff</Text>
+                  </View>
+                </View>
+                <View style={styles.divider} />
+                <View style={styles.statItem}>
+                  <MapPin size={18} color="#10B981" />
+                  <View>
+                    <Text style={styles.statValue}>{formData.workingTime}</Text>
+                    <Text style={styles.statLabel}>Working Time</Text>
+                  </View>
                 </View>
               </View>
-              <View style={styles.divider} />
-              <View style={styles.statItem}>
-                <Globe size={20} color="#10B981" />
-                <View>
-                  <Text style={styles.statVal}>UTC +5:30</Text>
-                  <Text style={styles.statLabel}>IST Region</Text>
+
+              <Text style={styles.sectionLabel}>SHOP DETAILS</Text>
+
+              <TextInput style={styles.input} placeholder="Name" value={formData.name} onChangeText={t => setFormData({ ...formData, name: t })} />
+
+              <View style={styles.selectWrap}>
+                <Text style={styles.selectLabel}>Type</Text>
+                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                  {SHOP_TYPES.map(type => (
+                    <TouchableOpacity
+                      key={type}
+                      style={[styles.typeChip, formData.shopType === type && styles.typeChipActive]}
+                      onPress={() => setFormData({ ...formData, shopType: type })}
+                    >
+                      <Text style={[styles.typeChipText, formData.shopType === type && styles.typeChipTextActive]}>{type}</Text>
+                    </TouchableOpacity>
+                  ))}
+                </ScrollView>
+              </View>
+
+              <TextInput style={styles.input} placeholder="Phone" value={formData.phone} onChangeText={t => setFormData({ ...formData, phone: t })} />
+              <TextInput style={styles.input} placeholder="Email" value={formData.email} onChangeText={t => setFormData({ ...formData, email: t })} />
+              <TextInput style={styles.input} placeholder="Address" value={formData.address} onChangeText={t => setFormData({ ...formData, address: t })} />
+              <TextInput style={styles.input} placeholder="City" value={formData.city} onChangeText={t => setFormData({ ...formData, city: t })} />
+              <TextInput style={styles.input} placeholder="State" value={formData.state} onChangeText={t => setFormData({ ...formData, state: t })} />
+              <TextInput style={styles.input} placeholder="Postal Code" value={formData.postalCode} onChangeText={t => setFormData({ ...formData, postalCode: t })} />
+              <TextInput style={styles.input} placeholder="Location" value={formData.location} onChangeText={t => setFormData({ ...formData, location: t })} />
+              <TextInput style={styles.input} placeholder="Google Link (Optional)" value={formData.googleMapLink} onChangeText={t => setFormData({ ...formData, googleMapLink: t })} />
+              <TextInput style={styles.input} placeholder="Timing (Working Time)" value={formData.workingTime} onChangeText={t => setFormData({ ...formData, workingTime: t })} />
+            </View>
+          )}
+
+          {activeTab === 'media' && (
+            <View style={styles.section}>
+              <Text style={styles.sectionLabel}>SHOP MEDIA</Text>
+
+              <View style={styles.mediaCard}>
+                <Image
+                  source={{ uri: shop?.coverUrl || 'https://images.unsplash.com/photo-1521590832167-7bcbfaa6381f?q=80&w=1000' }}
+                  style={styles.coverImage}
+                />
+                <TouchableOpacity style={styles.editIcon} onPress={onReuploadPress}>
+                  <Pencil size={12} color="#FFF" />
+                </TouchableOpacity>
+                <Text style={styles.mediaLabel}>Cover Photo</Text>
+              </View>
+
+              <View style={styles.profilePhotoWrap}>
+                <View style={styles.profilePhotoCard}>
+                  <Image
+                    source={{ uri: shop?.logoUrl || 'https://images.unsplash.com/photo-1524504388940-b1c1722653e1?q=80&w=400' }}
+                    style={styles.profilePhoto}
+                  />
+                  <TouchableOpacity style={styles.editIconSmall} onPress={onReuploadPress}>
+                    <Pencil size={12} color="#FFF" />
+                  </TouchableOpacity>
                 </View>
+                <Text style={styles.mediaLabel}>Shop Profile Photo</Text>
+              </View>
+
+              <View style={styles.galleryGrid}>
+                {(shop?.photoUrls || []).map((url: string, index: number) => (
+                  <View key={`${url}-${index}`} style={styles.galleryItem}>
+                    <Image source={{ uri: url }} style={styles.galleryImage} />
+                    <TouchableOpacity style={styles.editIconSmall} onPress={onReuploadPress}>
+                      <Pencil size={12} color="#FFF" />
+                    </TouchableOpacity>
+                  </View>
+                ))}
               </View>
             </View>
+          )}
 
-            <TouchableOpacity
-              style={styles.timingTrigger}
-              onPress={() => navigation.navigate('WorkingHours', {shopId})}
-            >
-              <View style={styles.timingInfo}>
-                <Clock size={18} color="#64748B" />
-                <View style={{ marginLeft: 12 }}>
-                  <Text style={styles.timingTitle}>Operational Hours</Text>
-                  <Text style={styles.timingSubtitle}>Currently: 09:00 AM - 09:00 PM (IST)</Text>
+          {activeTab === 'settings' && (
+            <View style={styles.section}>
+              <Text style={styles.sectionLabel}>NOTIFICATIONS</Text>
+
+              {[
+                { label: 'Booking confirmation', key: 'bookingConfirmation' },
+                { label: 'Booking reminder', key: 'bookingReminder' },
+                { label: 'Booking cancellation', key: 'bookingCancellation' },
+                { label: 'Queue updates', key: 'queueUpdates' },
+                { label: 'New booking', key: 'newBooking' },
+                { label: 'Admin cancellation', key: 'adminCancellation' },
+                { label: 'Daily summary', key: 'dailySummary' },
+              ].map(item => (
+                <View key={item.key} style={styles.toggleRow}>
+                  <Text style={styles.toggleLabel}>{item.label}</Text>
+                  <TouchableOpacity
+                    style={[
+                      styles.toggle,
+                      notificationSettings[item.key] ? styles.toggleOn : styles.toggleOff,
+                    ]}
+                    onPress={() =>
+                      setNotificationSettings(prev => ({
+                        ...prev,
+                        [item.key]: !prev[item.key],
+                      }))
+                    }
+                  >
+                    <View style={styles.toggleThumb} />
+                  </TouchableOpacity>
                 </View>
-              </View>
-              <ChevronRight size={18} color="#CBD5E1" />
-            </TouchableOpacity>
-          </View>
+              ))}
+            </View>
+          )}
 
-          <View style={{ height: 60 }} />
+          <View style={{ height: 36 }} />
         </ScrollView>
       </SafeAreaView>
     </View>
@@ -223,28 +337,48 @@ export default function ShopSettingsScreen() {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#F8FAFC' },
   centered: { flex: 1, justifyContent: 'center', alignItems: 'center' },
-  topNav: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 24 },
+  emptyText: { color: Colors.textSecondary, fontWeight: '700' },
+  topNav: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 20 },
   navTitle: { fontSize: 24, fontWeight: '900', color: '#0F172A' },
   navSubtitle: { fontSize: 13, color: '#64748B', fontWeight: '600', marginTop: 2 },
-  saveBtn: { backgroundColor: '#0F172A', paddingHorizontal: 20, paddingVertical: 10, borderRadius: 12 },
-  saveBtnText: { color: '#FFF', fontSize: 12, fontWeight: '900', letterSpacing: 1 },
-  scrollContent: { paddingHorizontal: 24, paddingBottom: 40 },
-  photoContainer: { width: '100%', height: 200, borderRadius: 30, overflow: 'hidden', marginBottom: 32, ...Shadows.md },
-  coverImage: { width: '100%', height: '100%' },
-  photoOverlay: { position: 'absolute', inset: 0, backgroundColor: 'rgba(0,0,0,0.3)', alignItems: 'center', justifyContent: 'center' },
-  cameraIcon: { width: 44, height: 44, borderRadius: 22, backgroundColor: 'rgba(255,255,255,0.2)', alignItems: 'center', justifyContent: 'center', borderWidth: 1, borderColor: 'rgba(255,255,255,0.3)' },
-  photoHint: { color: '#FFF', fontSize: 12, fontWeight: '800', marginTop: 12 },
-  section: { marginBottom: 32 },
-  sectionLabel: { fontSize: 10, fontWeight: '900', color: '#94A3B8', letterSpacing: 1.5, marginBottom: 16, marginLeft: 4 },
-  inputWrap: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#FFF', borderRadius: 20, paddingHorizontal: 16, height: 56, marginBottom: 12, borderWidth: 1, borderColor: '#F1F5F9', ...Shadows.sm },
-  input: { flex: 1, marginLeft: 12, fontSize: 14, fontWeight: '700', color: '#1E293B', height: '100%' },
-  statsCard: { flexDirection: 'row', backgroundColor: '#FFF', borderRadius: 24, padding: 20, marginBottom: 16, borderWidth: 1, borderColor: '#F1F5F9', ...Shadows.sm },
-  statItem: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 12 },
-  statVal: { fontSize: 16, fontWeight: '900', color: '#0F172A' },
-  statLabel: { fontSize: 11, color: '#94A3B8', fontWeight: '700' },
-  divider: { width: 1, backgroundColor: '#F1F5F9', marginHorizontal: 16 },
-  timingTrigger: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#FFF', padding: 20, borderRadius: 24, borderWidth: 1, borderColor: '#F1F5F9', ...Shadows.sm },
-  timingInfo: { flexDirection: 'row', alignItems: 'center' },
-  timingTitle: { fontSize: 14, fontWeight: '800', color: '#1E293B' },
-  timingSubtitle: { fontSize: 12, color: '#94A3B8', fontWeight: '600', marginTop: 2 },
+  saveBtn: { backgroundColor: Colors.primary, paddingHorizontal: 16, paddingVertical: 10, borderRadius: 12, ...Shadows.sm },
+  saveWrap: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  saveBtnText: { color: '#FFF', fontSize: 11, fontWeight: '900', letterSpacing: 1 },
+  tabRow: { flexDirection: 'row', gap: 8, paddingHorizontal: 20, paddingBottom: 6 },
+  tabBtn: { flexDirection: 'row', alignItems: 'center', gap: 6, backgroundColor: '#FFF', borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 12, paddingHorizontal: 10, paddingVertical: 8 },
+  tabBtnActive: { borderColor: Colors.primary, backgroundColor: '#EEF2FF' },
+  tabText: { fontSize: 11, color: '#64748B', fontWeight: '800' },
+  tabTextActive: { color: Colors.primary },
+  scrollContent: { paddingHorizontal: 20, paddingBottom: 32 },
+  section: { marginTop: 12 },
+  sectionLabel: { fontSize: 11, color: '#94A3B8', fontWeight: '900', letterSpacing: 1.2, marginBottom: 12 },
+  statsCard: { flexDirection: 'row', backgroundColor: '#FFF', borderRadius: 16, borderWidth: 1, borderColor: '#E2E8F0', padding: 14, marginBottom: 14 },
+  statItem: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 10 },
+  divider: { width: 1, backgroundColor: '#E2E8F0', marginHorizontal: 10 },
+  statValue: { fontSize: 14, fontWeight: '900', color: '#0F172A' },
+  statLabel: { fontSize: 11, color: '#64748B', fontWeight: '700' },
+  input: { backgroundColor: '#FFF', borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 12, paddingHorizontal: 14, height: 46, marginBottom: 10, fontSize: 14, color: '#0F172A', fontWeight: '700' },
+  selectWrap: { backgroundColor: '#FFF', borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 12, padding: 10, marginBottom: 10 },
+  selectLabel: { fontSize: 11, color: '#64748B', fontWeight: '800', marginBottom: 8 },
+  typeChip: { borderWidth: 1, borderColor: '#CBD5E1', borderRadius: 999, paddingHorizontal: 12, paddingVertical: 6, marginRight: 8 },
+  typeChipActive: { borderColor: Colors.primary, backgroundColor: '#EEF2FF' },
+  typeChipText: { fontSize: 12, fontWeight: '700', color: '#475569' },
+  typeChipTextActive: { color: Colors.primary },
+  mediaCard: { backgroundColor: '#FFF', borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 16, overflow: 'hidden', marginBottom: 16 },
+  coverImage: { width: '100%', height: 170 },
+  mediaLabel: { fontSize: 12, color: '#64748B', fontWeight: '800', padding: 10 },
+  editIcon: { position: 'absolute', right: 10, bottom: 10, width: 24, height: 24, borderRadius: 12, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(15, 23, 42, 0.5)' },
+  profilePhotoWrap: { marginBottom: 16 },
+  profilePhotoCard: { width: 96, height: 96, borderRadius: 48, overflow: 'hidden', backgroundColor: '#FFF', borderWidth: 1, borderColor: '#E2E8F0' },
+  profilePhoto: { width: '100%', height: '100%' },
+  editIconSmall: { position: 'absolute', right: 6, bottom: 6, width: 22, height: 22, borderRadius: 11, alignItems: 'center', justifyContent: 'center', backgroundColor: 'rgba(15, 23, 42, 0.5)' },
+  galleryGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+  galleryItem: { width: 100, height: 100, borderRadius: 14, overflow: 'hidden', borderWidth: 1, borderColor: '#E2E8F0' },
+  galleryImage: { width: '100%', height: '100%' },
+  toggleRow: { backgroundColor: '#FFF', borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 12, paddingHorizontal: 14, height: 52, marginBottom: 10, flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
+  toggleLabel: { fontSize: 13, fontWeight: '700', color: '#1E293B' },
+  toggle: { width: 42, height: 24, borderRadius: 999, padding: 2, justifyContent: 'center' },
+  toggleOn: { backgroundColor: '#10B981', alignItems: 'flex-end' },
+  toggleOff: { backgroundColor: '#CBD5E1', alignItems: 'flex-start' },
+  toggleThumb: { width: 20, height: 20, borderRadius: 10, backgroundColor: '#FFF' },
 });

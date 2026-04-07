@@ -275,39 +275,79 @@ export class AdminService {
       where.status = status;
     }
 
-    const [bookings, total] = await Promise.all([
-      this.prisma.booking.findMany({
-        where,
-        skip,
-        take: limit,
-        orderBy: { startTime: 'asc' },
-        include: {
-          user: {
-            select: {
-              id: true,
-              name: true,
-              phone: true,
-              email: true,
-              // Trust Score fields for admin dashboard
-              trustScore: true,
-              totalBookings: true,
-              completedBookings: true,
-              noShowBookings: true,
-              cancelledBookings: true,
-            },
-          },
-          services: true,
-          staff: {
-            select: {
-              id: true,
-              name: true,
-            },
-          },
-          payment: true,
+    const includeWithTrust = {
+      user: {
+        select: {
+          id: true,
+          name: true,
+          phone: true,
+          email: true,
+          trustScore: true,
+          totalBookings: true,
+          completedBookings: true,
+          noShowBookings: true,
+          cancelledBookings: true,
         },
-      }),
-      this.prisma.booking.count({ where }),
-    ]);
+      },
+      services: true,
+      staff: {
+        select: {
+          id: true,
+          name: true,
+        },
+      },
+      payment: true,
+    };
+
+    const includeWithoutTrust = {
+      user: {
+        select: {
+          id: true,
+          name: true,
+          phone: true,
+          email: true,
+        },
+      },
+      services: true,
+      staff: {
+        select: {
+          id: true,
+          name: true,
+        },
+      },
+      payment: true,
+    };
+
+    let bookings: any[] = [];
+    let total = 0;
+
+    try {
+      [bookings, total] = await Promise.all([
+        this.prisma.booking.findMany({
+          where,
+          skip,
+          take: limit,
+          orderBy: { startTime: 'asc' },
+          include: includeWithTrust,
+        }),
+        this.prisma.booking.count({ where }),
+      ]);
+    } catch (error: any) {
+      if (error?.code !== 'P2022') {
+        throw error;
+      }
+
+      [bookings, total] = await Promise.all([
+        this.prisma.booking.findMany({
+          where,
+          skip,
+          take: limit,
+          orderBy: { startTime: 'asc' },
+          include: includeWithoutTrust,
+        }),
+        this.prisma.booking.count({ where }),
+      ]);
+    }
 
     return {
       data: bookings,
@@ -920,11 +960,23 @@ export class AdminService {
       settings?: Record<string, any>;
     },
   ) {
-    await this.verifyShopAccess(shopId, tenantId);
+    const shop = await this.verifyShopAccess(shopId, tenantId);
+
+    const { settings, ...rest } = updateData;
+    const mergedSettings =
+      settings !== undefined
+        ? {
+            ...((shop.settings as Record<string, any> | null) || {}),
+            ...settings,
+          }
+        : undefined;
 
     await this.prisma.shop.update({
       where: { id: shopId },
-      data: updateData,
+      data: {
+        ...rest,
+        ...(mergedSettings !== undefined ? { settings: mergedSettings } : {}),
+      },
     });
 
     await this.invalidateSlotCache(shopId);
@@ -2306,26 +2358,52 @@ export class AdminService {
       where.trustScore = { lt: 100 - fraudScoreGt };
     }
 
-    const users = await this.prisma.user.findMany({
-      where,
-      select: {
-        id: true,
-        name: true,
-        email: true,
-        phone: true,
-        trustScore: true,
-        isActive: true,
-        createdAt: true,
-      },
-      orderBy: { trustScore: 'asc' },
-    });
+    try {
+      const users = await this.prisma.user.findMany({
+        where,
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          phone: true,
+          trustScore: true,
+          isActive: true,
+          createdAt: true,
+        },
+        orderBy: { trustScore: 'asc' },
+      });
 
-    return {
-      data: users.map((u) => ({
-        ...u,
-        fraudScore: 100 - u.trustScore,
-      })),
-    };
+      return {
+        data: users.map((u) => ({
+          ...u,
+          fraudScore: 100 - u.trustScore,
+        })),
+      };
+    } catch (error: any) {
+      if (error?.code !== 'P2022') {
+        throw error;
+      }
+
+      const users = await this.prisma.user.findMany({
+        where: Object.keys(where).length ? {} : where,
+        select: {
+          id: true,
+          name: true,
+          email: true,
+          phone: true,
+          isActive: true,
+          createdAt: true,
+        },
+        orderBy: { createdAt: 'desc' },
+      });
+
+      return {
+        data: users.map((u) => ({
+          ...u,
+          fraudScore: null,
+        })),
+      };
+    }
   }
 
   async suspendUser(userId: string, isSuspended: boolean) {

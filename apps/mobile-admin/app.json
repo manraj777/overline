@@ -1,4 +1,10 @@
 {
   "name": "OverlineAdmin",
-  "displayName": "OverlineAdmin"
+  "displayName": "OverlineAdmin",
+  "android": {
+    "package": "com.appointmentbooking.app"
+  },
+  "ios": {
+    "bundleIdentifier": "com.overlineadmin"
+  }
 }
