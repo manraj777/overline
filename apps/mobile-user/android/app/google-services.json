@@ -1,0 +1,68 @@
+{
+  "project_info": {
+    "project_number": "409423359805",
+    "project_id": "teak-serenity-488010-f3",
+    "storage_bucket": "teak-serenity-488010-f3.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:409423359805:android:795cf8deb0e5ca79ca9f54",
+        "android_client_info": {
+          "package_name": "com.appointmentbooking.app"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "409423359805-5istogdcdj476ff3816m28g7qkc622bc.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAE2zMGpGzWoAMCnBGsFItiRzLtU0KFjLk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "409423359805-5istogdcdj476ff3816m28g7qkc622bc.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    },
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:409423359805:android:e7a9229b5e3e55f9ca9f54",
+        "android_client_info": {
+          "package_name": "com.overlineuser"
+        }
+      },
+      "oauth_client": [
+        {
+          "client_id": "409423359805-5istogdcdj476ff3816m28g7qkc622bc.apps.googleusercontent.com",
+          "client_type": 3
+        }
+      ],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAE2zMGpGzWoAMCnBGsFItiRzLtU0KFjLk"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": [
+            {
+              "client_id": "409423359805-5istogdcdj476ff3816m28g7qkc622bc.apps.googleusercontent.com",
+              "client_type": 3
+            }
+          ]
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

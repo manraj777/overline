@@ -1,4 +1,5 @@
 {
-  "installCommand": "pnpm install --filter @overline/user-web --filter @overline/shared",
-  "buildCommand": "pnpm --filter @overline/user-web build"
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "installCommand": "corepack enable && corepack prepare pnpm@9.15.4 --activate && pnpm install --no-frozen-lockfile",
+  "buildCommand": "pnpm run build:user-web"
 }
