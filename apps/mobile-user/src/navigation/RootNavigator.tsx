@@ -136,13 +136,28 @@ export default function RootNavigator() {
   const [isFirstLaunch, setIsFirstLaunch] = useState<boolean | null>(null);
 
   useEffect(() => {
-    AsyncStorage.getItem('hasLaunched').then((value) => {
-      if (value === null) {
-        setIsFirstLaunch(true);
-      } else {
-        setIsFirstLaunch(false);
+    let isMounted = true;
+
+    const loadFirstLaunchState = async () => {
+      try {
+        const value = await AsyncStorage.getItem('hasLaunched');
+        if (!isMounted) {
+          return;
+        }
+        setIsFirstLaunch(value === null);
+      } catch {
+        // Fail open so app is still usable even if storage read fails.
+        if (isMounted) {
+          setIsFirstLaunch(false);
+        }
       }
-    });
+    };
+
+    loadFirstLaunchState();
+
+    return () => {
+      isMounted = false;
+    };
   }, []);
 
   if (isLoading || isFirstLaunch === null) {

@@ -115,6 +115,8 @@ apiClient.interceptors.response.use(
 export const authApi = {
   login: (email: string, password: string, options?: { requestedRole?: string }) =>
     apiClient.post('/auth/login', { email, password, requestedRole: options?.requestedRole }),
+  firebasePhoneLogin: (idToken: string) =>
+    apiClient.post('/auth/firebase/phone-login', { idToken }),
   staffPinLogin: (params: { shopId: string; phone: string; password: string }) =>
     apiClient.post('/auth/staff-login', params),
   getAssignedStaffShops: (phone: string) =>

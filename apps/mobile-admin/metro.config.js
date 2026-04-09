@@ -12,6 +12,10 @@ const workspaceRoot = path.resolve(__dirname, '../..');
 const config = {
   watchFolders: [workspaceRoot],
   resolver: {
+    extraNodeModules: {
+      react: path.resolve(__dirname, 'node_modules/react'),
+      'react-native': path.resolve(__dirname, 'node_modules/react-native'),
+    },
     nodeModulesPaths: [
       path.resolve(__dirname, 'node_modules'),
       path.resolve(workspaceRoot, 'node_modules'),

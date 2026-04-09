@@ -1,7 +1,8 @@
 import {create} from 'zustand';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
-import {authApi, shopApi, otpApi} from '../api/client';
+import auth, {FirebaseAuthTypes} from '@react-native-firebase/auth';
+import {authApi, shopApi} from '../api/client';
 
 type ShopSummary = {id: string; name: string};
 type AdminRole = 'SUPER_ADMIN' | 'OWNER' | 'STAFF';
@@ -47,6 +48,7 @@ interface AuthState {
   // OTP 2FA state
   pendingOtpVerification: boolean;
   otpPhone: string | null;
+  otpConfirmation: FirebaseAuthTypes.ConfirmationResult | null;
 
   // Actions
   login: (email: string, password: string, options?: {requestedRole?: string}) => Promise<void>;
@@ -115,6 +117,7 @@ export const useAuthStore = create<AuthState>((set) => ({
   token: null,
   pendingOtpVerification: false,
   otpPhone: null,
+  otpConfirmation: null,
 
   fetchAssignedStaffShops: async (phone: string) => {
     const normalizedPhone = phone.startsWith('+91') ? phone : `+91${phone.replace(/\D/g, '')}`;
@@ -190,11 +193,12 @@ export const useAuthStore = create<AuthState>((set) => ({
     phone: string,
     options?: {requestedRole?: AuthRequestedRole; selectedShopId?: string},
   ) => {
-    if (options?.requestedRole === 'STAFF' && options?.selectedShopId) {
-      await authApi.staffSendOtp({shopId: options.selectedShopId, phone});
-      return;
-    }
-    await otpApi.send(phone, 'LOGIN');
+    const confirmation = await auth().signInWithPhoneNumber(phone);
+    set({
+      otpPhone: phone,
+      otpConfirmation: confirmation,
+      pendingOtpVerification: true,
+    });
   },
 
   verifyPhoneLoginOtp: async (
@@ -202,14 +206,18 @@ export const useAuthStore = create<AuthState>((set) => ({
     otp: string,
     options?: {requestedRole?: AuthRequestedRole; selectedShopId?: string},
   ) => {
-    const isStaffWithShop = options?.requestedRole === 'STAFF' && !!options?.selectedShopId;
-    const response = isStaffWithShop
-      ? await authApi.staffVerifyOtp({
-          shopId: options!.selectedShopId!,
-          phone,
-          otp,
-        })
-      : await otpApi.verify(phone, otp, 'LOGIN', options?.requestedRole);
+    const state = useAuthStore.getState();
+    if (!state.otpConfirmation) {
+      throw new Error('OTP session expired. Please request a new code.');
+    }
+
+    const credential = await state.otpConfirmation.confirm(otp);
+    if (!credential?.user) {
+      throw new Error('OTP confirmation failed. Please request a new code.');
+    }
+
+    const firebaseIdToken = await credential.user.getIdToken(true);
+    const response = await authApi.firebasePhoneLogin(firebaseIdToken);
     const {accessToken, refreshToken, user} = response.data as AuthLoginResponse;
 
     const adminRoles: AdminRole[] = ['SUPER_ADMIN', 'OWNER', 'STAFF'];
@@ -236,6 +244,14 @@ export const useAuthStore = create<AuthState>((set) => ({
         ? options.selectedShopId
         : shops[0]?.id || null;
 
+    if (options?.requestedRole === 'STAFF' && user.role !== 'STAFF') {
+      throw new Error('Access denied. This OTP is not linked to a staff account.');
+    }
+
+    if (options?.requestedRole === 'OWNER' && user.role === 'STAFF') {
+      throw new Error('Access denied. Please use staff login for this account.');
+    }
+
     set({
       user: userWithShops,
       isAuthenticated: true,
@@ -245,7 +261,10 @@ export const useAuthStore = create<AuthState>((set) => ({
       token: accessToken,
       pendingOtpVerification: false,
       otpPhone: null,
+      otpConfirmation: null,
     });
+
+    await auth().signOut().catch(() => undefined);
   },
 
   login: async (email: string, password: string, options?: {requestedRole?: string}) => {
@@ -282,11 +301,13 @@ export const useAuthStore = create<AuthState>((set) => ({
       // If user has a phone, require OTP verification for 2FA
       if (user.phone) {
         try {
-          await otpApi.send(user.phone, 'LOGIN');
+          const normalizedPhone = user.phone.startsWith('+') ? user.phone : `+91${user.phone.replace(/\D/g, '')}`;
+          const confirmation = await auth().signInWithPhoneNumber(normalizedPhone);
           set({
             user: userWithShops,
             pendingOtpVerification: true,
-            otpPhone: user.phone,
+            otpPhone: normalizedPhone,
+            otpConfirmation: confirmation,
             selectedShopId: defaultShopId,
             isOwner,
             isStaff,
@@ -345,12 +366,14 @@ export const useAuthStore = create<AuthState>((set) => ({
 
     await AsyncStorage.removeItem('admin_token');
     await AsyncStorage.removeItem('admin_refresh_token');
+    await auth().signOut().catch(() => undefined);
     set({
       user: null,
       isAuthenticated: false,
       selectedShopId: null,
       pendingOtpVerification: false,
       otpPhone: null,
+      otpConfirmation: null,
       isOwner: false,
       isStaff: false,
       token: null,
@@ -366,7 +389,11 @@ export const useAuthStore = create<AuthState>((set) => ({
         return;
       }
 
-      const response = await authApi.getProfile();
+      const profileRequest = authApi.getProfile();
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error('Admin auth bootstrap timed out')), 6000);
+      });
+      const response = await Promise.race([profileRequest, timeoutPromise]);
       const user = response.data as AuthAdminUser;
 
       // Fetch user's shops
@@ -405,6 +432,7 @@ export const useAuthStore = create<AuthState>((set) => ({
         user: null,
         isAuthenticated: false,
         isLoading: false,
+        otpConfirmation: null,
         isOwner: false,
         isStaff: false,
         token: null,

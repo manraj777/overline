@@ -10,7 +10,6 @@ import {
   Image,
   Animated,
 } from 'react-native';
-import MapView, { Marker, PROVIDER_GOOGLE } from 'react-native-maps';
 import { useQuery } from '@tanstack/react-query';
 import { shopsApi } from '../../api/client';
 import { Shop } from '../../types';
@@ -32,10 +31,22 @@ const { width, height } = Dimensions.get('window');
 const CARD_WIDTH = width * 0.8;
 const CARD_SPACING = 20;
 
+const mapsModule = (() => {
+  try {
+    return require('react-native-maps');
+  } catch {
+    return null;
+  }
+})();
+
+const MapView = mapsModule?.default;
+const Marker = mapsModule?.Marker;
+const PROVIDER_GOOGLE = mapsModule?.PROVIDER_GOOGLE;
+
 export default function LocationMapScreen() {
   const navigation = useNavigation<any>();
   const [activeShopIndex, setActiveShopIndex] = useState(0);
-  const mapRef = useRef<MapView>(null);
+  const mapRef = useRef<any>(null);
   const flatListRef = useRef<FlatList>(null);
 
   const { data: shopsData } = useQuery({
@@ -44,6 +55,20 @@ export default function LocationMapScreen() {
   });
 
   const shops: Shop[] = useMemo(() => shopsData?.data || [], [shopsData]);
+
+  if (!MapView || !Marker) {
+    return (
+      <SafeAreaView style={styles.fallbackContainer}>
+        <TouchableOpacity style={styles.fallbackBackBtn} onPress={() => navigation.goBack()}>
+          <ArrowLeft size={20} color="#0F172A" />
+        </TouchableOpacity>
+        <Text style={styles.fallbackTitle}>Map is temporarily unavailable</Text>
+        <Text style={styles.fallbackText}>
+          The map module could not be loaded on this device. Please reopen the app or try a different emulator/device.
+        </Text>
+      </SafeAreaView>
+    );
+  }
 
   const onMarkerPress = (index: number) => {
     setActiveShopIndex(index);
@@ -186,6 +211,34 @@ export default function LocationMapScreen() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
+  },
+  fallbackContainer: {
+    flex: 1,
+    backgroundColor: '#F8FAFC',
+    paddingHorizontal: 20,
+    paddingTop: 20,
+  },
+  fallbackBackBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 12,
+    backgroundColor: '#FFF',
+    justifyContent: 'center',
+    alignItems: 'center',
+    ...Shadows.sm,
+  },
+  fallbackTitle: {
+    marginTop: 20,
+    fontSize: 22,
+    fontWeight: '900',
+    color: '#0F172A',
+  },
+  fallbackText: {
+    marginTop: 10,
+    fontSize: 14,
+    lineHeight: 22,
+    color: '#475569',
+    fontWeight: '600',
   },
   map: {
     ...StyleSheet.absoluteFillObject,

@@ -108,10 +108,14 @@ export class AuthService {
   ) {
     this.googleClient = new OAuth2Client(this.configService.get<string>('google.clientId'));
 
-    const twilioSid = this.configService.get<string>('TWILIO_ACCOUNT_SID');
-    const twilioAuthToken = this.configService.get<string>('TWILIO_AUTH_TOKEN');
+    const twilioSid =
+      this.configService.get<string>('TWILIO_ACCOUNT_SID') || process.env.TWILIO_ACCOUNT_SID;
+    const twilioAuthToken =
+      this.configService.get<string>('TWILIO_AUTH_TOKEN') || process.env.TWILIO_AUTH_TOKEN;
     if (twilioSid && twilioAuthToken) {
       this.twilioClient = new Twilio(twilioSid, twilioAuthToken);
+    } else {
+      this.logger.warn('Twilio credentials are missing. OTP SMS delivery is disabled unless running in non-production dev fallback.');
     }
   }
 
@@ -198,22 +202,36 @@ export class AuthService {
   }
 
   private async sendOtpSms(phone: string, otp: string): Promise<void> {
+    const isProduction = (process.env.NODE_ENV || '').toLowerCase() === 'production';
     const fromPhone =
       this.configService.get<string>('TWILIO_PHONE') ||
-      this.configService.get<string>('TWILIO_PHONE_NUMBER');
+      this.configService.get<string>('TWILIO_PHONE_NUMBER') ||
+      process.env.TWILIO_PHONE ||
+      process.env.TWILIO_PHONE_NUMBER;
 
     if (!this.twilioClient || !fromPhone) {
-      if (process.env.NODE_ENV !== 'production') {
+      if (!isProduction) {
         console.log(`[DEV OTP] ${phone}: ${otp}`);
+        return;
       }
-      return;
+
+      throw new InternalServerErrorException(
+        'OTP provider is not configured. Please set Twilio credentials on the server.',
+      );
     }
 
-    await this.twilioClient.messages.create({
-      body: `Your Overline OTP is ${otp}. It expires in 5 minutes.`,
-      from: fromPhone,
-      to: phone,
-    });
+    try {
+      await this.twilioClient.messages.create({
+        body: `Your Overline OTP is ${otp}. It expires in 5 minutes.`,
+        from: fromPhone,
+        to: phone,
+      });
+    } catch (error: any) {
+      this.logger.error(
+        `[sendOtpSms] Twilio send failed for ${phone}: ${error?.message || 'unknown error'}`,
+      );
+      throw new InternalServerErrorException('Unable to send OTP SMS right now. Please try again.');
+    }
   }
 
   async sendPhoneOtp(
@@ -233,7 +251,12 @@ export class AuthService {
     const otp = this.generateOtpCode();
 
     await this.redis.set(`otp:${normalizedPhone}`, otp, 300);
-    await this.sendOtpSms(normalizedPhone, otp);
+    try {
+      await this.sendOtpSms(normalizedPhone, otp);
+    } catch (error) {
+      await this.redis.del(`otp:${normalizedPhone}`);
+      throw error;
+    }
 
     return {
       message: 'OTP sent successfully',
@@ -354,7 +377,12 @@ export class AuthService {
 
     const otp = this.generateOtpCode();
     await this.redis.set(`otp:staff:${shopId}:${normalizedPhone}`, otp, 300);
-    await this.sendOtpSms(normalizedPhone, otp);
+    try {
+      await this.sendOtpSms(normalizedPhone, otp);
+    } catch (error) {
+      await this.redis.del(`otp:staff:${shopId}:${normalizedPhone}`);
+      throw error;
+    }
 
     return {
       message: 'Staff OTP sent successfully',
@@ -750,15 +778,13 @@ export class AuthService {
 
     // Generate OTP if phone is provided
     if (user.phone) {
-      const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
+      const otpCode = this.generateOtpCode();
       const otpExpiresAt = new Date(Date.now() + 10 * 60 * 1000);
       user = await (this.prisma.user as any).update({
         where: { id: user.id },
         data: { otpCode, otpExpiresAt },
       } as any);
-      console.log(
-        `\n\n=== [OTP SIMULATION] ===\nSent OTP ${otpCode} to ${user.phone}\n========================\n\n`,
-      );
+      await this.sendOtpSms(this.normalizePhone(user.phone), otpCode);
     }
 
     // Generate tokens
@@ -817,8 +843,8 @@ export class AuthService {
       where: { email: dto.email },
     });
 
-    if (existingUser) {
-      throw new ConflictException('Email already registered');
+    if (existingUser && existingUser.role !== UserRole.USER) {
+      throw new ConflictException('Email already registered for another Shop Owner or Staff');
     }
 
     // Hash password
@@ -878,17 +904,28 @@ export class AuthService {
         },
       });
 
-      // 2. Create Shop Owner (User)
-      const owner = await tx.user.create({
-        data: {
-          email: dto.email,
-          name: dto.ownerName,
-          phone: dto.phone,
-          hashedPassword,
-          role: UserRole.OWNER,
-          tenantId: tenant.id,
-        },
-      });
+      // 2. Create or Update Shop Owner (User)
+      const owner = existingUser
+        ? await tx.user.update({
+            where: { id: existingUser.id },
+            data: {
+              name: dto.ownerName,
+              phone: dto.phone,
+              hashedPassword,
+              role: UserRole.OWNER,
+              tenantId: tenant.id,
+            },
+          })
+        : await tx.user.create({
+            data: {
+              email: dto.email,
+              name: dto.ownerName,
+              phone: dto.phone,
+              hashedPassword,
+              role: UserRole.OWNER,
+              tenantId: tenant.id,
+            },
+          });
 
       // 3. Create Shop
       const shop = await tx.shop.create({

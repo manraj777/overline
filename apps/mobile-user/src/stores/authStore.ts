@@ -211,7 +211,11 @@ export const useAuthStore = create<AuthState>((set, _get) => ({
         set({ isLoading: false });
         return;
       }
-      const { data } = await authApi.me();
+      const profileRequest = authApi.me();
+      const timeoutPromise = new Promise<never>((_, reject) => {
+        setTimeout(() => reject(new Error('Auth bootstrap timed out')), 6000);
+      });
+      const { data } = await Promise.race([profileRequest, timeoutPromise]);
       set({ user: data, isAuthenticated: true, isLoading: false, token });
     } catch {
       await AsyncStorage.removeItem('accessToken');

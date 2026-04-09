@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import {
   View,
   Text,
+  TextInput,
   TouchableOpacity,
   StyleSheet,
   KeyboardAvoidingView,
@@ -49,28 +50,70 @@ export default function LoginScreen() {
   const [phone, setPhone] = useState('');
   const [isSendingOtp, setIsSendingOtp] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  const isGoogleAuthEnabled = Boolean(
+    Config.FEATURES?.GOOGLE_AUTH_ENABLED && Config.GOOGLE?.WEB_CLIENT_ID,
+  );
 
   useEffect(() => {
-    if (Config.FEATURES.GOOGLE_AUTH_ENABLED && Config.GOOGLE?.WEB_CLIENT_ID) {
+    if (isGoogleAuthEnabled) {
       GoogleSignin.configure({
         webClientId: Config.GOOGLE.WEB_CLIENT_ID,
         offlineAccess: Config.GOOGLE.OFFLINE_ACCESS,
       });
     }
-  }, []);
+  }, [isGoogleAuthEnabled]);
 
   const handleGoogleLogin = async () => {
+    if (!isGoogleAuthEnabled) {
+      Alert.alert(
+        'Google Login Unavailable',
+        'Google sign-in is not configured in this build. Use phone OTP login.',
+      );
+      return;
+    }
+
     setIsGoogleLoading(true);
     try {
-      await GoogleSignin.hasPlayServices();
+      await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
       const signInResult = await GoogleSignin.signIn();
       const idToken = signInResult.data?.idToken;
-      if (!idToken) throw new Error('No ID token received');
+      if (!idToken) {
+        throw new Error('No ID token received from Google');
+      }
+
       await googleLogin(idToken);
     } catch (signInError: any) {
-      if (signInError.code !== statusCodes.SIGN_IN_CANCELLED) {
-        Alert.alert('Google Error', signInError.message);
+      const errorCode = String(signInError?.code || '').toUpperCase();
+      const errorMessage = String(signInError?.message || '');
+      const isDeveloperError =
+        errorCode.includes('DEVELOPER_ERROR') ||
+        /developer[_\s-]?error/i.test(errorMessage) ||
+        /\bcode\s*10\b/i.test(errorMessage);
+
+      if (signInError?.code === statusCodes.SIGN_IN_CANCELLED) {
+        return;
       }
+
+      if (signInError?.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
+        Alert.alert(
+          'Google Play Services Required',
+          'Google Play Services is unavailable or outdated on this device. Please update it and try again.',
+        );
+        return;
+      }
+
+      if (isDeveloperError) {
+        Alert.alert(
+          'Google Login Misconfigured',
+          'This APK signing certificate is not linked in Firebase Google Sign-In. Add Android OAuth SHA fingerprints for package com.overlineuser, then download and replace android/app/google-services.json and rebuild the APK.',
+        );
+        return;
+      }
+
+      Alert.alert(
+        'Google Login Failed',
+        signInError?.message || 'Unable to sign in with Google right now. Please use phone OTP instead.',
+      );
     } finally {
       setIsGoogleLoading(false);
     }
@@ -216,20 +259,26 @@ export default function LoginScreen() {
               <View style={styles.divider} />
             </View>
 
-            <TouchableOpacity 
-              style={styles.googleBtn} 
-              onPress={handleGoogleLogin}
-              disabled={isGoogleLoading}
-            >
-              {isGoogleLoading ? (
-                <ActivityIndicator color={Colors.primary} />
-              ) : (
-                <>
-                  <Image source={require('../../../assets/icons/google-icon.png')} style={styles.socialIcon} />
-                  <Text style={styles.googleBtnText}>Continue with Google</Text>
-                </>
-              )}
-            </TouchableOpacity>
+            {isGoogleAuthEnabled ? (
+              <TouchableOpacity 
+                style={styles.googleBtn} 
+                onPress={handleGoogleLogin}
+                disabled={isGoogleLoading}
+              >
+                {isGoogleLoading ? (
+                  <ActivityIndicator color={Colors.primary} />
+                ) : (
+                  <>
+                    <View style={styles.googleBadge}>
+                      <Text style={styles.googleBadgeText}>G</Text>
+                    </View>
+                    <Text style={styles.googleBtnText}>Continue with Google</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            ) : (
+              <Text style={styles.googleHint}>Google login is unavailable in this build. Use phone OTP instead.</Text>
+            )}
           </View>
 
           <View style={styles.footer}>
@@ -245,8 +294,6 @@ export default function LoginScreen() {
     </View>
   );
 }
-
-import { TextInput } from 'react-native';
 
 const styles = StyleSheet.create({
   container: {
@@ -452,10 +499,32 @@ const styles = StyleSheet.create({
     width: 20,
     height: 20,
   },
+  googleBadge: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  googleBadgeText: {
+    fontSize: 12,
+    fontWeight: '900',
+    color: '#EA4335',
+  },
   googleBtnText: {
     fontSize: 14,
     fontWeight: '800',
     color: '#1E293B',
+  },
+  googleHint: {
+    marginTop: 8,
+    textAlign: 'center',
+    fontSize: 12,
+    color: '#64748B',
+    fontWeight: '600',
   },
   footer: {
     flexDirection: 'row',

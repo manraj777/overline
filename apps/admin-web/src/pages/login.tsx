@@ -5,9 +5,17 @@ import { useForm } from 'react-hook-form';
 import { Button, Input, Card } from '@/components/ui';
 import { useAuthStore } from '@/stores/auth';
 import api from '@/lib/api';
+import {
+  signInWithPhoneFirebase,
+  confirmPhoneOtp,
+  getFreshFirebaseIdToken,
+  normalizeIndianPhone,
+} from '@/lib/firebase';
 import { getDefaultRouteForRole } from '@/lib/role-routing';
+import { useFirebasePhoneLogin } from '@/hooks';
 import { Shield, Users, ArrowRight, Lock, Mail, Eye, EyeOff, Smartphone, Building2 } from 'lucide-react';
 import { AuthResponse } from '@/types';
+import type { ConfirmationResult } from 'firebase/auth';
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL?.replace('/api/v1', '') || '';
 
@@ -37,6 +45,7 @@ export default function LoginPage() {
     setShopId,
     logout,
   } = useAuthStore();
+  const firebasePhoneLogin = useFirebasePhoneLogin();
 
   const [error, setError] = React.useState<string | null>(null);
   const [otp, setOtp] = React.useState('');
@@ -53,6 +62,7 @@ export default function LoginPage() {
   const [staffAuthBusy, setStaffAuthBusy] = React.useState(false);
   const [otpRequestedRole, setOtpRequestedRole] = React.useState<'OWNER' | 'STAFF' | null>(null);
   const [otpSelectedShopId, setOtpSelectedShopId] = React.useState<string | null>(null);
+  const [confirmationResult, setConfirmationResult] = React.useState<ConfirmationResult | null>(null);
 
   const maskedPhone = React.useMemo(() => {
     if (!otpPhone) return '';
@@ -79,12 +89,9 @@ export default function LoginPage() {
     return () => window.clearInterval(timer);
   }, [resendInSeconds]);
 
-  const sendOtp = async (phone: string, opts?: { role?: 'OWNER' | 'STAFF'; shopId?: string }) => {
-    if (opts?.role === 'STAFF' && opts.shopId) {
-      await api.post('/auth/staff/send-otp', { phone, shopId: opts.shopId });
-    } else {
-      await api.post('/otp/send', { phone, purpose: 'LOGIN' });
-    }
+  const sendOtp = async (phone: string) => {
+    const result = await signInWithPhoneFirebase(phone);
+    setConfirmationResult(result);
     setResendInSeconds(60);
   };
 
@@ -113,10 +120,10 @@ export default function LoginPage() {
         router.push(nextRoute);
         return;
       }
-      await sendOtp(phone, { role: 'OWNER' });
+      await sendOtp(phone);
       setOtpRequestedRole('OWNER');
       setOtpSelectedShopId(null);
-      setOtpPending(phone);
+      setOtpPending(normalizeIndianPhone(phone));
       setOtp('');
     } catch (err: any) {
       setError(err.response?.data?.message || err.message || 'Login failed');
@@ -200,7 +207,7 @@ export default function LoginPage() {
     setStaffAuthBusy(true);
     try {
       const normalizedPhone = `+91${digits}`;
-      await sendOtp(normalizedPhone, { role: 'STAFF', shopId: selectedShop.id });
+      await sendOtp(normalizedPhone);
       setOtpRequestedRole('STAFF');
       setOtpSelectedShopId(selectedShop.id);
       setOtpPending(normalizedPhone);
@@ -221,19 +228,22 @@ export default function LoginPage() {
     setError(null);
     setOtpBusy(true);
     try {
-      const { data: auth } =
-        otpRequestedRole === 'STAFF' && otpSelectedShopId
-          ? await api.post<AuthResponse>('/auth/staff/verify-otp', {
-              phone: otpPhone,
-              otp,
-              shopId: otpSelectedShopId,
-            })
-          : await api.post<AuthResponse>('/otp/verify', {
-              phone: otpPhone,
-              otp,
-              purpose: 'LOGIN',
-              requestedRole: otpRequestedRole || undefined,
-            });
+      if (!confirmationResult) {
+        throw new Error('OTP session expired. Please request a new code.');
+      }
+
+      const userCredential = await confirmPhoneOtp(confirmationResult, otp);
+      const idToken = await getFreshFirebaseIdToken(userCredential);
+      const auth = await firebasePhoneLogin.mutateAsync({ idToken });
+
+      if (otpRequestedRole === 'STAFF' && auth.user.role !== 'STAFF') {
+        throw new Error('This OTP is not linked to a staff account.');
+      }
+
+      if (otpRequestedRole === 'OWNER' && auth.user.role === 'STAFF') {
+        throw new Error('This OTP is linked to a staff account. Use staff login.');
+      }
+
       login(auth.user, auth.accessToken, auth.refreshToken, auth.user.shopId);
       if (otpSelectedShopId) {
         setShopId(otpSelectedShopId);
@@ -251,10 +261,7 @@ export default function LoginPage() {
     if (!otpPhone || resendInSeconds > 0) return;
     setError(null);
     try {
-      await sendOtp(otpPhone, {
-        role: otpRequestedRole || undefined,
-        shopId: otpSelectedShopId || undefined,
-      });
+      await sendOtp(otpPhone);
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to resend OTP');
     }
@@ -267,6 +274,7 @@ export default function LoginPage() {
     setResendInSeconds(0);
     setOtpRequestedRole(null);
     setOtpSelectedShopId(null);
+    setConfirmationResult(null);
   };
 
   return (
@@ -292,6 +300,7 @@ export default function LoginPage() {
           </div>
 
           <div className="card-m3 p-8">
+            <div id="recaptcha-container" className="h-0 overflow-hidden" />
             {/* Error */}
             {error && (
               <div className="mb-6 p-4 bg-error-container/50 border border-error/20 rounded-xl text-error text-sm font-medium">
@@ -582,6 +591,13 @@ export default function LoginPage() {
             <a href="mailto:support@overline.app" className="text-primary font-semibold hover:underline">
               Contact Support
             </a>
+            <span className="mx-2">·</span>
+            <span 
+              onClick={() => router.push('/register')} 
+              className="text-primary font-semibold hover:underline cursor-pointer"
+            >
+              Sign Up as New Owner
+            </span>
           </p>
         </div>
       </div>

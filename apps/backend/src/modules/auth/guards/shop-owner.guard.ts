@@ -49,7 +49,7 @@ export class ShopOwnerGuard implements CanActivate {
     }
 
     if (
-      (user.role === 'OWNER' || user.role === 'USER') &&
+      user.role === 'OWNER' &&
       user.tenantId &&
       shop.tenantId === user.tenantId
     ) {

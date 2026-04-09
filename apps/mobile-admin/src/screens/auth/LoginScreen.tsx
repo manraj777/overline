@@ -18,10 +18,11 @@ import {
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
-import { GoogleSignin } from '@react-native-google-signin/google-signin';
+import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
 import { useAuthStore } from '../../stores/authStore';
 import { Colors, Shadows } from '../../theme';
 import { RootStackParamList } from '../../types';
+import { Config } from '../../config';
 import { 
   Smartphone, 
   Lock, 
@@ -56,15 +57,22 @@ export default function LoginScreen() {
 
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  const isGoogleAuthEnabled = Boolean(
+    Config.FEATURES?.GOOGLE_AUTH_ENABLED && Config.GOOGLE?.WEB_CLIENT_ID,
+  );
 
   const { loginWithGoogle, sendPhoneLoginOtp, staffLogin, fetchAssignedStaffShops } = useAuthStore();
 
   useEffect(() => {
+    if (!isGoogleAuthEnabled) {
+      return;
+    }
+
     GoogleSignin.configure({
-      webClientId: process.env.GOOGLE_WEB_CLIENT_ID,
-      offlineAccess: false,
+      webClientId: Config.GOOGLE.WEB_CLIENT_ID,
+      offlineAccess: Config.GOOGLE.OFFLINE_ACCESS,
     });
-  }, []);
+  }, [isGoogleAuthEnabled]);
 
   const handleOwnerPhoneLogin = async () => {
     const digits = ownerPhone.replace(/\D/g, '');
@@ -149,13 +157,54 @@ export default function LoginScreen() {
   };
 
   const handleGoogleLogin = async () => {
+    if (!isGoogleAuthEnabled) {
+      Alert.alert(
+        'Google Login Unavailable',
+        'Google sign-in is not configured in this build. Use phone OTP login.',
+      );
+      return;
+    }
+
     setIsGoogleLoading(true);
     try {
-      await GoogleSignin.hasPlayServices();
+      await GoogleSignin.hasPlayServices({ showPlayServicesUpdateDialog: true });
       const googleUser = await GoogleSignin.signIn();
-      await loginWithGoogle(googleUser.data?.idToken!, { requestedRole: 'OWNER' });
+      const idToken = googleUser?.data?.idToken;
+
+      if (!idToken) {
+        throw new Error('No ID token received from Google');
+      }
+
+      await loginWithGoogle(idToken, { requestedRole: 'OWNER' });
     } catch (e: any) {
-      Alert.alert('Google Error', e.message);
+      const errorCode = String(e?.code || '').toUpperCase();
+      const errorMessage = String(e?.message || '');
+      const isDeveloperError =
+        errorCode.includes('DEVELOPER_ERROR') ||
+        /developer[_\s-]?error/i.test(errorMessage) ||
+        /\bcode\s*10\b/i.test(errorMessage);
+
+      if (e?.code === statusCodes.SIGN_IN_CANCELLED) {
+        return;
+      }
+
+      if (e?.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
+        Alert.alert(
+          'Google Play Services Required',
+          'Google Play Services is unavailable or outdated on this device. Please update it and try again.',
+        );
+        return;
+      }
+
+      if (isDeveloperError) {
+        Alert.alert(
+          'Google Login Misconfigured',
+          'This APK signing certificate is not linked in Firebase Google Sign-In. Add Android OAuth SHA fingerprints for package com.appointmentbooking.app, then download and replace android/app/google-services.json and rebuild the APK.',
+        );
+        return;
+      }
+
+      Alert.alert('Google Error', e?.message || 'Unable to sign in with Google. Please use phone OTP login.');
     } finally {
       setIsGoogleLoading(false);
     }
@@ -194,14 +243,20 @@ export default function LoginScreen() {
             {role === 'OWNER' ? (
               <View>
                 <Text style={styles.cardHeader}>Proprietor Console</Text>
-                <TouchableOpacity style={styles.googleBtn} onPress={handleGoogleLogin} disabled={isGoogleLoading}>
-                  {isGoogleLoading ? <ActivityIndicator color={Colors.primary} /> : (
-                    <>
-                      <Image source={require('../../../assets/icons/google-icon.png')} style={styles.socialIcon} />
-                      <Text style={styles.googleBtnText}>Continue with Google</Text>
-                    </>
-                  )}
-                </TouchableOpacity>
+                {isGoogleAuthEnabled ? (
+                  <TouchableOpacity style={styles.googleBtn} onPress={handleGoogleLogin} disabled={isGoogleLoading}>
+                    {isGoogleLoading ? <ActivityIndicator color={Colors.primary} /> : (
+                      <>
+                        <View style={styles.googleBadge}>
+                          <Text style={styles.googleBadgeText}>G</Text>
+                        </View>
+                        <Text style={styles.googleBtnText}>Continue with Google</Text>
+                      </>
+                    )}
+                  </TouchableOpacity>
+                ) : (
+                  <Text style={styles.googleHint}>Google login is unavailable in this build. Use phone OTP.</Text>
+                )}
 
                 <View style={styles.dividerRow}>
                   <View style={styles.divider} /><Text style={styles.dividerText}>SECURE PHONE LOGIN</Text><View style={styles.divider} />
@@ -378,7 +433,19 @@ const styles = StyleSheet.create({
   cardHeader: { fontSize: 18, fontWeight: '900', color: '#1E293B', marginBottom: 24, textAlign: 'center' },
   googleBtn: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', height: 56, borderRadius: 18, borderWidth: 1.5, borderColor: '#F1F5F9', gap: 12 },
   socialIcon: { width: 20, height: 20 },
+  googleBadge: {
+    width: 20,
+    height: 20,
+    borderRadius: 10,
+    backgroundColor: '#FFFFFF',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  googleBadgeText: { fontSize: 12, fontWeight: '900', color: '#EA4335' },
   googleBtnText: { fontSize: 15, fontWeight: '700', color: '#1E293B' },
+  googleHint: { marginTop: 8, textAlign: 'center', fontSize: 12, color: '#64748B', fontWeight: '600' },
   dividerRow: { flexDirection: 'row', alignItems: 'center', marginVertical: 24, gap: 12 },
   divider: { flex: 1, height: 1, backgroundColor: '#F1F5F9' },
   dividerText: { fontSize: 10, fontWeight: '900', color: '#CBD5E1', letterSpacing: 1 },

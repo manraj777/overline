@@ -7,4 +7,11 @@ export const Config = {
   API_URL: __DEV__ ? `http://${DEV_HOST}:3001` : PROD_URL,
   API_PREFIX: '/api/v1',
   APP_VERSION: '1.0.0-admin',
+  FEATURES: {
+    GOOGLE_AUTH_ENABLED: true,
+  },
+  GOOGLE: {
+    WEB_CLIENT_ID: '409423359805-5istogdcdj476ff3816m28g7qkc622bc.apps.googleusercontent.com',
+    OFFLINE_ACCESS: false,
+  },
 };

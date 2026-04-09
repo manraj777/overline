@@ -9,6 +9,10 @@ interface LoginCredentials {
   password: string;
 }
 
+interface FirebasePhoneLoginPayload {
+  idToken: string;
+}
+
 export function useUser() {
   const { isAuthenticated, accessToken } = useAuthStore();
 
@@ -133,6 +137,35 @@ export function useGoogleLogin() {
       queryClient.setQueryData(['admin', 'user', 'me'], data.user);
 
       // Fetch shops accessible to this user and auto-set the first one
+      try {
+        const { data: shops } = await api.get('/admin/my-shops');
+        if (shops && shops.length > 0) {
+          setShopId(shops[0].id);
+          queryClient.setQueryData(['admin', 'my-shops'], shops);
+        }
+      } catch (err) {
+        console.error('Failed to fetch shops:', err);
+      }
+    },
+  });
+}
+
+export function useFirebasePhoneLogin() {
+  const queryClient = useQueryClient();
+  const { login, setShopId } = useAuthStore();
+
+  return useMutation<AuthResponse, Error, FirebasePhoneLoginPayload>({
+    mutationFn: async ({ idToken }) => {
+      const { data } = await api.post('/auth/firebase/phone-login', { idToken });
+      if (!isAdminRole(data.user.role)) {
+        throw new Error('Access denied. Admin access only.');
+      }
+      return data;
+    },
+    onSuccess: async (data) => {
+      login(data.user, data.accessToken, data.refreshToken);
+      queryClient.setQueryData(['admin', 'user', 'me'], data.user);
+
       try {
         const { data: shops } = await api.get('/admin/my-shops');
         if (shops && shops.length > 0) {

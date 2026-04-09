@@ -1,4 +1,4 @@
-export { useUser, useLogin, useRegisterShop, useLogout, useMyShops, useGoogleLogin } from './useAuth';
+export { useUser, useLogin, useRegisterShop, useLogout, useMyShops, useGoogleLogin, useFirebasePhoneLogin } from './useAuth';
 export {
   useDashboard,
   useQueueTracking,

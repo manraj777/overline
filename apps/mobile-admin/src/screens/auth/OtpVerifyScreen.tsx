@@ -15,7 +15,6 @@ import {useRoute, RouteProp} from '@react-navigation/native';
 import {useNavigation} from '@react-navigation/native';
 import {NativeStackNavigationProp} from '@react-navigation/native-stack';
 import axios from 'axios';
-import {otpApi} from '../../api/client';
 import {useAuthStore} from '../../stores/authStore';
 import {RootStackParamList} from '../../types';
 
@@ -27,8 +26,8 @@ const OTP_LENGTH = 6;
 export default function OtpVerifyScreen() {
   const navigation = useNavigation<NavigationProps>();
   const route = useRoute<RouteProps>();
-  const {phone, flow, requestedRole, selectedShopId} = route.params;
-  const {completeOtpVerification, verifyPhoneLoginOtp, sendPhoneLoginOtp, logout} = useAuthStore();
+  const {phone, requestedRole, selectedShopId} = route.params;
+  const {verifyPhoneLoginOtp, sendPhoneLoginOtp, logout} = useAuthStore();
 
   const [otp, setOtp] = useState<string[]>(Array(OTP_LENGTH).fill(''));
   const [isVerifying, setIsVerifying] = useState(false);
@@ -92,15 +91,10 @@ export default function OtpVerifyScreen() {
     setError('');
 
     try {
-      if (flow === 'PHONE_LOGIN') {
-        await verifyPhoneLoginOtp(phone, code, {
-          requestedRole: requestedRole || 'OWNER',
-          selectedShopId,
-        });
-      } else {
-        await otpApi.verify(phone, code, 'LOGIN');
-        completeOtpVerification();
-      }
+      await verifyPhoneLoginOtp(phone, code, {
+        requestedRole: requestedRole || 'OWNER',
+        selectedShopId,
+      });
     } catch (caughtError: unknown) {
       const message = axios.isAxiosError(caughtError)
         ? ((caughtError.response?.data as {message?: string} | undefined)?.message || 'Invalid OTP. Please try again.')
@@ -119,14 +113,10 @@ export default function OtpVerifyScreen() {
     if (countdown > 0) return;
     setIsResending(true);
     try {
-      if (flow === 'PHONE_LOGIN') {
-        await sendPhoneLoginOtp(phone, {
-          requestedRole: requestedRole || 'OWNER',
-          selectedShopId,
-        });
-      } else {
-        await otpApi.send(phone, 'LOGIN');
-      }
+      await sendPhoneLoginOtp(phone, {
+        requestedRole: requestedRole || 'OWNER',
+        selectedShopId,
+      });
       setCountdown(60);
       setOtp(Array(OTP_LENGTH).fill(''));
       setError('');

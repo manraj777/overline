@@ -22,3 +22,25 @@ buildscript {
 plugins {
     id("com.facebook.react.rootproject")
 }
+
+subprojects { subproject ->
+    subproject.plugins.withId("com.android.library") {
+        subproject.android {
+            compileSdkVersion rootProject.ext.compileSdkVersion
+            defaultConfig {
+                minSdkVersion rootProject.ext.minSdkVersion
+                targetSdkVersion rootProject.ext.targetSdkVersion
+            }
+        }
+    }
+
+    subproject.plugins.withId("com.android.application") {
+        subproject.android {
+            compileSdkVersion rootProject.ext.compileSdkVersion
+            defaultConfig {
+                minSdkVersion rootProject.ext.minSdkVersion
+                targetSdkVersion rootProject.ext.targetSdkVersion
+            }
+        }
+    }
+}
