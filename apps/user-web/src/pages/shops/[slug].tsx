@@ -51,6 +51,7 @@ export default function ShopDetailPage() {
     setStaff,
     setDate,
     setSlot,
+    notes,
     setNotes,
     offerCode,
     bookingForOther,
