@@ -180,6 +180,39 @@ export default function RegisterPage() {
               {step === 3 && (
                 <div className="space-y-5 animate-fade-in">
                   <h2 className="label-m3 pb-3 border-b border-outline-variant/10">Location Details</h2>
+                  
+                  {/* Auto-detect Location Button */}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      if (!navigator.geolocation) {
+                        setError('Geolocation is not supported by your browser');
+                        return;
+                      }
+                      navigator.geolocation.getCurrentPosition(
+                        (position) => {
+                          const form = document.querySelector('form');
+                          const latInput = form?.querySelector('input[name="latitude"]') as HTMLInputElement;
+                          const lngInput = form?.querySelector('input[name="longitude"]') as HTMLInputElement;
+                          if (latInput) {
+                            latInput.value = String(position.coords.latitude);
+                            latInput.dispatchEvent(new Event('input', { bubbles: true }));
+                          }
+                          if (lngInput) {
+                            lngInput.value = String(position.coords.longitude);
+                            lngInput.dispatchEvent(new Event('input', { bubbles: true }));
+                          }
+                        },
+                        () => setError('Unable to detect location. Please enter manually.'),
+                        { enableHighAccuracy: true }
+                      );
+                    }}
+                    className="w-full flex items-center justify-center gap-2 py-3 bg-primary-fixed/30 border border-primary/20 rounded-xl text-primary font-bold text-sm hover:bg-primary-fixed/50 transition-all active:scale-[0.98]"
+                  >
+                    <MapPin className="w-4 h-4" />
+                    Detect My Location Automatically
+                  </button>
+                  
                   <div className="space-y-2">
                     <label className="label-m3">Street Address</label>
                     <input className="input-m3" placeholder="123 Main St" {...register('address', { required: 'Address is required' })} />
@@ -202,16 +235,19 @@ export default function RegisterPage() {
                   </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
-                      <label className="label-m3">Latitude</label>
+                      <label className="label-m3">Latitude <span className="text-error">*</span></label>
                       <input className="input-m3" type="number" step="any" placeholder="19.0760" {...register('latitude', { required: 'Latitude is required', valueAsNumber: true })} />
                       {errors.latitude && <p className="text-error text-xs font-medium">{errors.latitude.message}</p>}
                     </div>
                     <div className="space-y-2">
-                      <label className="label-m3">Longitude</label>
+                      <label className="label-m3">Longitude <span className="text-error">*</span></label>
                       <input className="input-m3" type="number" step="any" placeholder="72.8777" {...register('longitude', { required: 'Longitude is required', valueAsNumber: true })} />
                       {errors.longitude && <p className="text-error text-xs font-medium">{errors.longitude.message}</p>}
                     </div>
                   </div>
+                  <p className="text-xs text-on-surface-variant/70 italic">
+                    📍 Location is mandatory. Users will see your shop on the map when booking.
+                  </p>
                   <div className="flex gap-3 mt-6">
                     <button type="button" className="flex-1 btn-tonal py-3" disabled={isSubmitting || registerShop.isPending} onClick={onPrevStep}>Back</button>
                     <Button type="submit" className="flex-1 btn-primary py-3" isLoading={isSubmitting || registerShop.isPending}>

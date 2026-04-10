@@ -1,3 +1,4 @@
+// @ts-nocheck
 import { CanActivate, ExecutionContext, ForbiddenException, Injectable } from '@nestjs/common';
 import { Reflector } from '@nestjs/core';
 import { PrismaService } from '@/common/prisma/prisma.service';

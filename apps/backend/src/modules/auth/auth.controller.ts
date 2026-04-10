@@ -24,6 +24,7 @@ import { RegisterShopDto } from './dto/register-shop.dto';
 import { SendOtpDto } from './dto/send-otp.dto';
 import { VerifyOtpDto } from './dto/verify-otp.dto';
 import { FirebasePhoneLoginDto } from './dto/firebase-phone-login.dto';
+import { StaffLoginDto } from './dto/staff-login.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { GoogleOAuthGuard } from './guards/google-oauth.guard';
 import { IsNotEmpty, IsString, Matches } from 'class-validator';
@@ -248,6 +249,13 @@ export class AuthController {
     return this.authService.sendPhoneOtp(dto.phone);
   }
 
+  @Post('staff-login')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Login as staff using phone and 6-digit PIN' })
+  async staffLogin(@Body() dto: StaffLoginDto) {
+    return this.authService.staffLogin(dto.phone, dto.pin);
+  }
+
   @Post('verify-otp')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Verify phone OTP and login/signup user' })
@@ -260,13 +268,6 @@ export class AuthController {
   @ApiOperation({ summary: 'Get staff-assigned shops by mobile number' })
   async getStaffAssignedShops(@Body() dto: StaffShopsLookupDto) {
     return this.authService.getAssignedStaffShops(dto.phone);
-  }
-
-  @Post('staff-login')
-  @HttpCode(HttpStatus.OK)
-  @ApiOperation({ summary: 'Staff login via mobile and 6-digit PIN for selected shop' })
-  async staffLogin(@Body() dto: StaffPinLoginDto): Promise<TokenResponse> {
-    return this.authService.staffPinLogin(dto.shopId, dto.phone, dto.password);
   }
 
   @Post('staff/send-otp')

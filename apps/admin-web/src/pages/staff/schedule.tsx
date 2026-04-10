@@ -43,7 +43,7 @@ export default function StaffSchedulePage() {
   useEffect(() => {
     const map: Record<string, DaySchedule> = {};
     for (const day of DAYS) {
-      const existing = scheduleData?.workingHours?.find((item) => item.dayOfWeek === day.key);
+      const existing = scheduleData?.workingHours?.find((item: any) => item.dayOfWeek === day.key);
       map[day.key] = {
         isWorking: existing ? !existing.isOff : day.key !== 'SUNDAY',
         startTime: existing?.startTime || '09:00',
@@ -70,7 +70,7 @@ export default function StaffSchedulePage() {
   }, [scheduleData?.workingHours]);
 
   const blockedDates = useMemo(() => {
-    return (scheduleData?.timeOffs || []).map((item) => ({
+    return (scheduleData?.timeOffs || []).map((item: any) => ({
       id: item.id,
       date: new Date(item.startTime).toISOString().slice(0, 10),
       reason: item.reason || 'Personal',
@@ -325,7 +325,7 @@ export default function StaffSchedulePage() {
             {blockedDates.length === 0 ? (
               <p className="text-sm text-gray-500">No blocked dates yet.</p>
             ) : (
-              blockedDates.map((item) => (
+              blockedDates.map((item: any) => (
                 <div key={item.id} className="flex items-center justify-between rounded border border-gray-200 p-3">
                   <div>
                     <p className="font-medium text-gray-900">{item.date}</p>

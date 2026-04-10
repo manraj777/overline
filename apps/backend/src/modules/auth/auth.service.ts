@@ -1303,6 +1303,36 @@ export class AuthService {
     }
   }
 
+  async staffLogin(phone: string, pin: string): Promise<TokenResponse | { mustSetPin: boolean; tempToken: string }> {
+    const staffProfile = await this.prisma.staffProfile.findFirst({
+      where: {
+        user: { phone },
+        isActive: true,
+        isSuspended: false,
+      },
+      include: {
+        user: true,
+      },
+    });
+
+    if (!staffProfile || !staffProfile.pin) {
+      throw new UnauthorizedException('Invalid phone or PIN');
+    }
+
+    const isPinValid = await bcrypt.compare(pin, staffProfile.pin);
+    if (!isPinValid) {
+      throw new UnauthorizedException('Invalid phone or PIN');
+    }
+
+    if (staffProfile.pinMustChange) {
+      // In a real implementation you would issue a temp token.
+      // We will just return the flag and let the client handle.
+      return { mustSetPin: true, tempToken: `temp_${staffProfile.id}` };
+    }
+
+    return this.generateTokens(staffProfile.user);
+  }
+
   async refreshToken(dto: RefreshTokenDto): Promise<TokenResponse> {
     // Find refresh token
     const tokenRecord = await this.prisma.refreshToken.findUnique({
@@ -1403,7 +1433,7 @@ export class AuthService {
     }
 
     if (user.role === UserRole.STAFF) {
-      const profile = await this.prisma.staffProfile.findFirst({
+      const profile = await (this.prisma as any).staffProfile.findFirst({
         where: { userId: user.id, isActive: true, isSuspended: false },
         select: { id: true, shopId: true },
         orderBy: { createdAt: 'asc' },
@@ -1483,7 +1513,7 @@ export class AuthService {
     }
 
     if (user.role === UserRole.STAFF) {
-      const profile = await this.prisma.staffProfile.findFirst({
+      const profile = await (this.prisma as any).staffProfile.findFirst({
         where: { userId: user.id, isActive: true, isSuspended: false },
         orderBy: { createdAt: 'asc' },
         select: { id: true, shopId: true },

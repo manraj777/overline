@@ -148,25 +148,65 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
   const navigationByRole: Record<UserRole, NavigationSection[]> = {
     [UserRole.OWNER]: [
       {
-        title: 'Owner Portal',
+        title: 'Overview',
         items: [
           { name: 'Dashboard', href: '/owner/dashboard', icon: LayoutDashboard },
+          { name: 'Queue', href: '/owner/queue', icon: Clock3 },
+        ],
+      },
+      {
+        title: 'Business',
+        items: [
+          { name: 'Bookings', href: '/owner/bookings', icon: Scissors },
+          { name: 'Services', href: '/owner/services', icon: Scissors },
           { name: 'Staff', href: '/owner/staff', icon: Users },
-          { name: 'Shop', href: '/owner/shop', icon: Store },
+        ],
+      },
+      {
+        title: 'Finance',
+        items: [
           { name: 'Payments', href: '/owner/payments', icon: CreditCard },
+          { name: 'Staff Earnings', href: '/owner/earnings/staff', icon: CreditCard },
+        ],
+      },
+      {
+        title: 'Insights',
+        items: [
+          { name: 'Revenue', href: '/owner/analytics/revenue', icon: Star },
+          { name: 'Reviews', href: '/owner/analytics/reviews', icon: Star },
+        ],
+      },
+      {
+        title: 'Admin',
+        items: [
+          { name: 'Shop Profile', href: '/owner/shop', icon: Store },
           { name: 'Settings', href: '/owner/settings', icon: Settings },
         ],
       },
     ],
     [UserRole.STAFF]: [
       {
-        title: 'Staff Portal',
+        title: 'My Day',
         items: [
           { name: 'Dashboard', href: '/staff/dashboard', icon: LayoutDashboard },
+          { name: 'Queue', href: '/staff/queue', icon: Clock3 },
+          { name: 'Bookings', href: '/staff/bookings', icon: Scissors },
+        ],
+      },
+      {
+        title: 'Work',
+        items: [
           { name: 'Services', href: '/staff/services', icon: Scissors },
-          { name: 'Timing', href: '/staff/schedule', icon: Clock3 },
+          { name: 'Schedule', href: '/staff/schedule', icon: Clock3 },
+          { name: 'Earnings', href: '/staff/earnings', icon: CreditCard },
+        ],
+      },
+      {
+        title: 'Account',
+        items: [
           { name: 'Reviews', href: '/staff/reviews', icon: Star },
-          { name: 'Settings', href: '/staff/profile', icon: Settings },
+          { name: 'Notifications', href: '/staff/notifications', icon: Settings },
+          { name: 'Profile', href: '/staff/profile', icon: Settings },
         ],
       },
     ],
@@ -232,9 +272,12 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
         </div>
 
         {/* Navigation */}
-        <nav className="flex-1 px-2 lg:px-3 py-4 space-y-4 overflow-y-auto">
+        <nav className="flex-1 px-2 lg:px-3 py-4 space-y-5 overflow-y-auto">
           {roleSections.map((section) => (
             <div key={section.title}>
+              {!sidebarCollapsed && (
+                <p className="px-4 mb-2 text-[10px] font-bold tracking-[0.15em] uppercase text-white/25">{section.title}</p>
+              )}
               <div className="space-y-0.5">
                 {section.items.map((item) => (
                   <Link

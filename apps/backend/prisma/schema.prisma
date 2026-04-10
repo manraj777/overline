@@ -429,6 +429,8 @@ model StaffProfile {
   notifLocationShare Boolean  @default(true) @map("notif_location_share")
   notifReview        Boolean  @default(true) @map("notif_review")
   notifNoShow        Boolean  @default(true) @map("notif_no_show")
+  pin                String?  @map("pin") // bcrypt hashed 6-digit code
+  pinMustChange      Boolean  @default(true) @map("pin_must_change")
   createdAt          DateTime @default(now()) @map("created_at")
   updatedAt          DateTime @updatedAt @map("updated_at")
 

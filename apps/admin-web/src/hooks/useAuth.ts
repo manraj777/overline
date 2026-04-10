@@ -11,6 +11,7 @@ interface LoginCredentials {
 
 interface FirebasePhoneLoginPayload {
   idToken: string;
+  requestedRole?: string;
 }
 
 export function useUser() {
@@ -155,8 +156,8 @@ export function useFirebasePhoneLogin() {
   const { login, setShopId } = useAuthStore();
 
   return useMutation<AuthResponse, Error, FirebasePhoneLoginPayload>({
-    mutationFn: async ({ idToken }) => {
-      const { data } = await api.post('/auth/firebase/phone-login', { idToken });
+    mutationFn: async ({ idToken, requestedRole }) => {
+      const { data } = await api.post('/auth/firebase/phone-login', { idToken, requestedRole });
       if (!isAdminRole(data.user.role)) {
         throw new Error('Access denied. Admin access only.');
       }

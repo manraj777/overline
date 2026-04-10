@@ -176,11 +176,16 @@ export default function LoginPage() {
     setStaffAuthBusy(true);
     try {
       const normalizedPhone = `+91${digits}`;
-      const { data: auth } = await api.post<AuthResponse>('/auth/staff-login', {
-        shopId: selectedShop.id,
+      const { data: auth } = await api.post<any>('/auth/staff-login', {
         phone: normalizedPhone,
-        password: staffPin,
+        pin: staffPin,
       });
+
+      if (auth.mustSetPin) {
+        setError('Please set up your PIN first using the temporary token.');
+        // Add functionality to redirect or show set-pin modal.
+        return;
+      }
 
       login(auth.user, auth.accessToken, auth.refreshToken, selectedShop.id);
       setShopId(selectedShop.id);

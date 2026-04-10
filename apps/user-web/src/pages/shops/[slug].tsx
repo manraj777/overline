@@ -39,6 +39,9 @@ export default function ShopDetailPage() {
   const { data: queueStats } = useShopQueueStats(shop?.id || '');
   const { data: ratingStats } = useShopRatingStats(shop?.id || '');
 
+  const [activeTab, setActiveTab] = React.useState('Book Service');
+  const tabs = ['Overview', 'Book Service', 'Reviews', 'Photos', 'Info'];
+
   const {
     selectedServices,
     selectedStaff,
@@ -458,12 +461,34 @@ export default function ShopDetailPage() {
                   {shop.description && (
                     <p className="mt-4 text-on-surface-variant leading-relaxed max-w-3xl">{shop.description}</p>
                   )}
+
+                  {/* Zomato-style Tabs */}
+                  <div className="mt-10 overflow-x-auto no-scrollbar border-b border-outline-variant/20 sticky top-[120px] z-20 bg-surface/95 backdrop-blur-md">
+                    <div className="flex items-center gap-6 min-w-max px-2">
+                      {tabs.map((tab) => (
+                        <button
+                          key={tab}
+                          onClick={() => setActiveTab(tab)}
+                          className={`pb-4 text-sm font-bold transition-colors relative whitespace-nowrap ${
+                            activeTab === tab
+                              ? 'text-primary'
+                              : 'text-on-surface-variant hover:text-on-surface'
+                          }`}
+                        >
+                          {tab}
+                          {activeTab === tab && (
+                            <div className="absolute bottom-0 left-0 right-0 h-1 bg-primary rounded-t-full shadow-[0_0_8px_rgba(var(--primary-rgb),0.5)]" />
+                          )}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
                 </div>
               )}
 
               {/* Step Content */}
               <div className="card-m3 p-6 sm:p-8 mb-8">
-                {step === 'services' && (
+                {step === 'services' && activeTab === 'Book Service' && (
                   <div className="animate-fade-in">
                     {shop?.id && (
                       <div className="mb-8">
@@ -495,14 +520,64 @@ export default function ShopDetailPage() {
                         <p className="text-on-surface-variant font-medium">No services currently available.</p>
                       </div>
                     )}
+                  </div>
+                )}
 
-                    <div className="mt-12 pt-8 border-t border-outline-variant/10">
-                      <h2 className="text-xl font-black tracking-tight text-on-surface mb-6 flex items-center gap-3">
-                        <MessageSquare className="w-5 h-5 text-outline" />
-                        What people are saying
-                      </h2>
-                      <ReviewList shopId={shop.id} />
+                {step === 'services' && activeTab === 'Overview' && (
+                  <div className="animate-fade-in space-y-8">
+                     <h2 className="text-2xl font-black tracking-tight text-on-surface mb-4">About {shop.name}</h2>
+                     <p className="text-on-surface-variant leading-relaxed text-lg">{shop.description || 'Welcome to our shop.'}</p>
+                     
+                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                       <div className="p-5 bg-surface-container-low rounded-2xl border border-outline-variant/10">
+                          <h3 className="font-bold text-on-surface flex items-center gap-2 mb-3"><Clock className="w-5 h-5 text-primary" /> Today's Hours</h3>
+                          <p className="text-on-surface-variant">Open • Closes at 9:00 PM</p>
+                       </div>
+                       <div className="p-5 bg-surface-container-low rounded-2xl border border-outline-variant/10">
+                          <h3 className="font-bold text-on-surface flex items-center gap-2 mb-3"><MapPin className="w-5 h-5 text-primary" /> Location</h3>
+                          <p className="text-on-surface-variant">{shop.address}</p>
+                       </div>
+                     </div>
+                  </div>
+                )}
+
+                {step === 'services' && activeTab === 'Reviews' && (
+                  <div className="animate-fade-in">
+                    <h2 className="text-xl font-black tracking-tight text-on-surface mb-6 flex items-center gap-3">
+                      <MessageSquare className="w-5 h-5 text-outline" />
+                      What people are saying
+                    </h2>
+                    <ReviewList shopId={shop.id} />
+                  </div>
+                )}
+
+                {step === 'services' && activeTab === 'Photos' && (
+                  <div className="animate-fade-in">
+                    <h2 className="text-xl font-black tracking-tight text-on-surface mb-6 flex items-center gap-3">
+                      <Camera className="w-5 h-5 text-outline" />
+                      Photos
+                    </h2>
+                    <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                       {allPhotos.map((photo, i) => (
+                         <div key={i} className="aspect-square rounded-2xl overflow-hidden cursor-pointer hover:opacity-90" onClick={() => { setGalleryIndex(i); setGalleryOpen(true); }}>
+                           <img src={photo} alt="" className="w-full h-full object-cover" />
+                         </div>
+                       ))}
+                       {allPhotos.length === 0 && <p className="text-on-surface-variant">No photos yet.</p>}
                     </div>
+                  </div>
+                )}
+
+                {step === 'services' && activeTab === 'Info' && (
+                  <div className="animate-fade-in space-y-6">
+                    <h2 className="text-xl font-black tracking-tight text-on-surface mb-6 flex items-center gap-3">
+                      <MapPin className="w-5 h-5 text-outline" />
+                      Contact & Info
+                    </h2>
+                    <p className="text-on-surface-variant">Address: {shop.address}, {shop.city}, {shop.postalCode}</p>
+                    {shop.phone && <p className="text-on-surface-variant">Phone: {shop.phone}</p>}
+                    {shop.email && <p className="text-on-surface-variant">Email: {shop.email}</p>}
+                    <p className="text-on-surface-variant mt-4">We accept cash, UPI, and major cards.</p>
                   </div>
                 )}
 
@@ -654,17 +729,25 @@ export default function ShopDetailPage() {
                 )}
               </div>
 
-              {step === 'services' && (
-                <div className="sticky bottom-0 left-0 right-0 mt-4 -mx-6 sm:-mx-8 p-4 sm:p-6 bg-white/95 backdrop-blur-xl border-t border-outline-variant/10 lg:hidden">
-                  <button
-                    onClick={handleNextStep}
-                    disabled={!canProceed()}
-                    className="btn-primary w-full py-3.5 rounded-xl font-black disabled:opacity-40 disabled:cursor-not-allowed"
-                  >
-                    {selectedServices.length > 0
-                      ? `Add ${selectedServices.length} item${selectedServices.length > 1 ? 's' : ''} to cart`
-                      : 'Select services to continue'}
-                  </button>
+              {step === 'services' && selectedServices.length > 0 && (
+                <div className="fixed bottom-6 left-0 right-0 z-50 flex justify-center px-4 pointer-events-none animate-fade-in-up">
+                  <div className="bg-primary text-white rounded-2xl shadow-glass-strong w-full max-w-lg lg:max-w-2xl px-6 py-4 flex items-center justify-between pointer-events-auto">
+                    <div>
+                      <p className="text-sm font-medium text-white/80 uppercase tracking-widest">{selectedServices.length} ITEM{selectedServices.length > 1 ? 'S' : ''} ADDED</p>
+                      <p className="font-black text-xl flex items-center gap-2">
+                        ₹{selectedServices.reduce((sum, s) => sum + s.price, 0)}
+                        <span className="text-sm font-medium opacity-80 line-through">
+                          ₹{Math.floor(selectedServices.reduce((sum, s) => sum + s.price, 0) * 1.2)}
+                        </span>
+                      </p>
+                    </div>
+                    <button
+                      onClick={handleNextStep}
+                      className="flex items-center gap-2 bg-white text-primary px-6 py-3 rounded-xl font-black shadow-button hover:scale-105 active:scale-95 transition-all"
+                    >
+                      View Cart <ChevronRight className="w-5 h-5 -ml-1" />
+                    </button>
+                  </div>
                 </div>
               )}
             </div>

@@ -53,7 +53,7 @@ export function canAccessPath(role: UserRole | undefined | null, pathname: strin
     pathname.startsWith('/platform')
   ) {
     if (OWNER_ROUTE_PREFIXES.some((prefix) => pathname.startsWith(prefix))) {
-      return effectiveRole === UserRole.OWNER;
+      return effectiveRole === UserRole.OWNER || effectiveRole === UserRole.SUPER_ADMIN;
     }
     if (STAFF_ROUTE_PREFIXES.some((prefix) => pathname.startsWith(prefix))) {
       return effectiveRole === UserRole.STAFF;

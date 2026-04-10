@@ -36,12 +36,12 @@ async function main() {
 
   // Create Demo Shop - Salon
   const salon = await prisma.shop.upsert({
-    where: { slug: 'stylecuts-salon-mumbai' },
+    where: { slug: 'stylecuts-salon-demo' },
     update: {},
     create: {
       tenantId: salonTenant.id,
       name: 'StyleCuts Salon',
-      slug: 'stylecuts-salon-mumbai',
+      slug: 'stylecuts-salon-demo',
       description: 'Premium hair styling and grooming services in the heart of Vidisha',
       address: '123 Main Market Road',
       city: 'Vidisha',
