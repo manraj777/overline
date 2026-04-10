@@ -1304,7 +1304,7 @@ export class AuthService {
   }
 
   async staffLogin(phone: string, pin: string): Promise<TokenResponse | { mustSetPin: boolean; tempToken: string }> {
-    const staffProfile = await this.prisma.staffProfile.findFirst({
+    const staffProfile = await (this.prisma as any).staffProfile.findFirst({
       where: {
         user: { phone },
         isActive: true,

@@ -1,6 +1,6 @@
 {
   "framework": "nextjs",
-  "installCommand": "cd /vercel/path0 && corepack enable && corepack prepare pnpm@9.15.4 --activate && pnpm install --filter @overline/admin-web... --prod=false --frozen-lockfile",
+  "installCommand": "cd /vercel/path0 && corepack enable && corepack prepare pnpm@9.12.2 --activate && pnpm install --filter @overline/admin-web... --prod=false --frozen-lockfile",
   "buildCommand": "cd /vercel/path0 && pnpm --filter @overline/admin-web build",
   "rewrites": [
     {

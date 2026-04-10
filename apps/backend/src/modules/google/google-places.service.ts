@@ -107,8 +107,9 @@ export class GooglePlacesService {
 
       this.logger.log(`Shop found on Google: ${shopName} (${result.placeId})`);
       return result;
-    } catch (error) {
-      this.logger.error(`Error searching Google Places: ${error.message}`);
+    } catch (error: unknown) {
+      const message = error instanceof Error ? error.message : 'Unknown error';
+      this.logger.error(`Error searching Google Places: ${message}`);
       return { found: false };
     }
   }
