@@ -4,7 +4,7 @@
   "private": true,
   "packageManager": "pnpm@9.15.4",
   "engines": {
-    "node": ">=20.0.0"
+    "node": "20.x"
   },
   "description": "Multi-tenant appointment & queue management system for clinics, salons, and walk-in businesses",
   "scripts": {
