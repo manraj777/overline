@@ -19,6 +19,8 @@ interface RegisterForm {
   city: string;
   state: string;
   postalCode: string;
+  latitude: number;
+  longitude: number;
 }
 
 const STEP_INFO = [
@@ -197,6 +199,18 @@ export default function RegisterPage() {
                   <div className="space-y-2">
                     <label className="label-m3">Postal Code</label>
                     <input className="input-m3" placeholder="400001 (Optional)" {...register('postalCode')} />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-2">
+                      <label className="label-m3">Latitude</label>
+                      <input className="input-m3" type="number" step="any" placeholder="19.0760" {...register('latitude', { required: 'Latitude is required', valueAsNumber: true })} />
+                      {errors.latitude && <p className="text-error text-xs font-medium">{errors.latitude.message}</p>}
+                    </div>
+                    <div className="space-y-2">
+                      <label className="label-m3">Longitude</label>
+                      <input className="input-m3" type="number" step="any" placeholder="72.8777" {...register('longitude', { required: 'Longitude is required', valueAsNumber: true })} />
+                      {errors.longitude && <p className="text-error text-xs font-medium">{errors.longitude.message}</p>}
+                    </div>
                   </div>
                   <div className="flex gap-3 mt-6">
                     <button type="button" className="flex-1 btn-tonal py-3" disabled={isSubmitting || registerShop.isPending} onClick={onPrevStep}>Back</button>

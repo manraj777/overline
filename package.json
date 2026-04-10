@@ -24,7 +24,9 @@
     "db:seed": "pnpm --filter @overline/backend prisma:seed",
     "docker:up": "docker-compose up -d",
     "docker:down": "docker-compose down",
-    "clean": "rm -rf node_modules apps/*/node_modules packages/*/node_modules"
+    "clean": "rm -rf node_modules apps/*/node_modules packages/*/node_modules",
+    "security:scan-secrets": "bash scripts/scan-secrets.sh",
+    "security:setup-hooks": "bash scripts/setup-git-hooks.sh"
   },
   "devDependencies": {
     "@types/node": "^20.10.0",

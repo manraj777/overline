@@ -234,7 +234,10 @@ export default function LoginPage() {
 
       const userCredential = await confirmPhoneOtp(confirmationResult, otp);
       const idToken = await getFreshFirebaseIdToken(userCredential);
-      const auth = await firebasePhoneLogin.mutateAsync({ idToken });
+      const auth = await firebasePhoneLogin.mutateAsync({ 
+        idToken,
+        requestedRole: otpRequestedRole || undefined
+      });
 
       if (otpRequestedRole === 'STAFF' && auth.user.role !== 'STAFF') {
         throw new Error('This OTP is not linked to a staff account.');

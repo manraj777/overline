@@ -14,6 +14,7 @@ interface BookingState {
   customerPhone: string;
 
   setShop: (shop: Shop) => void;
+  clearCartAndSetShop: (shop: Shop) => void;
   addService: (service: Service) => void;
   removeService: (serviceId: string) => void;
   toggleService: (service: Service) => void;
@@ -46,18 +47,12 @@ const initialState = {
 export const useBookingStore = create<BookingState>((set, get) => ({
   ...initialState,
 
-  setShop: (shop) =>
-    set((state) => {
-      if (!state.shop || state.shop.id === shop.id) {
-        return { shop };
-      }
+  setShop: (shop) => set({ shop }),
 
-      // One cart per shop: switching shop clears previous in-progress selections.
-      return {
-        ...initialState,
-        shop,
-      };
-    }),
+  clearCartAndSetShop: (shop) => set({
+    ...initialState,
+    shop,
+  }),
 
   addService: (service) =>
     set((state) => ({

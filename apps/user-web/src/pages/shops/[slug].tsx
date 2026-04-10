@@ -6,7 +6,8 @@ import {
   MessageSquare, ChevronLeft, ChevronRight, X, Camera, UserPlus, Check,
 } from 'lucide-react';
 import { Button, Badge, Loading, Alert, Input } from '@/components/ui';
-import { ServiceList, StaffPicker, LiveQueueStatus } from '@/components/shop';
+import { ConfirmModal } from '@/components/ui/ConfirmModal';
+import { ServiceList, StaffPicker, LiveQueueStatus, ShopMap } from '@/components/shop';
 import { DatePicker, SlotPicker, BookingSummary } from '@/components/booking';
 import { ReviewList } from '@/components/reviews';
 import { useShop, useShopQueueStats, useAvailableSlots, useCreateBooking, useShopRatingStats } from '@/hooks';
@@ -43,8 +44,9 @@ export default function ShopDetailPage() {
     selectedStaff,
     selectedDate,
     selectedSlot,
-    notes,
+    shop: storeShop,
     setShop,
+    clearCartAndSetShop,
     toggleService,
     setStaff,
     setDate,
@@ -60,6 +62,11 @@ export default function ShopDetailPage() {
     getTotalDuration,
     reset,
   } = useBookingStore();
+
+  const [pendingServiceToggle, setPendingServiceToggle] = React.useState<any>(null);
+  const [showCartConflictModal, setShowCartConflictModal] = React.useState(false);
+  const [fastSearchOpen, setFastSearchOpen] = React.useState(false);
+  const [fastSearchStaffId, setFastSearchStaffId] = React.useState<string | null>(null);
 
   const { data: slots, isLoading: loadingSlots } = useAvailableSlots({
     shopId: shop?.id || '',
@@ -84,18 +91,34 @@ export default function ShopDetailPage() {
   }, [shop?.staff, selectedServices]);
 
   React.useEffect(() => {
-    if (shop) setShop(shop);
-  }, [shop, setShop]);
-
-  React.useEffect(() => {
-    return () => reset();
-  }, [reset]);
-
-  React.useEffect(() => {
     if (!selectedStaff) return;
     const stillEligible = eligibleStaff.some((person) => person.id === selectedStaff.id);
     if (!stillEligible) setStaff(null);
   }, [eligibleStaff, selectedStaff, setStaff]);
+
+  const handleToggleService = (service: any) => {
+    if (storeShop && storeShop.id !== shop?.id && selectedServices.length > 0) {
+      setPendingServiceToggle(service);
+      setShowCartConflictModal(true);
+    } else {
+      if (!storeShop || storeShop.id !== shop?.id) {
+        if (shop) setShop(shop);
+      }
+      toggleService(service);
+    }
+  };
+
+  const confirmReplaceCart = () => {
+    if (shop) clearCartAndSetShop(shop);
+    if (pendingServiceToggle) toggleService(pendingServiceToggle);
+    setPendingServiceToggle(null);
+    setShowCartConflictModal(false);
+  };
+
+  const cancelReplaceCart = () => {
+    setPendingServiceToggle(null);
+    setShowCartConflictModal(false);
+  };
 
   const allPhotos = React.useMemo(() => {
     if (!shop) return [];
@@ -221,6 +244,102 @@ export default function ShopDetailPage() {
         </div>
       )}
 
+      {/* Cart Conflict Modal */}
+      <ConfirmModal
+        isOpen={showCartConflictModal}
+        title="Start new booking?"
+        description="Adding this service will clear your cart from the other shop. Do you want to continue?"
+        confirmLabel="Yes, start fresh"
+        cancelLabel="Cancel"
+        onConfirm={confirmReplaceCart}
+        onCancel={cancelReplaceCart}
+      />
+
+      {/* Fast Search Modal */}
+      {fastSearchOpen && (
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4 bg-black/60 backdrop-blur-sm animate-fade-in">
+          <div className="bg-surface w-full max-w-lg max-h-[85vh] flex flex-col rounded-3xl overflow-hidden shadow-2xl animate-fade-in-up">
+            <div className="flex items-center justify-between p-6 border-b border-outline-variant/10">
+              <h2 className="text-xl font-black text-on-surface">Fast Menu Search</h2>
+              <button 
+                onClick={() => setFastSearchOpen(false)}
+                className="w-10 h-10 flex items-center justify-center rounded-full bg-surface-container hover:bg-surface-container-high transition-colors text-on-surface"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            
+            <div className="flex-1 overflow-y-auto p-6">
+              {!fastSearchStaffId ? (
+                <div>
+                  <h3 className="text-sm font-bold text-outline uppercase tracking-widest mb-4">Select Staff Member</h3>
+                  <div className="space-y-3">
+                    {shop?.staff?.length > 0 ? shop.staff.map((staff: any) => (
+                      <button
+                        key={staff.id}
+                        onClick={() => setFastSearchStaffId(staff.id)}
+                        className="w-full flex items-center justify-between p-4 rounded-2xl bg-surface-container-low hover:bg-surface-container transition-colors border border-outline-variant/10"
+                      >
+                        <span className="font-bold text-on-surface text-lg">{staff.name}</span>
+                        <ChevronRight className="w-5 h-5 text-outline" />
+                      </button>
+                    )) : (
+                      <p className="text-on-surface-variant">No staff found.</p>
+                    )}
+                  </div>
+                </div>
+              ) : (() => {
+                const selectedStaffData = shop?.staff?.find((s: any) => s.id === fastSearchStaffId);
+                const staffServiceIds = new Set((selectedStaffData?.staffServices || []).map((ss: any) => ss.serviceId));
+                const staffServices = shop?.services?.filter((s: any) => staffServiceIds.has(s.id)) || [];
+
+                return (
+                  <div>
+                    <button 
+                      onClick={() => setFastSearchStaffId(null)}
+                      className="flex items-center gap-2 text-primary font-bold text-sm mb-6 hover:underline"
+                    >
+                      <ArrowLeft className="w-4 h-4" /> Back to Staff
+                    </button>
+                    <h3 className="text-xl font-black text-on-surface mb-6">{selectedStaffData?.name}'s Services</h3>
+                    
+                    {staffServices.length > 0 ? (
+                      <ServiceList
+                        services={staffServices}
+                        selectedServices={selectedServices}
+                        onToggleService={handleToggleService}
+                      />
+                    ) : (
+                      <p className="text-on-surface-variant font-medium text-center p-6 bg-surface-container-low rounded-2xl">
+                        No services found for this staff member.
+                      </p>
+                    )}
+                  </div>
+                );
+              })()}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Floating Fast Search Button */}
+      {step === 'services' && !fastSearchOpen && (
+        <button
+          onClick={() => {
+            setFastSearchStaffId(null);
+            setFastSearchOpen(true);
+          }}
+          className="fixed bottom-24 lg:bottom-10 right-6 lg:right-10 w-16 h-16 bg-primary text-white rounded-full shadow-[0_8px_30px_rgb(0,0,0,0.3)] flex items-center justify-center z-40 hover:-translate-y-1 transition-all duration-300"
+          title="Fast Menu Search"
+        >
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+            <line x1="3" y1="12" x2="21" y2="12"></line>
+            <line x1="3" y1="6" x2="21" y2="6"></line>
+            <line x1="3" y1="18" x2="21" y2="18"></line>
+          </svg>
+        </button>
+      )}
+
       <div className="min-h-screen bg-surface pb-32 overflow-hidden">
         {/* ── Sticky Progress Bar ── */}
         <div className="bg-white/70 backdrop-blur-xl border-b border-outline-variant/10 sticky top-16 z-30">
@@ -325,6 +444,16 @@ export default function ShopDetailPage() {
                     </button>
                   </div>
 
+                  {shop.latitude && shop.longitude && (
+                    <div className="mt-8 h-64 w-full rounded-3xl overflow-hidden shadow-sm">
+                      <ShopMap
+                        shops={[shop as any]}
+                        userLocation={{ lat: Number(shop.latitude), lng: Number(shop.longitude) }}
+                        zoom={15}
+                      />
+                    </div>
+                  )}
+
                   {shop.description && (
                     <p className="mt-4 text-on-surface-variant leading-relaxed max-w-3xl">{shop.description}</p>
                   )}
@@ -355,7 +484,7 @@ export default function ShopDetailPage() {
                             <ServiceList
                               services={group.services}
                               selectedServices={selectedServices}
-                              onToggleService={toggleService}
+                              onToggleService={handleToggleService}
                             />
                           </section>
                         ))}

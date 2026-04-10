@@ -1048,6 +1048,8 @@ export class AdminService {
       ...(dto.phone !== undefined ? { phone: dto.phone } : {}),
       ...(dto.email !== undefined ? { email: dto.email } : {}),
       ...(dto.website !== undefined ? { website: dto.website } : {}),
+      ...(dto.latitude !== undefined ? { latitude: dto.latitude } : {}),
+      ...(dto.longitude !== undefined ? { longitude: dto.longitude } : {}),
     };
 
     if (dto.socialLinks) {

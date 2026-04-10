@@ -27,6 +27,8 @@ export default function SettingsPage() {
     state: '',
     postalCode: '',
     location: '',
+    latitude: '' as string | number,
+    longitude: '' as string | number,
     googleMapLink: '',
     workingTime: '09:00 - 21:00',
   });
@@ -54,6 +56,8 @@ export default function SettingsPage() {
       state: shopData.state || '',
       postalCode: shopData.postalCode || '',
       location: String(shopData.settings?.location || ''),
+      latitude: shopData.latitude || '',
+      longitude: shopData.longitude || '',
       googleMapLink: String(shopData.settings?.googleMapLink || ''),
       workingTime: String(shopData.settings?.workingTime || '09:00 - 21:00'),
     });
@@ -73,6 +77,8 @@ export default function SettingsPage() {
         city: shopForm.city,
         state: shopForm.state,
         postalCode: shopForm.postalCode,
+        latitude: shopForm.latitude ? Number(shopForm.latitude) : undefined,
+        longitude: shopForm.longitude ? Number(shopForm.longitude) : undefined,
         settings: {
           ...(shopData?.settings || {}),
           shopType: shopForm.shopType,
@@ -288,6 +294,23 @@ export default function SettingsPage() {
                       label="Google Link (Optional)"
                       value={shopForm.googleMapLink}
                       onChange={(e) => setShopForm((prev) => ({ ...prev, googleMapLink: e.target.value }))}
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <Input
+                      label="Latitude"
+                      type="number"
+                      step="any"
+                      value={shopForm.latitude as string}
+                      onChange={(e) => setShopForm((prev) => ({ ...prev, latitude: e.target.value }))}
+                    />
+                    <Input
+                      label="Longitude"
+                      type="number"
+                      step="any"
+                      value={shopForm.longitude as string}
+                      onChange={(e) => setShopForm((prev) => ({ ...prev, longitude: e.target.value }))}
                     />
                   </div>
 

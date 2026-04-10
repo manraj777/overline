@@ -546,6 +546,18 @@ export class AuthService {
       });
 
       if (existingUser) {
+        if (requestedRole === 'OWNER' && existingUser.role === UserRole.USER) {
+          // Promote USER to OWNER automatically
+          return tx.user.update({
+            where: { id: existingUser.id },
+            data: {
+              role: UserRole.OWNER,
+              isPhoneVerified: true,
+              lastLoginAt: new Date(),
+            },
+          });
+        }
+
         if (isRequestingAdminRole && existingUser.role === UserRole.USER) {
           throw new ForbiddenException(
             'Access denied. This phone is linked to a customer account. Please use the customer app.',
@@ -614,6 +626,22 @@ export class AuthService {
         return provisionedUser;
       }
 
+      if (requestedRole === 'OWNER') {
+        const emailPrefix = normalizedPhone.replace(/\D/g, '');
+        const generatedEmail = `${emailPrefix}.${Date.now()}@phone.overline.app`;
+        return tx.user.create({
+          data: {
+            phone: normalizedPhone,
+            isPhoneVerified: true,
+            name: `User ${normalizedPhone.slice(-4)}`,
+            email: generatedEmail,
+            role: UserRole.OWNER,
+            authProvider: 'phone',
+            lastLoginAt: new Date(),
+          },
+        });
+      }
+
       if (isRequestingAdminRole) {
         throw new ForbiddenException(
           'No admin account found for this phone number. Ask your owner to invite you first.',
@@ -638,7 +666,7 @@ export class AuthService {
     return this.generateTokens(user);
   }
 
-  async firebasePhoneLogin(idToken: string): Promise<TokenResponse> {
+  async firebasePhoneLogin(idToken: string, requestedRole?: string): Promise<TokenResponse> {
     const token = idToken?.trim();
     if (!token) {
       throw new BadRequestException('Firebase ID token is required');
@@ -675,10 +703,13 @@ export class AuthService {
         where: { phone: normalizedPhone },
       });
 
+      // If user exists, promote to OWNER if requested
       if (existingUser) {
+        const newRole = (requestedRole === 'OWNER' && existingUser.role === UserRole.USER) ? UserRole.OWNER : existingUser.role;
         return tx.user.update({
           where: { id: existingUser.id },
           data: {
+            role: newRole,
             isPhoneVerified: true,
             lastLoginAt: new Date(),
             authProvider:
@@ -692,6 +723,7 @@ export class AuthService {
       const emailPrefix = normalizedPhone.replace(/\D/g, '');
       const generatedEmail = `${emailPrefix}.${Date.now()}@phone.overline.app`;
       const name = decodedToken.name?.trim() || `User ${normalizedPhone.slice(-4)}`;
+      const roleToAssign = requestedRole === 'OWNER' ? UserRole.OWNER : UserRole.USER;
 
       return tx.user.create({
         data: {
@@ -699,7 +731,7 @@ export class AuthService {
           isPhoneVerified: true,
           name,
           email: generatedEmail,
-          role: UserRole.USER,
+          role: roleToAssign,
           authProvider: 'firebase',
           lastLoginAt: new Date(),
         },
@@ -1204,6 +1236,7 @@ export class AuthService {
     name?: string,
     picture?: string,
     emailVerified?: boolean,
+    requestedRole?: string,
   ): Promise<TokenResponse> {
     try {
       console.log('[handleGoogleUser] Processing:', { googleId, email, name, emailVerified });
@@ -1236,6 +1269,10 @@ export class AuthService {
           updateData.isEmailVerified = emailVerified || user.isEmailVerified;
           updateData.avatarUrl = user.avatarUrl || picture;
         }
+        
+        if (requestedRole === 'OWNER' && user.role === UserRole.USER) {
+          updateData.role = UserRole.OWNER;
+        }
 
         user = await this.prisma.user.update({
           where: { id: user.id },
@@ -1252,7 +1289,7 @@ export class AuthService {
             authProvider: 'google',
             avatarUrl: picture,
             isEmailVerified: emailVerified || false,
-            role: UserRole.USER,
+            role: requestedRole === 'OWNER' ? UserRole.OWNER : UserRole.USER,
           },
         });
         console.log('[handleGoogleUser] New user created:', user.id);

@@ -1,4 +1,4 @@
-import { IsEmail, IsNotEmpty, IsString, MinLength, IsOptional, IsEnum } from 'class-validator';
+import { IsEmail, IsNotEmpty, IsString, MinLength, IsOptional, IsEnum, IsNumber } from 'class-validator';
 import { ApiProperty } from '@nestjs/swagger';
 import { TenantType } from '@prisma/client';
 
@@ -54,12 +54,14 @@ export class RegisterShopDto {
   @IsOptional()
   phone?: string;
 
-  // Optional coordinates if we want map integration upfront
+  // Mandatory coordinates for map integration
   @ApiProperty({ example: 19.076 })
-  @IsOptional()
-  latitude?: number;
+  @IsNumber()
+  @IsNotEmpty()
+  latitude: number;
 
   @ApiProperty({ example: 72.8777 })
-  @IsOptional()
-  longitude?: number;
+  @IsNumber()
+  @IsNotEmpty()
+  longitude: number;
 }

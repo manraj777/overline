@@ -66,4 +66,12 @@ export class UpdateOwnerShopSettingsDto {
   @ValidateNested({ each: true })
   @Type(() => SocialLinkDto)
   socialLinks?: SocialLinkDto[];
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  latitude?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  longitude?: number;
 }

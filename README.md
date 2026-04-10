@@ -165,6 +165,18 @@ cd apps/backend && pnpm test
 cd apps/backend && pnpm test:e2e
 ```
 
+## 🔒 Secret Safety
+
+```bash
+# Install local pre-commit hook once per clone
+pnpm security:setup-hooks
+
+# Run the same secret checks used in CI
+pnpm security:scan-secrets
+```
+
+The pre-commit hook blocks commits if a Google API key pattern is detected in tracked files or if mobile `google-services.json` files are tracked.
+
 ## 📱 Features
 
 ### Customer App

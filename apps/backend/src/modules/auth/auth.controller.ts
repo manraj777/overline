@@ -179,6 +179,7 @@ export class AuthController {
         req.user.name,
         req.user.picture,
         req.user.emailVerified,
+        isAdmin ? 'OWNER' : undefined
       );
 
       this.logger.log(
@@ -288,7 +289,7 @@ export class AuthController {
   @ApiResponse({ status: 200, description: 'Firebase phone login successful' })
   @ApiResponse({ status: 401, description: 'Invalid or expired Firebase token' })
   async firebasePhoneLogin(@Body() dto: FirebasePhoneLoginDto): Promise<TokenResponse> {
-    return this.authService.firebasePhoneLogin(dto.idToken);
+    return this.authService.firebasePhoneLogin(dto.idToken, dto.requestedRole);
   }
 
   @Post('refresh')
