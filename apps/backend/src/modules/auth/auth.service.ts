@@ -324,17 +324,7 @@ export class AuthService {
     const normalizedPhone = this.normalizePhone(phone);
     const variants = this.phoneVariants(normalizedPhone);
 
-    const staffRows = await this.prisma.$queryRawUnsafe<
-      Array<{
-        id: string;
-        shopId: string;
-        userId: string | null;
-        name: string;
-        email: string | null;
-        phone: string | null;
-        password: string | null;
-      }>
-    >(
+    const staffRows = (await this.prisma.$queryRawUnsafe(
       `
       SELECT id, shop_id AS "shopId", user_id AS "userId", name, email, phone, password
       FROM staff
@@ -349,7 +339,15 @@ export class AuthService {
       variants[1],
       variants[2],
       variants[3],
-    );
+    )) as Array<{
+      id: string;
+      shopId: string;
+      userId: string | null;
+      name: string;
+      email: string | null;
+      phone: string | null;
+      password: string | null;
+    }>;
 
     return { normalizedPhone, staff: staffRows[0] || null };
   }
