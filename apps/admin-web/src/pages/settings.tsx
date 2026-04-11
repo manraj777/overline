@@ -11,6 +11,7 @@ const SHOP_TYPES = ['Salon', 'Medical', 'Gym', 'Spa', 'Clinic', 'Other'];
 
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = React.useState<SettingsTab>('shop');
+  const [isEditing, setIsEditing] = React.useState(false);
   const { addToast } = useToast();
 
   const { data: shopData, isLoading } = useShopSettings();
@@ -128,6 +129,31 @@ export default function SettingsPage() {
     }
   };
 
+  const useCurrentLocation = () => {
+    if (!navigator.geolocation) {
+      addToast({ type: 'error', title: 'Error', message: 'Geolocation not supported by your browser' });
+      return;
+    }
+
+    setIsResolvingLocation(true);
+    navigator.geolocation.getCurrentPosition(
+      (pos) => {
+        setShopForm((prev) => ({
+          ...prev,
+          latitude: pos.coords.latitude,
+          longitude: pos.coords.longitude,
+        }));
+        setIsResolvingLocation(false);
+        addToast({ type: 'success', title: 'Location detected', message: 'Coordinates updated to your current position.' });
+      },
+      (err) => {
+        setIsResolvingLocation(false);
+        addToast({ type: 'error', title: 'Location error', message: err.message });
+      },
+      { enableHighAccuracy: true }
+    );
+  };
+
   const saveShopDetails = async (event: React.FormEvent) => {
     event.preventDefault();
 
@@ -186,6 +212,7 @@ export default function SettingsPage() {
         },
       });
       addToast({ type: 'success', title: 'Shop details saved' });
+      setIsEditing(false);
     } catch (error: any) {
       const message = error?.response?.data?.message;
       addToast({ type: 'error', title: 'Failed to save', message: Array.isArray(message) ? message.join(', ') : message || 'Try again.' });
@@ -275,10 +302,18 @@ export default function SettingsPage() {
       </Head>
 
       <div>
-        <div className="mb-8">
-          <span className="label-m3 mb-2 block">Shop Details</span>
-          <h1 className="text-3xl font-black tracking-tight text-on-surface">Shop Details</h1>
-          <p className="text-on-surface-variant text-sm mt-1">Manage essential shop information and media.</p>
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
+          <div>
+            <span className="label-m3 mb-2 block">Shop Details</span>
+            <h1 className="text-3xl font-black tracking-tight text-on-surface">Shop Details</h1>
+            <p className="text-on-surface-variant text-sm mt-1">Manage essential shop information and media.</p>
+          </div>
+          <button
+            onClick={() => setIsEditing(!isEditing)}
+            className={`btn-${isEditing ? 'tonal' : 'primary'} px-6 py-2.5 shadow-button active:scale-95 transition-all flex items-center gap-2`}
+          >
+            {isEditing ? 'Cancel Edit' : 'Edit Settings'}
+          </button>
         </div>
 
         <div className="flex flex-col lg:flex-row gap-6">
@@ -325,6 +360,7 @@ export default function SettingsPage() {
                       label="Name"
                       required
                       value={shopForm.name}
+                      readOnly={!isEditing}
                       onChange={(e) => setShopForm((prev) => ({ ...prev, name: e.target.value }))}
                     />
 
@@ -333,6 +369,7 @@ export default function SettingsPage() {
                       <select
                         className="input-m3"
                         required
+                        disabled={!isEditing}
                         value={shopForm.shopType}
                         onChange={(e) => setShopForm((prev) => ({ ...prev, shopType: e.target.value }))}
                       >
@@ -350,6 +387,7 @@ export default function SettingsPage() {
                       label="Phone"
                       type="tel"
                       required
+                      readOnly={!isEditing}
                       value={shopForm.phone}
                       onChange={(e) => setShopForm((prev) => ({ ...prev, phone: e.target.value }))}
                     />
@@ -357,6 +395,7 @@ export default function SettingsPage() {
                       label="Email"
                       type="email"
                       required
+                      readOnly={!isEditing}
                       value={shopForm.email}
                       onChange={(e) => setShopForm((prev) => ({ ...prev, email: e.target.value }))}
                     />
@@ -365,6 +404,7 @@ export default function SettingsPage() {
                   <Input
                     label="Address"
                     required
+                    readOnly={!isEditing}
                     value={shopForm.address}
                     onChange={(e) => setShopForm((prev) => ({ ...prev, address: e.target.value }))}
                   />
@@ -373,18 +413,21 @@ export default function SettingsPage() {
                     <Input
                       label="City"
                       required
+                      readOnly={!isEditing}
                       value={shopForm.city}
                       onChange={(e) => setShopForm((prev) => ({ ...prev, city: e.target.value }))}
                     />
                     <Input
                       label="State"
                       required
+                      readOnly={!isEditing}
                       value={shopForm.state}
                       onChange={(e) => setShopForm((prev) => ({ ...prev, state: e.target.value }))}
                     />
                     <Input
                       label="Postal Code"
                       required
+                      readOnly={!isEditing}
                       value={shopForm.postalCode}
                       onChange={(e) => setShopForm((prev) => ({ ...prev, postalCode: e.target.value }))}
                     />
@@ -394,10 +437,11 @@ export default function SettingsPage() {
                     <Input
                       label="Location"
                       required
+                      readOnly={!isEditing}
                       value={shopForm.location}
                       onChange={(e) => setShopForm((prev) => ({ ...prev, location: e.target.value }))}
                       onBlur={() => {
-                        if (!shopForm.latitude || !shopForm.longitude) {
+                        if (isEditing && (!shopForm.latitude || !shopForm.longitude)) {
                           void resolveMapCoordinates();
                         }
                       }}
@@ -405,6 +449,7 @@ export default function SettingsPage() {
                     <Input
                       label="Google Link (Optional)"
                       value={shopForm.googleMapLink}
+                      readOnly={!isEditing}
                       onChange={(e) => setShopForm((prev) => ({ ...prev, googleMapLink: e.target.value }))}
                     />
                   </div>
@@ -412,14 +457,24 @@ export default function SettingsPage() {
                   <div className="rounded-xl border border-outline-variant/15 bg-surface-container-low p-4 space-y-3">
                     <div className="flex items-center justify-between gap-3">
                       <p className="text-xs font-bold text-outline uppercase tracking-wider">Map Coordinates (Auto)</p>
-                      <button
-                        type="button"
-                        onClick={() => void resolveMapCoordinates()}
-                        disabled={isResolvingLocation || !mapQuery}
-                        className="btn-tonal px-3 py-1.5 text-xs disabled:opacity-50"
-                      >
-                        {isResolvingLocation ? 'Locating...' : 'Find on Map'}
-                      </button>
+                      <div className="flex gap-2">
+                        <button
+                          type="button"
+                          onClick={() => void resolveMapCoordinates()}
+                          disabled={isResolvingLocation || !mapQuery}
+                          className="btn-tonal px-3 py-1.5 text-xs disabled:opacity-50"
+                        >
+                          Find from Address
+                        </button>
+                        <button
+                          type="button"
+                          onClick={useCurrentLocation}
+                          disabled={isResolvingLocation}
+                          className="btn-primary px-3 py-1.5 text-xs disabled:opacity-50"
+                        >
+                          Use Current Location
+                        </button>
+                      </div>
                     </div>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
                       <div className="rounded-lg bg-surface px-3 py-2 border border-outline-variant/10">
@@ -445,15 +500,18 @@ export default function SettingsPage() {
                   <Input
                     label="Timing (Working Time)"
                     required
+                    readOnly={!isEditing}
                     value={shopForm.workingTime}
                     onChange={(e) => setShopForm((prev) => ({ ...prev, workingTime: e.target.value }))}
                     placeholder="09:00 - 21:00"
                   />
 
-                  <button type="submit" disabled={updateSettings.isPending} className="btn-primary px-8 py-3 disabled:opacity-50">
-                    <Save className="w-4 h-4" />
-                    {updateSettings.isPending ? 'Saving...' : 'Save Shop Details'}
-                  </button>
+                  {isEditing && (
+                    <button type="submit" disabled={updateSettings.isPending} className="btn-primary px-8 py-3 disabled:opacity-50">
+                      <Save className="w-4 h-4" />
+                      {updateSettings.isPending ? 'Saving...' : 'Save Shop Details'}
+                    </button>
+                  )}
                 </form>
               </div>
             )}

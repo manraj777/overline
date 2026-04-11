@@ -386,8 +386,15 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
                   {user?.name?.charAt(0) || 'A'}
                 </div>
                 <div className="hidden lg:block">
-                  <p className="text-sm font-semibold text-on-surface">{user?.name?.split(' ')[0]}</p>
-                  <p className="text-[10px] font-bold text-outline uppercase tracking-widest">{derivedRole}</p>
+                  <p className="text-sm font-semibold text-on-surface leading-none mb-1">{user?.name?.split(' ')[0]}</p>
+                  <span className={cn(
+                    "text-[10px] font-black uppercase tracking-widest px-1.5 py-0.5 rounded-md",
+                    derivedRole === UserRole.SUPER_ADMIN ? "bg-primary-fixed text-primary" :
+                    derivedRole === UserRole.OWNER ? "bg-tertiary-fixed text-tertiary" :
+                    "bg-surface-container-high text-outline"
+                  )}>
+                    {derivedRole}
+                  </span>
                 </div>
               </div>
             </div>
