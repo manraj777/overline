@@ -57,7 +57,7 @@ export class ShopsService {
       },
     });
 
-    const settings: Record<string, unknown> = {
+    const settings: Prisma.InputJsonValue = {
       ownerName: dto.ownerName,
       ownerEmail: dto.ownerEmail,
       ownerPhone: dto.ownerPhone || null,
