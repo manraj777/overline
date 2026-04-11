@@ -36,6 +36,17 @@ export default function OwnerSystemSettingsPage() {
 		event.preventDefault();
 		try {
 			await api.patch('/users/me', form);
+			const { data: refreshedUser } = await api.get('/users/me', {
+				headers: {
+					'Cache-Control': 'no-cache',
+					Pragma: 'no-cache',
+				},
+			});
+			setForm({
+				name: refreshedUser?.name || '',
+				phone: refreshedUser?.phone || '',
+				avatarUrl: refreshedUser?.avatarUrl || '',
+			});
 			addToast({ type: 'success', title: 'Profile updated' });
 		} catch (error: any) {
 			addToast({ type: 'error', title: 'Failed to update profile', message: error?.response?.data?.message || 'Try again.' });

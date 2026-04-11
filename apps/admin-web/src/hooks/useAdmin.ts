@@ -408,7 +408,13 @@ export function useUpdateShopSettings() {
   return useMutation({
     mutationFn: async (payload: Record<string, any>) => {
       const activeShopId = shopId || (await resolveActiveShopId());
-      const { data } = await api.patch(`/admin/shops/${activeShopId}/settings`, payload);
+      await api.patch(`/admin/shops/${activeShopId}/settings`, payload);
+      const { data } = await api.get(`/admin/shops/${activeShopId}/settings`, {
+        headers: {
+          'Cache-Control': 'no-cache',
+          Pragma: 'no-cache',
+        },
+      });
       return data;
     },
     onSuccess: (data) => {
