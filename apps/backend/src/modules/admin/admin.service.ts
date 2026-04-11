@@ -1039,6 +1039,9 @@ export class AdminService {
   ) {
     await this.verifyOwnerShopAccess(shopId, ownerId);
 
+    const shop = await this.prisma.shop.findUnique({ where: { id: shopId }, select: { settings: true } });
+    const existingSettings = ((shop?.settings || {}) as Record<string, unknown>) || {};
+
     const updateData: Record<string, unknown> = {
       ...(dto.name !== undefined ? { name: dto.name } : {}),
       ...(dto.description !== undefined ? { description: dto.description } : {}),
@@ -1046,6 +1049,8 @@ export class AdminService {
       ...(dto.bannerUrl !== undefined ? { coverUrl: dto.bannerUrl } : {}),
       ...(dto.address !== undefined ? { address: dto.address } : {}),
       ...(dto.city !== undefined ? { city: dto.city } : {}),
+      ...(dto.state !== undefined ? { state: dto.state } : {}),
+      ...(dto.postalCode !== undefined ? { postalCode: dto.postalCode } : {}),
       ...(dto.phone !== undefined ? { phone: dto.phone } : {}),
       ...(dto.email !== undefined ? { email: dto.email } : {}),
       ...(dto.website !== undefined ? { website: dto.website } : {}),
@@ -1053,10 +1058,20 @@ export class AdminService {
       ...(dto.longitude !== undefined ? { longitude: dto.longitude } : {}),
     };
 
-    if (dto.socialLinks) {
-      const shop = await this.prisma.shop.findUnique({ where: { id: shopId }, select: { settings: true } });
-      const settings = ((shop?.settings || {}) as Record<string, unknown>) || {};
-      updateData.settings = { ...settings, socialLinks: dto.socialLinks };
+    const settingsPatch: Record<string, unknown> = {
+      ...(dto.type !== undefined ? { type: dto.type } : {}),
+      ...(dto.location !== undefined ? { location: dto.location } : {}),
+      ...(dto.googleLink !== undefined ? { googleLink: dto.googleLink } : {}),
+      ...(dto.timing !== undefined ? { timing: dto.timing } : {}),
+      ...(dto.socialLinks !== undefined ? { socialLinks: dto.socialLinks } : {}),
+      ...(dto.settings || {}),
+    };
+
+    if (Object.keys(settingsPatch).length > 0) {
+      updateData.settings = {
+        ...existingSettings,
+        ...settingsPatch,
+      };
     }
 
     await this.prisma.shop.update({

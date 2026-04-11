@@ -42,6 +42,7 @@ export default function SettingsPage() {
     adminCancellation: true,
     dailySummary: false,
   });
+  const [isResolvingLocation, setIsResolvingLocation] = React.useState(false);
 
   React.useEffect(() => {
     if (!shopData) return;
@@ -66,8 +67,102 @@ export default function SettingsPage() {
     setNotificationSettings((prev) => ({ ...prev, ...savedNotifications }));
   }, [shopData]);
 
+  const mapQuery = React.useMemo(() => {
+    return [shopForm.location, shopForm.address, shopForm.city, shopForm.state, shopForm.postalCode]
+      .map((v) => String(v || '').trim())
+      .filter(Boolean)
+      .join(', ');
+  }, [shopForm.location, shopForm.address, shopForm.city, shopForm.state, shopForm.postalCode]);
+
+  const extractCoordinatesFromText = (text: string): { latitude: number; longitude: number } | null => {
+    if (!text) return null;
+
+    const atMatch = text.match(/@(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/);
+    if (atMatch) {
+      return { latitude: Number(atMatch[1]), longitude: Number(atMatch[2]) };
+    }
+
+    const qMatch = text.match(/[?&](?:q|query)=(-?\d+(?:\.\d+)?),(-?\d+(?:\.\d+)?)/);
+    if (qMatch) {
+      return { latitude: Number(qMatch[1]), longitude: Number(qMatch[2]) };
+    }
+
+    return null;
+  };
+
+  const resolveMapCoordinates = async (): Promise<boolean> => {
+    const fromLink = extractCoordinatesFromText(shopForm.googleMapLink);
+    if (fromLink) {
+      setShopForm((prev) => ({ ...prev, latitude: fromLink.latitude, longitude: fromLink.longitude }));
+      return true;
+    }
+
+    if (!mapQuery) return false;
+
+    try {
+      setIsResolvingLocation(true);
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=json&limit=1&q=${encodeURIComponent(mapQuery)}`,
+      );
+      const data = await response.json();
+      const top = Array.isArray(data) ? data[0] : null;
+
+      if (!top?.lat || !top?.lon) return false;
+
+      const latitude = Number(top.lat);
+      const longitude = Number(top.lon);
+
+      if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) return false;
+
+      setShopForm((prev) => ({
+        ...prev,
+        latitude,
+        longitude,
+        location: prev.location || String(top.display_name || ''),
+      }));
+      return true;
+    } catch {
+      return false;
+    } finally {
+      setIsResolvingLocation(false);
+    }
+  };
+
   const saveShopDetails = async (event: React.FormEvent) => {
     event.preventDefault();
+
+    const requiredTextFields: Array<{ key: keyof typeof shopForm; label: string }> = [
+      { key: 'name', label: 'Name' },
+      { key: 'shopType', label: 'Type' },
+      { key: 'phone', label: 'Phone' },
+      { key: 'email', label: 'Email' },
+      { key: 'address', label: 'Address' },
+      { key: 'city', label: 'City' },
+      { key: 'state', label: 'State' },
+      { key: 'postalCode', label: 'Postal Code' },
+      { key: 'location', label: 'Location' },
+      { key: 'workingTime', label: 'Timing (Working Time)' },
+    ];
+
+    const missing = requiredTextFields.find(({ key }) => !String(shopForm[key] || '').trim());
+    if (missing) {
+      addToast({ type: 'error', title: `${missing.label} is required` });
+      return;
+    }
+
+    const hasCoordinates = Number.isFinite(Number(shopForm.latitude)) && Number.isFinite(Number(shopForm.longitude));
+    if (!hasCoordinates) {
+      const resolved = await resolveMapCoordinates();
+      if (!resolved) {
+        addToast({
+          type: 'error',
+          title: 'Map location required',
+          message: 'Set a valid map location so latitude and longitude can be detected automatically.',
+        });
+        return;
+      }
+    }
+
     try {
       await updateSettings.mutateAsync({
         name: shopForm.name,
@@ -81,9 +176,12 @@ export default function SettingsPage() {
         longitude: shopForm.longitude ? Number(shopForm.longitude) : undefined,
         settings: {
           ...(shopData?.settings || {}),
+          type: shopForm.shopType,
           shopType: shopForm.shopType,
           location: shopForm.location,
+          googleLink: shopForm.googleMapLink,
           googleMapLink: shopForm.googleMapLink,
+          timing: shopForm.workingTime,
           workingTime: shopForm.workingTime,
         },
       });
@@ -225,6 +323,7 @@ export default function SettingsPage() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <Input
                       label="Name"
+                      required
                       value={shopForm.name}
                       onChange={(e) => setShopForm((prev) => ({ ...prev, name: e.target.value }))}
                     />
@@ -233,6 +332,7 @@ export default function SettingsPage() {
                       <label className="label-m3">Type</label>
                       <select
                         className="input-m3"
+                        required
                         value={shopForm.shopType}
                         onChange={(e) => setShopForm((prev) => ({ ...prev, shopType: e.target.value }))}
                       >
@@ -249,12 +349,14 @@ export default function SettingsPage() {
                     <Input
                       label="Phone"
                       type="tel"
+                      required
                       value={shopForm.phone}
                       onChange={(e) => setShopForm((prev) => ({ ...prev, phone: e.target.value }))}
                     />
                     <Input
                       label="Email"
                       type="email"
+                      required
                       value={shopForm.email}
                       onChange={(e) => setShopForm((prev) => ({ ...prev, email: e.target.value }))}
                     />
@@ -262,6 +364,7 @@ export default function SettingsPage() {
 
                   <Input
                     label="Address"
+                    required
                     value={shopForm.address}
                     onChange={(e) => setShopForm((prev) => ({ ...prev, address: e.target.value }))}
                   />
@@ -269,16 +372,19 @@ export default function SettingsPage() {
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <Input
                       label="City"
+                      required
                       value={shopForm.city}
                       onChange={(e) => setShopForm((prev) => ({ ...prev, city: e.target.value }))}
                     />
                     <Input
                       label="State"
+                      required
                       value={shopForm.state}
                       onChange={(e) => setShopForm((prev) => ({ ...prev, state: e.target.value }))}
                     />
                     <Input
                       label="Postal Code"
+                      required
                       value={shopForm.postalCode}
                       onChange={(e) => setShopForm((prev) => ({ ...prev, postalCode: e.target.value }))}
                     />
@@ -287,8 +393,14 @@ export default function SettingsPage() {
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <Input
                       label="Location"
+                      required
                       value={shopForm.location}
                       onChange={(e) => setShopForm((prev) => ({ ...prev, location: e.target.value }))}
+                      onBlur={() => {
+                        if (!shopForm.latitude || !shopForm.longitude) {
+                          void resolveMapCoordinates();
+                        }
+                      }}
                     />
                     <Input
                       label="Google Link (Optional)"
@@ -297,25 +409,42 @@ export default function SettingsPage() {
                     />
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <Input
-                      label="Latitude"
-                      type="number"
-                      step="any"
-                      value={shopForm.latitude as string}
-                      onChange={(e) => setShopForm((prev) => ({ ...prev, latitude: e.target.value }))}
-                    />
-                    <Input
-                      label="Longitude"
-                      type="number"
-                      step="any"
-                      value={shopForm.longitude as string}
-                      onChange={(e) => setShopForm((prev) => ({ ...prev, longitude: e.target.value }))}
-                    />
+                  <div className="rounded-xl border border-outline-variant/15 bg-surface-container-low p-4 space-y-3">
+                    <div className="flex items-center justify-between gap-3">
+                      <p className="text-xs font-bold text-outline uppercase tracking-wider">Map Coordinates (Auto)</p>
+                      <button
+                        type="button"
+                        onClick={() => void resolveMapCoordinates()}
+                        disabled={isResolvingLocation || !mapQuery}
+                        className="btn-tonal px-3 py-1.5 text-xs disabled:opacity-50"
+                      >
+                        {isResolvingLocation ? 'Locating...' : 'Find on Map'}
+                      </button>
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
+                      <div className="rounded-lg bg-surface px-3 py-2 border border-outline-variant/10">
+                        <span className="text-outline mr-2">Latitude:</span>
+                        <span className="font-semibold text-on-surface">{shopForm.latitude || 'Not detected'}</span>
+                      </div>
+                      <div className="rounded-lg bg-surface px-3 py-2 border border-outline-variant/10">
+                        <span className="text-outline mr-2">Longitude:</span>
+                        <span className="font-semibold text-on-surface">{shopForm.longitude || 'Not detected'}</span>
+                      </div>
+                    </div>
+                    {shopForm.latitude && shopForm.longitude && (
+                      <iframe
+                        title="Shop location map"
+                        className="w-full h-64 rounded-xl border border-outline-variant/15"
+                        loading="lazy"
+                        referrerPolicy="no-referrer-when-downgrade"
+                        src={`https://www.openstreetmap.org/export/embed.html?bbox=${Number(shopForm.longitude) - 0.01}%2C${Number(shopForm.latitude) - 0.01}%2C${Number(shopForm.longitude) + 0.01}%2C${Number(shopForm.latitude) + 0.01}&layer=mapnik&marker=${Number(shopForm.latitude)}%2C${Number(shopForm.longitude)}`}
+                      />
+                    )}
                   </div>
 
                   <Input
                     label="Timing (Working Time)"
+                    required
                     value={shopForm.workingTime}
                     onChange={(e) => setShopForm((prev) => ({ ...prev, workingTime: e.target.value }))}
                     placeholder="09:00 - 21:00"

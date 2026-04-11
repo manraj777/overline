@@ -1,5 +1,5 @@
 import { ApiPropertyOptional } from '@nestjs/swagger';
-import { IsArray, IsIn, IsOptional, IsString, IsUrl, ValidateNested } from 'class-validator';
+import { IsArray, IsIn, IsNumber, IsObject, IsOptional, IsString, IsUrl, ValidateNested } from 'class-validator';
 import { Type } from 'class-transformer';
 
 class SocialLinkDto {
@@ -48,6 +48,16 @@ export class UpdateOwnerShopSettingsDto {
   @ApiPropertyOptional()
   @IsOptional()
   @IsString()
+  state?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  postalCode?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
   phone?: string;
 
   @ApiPropertyOptional()
@@ -60,6 +70,26 @@ export class UpdateOwnerShopSettingsDto {
   @IsString()
   website?: string;
 
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  type?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  location?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  googleLink?: string;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsString()
+  timing?: string;
+
   @ApiPropertyOptional({ type: [SocialLinkDto] })
   @IsOptional()
   @IsArray()
@@ -69,9 +99,18 @@ export class UpdateOwnerShopSettingsDto {
 
   @ApiPropertyOptional()
   @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
   latitude?: number;
 
   @ApiPropertyOptional()
   @IsOptional()
+  @Type(() => Number)
+  @IsNumber()
   longitude?: number;
+
+  @ApiPropertyOptional()
+  @IsOptional()
+  @IsObject()
+  settings?: Record<string, any>;
 }
