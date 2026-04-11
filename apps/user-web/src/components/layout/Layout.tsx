@@ -280,13 +280,14 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                   <Link href="/explore" className="font-semibold hover:text-inverse-primary transition-colors">Explore</Link>
                   <Link href="/bookings" className="font-semibold hover:text-inverse-primary transition-colors">My Bookings</Link>
                   <Link href="/auth/signup" className="font-semibold hover:text-inverse-primary transition-colors">Create Account</Link>
+                  <Link href="/blog" className="font-semibold hover:text-inverse-primary transition-colors">Blog</Link>
                 </div>
               </div>
               <div className="space-y-4">
                 <h4 className="text-inverse-on-surface/40 font-semibold tracking-wide uppercase text-sm">Legal</h4>
                 <div className="flex flex-col gap-3">
-                  <a href="#" className="font-semibold hover:text-inverse-primary transition-colors">Privacy Policy</a>
-                  <a href="#" className="font-semibold hover:text-inverse-primary transition-colors">Terms of Service</a>
+                  <Link href="/privacy" className="font-semibold hover:text-inverse-primary transition-colors">Privacy Policy</Link>
+                  <Link href="/terms" className="font-semibold hover:text-inverse-primary transition-colors">Terms of Service</Link>
                   <a href={process.env.NEXT_PUBLIC_ADMIN_URL || 'https://overline-admin-web.vercel.app'} target="_blank" rel="noreferrer" className="font-semibold hover:text-inverse-primary transition-colors text-inverse-on-surface/30">
                     Partner Login
                   </a>
