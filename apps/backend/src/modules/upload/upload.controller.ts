@@ -84,6 +84,33 @@ export class UploadController {
   }
 
   /**
+   * Public upload for registration flow (no JWT required, rate-limited)
+   */
+  @Post('register-image')
+  @Throttle({ default: { limit: 5, ttl: 60000 } })
+  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 5 * 1024 * 1024 } }))
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        file: { type: 'string', format: 'binary' },
+        type: { type: 'string', description: 'main | cover | gallery' },
+      },
+    },
+  })
+  async uploadRegistrationImage(
+    @UploadedFile() file: Express.Multer.File,
+    @Body('type') type?: string,
+  ) {
+    const folder = type === 'main' ? 'overline/shops/logos'
+      : type === 'cover' ? 'overline/shops/covers'
+      : 'overline/shops/gallery';
+    const result = await this.uploadService.uploadImage(file, folder);
+    return { url: result.url };
+  }
+
+  /**
    * Upload shop logo
    */
   @Patch('shop/:shopId/logo')

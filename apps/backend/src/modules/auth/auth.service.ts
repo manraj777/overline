@@ -935,51 +935,80 @@ export class AuthService {
       });
 
       // 2. Create or Update Shop Owner (User)
+      const ownerPhone = dto.ownerPhone || dto.phone;
       const owner = existingUser
         ? await tx.user.update({
             where: { id: existingUser.id },
             data: {
               name: dto.ownerName,
-              phone: dto.phone,
+              phone: ownerPhone,
               hashedPassword,
               role: UserRole.OWNER,
               tenantId: tenant.id,
+              isPhoneVerified: dto.phoneVerified || false,
+              isEmailVerified: dto.emailVerified || false,
             },
           })
         : await tx.user.create({
             data: {
               email: dto.email,
               name: dto.ownerName,
-              phone: dto.phone,
+              phone: ownerPhone,
               hashedPassword,
               role: UserRole.OWNER,
               tenantId: tenant.id,
+              isPhoneVerified: dto.phoneVerified || false,
+              isEmailVerified: dto.emailVerified || false,
             },
           });
 
-      // 3. Create Shop
+      // 3. Resolve contact numbers
+      const publicPhone = dto.sameAsOwnerPhone ? ownerPhone : (dto.publicPhone || ownerPhone);
+      const fullAddress = [dto.building, dto.floor, dto.address, dto.locality, dto.landmark]
+        .filter(Boolean)
+        .join(', ');
+
+      // 4. Create Shop
       const shop = await tx.shop.create({
         data: {
           tenantId: tenant.id,
+          ownerId: owner.id,
           name: dto.shopName,
           slug,
-          address: dto.address,
+          description: dto.shopDescription || null,
+          address: fullAddress || dto.address,
           city: dto.city,
           state: dto.state,
           postalCode: dto.postalCode,
-          phone: dto.phone,
+          phone: publicPhone,
           email: dto.email,
           latitude: googleVerification.verifiedLocation?.lat || dto.latitude,
           longitude: googleVerification.verifiedLocation?.lng || dto.longitude,
+          logoUrl: dto.mainPhotoUrl || null,
+          coverUrl: dto.coverPhotoUrl || null,
+          photoUrls: dto.galleryUrls || [],
           autoAcceptBookings: true,
           maxConcurrentBookings: 1,
           // Google Verification fields
           isGoogleVerified: googleVerification.isVerified,
-          googlePlaceId: googleVerification.placeId,
+          googlePlaceId: dto.googlePlaceId || googleVerification.placeId,
           googleRating: googleVerification.rating,
           googleReviewsCount: googleVerification.reviewsCount || 0,
           verificationStatus: googleVerification.isVerified ? 'GOOGLE_VERIFIED' : 'PENDING',
           verifiedAt: googleVerification.isVerified ? new Date() : null,
+          // Extended contact & address in settings JSON
+          settings: {
+            publicPhone,
+            ownerPhone: ownerPhone,
+            whatsappPhone: dto.whatsappPhone || null,
+            whatsappOptIn: dto.whatsappOptIn || false,
+            sameAsOwnerPhone: dto.sameAsOwnerPhone || false,
+            building: dto.building || null,
+            floor: dto.floor || null,
+            locality: dto.locality || null,
+            landmark: dto.landmark || null,
+            formattedAddress: dto.formattedAddress || null,
+          },
         },
       });
 

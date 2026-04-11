@@ -2,6 +2,7 @@ import { Injectable, NotFoundException } from '@nestjs/common';
 import { PrismaService } from '@/common/prisma/prisma.service';
 import { RedisService } from '@/common/redis/redis.service';
 import { SearchShopsDto } from './dto/search-shops.dto';
+import { RegisterShopRequestDto } from './dto/register-shop.dto';
 import { Prisma } from '@prisma/client';
 import { SlotEngineService } from '../queue/slot-engine.service';
 
@@ -24,6 +25,78 @@ export class ShopsService {
     const value = typeof dateTime === 'string' ? dateTime : dateTime.toISOString();
     const timePart = value.includes('T') ? value.split('T')[1] : value;
     return timePart.slice(0, 5);
+  }
+
+  private slugify(value: string): string {
+    return value
+      .toLowerCase()
+      .trim()
+      .replace(/[^a-z0-9]+/g, '-')
+      .replace(/^-+|-+$/g, '');
+  }
+
+  private async uniqueShopSlug(baseName: string, city: string): Promise<string> {
+    let slug = this.slugify(`${baseName}-${city}`);
+    let suffix = 1;
+
+    while (await this.prisma.shop.findUnique({ where: { slug }, select: { id: true } })) {
+      slug = `${this.slugify(`${baseName}-${city}`)}-${suffix}`;
+      suffix += 1;
+    }
+
+    return slug;
+  }
+
+  async registerForReview(dto: RegisterShopRequestDto) {
+    const slug = await this.uniqueShopSlug(dto.shopName, dto.city);
+
+    const tenant = await this.prisma.tenant.create({
+      data: {
+        name: `${dto.shopName} Tenant`,
+        type: dto.shopType,
+      },
+    });
+
+    const settings: Record<string, unknown> = {
+      ownerName: dto.ownerName,
+      ownerEmail: dto.ownerEmail,
+      ownerPhone: dto.ownerPhone || null,
+      googleLink: dto.googleLink || null,
+      timing: dto.timing || null,
+      submittedAt: new Date().toISOString(),
+      ...(dto.settings || {}),
+    };
+
+    const shop = await this.prisma.shop.create({
+      data: {
+        tenantId: tenant.id,
+        ownerId: null,
+        name: dto.shopName,
+        slug,
+        description: dto.shopDescription || null,
+        address: dto.address,
+        city: dto.city,
+        state: dto.state || null,
+        postalCode: dto.postalCode || null,
+        phone: dto.phone || dto.ownerPhone || null,
+        email: dto.email || dto.ownerEmail,
+        latitude: dto.latitude,
+        longitude: dto.longitude,
+        photoUrls: dto.galleryUrls || [],
+        settings,
+        verificationStatus: 'PENDING_REVIEW',
+        isActive: false,
+      },
+      select: {
+        id: true,
+        slug: true,
+        name: true,
+        verificationStatus: true,
+        isActive: true,
+      },
+    });
+
+    return shop;
   }
 
   async search(dto: SearchShopsDto) {

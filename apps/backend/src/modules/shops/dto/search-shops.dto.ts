@@ -69,3 +69,4 @@ export class SearchShopsDto {
   @Max(100)
   limit?: number;
 }
+

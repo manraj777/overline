@@ -177,3 +177,7 @@ body {
 ::-webkit-scrollbar-track { background: transparent; }
 ::-webkit-scrollbar-thumb { background: var(--outline-variant); border-radius: 100px; }
 ::-webkit-scrollbar-thumb:hover { background: var(--outline); }
+
+/* Hide scrollbar for horizontal scroll containers */
+.no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+.no-scrollbar::-webkit-scrollbar { display: none; }

@@ -107,3 +107,45 @@ export async function confirmPhoneOtp(
 export async function getFreshFirebaseIdToken(userCredential: UserCredential): Promise<string> {
   return userCredential.user.getIdToken(true);
 }
+
+// ── Email Link Verification (Passwordless) ──
+
+export async function sendEmailVerificationLink(email: string): Promise<void> {
+  const { sendSignInLinkToEmail } = await import('firebase/auth');
+  const firebaseAuth = getFirebaseAuth();
+  const actionCodeSettings = {
+    url: `${window.location.origin}/register?email=${encodeURIComponent(email)}&emailVerified=true`,
+    handleCodeInApp: true,
+  };
+  await sendSignInLinkToEmail(firebaseAuth, email, actionCodeSettings);
+  window.localStorage.setItem('overline_email_for_signin', email);
+}
+
+export async function completeEmailVerification(): Promise<{ email: string; verified: boolean }> {
+  const { isSignInWithEmailLink, signInWithEmailLink } = await import('firebase/auth');
+  const firebaseAuth = getFirebaseAuth();
+
+  if (!isSignInWithEmailLink(firebaseAuth, window.location.href)) {
+    return { email: '', verified: false };
+  }
+
+  let email = window.localStorage.getItem('overline_email_for_signin');
+  if (!email) {
+    // If email is in the URL params (fallback)
+    const urlParams = new URLSearchParams(window.location.search);
+    email = urlParams.get('email') || '';
+  }
+
+  if (!email) {
+    return { email: '', verified: false };
+  }
+
+  try {
+    await signInWithEmailLink(firebaseAuth, email, window.location.href);
+    window.localStorage.removeItem('overline_email_for_signin');
+    return { email, verified: true };
+  } catch {
+    return { email, verified: false };
+  }
+}
+

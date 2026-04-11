@@ -1105,6 +1105,38 @@ export class AdminService {
     return { shopId, payoutSettings };
   }
 
+  async updateShopReviewStatus(
+    shopId: string,
+    status: 'PENDING_REVIEW' | 'LIVE' | 'REJECTED',
+    notes?: string,
+  ) {
+    const shop = await this.prisma.shop.findUnique({ where: { id: shopId } });
+    if (!shop) {
+      throw new NotFoundException('Shop not found');
+    }
+
+    const updated = await this.prisma.shop.update({
+      where: { id: shopId },
+      data: {
+        verificationStatus: status,
+        isActive: status === 'LIVE',
+        ...(notes !== undefined ? { verificationNotes: notes } : {}),
+        ...(status === 'LIVE' ? { verifiedAt: new Date() } : {}),
+      },
+      select: {
+        id: true,
+        name: true,
+        slug: true,
+        verificationStatus: true,
+        verificationNotes: true,
+        isActive: true,
+        verifiedAt: true,
+      },
+    });
+
+    return updated;
+  }
+
   async getShopFinancials(
     shopId: string,
     ownerId: string,

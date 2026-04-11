@@ -1,7 +1,8 @@
-import { Controller, Get, Param, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Query, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiQuery } from '@nestjs/swagger';
 import { ShopsService } from './shops.service';
 import { SearchShopsDto } from './dto/search-shops.dto';
+import { RegisterShopRequestDto } from './dto/register-shop.dto';
 import { Public } from '../auth/decorators/public.decorator';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 
@@ -9,6 +10,14 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 @Controller('shops')
 export class ShopsController {
   constructor(private readonly shopsService: ShopsService) {}
+
+  @Post('register')
+  @Public()
+  @ApiOperation({ summary: 'Register a shop for manual review' })
+  @ApiResponse({ status: 201, description: 'Shop submitted in PENDING_REVIEW status' })
+  async register(@Body() dto: RegisterShopRequestDto) {
+    return this.shopsService.registerForReview(dto);
+  }
 
   @Get()
   @Public()

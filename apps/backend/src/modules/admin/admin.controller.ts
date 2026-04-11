@@ -458,6 +458,16 @@ export class AdminController {
     return this.adminService.updateOwnerPayoutSettings(shopId, ownerId, dto);
   }
 
+  @Patch('shops/:shopId/review-status')
+  @Roles(UserRole.SUPER_ADMIN, UserRole.SUPERADMIN)
+  @ApiOperation({ summary: 'Super Admin: update shop review status' })
+  async updateShopReviewStatus(
+    @Param('shopId') shopId: string,
+    @Body() dto: { status: 'PENDING_REVIEW' | 'LIVE' | 'REJECTED'; notes?: string },
+  ) {
+    return this.adminService.updateShopReviewStatus(shopId, dto.status, dto.notes);
+  }
+
   @Get('owners/shops/:shopId/financials')
   @UseGuards(ShopOwnerGuard)
   @ShopIdParam('shopId')
