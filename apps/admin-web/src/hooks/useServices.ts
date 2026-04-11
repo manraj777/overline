@@ -3,6 +3,22 @@ import api from '@/lib/api';
 import { useAuthStore } from '@/stores/auth';
 import type { Service } from '@/types';
 
+async function resolveActiveShopId(): Promise<string> {
+  const state = useAuthStore.getState();
+  if (state.shopId) {
+    return state.shopId;
+  }
+
+  const { data: shops } = await api.get<Array<{ id: string }>>('/admin/my-shops');
+  const firstShopId = shops?.[0]?.id;
+  if (!firstShopId) {
+    throw new Error('No shop found for this account');
+  }
+
+  state.setShopId(firstShopId);
+  return firstShopId;
+}
+
 interface CreateServicePayload {
   name: string;
   description?: string;
@@ -18,15 +34,16 @@ interface UpdateServicePayload extends Partial<CreateServicePayload> {
 }
 
 export function useServices() {
-  const { shopId } = useAuthStore();
+  const { shopId, isAuthenticated } = useAuthStore();
 
   return useQuery<Service[]>({
     queryKey: ['admin', 'services', shopId],
     queryFn: async () => {
-      const { data } = await api.get(`/services/shop/${shopId}`);
+      const activeShopId = shopId || (await resolveActiveShopId());
+      const { data } = await api.get(`/services/shop/${activeShopId}`);
       return data;
     },
-    enabled: !!shopId,
+    enabled: isAuthenticated,
   });
 }
 
@@ -36,7 +53,8 @@ export function useCreateService() {
 
   return useMutation<Service, Error, CreateServicePayload>({
     mutationFn: async (payload) => {
-      const { data } = await api.post(`/services/shop/${shopId}`, payload);
+      const activeShopId = shopId || (await resolveActiveShopId());
+      const { data } = await api.post(`/services/shop/${activeShopId}`, payload);
       return data;
     },
     onSuccess: () => {

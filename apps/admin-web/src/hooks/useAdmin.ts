@@ -74,29 +74,31 @@ interface QueueRemovePayload {
 }
 
 export function useDashboard() {
-  const { shopId } = useAuthStore();
+  const { shopId, isAuthenticated } = useAuthStore();
 
   return useQuery({
     queryKey: ['admin', 'dashboard', shopId],
     queryFn: async () => {
-      const { data } = await api.get(`/admin/shops/${shopId}/dashboard`);
+      const activeShopId = shopId || (await resolveActiveShopId());
+      const { data } = await api.get(`/admin/shops/${activeShopId}/dashboard`);
       return data;
     },
-    enabled: !!shopId,
+    enabled: isAuthenticated,
     refetchInterval: 1000 * 30, // Refresh every 30 seconds
   });
 }
 
 export function useQueueTracking() {
-  const { shopId } = useAuthStore();
+  const { shopId, isAuthenticated } = useAuthStore();
 
   return useQuery<QueueTrackingBooking[]>({
     queryKey: ['admin', 'queue-tracking', shopId],
     queryFn: async () => {
-      const { data } = await api.get(`/queue/tracking/${shopId}`);
+      const activeShopId = shopId || (await resolveActiveShopId());
+      const { data } = await api.get(`/queue/tracking/${activeShopId}`);
       return data;
     },
-    enabled: !!shopId,
+    enabled: isAuthenticated,
     refetchInterval: 1000 * 20,
   });
 }
@@ -107,7 +109,8 @@ export function useQueueCallNext() {
 
   return useMutation<QueueTrackingBooking, Error>({
     mutationFn: async () => {
-      const { data } = await api.post(`/queue/${shopId}/call-next`);
+      const activeShopId = shopId || (await resolveActiveShopId());
+      const { data } = await api.post(`/queue/${activeShopId}/call-next`);
       return data;
     },
     onSuccess: () => {
@@ -187,20 +190,21 @@ export function useQueueRemove() {
 }
 
 export function useAdminBookings(params: GetBookingsParams = {}) {
-  const { shopId } = useAuthStore();
+  const { shopId, isAuthenticated } = useAuthStore();
 
   return useQuery<PaginatedResponse<Booking>>({
     queryKey: ['admin', 'bookings', shopId, params],
     queryFn: async () => {
+      const activeShopId = shopId || (await resolveActiveShopId());
       const { data } = await api.get('/admin/bookings', {
         params: {
           ...params,
-          shopId,
+          shopId: activeShopId,
         },
       });
       return data;
     },
-    enabled: !!shopId,
+    enabled: isAuthenticated,
     refetchInterval: 1000 * 30, // Refresh every 30 seconds
   });
 }
@@ -228,7 +232,8 @@ export function useCreateWalkIn() {
 
   return useMutation<Booking, Error, CreateWalkInPayload>({
     mutationFn: async (payload) => {
-      const { data } = await api.post(`/admin/shops/${shopId}/walk-in`, payload);
+      const activeShopId = shopId || (await resolveActiveShopId());
+      const { data } = await api.post(`/admin/shops/${activeShopId}/walk-in`, payload);
       return data;
     },
     onSuccess: () => {
@@ -290,15 +295,16 @@ export function useMarkNoShow() {
 }
 
 export function useStaff() {
-  const { shopId } = useAuthStore();
+  const { shopId, isAuthenticated } = useAuthStore();
 
   return useQuery<Staff[]>({
     queryKey: ['admin', 'staff', shopId],
     queryFn: async () => {
-      const { data } = await api.get(`/admin/shops/${shopId}/staff`);
+      const activeShopId = shopId || (await resolveActiveShopId());
+      const { data } = await api.get(`/admin/shops/${activeShopId}/staff`);
       return data;
     },
-    enabled: !!shopId,
+    enabled: isAuthenticated,
   });
 }
 
@@ -308,7 +314,8 @@ export function useCreateStaff() {
 
   return useMutation<Staff, Error, { name: string; email?: string; phone?: string; age?: number; password?: string; role?: string; avatarUrl?: string }>({
     mutationFn: async (payload: { name: string; email?: string; phone?: string; age?: number; password?: string; role?: string; avatarUrl?: string }) => {
-      const { data } = await api.post(`/admin/shops/${shopId}/staff`, payload);
+      const activeShopId = shopId || (await resolveActiveShopId());
+      const { data } = await api.post(`/admin/shops/${activeShopId}/staff`, payload);
       return data;
     },
     onSuccess: () => {
@@ -323,7 +330,8 @@ export function useUpdateStaff() {
 
   return useMutation<Staff, Error, { staffId: string; name?: string; email?: string; phone?: string; age?: number; role?: string; isActive?: boolean; avatarUrl?: string }>({
     mutationFn: async ({ staffId, ...payload }: { staffId: string; name?: string; email?: string; phone?: string; age?: number; role?: string; isActive?: boolean; avatarUrl?: string }) => {
-      const { data } = await api.patch(`/admin/shops/${shopId}/staff/${staffId}`, payload);
+      const activeShopId = shopId || (await resolveActiveShopId());
+      const { data } = await api.patch(`/admin/shops/${activeShopId}/staff/${staffId}`, payload);
       return data;
     },
     onSuccess: () => {
@@ -338,7 +346,8 @@ export function useDeleteStaff() {
 
   return useMutation<void, Error, string>({
     mutationFn: async (staffId: string) => {
-      await api.delete(`/admin/shops/${shopId}/staff/${staffId}`);
+      const activeShopId = shopId || (await resolveActiveShopId());
+      await api.delete(`/admin/shops/${activeShopId}/staff/${staffId}`);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['admin', 'staff'] });
@@ -352,7 +361,8 @@ export function useAssignServiceToStaff() {
 
   return useMutation({
     mutationFn: async ({ staffId, serviceId }: { staffId: string; serviceId: string }) => {
-      const { data } = await api.post(`/admin/shops/${shopId}/staff/${staffId}/services/${serviceId}`);
+      const activeShopId = shopId || (await resolveActiveShopId());
+      const { data } = await api.post(`/admin/shops/${activeShopId}/staff/${staffId}/services/${serviceId}`);
       return data;
     },
     onSuccess: () => {
@@ -367,7 +377,8 @@ export function useUnassignServiceFromStaff() {
 
   return useMutation({
     mutationFn: async ({ staffId, serviceId }: { staffId: string; serviceId: string }) => {
-      const { data } = await api.delete(`/admin/shops/${shopId}/staff/${staffId}/services/${serviceId}`);
+      const activeShopId = shopId || (await resolveActiveShopId());
+      const { data } = await api.delete(`/admin/shops/${activeShopId}/staff/${staffId}/services/${serviceId}`);
       return data;
     },
     onSuccess: () => {
@@ -410,15 +421,16 @@ export function useUpdateShopSettings() {
 }
 
 export function useWorkingHours() {
-  const { shopId } = useAuthStore();
+  const { shopId, isAuthenticated } = useAuthStore();
 
   return useQuery({
     queryKey: ['admin', 'working-hours', shopId],
     queryFn: async () => {
-      const { data } = await api.get(`/admin/shops/${shopId}/working-hours`);
+      const activeShopId = shopId || (await resolveActiveShopId());
+      const { data } = await api.get(`/admin/shops/${activeShopId}/working-hours`);
       return data;
     },
-    enabled: !!shopId,
+    enabled: isAuthenticated,
   });
 }
 
@@ -428,7 +440,8 @@ export function useUpdateWorkingHours() {
 
   return useMutation({
     mutationFn: async ({ dayOfWeek, ...payload }: { dayOfWeek: string; openTime?: string; closeTime?: string; isClosed?: boolean }) => {
-      const { data } = await api.patch(`/admin/shops/${shopId}/working-hours/${dayOfWeek}`, payload);
+      const activeShopId = shopId || (await resolveActiveShopId());
+      const { data } = await api.patch(`/admin/shops/${activeShopId}/working-hours/${dayOfWeek}`, payload);
       return data;
     },
     onSuccess: () => {
