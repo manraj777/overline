@@ -11,7 +11,6 @@ const SHOP_TYPES = ['Salon', 'Medical', 'Gym', 'Spa', 'Clinic', 'Other'];
 
 export default function SettingsPage() {
   const [activeTab, setActiveTab] = React.useState<SettingsTab>('shop');
-  const [isEditing, setIsEditing] = React.useState(false);
   const { addToast } = useToast();
 
   const { data: shopData, isLoading } = useShopSettings();
@@ -212,7 +211,6 @@ export default function SettingsPage() {
         },
       });
       addToast({ type: 'success', title: 'Shop details saved' });
-      setIsEditing(false);
     } catch (error: any) {
       const message = error?.response?.data?.message;
       addToast({ type: 'error', title: 'Failed to save', message: Array.isArray(message) ? message.join(', ') : message || 'Try again.' });
@@ -302,19 +300,11 @@ export default function SettingsPage() {
       </Head>
 
       <div>
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-8">
-          <div>
-            <span className="label-m3 mb-2 block">Shop Details</span>
+          <div className="mb-8">
+            <span className="label-m3 mb-2 block text-primary font-bold">● Live from Database</span>
             <h1 className="text-3xl font-black tracking-tight text-on-surface">Shop Details</h1>
             <p className="text-on-surface-variant text-sm mt-1">Manage essential shop information and media.</p>
           </div>
-          <button
-            onClick={() => setIsEditing(!isEditing)}
-            className={`btn-${isEditing ? 'tonal' : 'primary'} px-6 py-2.5 shadow-button active:scale-95 transition-all flex items-center gap-2`}
-          >
-            {isEditing ? 'Cancel Edit' : 'Edit Settings'}
-          </button>
-        </div>
 
         <div className="flex flex-col lg:flex-row gap-6">
           <div className="lg:w-64">
@@ -360,7 +350,7 @@ export default function SettingsPage() {
                       label="Name"
                       required
                       value={shopForm.name}
-                      readOnly={!isEditing}
+                      
                       onChange={(e) => setShopForm((prev) => ({ ...prev, name: e.target.value }))}
                     />
 
@@ -369,7 +359,7 @@ export default function SettingsPage() {
                       <select
                         className="input-m3"
                         required
-                        disabled={!isEditing}
+                        
                         value={shopForm.shopType}
                         onChange={(e) => setShopForm((prev) => ({ ...prev, shopType: e.target.value }))}
                       >
@@ -387,7 +377,7 @@ export default function SettingsPage() {
                       label="Phone"
                       type="tel"
                       required
-                      readOnly={!isEditing}
+                      
                       value={shopForm.phone}
                       onChange={(e) => setShopForm((prev) => ({ ...prev, phone: e.target.value }))}
                     />
@@ -395,7 +385,7 @@ export default function SettingsPage() {
                       label="Email"
                       type="email"
                       required
-                      readOnly={!isEditing}
+                      
                       value={shopForm.email}
                       onChange={(e) => setShopForm((prev) => ({ ...prev, email: e.target.value }))}
                     />
@@ -404,7 +394,7 @@ export default function SettingsPage() {
                   <Input
                     label="Address"
                     required
-                    readOnly={!isEditing}
+                    
                     value={shopForm.address}
                     onChange={(e) => setShopForm((prev) => ({ ...prev, address: e.target.value }))}
                   />
@@ -413,21 +403,21 @@ export default function SettingsPage() {
                     <Input
                       label="City"
                       required
-                      readOnly={!isEditing}
+                      
                       value={shopForm.city}
                       onChange={(e) => setShopForm((prev) => ({ ...prev, city: e.target.value }))}
                     />
                     <Input
                       label="State"
                       required
-                      readOnly={!isEditing}
+                      
                       value={shopForm.state}
                       onChange={(e) => setShopForm((prev) => ({ ...prev, state: e.target.value }))}
                     />
                     <Input
                       label="Postal Code"
                       required
-                      readOnly={!isEditing}
+                      
                       value={shopForm.postalCode}
                       onChange={(e) => setShopForm((prev) => ({ ...prev, postalCode: e.target.value }))}
                     />
@@ -437,11 +427,11 @@ export default function SettingsPage() {
                     <Input
                       label="Location"
                       required
-                      readOnly={!isEditing}
+                      
                       value={shopForm.location}
                       onChange={(e) => setShopForm((prev) => ({ ...prev, location: e.target.value }))}
                       onBlur={() => {
-                        if (isEditing && (!shopForm.latitude || !shopForm.longitude)) {
+                        if (!shopForm.latitude || !shopForm.longitude) {
                           void resolveMapCoordinates();
                         }
                       }}
@@ -449,7 +439,7 @@ export default function SettingsPage() {
                     <Input
                       label="Google Link (Optional)"
                       value={shopForm.googleMapLink}
-                      readOnly={!isEditing}
+                      
                       onChange={(e) => setShopForm((prev) => ({ ...prev, googleMapLink: e.target.value }))}
                     />
                   </div>
@@ -500,18 +490,16 @@ export default function SettingsPage() {
                   <Input
                     label="Timing (Working Time)"
                     required
-                    readOnly={!isEditing}
+                    
                     value={shopForm.workingTime}
                     onChange={(e) => setShopForm((prev) => ({ ...prev, workingTime: e.target.value }))}
                     placeholder="09:00 - 21:00"
                   />
 
-                  {isEditing && (
-                    <button type="submit" disabled={updateSettings.isPending} className="btn-primary px-8 py-3 disabled:opacity-50">
-                      <Save className="w-4 h-4" />
-                      {updateSettings.isPending ? 'Saving...' : 'Save Shop Details'}
-                    </button>
-                  )}
+                  <button type="submit" disabled={updateSettings.isPending} className="btn-primary px-8 py-3 disabled:opacity-50 mt-6">
+                    <Save className="w-4 h-4" />
+                    {updateSettings.isPending ? 'Saving...' : 'Save Shop Details'}
+                  </button>
                 </form>
               </div>
             )}

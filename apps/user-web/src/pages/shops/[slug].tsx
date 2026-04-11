@@ -40,7 +40,7 @@ export default function ShopDetailPage() {
   const { data: ratingStats } = useShopRatingStats(shop?.id || '');
 
   const [activeTab, setActiveTab] = React.useState('Book Service');
-  const tabs = ['Overview', 'Book Service', 'Reviews', 'Photos', 'Info'];
+  const tabs = ['Overview', 'Book Service', 'Team', 'Reviews', 'Photos', 'Info'];
 
   const {
     selectedServices,
@@ -578,6 +578,68 @@ export default function ShopDetailPage() {
                     {shop.phone && <p className="text-on-surface-variant">Phone: {shop.phone}</p>}
                     {shop.email && <p className="text-on-surface-variant">Email: {shop.email}</p>}
                     <p className="text-on-surface-variant mt-4">We accept cash, UPI, and major cards.</p>
+                  </div>
+                )}
+
+                {step === 'services' && activeTab === 'Team' && (
+                  <div className="animate-fade-in space-y-8">
+                    <h2 className="text-2xl font-black tracking-tight text-on-surface mb-6">Our Experts</h2>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                      {shop.staff?.map((person: any) => {
+                        const personServiceIds = new Set((person.staffServices || []).map((ss: any) => ss.serviceId));
+                        const personServices = shop.services?.filter((s) => personServiceIds.has(s.id)) || [];
+
+                        return (
+                          <div key={person.id} className="p-6 rounded-3xl bg-surface-container-low border border-outline-variant/10 hover:border-primary/20 transition-all">
+                             <div className="flex items-center gap-4 mb-6">
+                                <div className="w-16 h-16 rounded-2xl bg-primary/10 overflow-hidden flex items-center justify-center">
+                                   {person.avatarUrl ? (
+                                     <img src={person.avatarUrl} alt={person.name} className="w-full h-full object-cover" />
+                                   ) : (
+                                     <span className="text-2xl font-black text-primary">{person.name?.charAt(0)}</span>
+                                   )}
+                                </div>
+                                <div>
+                                   <h3 className="text-xl font-black text-on-surface leading-tight">{person.name}</h3>
+                                   <p className="text-sm font-bold text-primary uppercase tracking-widest">{person.role || 'Professional'}</p>
+                                </div>
+                             </div>
+                             
+                             <div className="space-y-3">
+                                <p className="text-xs font-bold text-outline uppercase tracking-wider mb-2">Services</p>
+                                {personServices.length > 0 ? (
+                                  <div className="space-y-2">
+                                    {personServices.map((service) => (
+                                      <div key={service.id} className="flex items-center justify-between p-3 rounded-xl bg-surface hover:bg-surface-container transition-colors border border-outline-variant/5">
+                                         <div className="flex flex-col">
+                                            <span className="text-sm font-black text-on-surface">{service.name}</span>
+                                            <span className="text-[10px] font-bold text-on-surface-variant flex items-center gap-1">
+                                               <Clock className="w-3 h-3" /> {service.durationMinutes} min
+                                            </span>
+                                         </div>
+                                         <button 
+                                          onClick={() => {
+                                            if (!selectedServices.some(s => s.id === service.id)) {
+                                              handleToggleService(service);
+                                            }
+                                            setStaff(person);
+                                            setStep('datetime');
+                                          }}
+                                          className="btn-tonal px-3 py-1.5 text-xs font-black rounded-lg"
+                                         >
+                                           SELECT
+                                         </button>
+                                      </div>
+                                    ))}
+                                  </div>
+                                ) : (
+                                  <p className="text-xs text-on-surface-variant">No specific services assigned.</p>
+                                )}
+                             </div>
+                          </div>
+                        );
+                      })}
+                    </div>
                   </div>
                 )}
 

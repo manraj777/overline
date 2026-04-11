@@ -525,7 +525,7 @@ export class AdminService {
   async updateStaff(
     shopId: string,
     staffId: string,
-    dto: { name?: string; phone?: string; role?: string; isActive?: boolean; avatarUrl?: string },
+    dto: { name?: string; phone?: string; email?: string; age?: number; role?: string; isActive?: boolean; avatarUrl?: string },
     tenantId: string,
   ) {
     await this.verifyShopAccess(shopId, tenantId);
@@ -544,6 +544,8 @@ export class AdminService {
       data: {
         ...(dto.name && { name: dto.name }),
         ...(dto.phone !== undefined && { phone: this.normalizeIndianPhone(dto.phone) }),
+        ...(dto.email !== undefined && { email: dto.email }),
+        ...(dto.age !== undefined && { age: dto.age }),
         ...(dto.avatarUrl !== undefined && { avatarUrl: dto.avatarUrl }),
         ...(dto.role && { role: dto.role }),
         ...(dto.isActive !== undefined && { isActive: dto.isActive }),
@@ -918,6 +920,8 @@ export class AdminService {
       state: shop.state,
       postalCode: shop.postalCode,
       country: shop.country,
+      latitude: shop.latitude ? Number(shop.latitude) : undefined,
+      longitude: shop.longitude ? Number(shop.longitude) : undefined,
       logoUrl: shop.logoUrl,
       coverUrl: shop.coverUrl,
       photoUrls: shop.photoUrls,
@@ -958,6 +962,8 @@ export class AdminService {
       allowReschedule?: boolean;
       freeRescheduleMinutes?: number;
       requireOwnerApproval?: boolean;
+      latitude?: number;
+      longitude?: number;
       settings?: Record<string, any>;
     },
   ) {
@@ -975,7 +981,20 @@ export class AdminService {
     await this.prisma.shop.update({
       where: { id: shopId },
       data: {
-        ...rest,
+        ...(updateData.name !== undefined && { name: updateData.name }),
+        ...(updateData.description !== undefined && { description: updateData.description }),
+        ...(updateData.phone !== undefined && { phone: updateData.phone }),
+        ...(updateData.email !== undefined && { email: updateData.email }),
+        ...(updateData.website !== undefined && { website: updateData.website }),
+        ...(updateData.address !== undefined && { address: updateData.address }),
+        ...(updateData.city !== undefined && { city: updateData.city }),
+        ...(updateData.state !== undefined && { state: updateData.state }),
+        ...(updateData.postalCode !== undefined && { postalCode: updateData.postalCode }),
+        ...(updateData.logoUrl !== undefined && { logoUrl: updateData.logoUrl }),
+        ...(updateData.coverUrl !== undefined && { coverUrl: updateData.coverUrl }),
+        ...(updateData.photoUrls !== undefined && { photoUrls: updateData.photoUrls }),
+        ...(updateData.latitude !== undefined && { latitude: updateData.latitude }),
+        ...(updateData.longitude !== undefined && { longitude: updateData.longitude }),
         ...(mergedSettings !== undefined ? { settings: mergedSettings } : {}),
       },
     });

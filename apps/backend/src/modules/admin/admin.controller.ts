@@ -194,7 +194,7 @@ export class AdminController {
     @Param('shopId') shopId: string,
     @Param('staffId') staffId: string,
     @Body()
-    dto: { name?: string; phone?: string; role?: string; isActive?: boolean; avatarUrl?: string },
+    dto: { name?: string; phone?: string; email?: string; age?: number; role?: string; isActive?: boolean; avatarUrl?: string },
     @CurrentUser('tenantId') tenantId: string,
   ) {
     return this.adminService.updateStaff(shopId, staffId, dto, tenantId);
