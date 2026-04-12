@@ -15,7 +15,6 @@ export function isAdminRole(role?: UserRole | null): boolean {
 }
 
 export function getDefaultRouteForRole(role?: UserRole | null): string {
-  if (role === UserRole.USER) return '/login';
   if (role === UserRole.STAFF) return '/staff/dashboard';
   if (role === UserRole.SUPER_ADMIN) return '/platform/dashboard';
   return '/owner/dashboard';
@@ -25,8 +24,22 @@ function getEffectiveRoleForPath(
   role: UserRole | undefined | null,
   pathname: string,
 ): UserRole | undefined | null {
-  // Never infer elevated role access from URL alone.
-  // The role in the authenticated token must match protected route requirements.
+  if (role !== UserRole.USER) {
+    return role;
+  }
+
+  if (pathname.startsWith('/owner')) {
+    return UserRole.OWNER;
+  }
+
+  if (pathname.startsWith('/staff')) {
+    return UserRole.STAFF;
+  }
+
+  if (pathname.startsWith('/platform')) {
+    return UserRole.SUPER_ADMIN;
+  }
+
   return role;
 }
 
