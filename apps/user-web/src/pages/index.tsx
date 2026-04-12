@@ -295,6 +295,79 @@ export default function HomePage() {
             </div>
           </div>
         </div>
+      {/* ═══════════════════════════════════════════════════════════ */}
+      {/* 6. Step-by-Step Guidance (Google Requirement)              */}
+      {/* ═══════════════════════════════════════════════════════════ */}
+      <section className="py-20">
+        <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="text-center mb-16">
+            <h2 className="text-3xl md:text-5xl font-black text-on-surface tracking-tight mb-4">How Overline Works</h2>
+            <p className="text-on-surface-variant text-lg max-w-2xl mx-auto font-medium">
+              A seamless bridge between you and your next professional appointment.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
+            {[
+              { 
+                step: '01', 
+                title: 'Discover', 
+                desc: 'Browse verified premium salons, spas, and clinics near you or in any city.' 
+              },
+              { 
+                step: '02', 
+                title: 'Book Instantly', 
+                desc: 'Select your service, choose an expert, and pick a time that fits your schedule.' 
+              },
+              { 
+                step: '03', 
+                title: 'Live Tracking', 
+                desc: 'Monitor your place in the live queue and walk in exactly when you are expected.' 
+              }
+            ].map((s) => (
+              <div key={s.step} className="relative p-8 rounded-4xl bg-surface-container-lowest border border-outline-variant/5 shadow-sm hover:shadow-md transition-all">
+                <span className="text-5xl font-black text-primary/10 absolute top-4 right-8">{s.step}</span>
+                <h3 className="text-2xl font-black text-on-surface mb-4 leading-tight">{s.title}</h3>
+                <p className="text-on-surface-variant leading-relaxed">{s.desc}</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ═══════════════════════════════════════════════════════════ */}
+      {/* 7. Data Transparency Section (Google Requirement)          */}
+      {/* ═══════════════════════════════════════════════════════════ */}
+      <section className="py-20 bg-inverse-surface text-inverse-on-surface rounded-t-5xl">
+        <div className="max-w-4xl mx-auto px-6 text-center">
+          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-primary-fixed/20 text-primary-fixed mb-8 border border-primary-fixed/30">
+            <ShieldCheck className="w-4 h-4" />
+            <span className="text-xs font-bold uppercase tracking-widest">Trust & Transparency</span>
+          </div>
+          <h2 className="text-3xl md:text-5xl font-black tracking-tight mb-8">Your Data, Explained</h2>
+          <p className="text-xl text-inverse-on-surface/60 mb-12 leading-relaxed">
+            Overline respects your privacy. We use your Google account information solely to provide a secure and frictionless login experience.
+          </p>
+
+          <div className="grid sm:grid-cols-2 gap-8 text-left">
+            <div className="p-6 rounded-3xl bg-white/5 border border-white/10">
+              <h4 className="font-bold text-white mb-2">Why Google Auth?</h4>
+              <p className="text-sm text-inverse-on-surface/50">We use Google Sign-In to verify your identity and protect your bookings from unauthorized access.</p>
+            </div>
+            <div className="p-6 rounded-3xl bg-white/5 border border-white/10">
+              <h4 className="font-bold text-white mb-2">What we collect?</h4>
+              <p className="text-sm text-inverse-on-surface/50">We only request your name and email address to create your profile and send booking confirmations.</p>
+            </div>
+          </div>
+
+          <div className="mt-12 flex flex-col items-center gap-4">
+            <p className="text-sm text-inverse-on-surface/40">Read our full commitment in the documents below:</p>
+            <div className="flex gap-4">
+               <Link href="/privacy" className="text-primary-fixed hover:underline font-bold transition-all">Privacy Policy</Link>
+               <Link href="/terms" className="text-primary-fixed hover:underline font-bold transition-all">Terms of Service</Link>
+            </div>
+          </div>
+        </div>
       </section>
     </>
   );

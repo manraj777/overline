@@ -7,7 +7,7 @@ services:
     restart: unless-stopped
     environment:
       POSTGRES_USER: overline
-      POSTGRES_PASSWORD: overline_dev_password
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?PASSWORD_REQUIRED}
       POSTGRES_DB: overline
     ports:
       - '5432:5432'
@@ -49,13 +49,13 @@ services:
       - '3001:3001'
     environment:
       NODE_ENV: production
-      DATABASE_URL: postgresql://overline:overline_dev_password@postgres:5432/overline?schema=public
+      DATABASE_URL: postgresql://overline:${POSTGRES_PASSWORD:?PASSWORD_REQUIRED}@postgres:5432/overline?schema=public
       REDIS_HOST: redis
       REDIS_PORT: 6379
-      JWT_SECRET: ${JWT_SECRET:-your-super-secret-jwt-key-change-in-production}
-      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:-your-refresh-secret-key-change-in-production}
-      RAZORPAY_KEY_ID: ${RAZORPAY_KEY_ID:-}
-      RAZORPAY_SECRET: ${RAZORPAY_SECRET:-}
+      JWT_SECRET: ${JWT_SECRET:?JWT_SECRET_REQUIRED}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:?JWT_REFRESH_SECRET_REQUIRED}
+      RAZORPAY_KEY_ID: ${RAZORPAY_KEY_ID:?RAZORPAY_KEY_ID_REQUIRED}
+      RAZORPAY_SECRET: ${RAZORPAY_SECRET:?RAZORPAY_SECRET_REQUIRED}
     depends_on:
       postgres:
         condition: service_healthy
@@ -73,7 +73,7 @@ services:
     ports:
       - '3000:3000'
     environment:
-      NEXT_PUBLIC_API_URL: http://backend:3001/api
+      NEXT_PUBLIC_API_URL: http://backend:3001/api/v1
     depends_on:
       - backend
     networks:
@@ -88,7 +88,7 @@ services:
     ports:
       - '3002:3002'
     environment:
-      NEXT_PUBLIC_API_URL: http://backend:3001/api
+      NEXT_PUBLIC_API_URL: http://backend:3001/api/v1
     depends_on:
       - backend
     networks:

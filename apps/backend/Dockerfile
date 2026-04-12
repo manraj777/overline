@@ -48,6 +48,6 @@ COPY --from=builder /app ./
 WORKDIR /app/apps/backend
 
 ENV NODE_ENV=production
-EXPOSE 3000
+EXPOSE 3001
 
 CMD ["sh", "-c", "npx prisma migrate deploy && node -r tsconfig-paths/register dist/main.js"]
