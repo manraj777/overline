@@ -29,7 +29,6 @@ import {
 } from '@/lib/firebase';
 import LocationPicker, { type LocationData } from '@/components/register/LocationPicker';
 import PhotoUpload from '@/components/register/PhotoUpload';
-import type { ConfirmationResult } from 'firebase/auth';
 
 // ─── Form Data ──────────────────────────────────────────────
 interface RegisterForm {
@@ -83,7 +82,7 @@ export default function RegisterPage() {
   const [phoneVerified, setPhoneVerified] = React.useState(false);
   const [phoneSending, setPhoneSending] = React.useState(false);
   const [phoneOtp, setPhoneOtp] = React.useState('');
-  const [confirmationResult, setConfirmationResult] = React.useState<ConfirmationResult | null>(null);
+  const [otpSent, setOtpSent] = React.useState(false);
   const [verifyingOtp, setVerifyingOtp] = React.useState(false);
 
   // Location state
@@ -168,7 +167,7 @@ export default function RegisterPage() {
     setError(null);
     setPhoneSending(true);
     try {
-      setConfirmationResult({} as ConfirmationResult);
+      setOtpSent(true);
     } catch (err: any) {
       setError(err.message || 'Failed to send OTP');
     } finally {
@@ -181,12 +180,10 @@ export default function RegisterPage() {
     setVerifyingOtp(true);
     setError(null);
     try {
-      if (phoneOtp !== '123456') {
-        throw new Error('Invalid OTP');
-      }
+      if (phoneOtp !== '123456') throw new Error('Invalid OTP');
       setPhoneVerified(true);
-    } catch {
-      setError('Invalid OTP. Please try again.');
+    } catch (err: any) {
+      setError(err.message || 'Invalid OTP. Please try again.');
     } finally {
       setVerifyingOtp(false);
     }
@@ -215,36 +212,35 @@ export default function RegisterPage() {
         .join(', ') || locationData?.formattedAddress || data.city || 'Address';
 
       await registerShop.mutateAsync({
+        email: data.email.trim().toLowerCase(),
+        password: data.password,
+        ownerName: data.ownerName,
+        ownerPhone: data.ownerPhone,
+        emailVerified,
+        phoneVerified,
         shopName: data.shopName,
         shopType: data.shopType,
         shopDescription: data.shopDescription,
-        ownerName: data.ownerName,
-        ownerEmail: data.email,
-        password: data.password,
-        ownerPhone: data.ownerPhone,
         address: composedAddress,
+        building: data.building,
+        floor: data.floor,
+        locality: data.locality,
         city: data.city,
         state: data.state,
         postalCode: data.postalCode,
+        landmark: data.landmark,
         phone: data.sameAsOwnerPhone ? data.ownerPhone : data.publicPhone,
-        email: data.email,
+        publicPhone: data.publicPhone,
+        sameAsOwnerPhone: data.sameAsOwnerPhone,
+        whatsappPhone: data.whatsappPhone,
+        whatsappOptIn: data.whatsappOptIn,
         latitude: locationData?.lat || 0,
         longitude: locationData?.lng || 0,
-        googleLink: locationData?.formattedAddress,
+        googlePlaceId: locationData?.placeId,
+        formattedAddress: locationData?.formattedAddress,
+        mainPhotoUrl: mainPhoto,
+        coverPhotoUrl: coverPhoto,
         galleryUrls: galleryPhotos,
-        emailVerified,
-        phoneVerified,
-        settings: {
-          mainPhotoUrl: mainPhoto,
-          coverPhotoUrl: coverPhoto,
-          whatsappPhone: data.whatsappPhone,
-          whatsappOptIn: data.whatsappOptIn,
-          publicPhone: data.publicPhone,
-          sameAsOwnerPhone: data.sameAsOwnerPhone,
-          locationPlaceId: locationData?.placeId,
-          locationFormattedAddress: locationData?.formattedAddress,
-          landmark: data.landmark,
-        },
       });
       router.push('/login?registrationSubmitted=1');
     } catch (err: any) {
@@ -449,7 +445,7 @@ export default function RegisterPage() {
                     
                     {phoneVerified ? (
                       <p className="text-sm text-tertiary font-medium">✓ Phone verified successfully</p>
-                    ) : !confirmationResult ? (
+                    ) : !otpSent ? (
                       <Button
                         type="button"
                         onClick={handleSendPhoneOtp}

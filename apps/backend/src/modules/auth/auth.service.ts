@@ -850,7 +850,7 @@ export class AuthService {
       where: { email },
     });
 
-    if (existingUser && existingUser.role !== UserRole.USER) {
+    if (existingUser && existingUser.role !== UserRole.USER && existingUser.tenantId) {
       throw new ConflictException('Email already registered for another Shop Owner or Staff');
     }
 
@@ -861,7 +861,7 @@ export class AuthService {
     const slug =
       dto.shopName.toLowerCase().replace(/[^a-z0-9]+/g, '-') +
       '-' +
-      Math.floor(1000 + Math.random() + 9000);
+      Math.floor(1000 + Math.random() * 9000);
 
     // --- GOOGLE PLACES VERIFICATION ---
     // Check if shop exists on Google to provide verified badge
@@ -1074,8 +1074,9 @@ export class AuthService {
     }
 
     // Find user by email
+    const normalizedEmail = dto.email.trim().toLowerCase();
     const user = await this.prisma.user.findUnique({
-      where: { email: dto.email },
+      where: { email: normalizedEmail },
     });
 
     if (!user) {
