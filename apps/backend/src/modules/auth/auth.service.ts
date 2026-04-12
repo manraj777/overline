@@ -1111,17 +1111,26 @@ export class AuthService {
     // Backward compatibility: if an account is still USER but already owns a shop,
     // promote it to OWNER when explicitly logging into owner portal.
     if (dto.requestedRole === 'OWNER' && user.role === UserRole.USER) {
-      const ownedShop = await this.prisma.shop.findFirst({
-        where: { ownerId: user.id, isActive: true },
-        select: { tenantId: true },
-      });
+      const [ownedShop, tenantShop] = await Promise.all([
+        this.prisma.shop.findFirst({
+          where: { ownerId: user.id, isActive: true },
+          select: { tenantId: true },
+        }),
+        user.tenantId
+          ? this.prisma.shop.findFirst({
+              where: { tenantId: user.tenantId, isActive: true },
+              select: { tenantId: true },
+            })
+          : Promise.resolve(null),
+      ]);
 
-      if (ownedShop) {
+      const ownerContext = ownedShop || tenantShop;
+      if (ownerContext) {
         user = await this.prisma.user.update({
           where: { id: user.id },
           data: {
             role: UserRole.OWNER,
-            tenantId: user.tenantId || ownedShop.tenantId,
+            tenantId: user.tenantId || ownerContext.tenantId,
           },
         });
       }
@@ -1427,13 +1436,23 @@ export class AuthService {
       throw new UnauthorizedException();
     }
 
-    const ownerShops = await this.prisma.shop.findMany({
-      where: { ownerId: user.id, isActive: true },
-      select: { id: true },
-      orderBy: { createdAt: 'asc' },
-    });
+    const [ownerShops, tenantShops] = await Promise.all([
+      this.prisma.shop.findMany({
+        where: { ownerId: user.id, isActive: true },
+        select: { id: true },
+        orderBy: { createdAt: 'asc' },
+      }),
+      user.tenantId
+        ? this.prisma.shop.findMany({
+            where: { tenantId: user.tenantId, isActive: true },
+            select: { id: true },
+            orderBy: { createdAt: 'asc' },
+          })
+        : Promise.resolve([]),
+    ]);
 
-    const effectiveRole: UserRole = ownerShops.length > 0 ? UserRole.OWNER : user.role;
+    const resolvedOwnerShops = ownerShops.length > 0 ? ownerShops : tenantShops;
+    const effectiveRole: UserRole = resolvedOwnerShops.length > 0 ? UserRole.OWNER : user.role;
 
     if (effectiveRole === UserRole.OWNER && user.role !== UserRole.OWNER) {
       await this.prisma.user.update({
@@ -1463,7 +1482,7 @@ export class AuthService {
     };
 
     if (effectiveRole === UserRole.OWNER) {
-      result.shopIds = ownerShops.map((shop) => shop.id);
+      result.shopIds = resolvedOwnerShops.map((shop) => shop.id);
       result.shopId = result.shopIds[0];
     }
 
@@ -1539,15 +1558,26 @@ export class AuthService {
     let shopIds: string[] = [];
     let staffProfileId: string | undefined;
 
-    const ownedShops = await this.prisma.shop.findMany({
-      where: { ownerId: user.id, isActive: true },
-      orderBy: { createdAt: 'asc' },
-      select: { id: true },
-    });
+    const [ownedShops, tenantShops] = await Promise.all([
+      this.prisma.shop.findMany({
+        where: { ownerId: user.id, isActive: true },
+        orderBy: { createdAt: 'asc' },
+        select: { id: true },
+      }),
+      user.tenantId
+        ? this.prisma.shop.findMany({
+            where: { tenantId: user.tenantId, isActive: true },
+            orderBy: { createdAt: 'asc' },
+            select: { id: true },
+          })
+        : Promise.resolve([]),
+    ]);
 
-    if (ownedShops.length > 0) {
+    const resolvedOwnerShops = ownedShops.length > 0 ? ownedShops : tenantShops;
+
+    if (resolvedOwnerShops.length > 0) {
       effectiveRole = UserRole.OWNER;
-      shopIds = ownedShops.map((shop) => shop.id);
+      shopIds = resolvedOwnerShops.map((shop) => shop.id);
       if (user.role !== UserRole.OWNER) {
         await this.prisma.user.update({
           where: { id: user.id },
