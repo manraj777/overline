@@ -2,7 +2,7 @@ import React from 'react';
 import Head from 'next/head';
 import { Bell, Camera, Save, Store } from 'lucide-react';
 import { Input, Loading, useToast, ImageUpload } from '@/components/ui';
-import { useAdminBookings, useShopSettings, useUpdateShopSettings, useStaff } from '@/hooks';
+import { useShopSettings, useUpdateShopSettings, useStaff } from '@/hooks';
 import api from '@/lib/api';
 
 type SettingsTab = 'shop' | 'media' | 'settings';
@@ -15,7 +15,6 @@ export default function SettingsPage() {
 
   const { data: shopData, isLoading } = useShopSettings();
   const { data: staffData } = useStaff();
-  const { data: recentBookingsData } = useAdminBookings({ page: 1, limit: 6 });
   const updateSettings = useUpdateShopSettings();
 
   const [shopForm, setShopForm] = React.useState({
@@ -44,22 +43,7 @@ export default function SettingsPage() {
     dailySummary: false,
   });
   const [isResolvingLocation, setIsResolvingLocation] = React.useState(false);
-
-  const recentBookings = React.useMemo(() => recentBookingsData?.data || [], [recentBookingsData]);
-  const bookingSummary = React.useMemo(() => {
-    return recentBookings.reduce(
-      (acc, booking) => {
-        acc.total += 1;
-        const status = String(booking.status || '').toUpperCase();
-        if (status === 'PENDING') acc.pending += 1;
-        if (status === 'CONFIRMED') acc.confirmed += 1;
-        if (status === 'IN_PROGRESS') acc.inProgress += 1;
-        if (status === 'COMPLETED') acc.completed += 1;
-        return acc;
-      },
-      { total: 0, pending: 0, confirmed: 0, inProgress: 0, completed: 0 },
-    );
-  }, [recentBookings]);
+  const [locationError, setLocationError] = React.useState<string>('');
 
   React.useEffect(() => {
     if (!shopData) return;
@@ -151,22 +135,46 @@ export default function SettingsPage() {
       return;
     }
 
+    if (!window.isSecureContext) {
+      const message = 'Current location works only on https or localhost. Use Find from Address or set coordinates manually.';
+      setLocationError(message);
+      addToast({ type: 'error', title: 'Location unavailable', message });
+      return;
+    }
+
     setIsResolvingLocation(true);
+    setLocationError('');
+
+    const applyCoordinates = (latitude: number, longitude: number) => {
+      setShopForm((prev) => ({
+        ...prev,
+        latitude,
+        longitude,
+      }));
+      setIsResolvingLocation(false);
+      addToast({ type: 'success', title: 'Location detected', message: 'Coordinates updated to your current position.' });
+    };
+
     navigator.geolocation.getCurrentPosition(
       (pos) => {
-        setShopForm((prev) => ({
-          ...prev,
-          latitude: pos.coords.latitude,
-          longitude: pos.coords.longitude,
-        }));
-        setIsResolvingLocation(false);
-        addToast({ type: 'success', title: 'Location detected', message: 'Coordinates updated to your current position.' });
+        applyCoordinates(pos.coords.latitude, pos.coords.longitude);
       },
-      (err) => {
-        setIsResolvingLocation(false);
-        addToast({ type: 'error', title: 'Location error', message: err.message });
+      () => {
+        // Retry with relaxed accuracy because some devices block high-accuracy GPS.
+        navigator.geolocation.getCurrentPosition(
+          (pos) => {
+            applyCoordinates(pos.coords.latitude, pos.coords.longitude);
+          },
+          (err) => {
+            setIsResolvingLocation(false);
+            const message = err.message || 'Unable to detect your location';
+            setLocationError(message);
+            addToast({ type: 'error', title: 'Location error', message });
+          },
+          { enableHighAccuracy: false, timeout: 20000, maximumAge: 300000 },
+        );
       },
-      { enableHighAccuracy: true }
+      { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 },
     );
   };
 
@@ -361,53 +369,6 @@ export default function SettingsPage() {
                   </div>
                 </div>
 
-                <div className="rounded-xl border border-outline-variant/15 bg-surface-container-low p-4 mb-6">
-                  <p className="text-[10px] font-bold text-outline tracking-widest uppercase mb-3">Live Database Snapshot</p>
-                  <div className="grid grid-cols-2 md:grid-cols-5 gap-3 mb-4">
-                    <div className="rounded-lg bg-surface px-3 py-2 border border-outline-variant/10">
-                      <p className="text-[10px] font-bold text-outline uppercase">Recent Appointments</p>
-                      <p className="text-sm font-bold text-on-surface mt-1">{bookingSummary.total}</p>
-                    </div>
-                    <div className="rounded-lg bg-surface px-3 py-2 border border-outline-variant/10">
-                      <p className="text-[10px] font-bold text-outline uppercase">Pending</p>
-                      <p className="text-sm font-bold text-on-surface mt-1">{bookingSummary.pending}</p>
-                    </div>
-                    <div className="rounded-lg bg-surface px-3 py-2 border border-outline-variant/10">
-                      <p className="text-[10px] font-bold text-outline uppercase">Confirmed</p>
-                      <p className="text-sm font-bold text-on-surface mt-1">{bookingSummary.confirmed}</p>
-                    </div>
-                    <div className="rounded-lg bg-surface px-3 py-2 border border-outline-variant/10">
-                      <p className="text-[10px] font-bold text-outline uppercase">In Service</p>
-                      <p className="text-sm font-bold text-on-surface mt-1">{bookingSummary.inProgress}</p>
-                    </div>
-                    <div className="rounded-lg bg-surface px-3 py-2 border border-outline-variant/10">
-                      <p className="text-[10px] font-bold text-outline uppercase">Completed</p>
-                      <p className="text-sm font-bold text-on-surface mt-1">{bookingSummary.completed}</p>
-                    </div>
-                  </div>
-
-                  <div className="space-y-2">
-                    {recentBookings.length === 0 && (
-                      <p className="text-xs text-on-surface-variant">No recent appointments found in database for this shop.</p>
-                    )}
-                    {recentBookings.map((booking) => (
-                      <div key={booking.id} className="rounded-lg bg-surface px-3 py-2 border border-outline-variant/10 text-xs">
-                        <div className="flex flex-wrap items-center justify-between gap-2">
-                          <p className="font-bold text-on-surface">
-                            {booking.bookingNumber || booking.id.slice(0, 8)} • {booking.customerName || booking.user?.name || 'Walk-in Customer'}
-                          </p>
-                          <span className="px-2 py-0.5 rounded-full bg-primary/10 text-primary font-bold uppercase tracking-wide">
-                            {String(booking.status || 'UNKNOWN').replace('_', ' ')}
-                          </span>
-                        </div>
-                        <p className="mt-1 text-on-surface-variant">
-                          Staff: {booking.staff?.name || 'Unassigned'} | Services: {booking.services?.map((service) => service.serviceName).join(', ') || 'N/A'}
-                        </p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
                 <form className="space-y-6" onSubmit={saveShopDetails}>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <Input
@@ -530,6 +491,7 @@ export default function SettingsPage() {
                         <span className="font-semibold text-on-surface">{shopForm.longitude || 'Not detected'}</span>
                       </div>
                     </div>
+                    {locationError && <p className="text-xs text-error font-medium">{locationError}</p>}
                     {shopForm.latitude && shopForm.longitude && (
                       <iframe
                         title="Shop location map"

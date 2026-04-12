@@ -1075,7 +1075,7 @@ export class AuthService {
 
     // Find user by email
     const normalizedEmail = dto.email.trim().toLowerCase();
-    const user = await this.prisma.user.findUnique({
+    let user = await this.prisma.user.findUnique({
       where: { email: normalizedEmail },
     });
 
@@ -1106,6 +1106,25 @@ export class AuthService {
         await this.fraudDetection.recordFailedLogin(dto.email);
       }
       throw new UnauthorizedException('Invalid credentials');
+    }
+
+    // Backward compatibility: if an account is still USER but already owns a shop,
+    // promote it to OWNER when explicitly logging into owner portal.
+    if (dto.requestedRole === 'OWNER' && user.role === UserRole.USER) {
+      const ownedShop = await this.prisma.shop.findFirst({
+        where: { ownerId: user.id, isActive: true },
+        select: { tenantId: true },
+      });
+
+      if (ownedShop) {
+        user = await this.prisma.user.update({
+          where: { id: user.id },
+          data: {
+            role: UserRole.OWNER,
+            tenantId: user.tenantId || ownedShop.tenantId,
+          },
+        });
+      }
     }
 
     // Strict UI Role Verification (Phase 5 Alignment)
