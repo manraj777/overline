@@ -64,7 +64,7 @@ export function useRegisterShop() {
 
   return useMutation<{ id: string; slug: string; name: string; verificationStatus: string; isActive: boolean }, Error, any>({
     mutationFn: async (payload) => {
-      const { data } = await api.post('/shops/register', payload);
+      const { data } = await api.post('/auth/register-shop', payload);
       return data;
     },
     onSuccess: () => {

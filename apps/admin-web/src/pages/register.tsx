@@ -220,6 +220,7 @@ export default function RegisterPage() {
         shopDescription: data.shopDescription,
         ownerName: data.ownerName,
         ownerEmail: data.email,
+        password: data.password,
         ownerPhone: data.ownerPhone,
         address: composedAddress,
         city: data.city,
@@ -231,6 +232,8 @@ export default function RegisterPage() {
         longitude: locationData?.lng || 0,
         googleLink: locationData?.formattedAddress,
         galleryUrls: galleryPhotos,
+        emailVerified,
+        phoneVerified,
         settings: {
           mainPhotoUrl: mainPhoto,
           coverPhotoUrl: coverPhoto,
@@ -241,8 +244,6 @@ export default function RegisterPage() {
           locationPlaceId: locationData?.placeId,
           locationFormattedAddress: locationData?.formattedAddress,
           landmark: data.landmark,
-          emailVerified,
-          phoneVerified,
         },
       });
       router.push('/login?registrationSubmitted=1');
