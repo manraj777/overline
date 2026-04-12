@@ -81,7 +81,8 @@ export default function SignupPage() {
             <div className="absolute inset-0 bg-gradient-to-tr from-secondary/90 via-secondary/40 to-transparent" />
           </div>
           <div className="relative z-10 flex flex-col justify-between p-16 w-full">
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-3">
+              <img src="/overline-logo.png" alt="Overline" className="w-10 h-10 rounded-xl" />
               <span className="text-3xl font-black tracking-tighter text-white">Overline</span>
             </div>
             <div className="max-w-md">
@@ -119,7 +120,8 @@ export default function SignupPage() {
         <section className="w-full lg:w-1/2 flex flex-col bg-surface relative">
           {/* Mobile Logo */}
           <div className="lg:hidden p-8">
-            <Link href="/">
+            <Link href="/" className="flex items-center gap-3">
+              <img src="/overline-logo.png" alt="Overline" className="w-8 h-8 rounded-lg" />
               <span className="text-2xl font-black tracking-tighter text-primary">Overline</span>
             </Link>
           </div>

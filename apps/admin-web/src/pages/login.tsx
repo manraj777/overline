@@ -300,9 +300,11 @@ export default function LoginPage() {
         <div className="w-full max-w-md relative z-10">
           {/* Logo */}
           <div className="text-center mb-8">
-            <div className="w-16 h-16 mx-auto mb-5 bg-gradient-to-br from-primary to-primary-container rounded-2xl flex items-center justify-center shadow-button">
-              <span className="text-white font-black text-2xl">O</span>
-            </div>
+            <img 
+              src="/overline-logo.png" 
+              alt="Overline" 
+              className="w-16 h-16 mx-auto mb-5 rounded-2xl object-cover shadow-button"
+            />
             <h1 className="text-3xl font-black tracking-tight text-on-surface">Admin Portal</h1>
             <p className="text-on-surface-variant text-sm mt-1.5">Manage your shop with Overline</p>
           </div>

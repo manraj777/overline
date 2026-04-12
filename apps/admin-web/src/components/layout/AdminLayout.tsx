@@ -264,9 +264,11 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
         {/* Logo */}
         <div className="flex items-center justify-between h-16 px-3 lg:px-6 border-b border-white/5">
           <Link href={getDefaultRouteForRole(derivedRole)} className="flex items-center gap-3">
-            <div className="w-9 h-9 bg-gradient-to-br from-primary to-primary-container rounded-xl flex items-center justify-center shadow-button">
-              <span className="text-white font-black text-sm">O</span>
-            </div>
+            <img 
+              src="/overline-logo.png" 
+              alt="Overline" 
+              className="w-9 h-9 rounded-xl object-cover shadow-button"
+            />
             {!sidebarCollapsed && <span className="text-lg font-black text-white tracking-tight">Overline</span>}
           </Link>
         </div>

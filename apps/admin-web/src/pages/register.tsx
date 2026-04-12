@@ -271,9 +271,11 @@ export default function RegisterPage() {
         <div className="w-full max-w-2xl relative z-10">
           {/* Logo */}
           <div className="text-center mb-6">
-            <div className="w-14 h-14 mx-auto mb-4 bg-gradient-to-br from-primary to-primary-container rounded-2xl flex items-center justify-center shadow-button">
-              <span className="text-white font-black text-xl">O</span>
-            </div>
+            <img 
+              src="/overline-logo.png" 
+              alt="Overline" 
+              className="w-14 h-14 mx-auto mb-4 rounded-2xl object-cover shadow-button"
+            />
             <h1 className="text-2xl font-black tracking-tight text-on-surface">
               {step === 8 ? 'Review & Submit' : 'Register Your Shop'}
             </h1>
