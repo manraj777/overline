@@ -45,6 +45,8 @@ export default function LocationPicker({ value, onChange }: LocationPickerProps)
   const [manualLat, setManualLat] = React.useState(String(value?.lat || ''));
   const [manualLng, setManualLng] = React.useState(String(value?.lng || ''));
   const [showManualInputs, setShowManualInputs] = React.useState(false);
+  const [isDetectingLocation, setIsDetectingLocation] = React.useState(false);
+  const [locationError, setLocationError] = React.useState('');
 
   const extractAddressComponents = React.useCallback((place: google.maps.places.PlaceResult): Partial<LocationData> => {
     const components = place.address_components || [];
@@ -106,21 +108,48 @@ export default function LocationPicker({ value, onChange }: LocationPickerProps)
   }, [onChange, value]);
 
   const handleDetectLocation = React.useCallback(() => {
-    if (!navigator.geolocation) return;
+    if (!navigator.geolocation) {
+      setLocationError('Geolocation is not supported in this browser. Enter coordinates manually.');
+      return;
+    }
+
+    if (!window.isSecureContext) {
+      setLocationError('Current location works only on secure origins (https or localhost). Please use manual coordinates.');
+      return;
+    }
+
+    setIsDetectingLocation(true);
+    setLocationError('');
+
+    const applyCoordinates = (lat: number, lng: number) => {
+      const newPos = { lat, lng };
+      setMarkerPosition(newPos);
+      setManualLat(String(lat));
+      setManualLng(String(lng));
+      map?.panTo(newPos);
+      map?.setZoom(17);
+      onChange({ ...value, lat, lng } as LocationData);
+      setIsDetectingLocation(false);
+    };
+
     navigator.geolocation.getCurrentPosition(
       (position) => {
-        const lat = position.coords.latitude;
-        const lng = position.coords.longitude;
-        const newPos = { lat, lng };
-        setMarkerPosition(newPos);
-        setManualLat(String(lat));
-        setManualLng(String(lng));
-        map?.panTo(newPos);
-        map?.setZoom(17);
-        onChange({ ...value, lat, lng } as LocationData);
+        applyCoordinates(position.coords.latitude, position.coords.longitude);
       },
-      () => alert('Unable to detect your location'),
-      { enableHighAccuracy: true }
+      () => {
+        // Retry with low accuracy because some devices block high-accuracy GPS.
+        navigator.geolocation.getCurrentPosition(
+          (position) => {
+            applyCoordinates(position.coords.latitude, position.coords.longitude);
+          },
+          (retryError) => {
+            setIsDetectingLocation(false);
+            setLocationError(retryError?.message || 'Unable to detect your location. Please move pin manually.');
+          },
+          { enableHighAccuracy: false, timeout: 20000, maximumAge: 300000 },
+        );
+      },
+      { enableHighAccuracy: true, timeout: 12000, maximumAge: 0 },
     );
   }, [map, onChange, value]);
 
@@ -176,11 +205,16 @@ export default function LocationPicker({ value, onChange }: LocationPickerProps)
       <button
         type="button"
         onClick={handleDetectLocation}
+        disabled={isDetectingLocation}
         className="w-full flex items-center justify-center gap-2 py-3 bg-primary-fixed/30 border border-primary/20 rounded-xl text-primary font-bold text-sm hover:bg-primary-fixed/50 transition-all active:scale-[0.98]"
       >
         <Crosshair className="w-4 h-4" />
-        Detect My Current Location
+        {isDetectingLocation ? 'Detecting Location...' : 'Detect My Current Location'}
       </button>
+
+      {locationError && (
+        <p className="text-xs text-error font-medium">{locationError}</p>
+      )}
 
       {/* Map */}
       <div className="h-80 w-full rounded-2xl overflow-hidden border border-outline-variant/20 shadow-sm relative">

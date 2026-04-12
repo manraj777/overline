@@ -7,6 +7,14 @@ import { ROLES_KEY } from '../decorators/roles.decorator';
 export class RolesGuard implements CanActivate {
   constructor(private reflector: Reflector) {}
 
+  private normalizeRole(role: string | undefined | null): string {
+    const normalized = String(role || '').trim().toUpperCase();
+    if (normalized === 'SUPERADMIN') {
+      return 'SUPER_ADMIN';
+    }
+    return normalized;
+  }
+
   canActivate(context: ExecutionContext): boolean {
     const requiredRoles = this.reflector.getAllAndOverride<UserRole[]>(ROLES_KEY, [
       context.getHandler(),
@@ -23,7 +31,9 @@ export class RolesGuard implements CanActivate {
       throw new ForbiddenException('Access denied');
     }
 
-    const hasRole = requiredRoles.some((role) => user.role === role);
+    const userRole = this.normalizeRole(user.role);
+    const requiredNormalized = requiredRoles.map((role) => this.normalizeRole(role));
+    const hasRole = requiredNormalized.some((role) => userRole === role);
 
     if (!hasRole) {
       throw new ForbiddenException(`Access denied. Required roles: ${requiredRoles.join(', ')}`);
