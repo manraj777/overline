@@ -155,6 +155,34 @@ export default function SettingsPage() {
       addToast({ type: 'success', title: 'Location detected', message: 'Coordinates updated to your current position.' });
     };
 
+    const applyIpFallback = async () => {
+      try {
+        const response = await fetch('https://ipapi.co/json/');
+        const data = await response.json();
+        const latitude = Number(data?.latitude);
+        const longitude = Number(data?.longitude);
+        if (!Number.isFinite(latitude) || !Number.isFinite(longitude)) {
+          throw new Error('Could not infer coordinates from IP');
+        }
+        setShopForm((prev) => ({
+          ...prev,
+          latitude,
+          longitude,
+          city: prev.city || String(data?.city || ''),
+          state: prev.state || String(data?.region || ''),
+        }));
+        setIsResolvingLocation(false);
+        const message = 'Using approximate location from network. Adjust pin/address if needed.';
+        setLocationError(message);
+        addToast({ type: 'warning', title: 'Approximate location used', message });
+      } catch {
+        setIsResolvingLocation(false);
+        const message = 'Unable to detect your location. Use Find from Address or enter coordinates manually.';
+        setLocationError(message);
+        addToast({ type: 'error', title: 'Location error', message });
+      }
+    };
+
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         applyCoordinates(pos.coords.latitude, pos.coords.longitude);
@@ -166,10 +194,9 @@ export default function SettingsPage() {
             applyCoordinates(pos.coords.latitude, pos.coords.longitude);
           },
           (err) => {
-            setIsResolvingLocation(false);
             const message = err.message || 'Unable to detect your location';
             setLocationError(message);
-            addToast({ type: 'error', title: 'Location error', message });
+            void applyIpFallback();
           },
           { enableHighAccuracy: false, timeout: 20000, maximumAge: 300000 },
         );

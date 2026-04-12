@@ -132,6 +132,31 @@ export default function LocationPicker({ value, onChange }: LocationPickerProps)
       setIsDetectingLocation(false);
     };
 
+    const applyIpFallback = async () => {
+      try {
+        const response = await fetch('https://ipapi.co/json/');
+        const data = await response.json();
+        const lat = Number(data?.latitude);
+        const lng = Number(data?.longitude);
+        if (!Number.isFinite(lat) || !Number.isFinite(lng)) {
+          throw new Error('IP location unavailable');
+        }
+
+        applyCoordinates(lat, lng);
+        const city = String(data?.city || '');
+        const state = String(data?.region || '');
+        const country = String(data?.country_name || '');
+        const fallbackAddress = [city, state, country].filter(Boolean).join(', ');
+        setSearchAddress(fallbackAddress);
+        setLocationError('Using approximate location from network. Drag pin to exact shop entrance.');
+        onChange({ ...value, lat, lng, city, state, country, formattedAddress: fallbackAddress } as LocationData);
+      } catch {
+        setLocationError('Unable to detect your location. Please move pin manually.');
+      } finally {
+        setIsDetectingLocation(false);
+      }
+    };
+
     navigator.geolocation.getCurrentPosition(
       (position) => {
         applyCoordinates(position.coords.latitude, position.coords.longitude);
@@ -143,8 +168,9 @@ export default function LocationPicker({ value, onChange }: LocationPickerProps)
             applyCoordinates(position.coords.latitude, position.coords.longitude);
           },
           (retryError) => {
-            setIsDetectingLocation(false);
-            setLocationError(retryError?.message || 'Unable to detect your location. Please move pin manually.');
+            const message = retryError?.message || 'Unable to detect your location.';
+            setLocationError(message);
+            void applyIpFallback();
           },
           { enableHighAccuracy: false, timeout: 20000, maximumAge: 300000 },
         );

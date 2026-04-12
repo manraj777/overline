@@ -1524,10 +1524,28 @@ export class AuthService {
   }
 
   async generateTokens(user: any): Promise<TokenResponse> {
+    let effectiveRole = user.role as UserRole;
     let shopIds: string[] = [];
     let staffProfileId: string | undefined;
 
-    if (user.role === UserRole.OWNER) {
+    const ownedShops = await this.prisma.shop.findMany({
+      where: { ownerId: user.id, isActive: true },
+      orderBy: { createdAt: 'asc' },
+      select: { id: true },
+    });
+
+    if (ownedShops.length > 0) {
+      effectiveRole = UserRole.OWNER;
+      shopIds = ownedShops.map((shop) => shop.id);
+      if (user.role !== UserRole.OWNER) {
+        await this.prisma.user.update({
+          where: { id: user.id },
+          data: { role: UserRole.OWNER },
+        });
+      }
+    }
+
+    if (effectiveRole === UserRole.OWNER && shopIds.length === 0) {
       const ownerShops = await this.prisma.shop.findMany({
         where: { ownerId: user.id, isActive: true },
         orderBy: { createdAt: 'asc' },
@@ -1536,7 +1554,7 @@ export class AuthService {
       shopIds = ownerShops.map((shop) => shop.id);
     }
 
-    if (user.role === UserRole.STAFF) {
+    if (effectiveRole === UserRole.STAFF) {
       const profile = await (this.prisma as any).staffProfile.findFirst({
         where: { userId: user.id, isActive: true, isSuspended: false },
         orderBy: { createdAt: 'asc' },
@@ -1560,7 +1578,7 @@ export class AuthService {
     const payload: JwtPayload = {
       sub: user.id,
       email: user.email,
-      role: user.role,
+      role: effectiveRole,
       tenantId: user.tenantId || undefined,
       shopId: primaryShopId,
       shopIds,
@@ -1603,7 +1621,7 @@ export class AuthService {
         email: user.email,
         name: user.name,
         phone: user.phone || null,
-        role: user.role,
+        role: effectiveRole,
         tenantId: user.tenantId,
         shopId: primaryShopId,
         shopIds,

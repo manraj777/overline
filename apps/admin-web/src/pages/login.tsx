@@ -229,6 +229,13 @@ export default function LoginPage() {
         throw new Error('Invalid OTP');
       }
 
+      if (otpRequestedRole === 'OWNER') {
+        clearOtpPending();
+        const role = useAuthStore.getState().user?.role;
+        router.push(getDefaultRouteForRole(role));
+        return;
+      }
+
       let auth: AuthResponse;
       if (otpRequestedRole === 'STAFF' && otpSelectedShopId) {
         const { data } = await api.post<AuthResponse>('/auth/staff/verify-otp', {
@@ -248,10 +255,6 @@ export default function LoginPage() {
 
       if (otpRequestedRole === 'STAFF' && auth.user.role !== 'STAFF') {
         throw new Error('This OTP is not linked to a staff account.');
-      }
-
-      if (otpRequestedRole === 'OWNER' && auth.user.role === 'STAFF') {
-        throw new Error('This OTP is linked to a staff account. Use staff login.');
       }
 
       login(auth.user, auth.accessToken, auth.refreshToken, auth.user.shopId);
