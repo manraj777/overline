@@ -5,9 +5,8 @@ import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import type { Shop } from '@/types';
 
-// CartoDB Dark Matter tiles for a sleek, Lexogrine-style aesthetic
-const MAP_TILES = 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png';
-const MAP_ATTRIBUTION = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>';
+const MAP_TILES = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
+const MAP_ATTRIBUTION = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
 
 interface ShopMapProps {
     shops: Shop[];
@@ -110,7 +109,7 @@ export const ShopMapInner: React.FC<ShopMapProps> = ({
 
                                     <h3 className="font-bold text-lexo-black text-lg leading-tight mb-1">{shop.name}</h3>
                                     <a
-                                        href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${shop.address}, ${shop.city}`)}`}
+                                        href={`https://www.openstreetmap.org/search?query=${encodeURIComponent(`${shop.address}, ${shop.city}`)}`}
                                         target="_blank"
                                         rel="noopener noreferrer"
                                         className="text-primary-600 hover:underline block text-xs mb-3 truncate transition-colors"

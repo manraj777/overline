@@ -428,7 +428,7 @@ export default function ShopDetailPage() {
                   {/* Info Row */}
                   <div className="flex flex-wrap items-center gap-x-8 gap-y-3 mt-6 text-on-surface">
                     <a
-                      href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${shop.address}, ${shop.city}`)}`}
+                      href={`https://www.openstreetmap.org/search?query=${encodeURIComponent(`${shop.address}, ${shop.city}`)}`}
                       target="_blank"
                       rel="noopener noreferrer"
                       className="flex items-center gap-2 text-sm font-medium hover:text-primary transition-colors"
@@ -797,9 +797,9 @@ export default function ShopDetailPage() {
                     <div>
                       <p className="text-sm font-medium text-white/80 uppercase tracking-widest">{selectedServices.length} ITEM{selectedServices.length > 1 ? 'S' : ''} ADDED</p>
                       <p className="font-black text-xl flex items-center gap-2">
-                        ₹{selectedServices.reduce((sum, s) => sum + s.price, 0)}
+                        ₹{selectedServices.reduce((sum, s) => sum + Number(s.price || 0), 0)}
                         <span className="text-sm font-medium opacity-80 line-through">
-                          ₹{Math.floor(selectedServices.reduce((sum, s) => sum + s.price, 0) * 1.2)}
+                          ₹{Math.floor(selectedServices.reduce((sum, s) => sum + Number(s.price || 0), 0) * 1.2)}
                         </span>
                       </p>
                     </div>

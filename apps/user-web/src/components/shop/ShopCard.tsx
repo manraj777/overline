@@ -103,7 +103,7 @@ const ShopCard: React.FC<ShopCardProps> = ({ shop, queueInfo, userLocation }) =>
               onClick={(e) => {
                 e.preventDefault();
                 e.stopPropagation();
-                window.open(`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${shop.address}, ${shop.city}`)}`, '_blank', 'noopener,noreferrer');
+                window.open(`https://www.openstreetmap.org/search?query=${encodeURIComponent(`${shop.address}, ${shop.city}`)}`, '_blank', 'noopener,noreferrer');
               }}
               className="truncate hover:text-primary hover:underline transition-all text-left font-medium"
             >

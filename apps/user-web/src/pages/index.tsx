@@ -119,7 +119,7 @@ export default function HomePage() {
                     </div>
                   </div>
 
-                  <Link href={`/explore?q=${encodeURIComponent(searchQuery)}${location ? `&lat=${location.lat}&lng=${location.lng}` : ''}`}>
+                  <Link href={location ? `/explore?q=${encodeURIComponent(searchQuery)}&lat=${location.lat}&lng=${location.lng}` : `/explore?q=${encodeURIComponent(searchQuery)}`}>
                     <button className="w-full md:w-auto bg-gradient-to-br from-primary to-primary-container text-white px-10 py-4 rounded-xl font-bold active:scale-95 transition-all shadow-lg shadow-primary/20 text-sm">
                       Explore
                     </button>
@@ -295,6 +295,8 @@ export default function HomePage() {
             </div>
           </div>
         </div>
+      </section>
+
       {/* ═══════════════════════════════════════════════════════════ */}
       {/* 6. Step-by-Step Guidance (Google Requirement)              */}
       {/* ═══════════════════════════════════════════════════════════ */}
@@ -363,8 +365,8 @@ export default function HomePage() {
           <div className="mt-12 flex flex-col items-center gap-4">
             <p className="text-sm text-inverse-on-surface/40">Read our full commitment in the documents below:</p>
             <div className="flex gap-4">
-               <Link href="/privacy" className="text-primary-fixed hover:underline font-bold transition-all">Privacy Policy</Link>
-               <Link href="/terms" className="text-primary-fixed hover:underline font-bold transition-all">Terms of Service</Link>
+              <Link href="/privacy" className="text-primary-fixed hover:underline font-bold transition-all">Privacy Policy</Link>
+              <Link href="/terms" className="text-primary-fixed hover:underline font-bold transition-all">Terms of Service</Link>
             </div>
           </div>
         </div>
