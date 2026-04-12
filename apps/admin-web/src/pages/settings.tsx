@@ -130,31 +130,6 @@ export default function SettingsPage() {
   };
 
   const useCurrentLocation = () => {
-    if (!navigator.geolocation) {
-      addToast({ type: 'error', title: 'Error', message: 'Geolocation not supported by your browser' });
-      return;
-    }
-
-    if (!window.isSecureContext) {
-      const message = 'Current location works only on https or localhost. Use Find from Address or set coordinates manually.';
-      setLocationError(message);
-      addToast({ type: 'error', title: 'Location unavailable', message });
-      return;
-    }
-
-    setIsResolvingLocation(true);
-    setLocationError('');
-
-    const applyCoordinates = (latitude: number, longitude: number) => {
-      setShopForm((prev) => ({
-        ...prev,
-        latitude,
-        longitude,
-      }));
-      setIsResolvingLocation(false);
-      addToast({ type: 'success', title: 'Location detected', message: 'Coordinates updated to your current position.' });
-    };
-
     const applyIpFallback = async () => {
       try {
         const response = await fetch('https://ipapi.co/json/');
@@ -181,6 +156,35 @@ export default function SettingsPage() {
         setLocationError(message);
         addToast({ type: 'error', title: 'Location error', message });
       }
+    };
+
+    if (!navigator.geolocation) {
+      addToast({ type: 'error', title: 'Error', message: 'Geolocation not supported by your browser' });
+      setIsResolvingLocation(true);
+      void applyIpFallback();
+      return;
+    }
+
+    if (!window.isSecureContext) {
+      const message = 'Current location works only on https or localhost. Use Find from Address or set coordinates manually.';
+      setLocationError(message);
+      setIsResolvingLocation(true);
+      addToast({ type: 'warning', title: 'Location limited', message: 'Using approximate network location instead.' });
+      void applyIpFallback();
+      return;
+    }
+
+    setIsResolvingLocation(true);
+    setLocationError('');
+
+    const applyCoordinates = (latitude: number, longitude: number) => {
+      setShopForm((prev) => ({
+        ...prev,
+        latitude,
+        longitude,
+      }));
+      setIsResolvingLocation(false);
+      addToast({ type: 'success', title: 'Location detected', message: 'Coordinates updated to your current position.' });
     };
 
     navigator.geolocation.getCurrentPosition(

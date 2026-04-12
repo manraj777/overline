@@ -1427,6 +1427,21 @@ export class AuthService {
       throw new UnauthorizedException();
     }
 
+    const ownerShops = await this.prisma.shop.findMany({
+      where: { ownerId: user.id, isActive: true },
+      select: { id: true },
+      orderBy: { createdAt: 'asc' },
+    });
+
+    const effectiveRole: UserRole = ownerShops.length > 0 ? UserRole.OWNER : user.role;
+
+    if (effectiveRole === UserRole.OWNER && user.role !== UserRole.OWNER) {
+      await this.prisma.user.update({
+        where: { id: user.id },
+        data: { role: UserRole.OWNER },
+      });
+    }
+
     const result: {
       id: string;
       email: string;
@@ -1443,20 +1458,16 @@ export class AuthService {
       isActive: boolean;
     } = {
       ...user,
+      role: effectiveRole,
       phone: user.phone || null,
     };
 
-    if (user.role === UserRole.OWNER) {
-      const ownerShops = await this.prisma.shop.findMany({
-        where: { ownerId: user.id, isActive: true },
-        select: { id: true },
-        orderBy: { createdAt: 'asc' },
-      });
+    if (effectiveRole === UserRole.OWNER) {
       result.shopIds = ownerShops.map((shop) => shop.id);
       result.shopId = result.shopIds[0];
     }
 
-    if (user.role === UserRole.STAFF) {
+    if (effectiveRole === UserRole.STAFF) {
       const profile = await (this.prisma as any).staffProfile.findFirst({
         where: { userId: user.id, isActive: true, isSuspended: false },
         select: { id: true, shopId: true },

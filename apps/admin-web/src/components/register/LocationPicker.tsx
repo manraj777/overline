@@ -108,30 +108,6 @@ export default function LocationPicker({ value, onChange }: LocationPickerProps)
   }, [onChange, value]);
 
   const handleDetectLocation = React.useCallback(() => {
-    if (!navigator.geolocation) {
-      setLocationError('Geolocation is not supported in this browser. Enter coordinates manually.');
-      return;
-    }
-
-    if (!window.isSecureContext) {
-      setLocationError('Current location works only on secure origins (https or localhost). Please use manual coordinates.');
-      return;
-    }
-
-    setIsDetectingLocation(true);
-    setLocationError('');
-
-    const applyCoordinates = (lat: number, lng: number) => {
-      const newPos = { lat, lng };
-      setMarkerPosition(newPos);
-      setManualLat(String(lat));
-      setManualLng(String(lng));
-      map?.panTo(newPos);
-      map?.setZoom(17);
-      onChange({ ...value, lat, lng } as LocationData);
-      setIsDetectingLocation(false);
-    };
-
     const applyIpFallback = async () => {
       try {
         const response = await fetch('https://ipapi.co/json/');
@@ -155,6 +131,34 @@ export default function LocationPicker({ value, onChange }: LocationPickerProps)
       } finally {
         setIsDetectingLocation(false);
       }
+    };
+
+    if (!navigator.geolocation) {
+      setLocationError('Geolocation is not supported in this browser. Enter coordinates manually.');
+      setIsDetectingLocation(true);
+      void applyIpFallback();
+      return;
+    }
+
+    if (!window.isSecureContext) {
+      setLocationError('Current location works only on secure origins (https or localhost). Trying approximate network location.');
+      setIsDetectingLocation(true);
+      void applyIpFallback();
+      return;
+    }
+
+    setIsDetectingLocation(true);
+    setLocationError('');
+
+    const applyCoordinates = (lat: number, lng: number) => {
+      const newPos = { lat, lng };
+      setMarkerPosition(newPos);
+      setManualLat(String(lat));
+      setManualLng(String(lng));
+      map?.panTo(newPos);
+      map?.setZoom(17);
+      onChange({ ...value, lat, lng } as LocationData);
+      setIsDetectingLocation(false);
     };
 
     navigator.geolocation.getCurrentPosition(
