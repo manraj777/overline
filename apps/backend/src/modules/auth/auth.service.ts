@@ -774,7 +774,7 @@ export class AuthService {
     // Create user
     let user = await this.prisma.user.create({
       data: {
-        email: dto.email,
+        email: dto.email.toLowerCase(),
         name: dto.name,
         phone: dto.phone,
         hashedPassword,
@@ -843,9 +843,11 @@ export class AuthService {
       }
     }
 
+    const email = dto.email.toLowerCase();
+
     // Check if email already exists
     const existingUser = await this.prisma.user.findUnique({
-      where: { email: dto.email },
+      where: { email },
     });
 
     if (existingUser && existingUser.role !== UserRole.USER) {
@@ -926,7 +928,7 @@ export class AuthService {
           })
         : await tx.user.create({
             data: {
-              email: dto.email,
+              email,
               name: dto.ownerName,
               phone: ownerPhone,
               hashedPassword,

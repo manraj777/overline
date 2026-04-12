@@ -299,12 +299,12 @@ export default function SettingsPage() {
         <title>Shop Details - Overline Admin</title>
       </Head>
 
-      <div>
-          <div className="mb-8">
-            <span className="label-m3 mb-2 block text-primary font-bold">● Live from Database</span>
-            <h1 className="text-3xl font-black tracking-tight text-on-surface">Shop Details</h1>
-            <p className="text-on-surface-variant text-sm mt-1">Manage essential shop information and media.</p>
-          </div>
+      <div className="p-4 sm:p-6 max-w-7xl mx-auto">
+        <div className="mb-8">
+          <span className="label-m3 mb-2 block text-primary font-bold">● Live from Database</span>
+          <h1 className="text-3xl font-black tracking-tight text-on-surface">Shop Details</h1>
+          <p className="text-on-surface-variant text-sm mt-1">Manage essential shop information and media.</p>
+        </div>
 
         <div className="flex flex-col lg:flex-row gap-6">
           <div className="lg:w-64">
@@ -350,7 +350,6 @@ export default function SettingsPage() {
                       label="Name"
                       required
                       value={shopForm.name}
-                      
                       onChange={(e) => setShopForm((prev) => ({ ...prev, name: e.target.value }))}
                     />
 
@@ -359,7 +358,6 @@ export default function SettingsPage() {
                       <select
                         className="input-m3"
                         required
-                        
                         value={shopForm.shopType}
                         onChange={(e) => setShopForm((prev) => ({ ...prev, shopType: e.target.value }))}
                       >
@@ -377,7 +375,6 @@ export default function SettingsPage() {
                       label="Phone"
                       type="tel"
                       required
-                      
                       value={shopForm.phone}
                       onChange={(e) => setShopForm((prev) => ({ ...prev, phone: e.target.value }))}
                     />
@@ -385,7 +382,6 @@ export default function SettingsPage() {
                       label="Email"
                       type="email"
                       required
-                      
                       value={shopForm.email}
                       onChange={(e) => setShopForm((prev) => ({ ...prev, email: e.target.value }))}
                     />
@@ -394,7 +390,6 @@ export default function SettingsPage() {
                   <Input
                     label="Address"
                     required
-                    
                     value={shopForm.address}
                     onChange={(e) => setShopForm((prev) => ({ ...prev, address: e.target.value }))}
                   />
@@ -403,21 +398,18 @@ export default function SettingsPage() {
                     <Input
                       label="City"
                       required
-                      
                       value={shopForm.city}
                       onChange={(e) => setShopForm((prev) => ({ ...prev, city: e.target.value }))}
                     />
                     <Input
                       label="State"
                       required
-                      
                       value={shopForm.state}
                       onChange={(e) => setShopForm((prev) => ({ ...prev, state: e.target.value }))}
                     />
                     <Input
                       label="Postal Code"
                       required
-                      
                       value={shopForm.postalCode}
                       onChange={(e) => setShopForm((prev) => ({ ...prev, postalCode: e.target.value }))}
                     />
@@ -427,7 +419,6 @@ export default function SettingsPage() {
                     <Input
                       label="Location"
                       required
-                      
                       value={shopForm.location}
                       onChange={(e) => setShopForm((prev) => ({ ...prev, location: e.target.value }))}
                       onBlur={() => {
@@ -439,7 +430,6 @@ export default function SettingsPage() {
                     <Input
                       label="Google Link (Optional)"
                       value={shopForm.googleMapLink}
-                      
                       onChange={(e) => setShopForm((prev) => ({ ...prev, googleMapLink: e.target.value }))}
                     />
                   </div>
@@ -490,7 +480,6 @@ export default function SettingsPage() {
                   <Input
                     label="Timing (Working Time)"
                     required
-                    
                     value={shopForm.workingTime}
                     onChange={(e) => setShopForm((prev) => ({ ...prev, workingTime: e.target.value }))}
                     placeholder="09:00 - 21:00"
@@ -564,7 +553,7 @@ export default function SettingsPage() {
             {activeTab === 'settings' && (
               <div className="card-m3 p-8">
                 <h2 className="text-lg font-bold text-on-surface mb-6">Settings</h2>
-                <p className="text-sm text-on-surface-variant mb-6">Notifications moved here as requested.</p>
+                <p className="text-sm text-on-surface-variant mb-6">Notifications and preferences.</p>
 
                 <div className="space-y-8">
                   <div>
