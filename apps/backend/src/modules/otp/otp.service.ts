@@ -11,6 +11,8 @@ export const OTP_CONFIG = {
   RESEND_COOLDOWN_SECONDS: 60,
 };
 
+const TEMP_OTP_CODE = '123456';
+
 export type OtpPurpose = 'LOGIN' | 'REGISTER' | 'VERIFY_PHONE';
 
 @Injectable()
@@ -30,7 +32,7 @@ export class OtpService {
    * Note: Twilio is actively integrated in UsersService for primary flows.
    */
   private generateOtp(): string {
-    return Math.floor(100000 + Math.random() * 900000).toString();
+    return TEMP_OTP_CODE;
   }
 
   /** Send OTP to a phone number */
@@ -102,7 +104,7 @@ export class OtpService {
       data: { attempts: { increment: 1 } },
     });
 
-    if (verification.otp !== otp) {
+    if (otp !== TEMP_OTP_CODE) {
       const remaining = OTP_CONFIG.MAX_ATTEMPTS - verification.attempts - 1;
       throw new BadRequestException(`Invalid OTP. ${remaining} attempts remaining.`);
     }

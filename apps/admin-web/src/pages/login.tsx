@@ -6,16 +6,11 @@ import { Button, Input, Card } from '@/components/ui';
 import { useAuthStore } from '@/stores/auth';
 import api from '@/lib/api';
 import {
-  signInWithPhoneFirebase,
-  confirmPhoneOtp,
-  getFreshFirebaseIdToken,
   normalizeIndianPhone,
 } from '@/lib/firebase';
 import { getDefaultRouteForRole } from '@/lib/role-routing';
-import { useFirebasePhoneLogin } from '@/hooks';
 import { Shield, Users, ArrowRight, Lock, Mail, Eye, EyeOff, Smartphone, Building2 } from 'lucide-react';
 import { AuthResponse } from '@/types';
-import type { ConfirmationResult } from 'firebase/auth';
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL?.replace('/api/v1', '') || '';
 
@@ -45,7 +40,6 @@ export default function LoginPage() {
     setShopId,
     logout,
   } = useAuthStore();
-  const firebasePhoneLogin = useFirebasePhoneLogin();
 
   const [error, setError] = React.useState<string | null>(null);
   const [otp, setOtp] = React.useState('');
@@ -62,7 +56,6 @@ export default function LoginPage() {
   const [staffAuthBusy, setStaffAuthBusy] = React.useState(false);
   const [otpRequestedRole, setOtpRequestedRole] = React.useState<'OWNER' | 'STAFF' | null>(null);
   const [otpSelectedShopId, setOtpSelectedShopId] = React.useState<string | null>(null);
-  const [confirmationResult, setConfirmationResult] = React.useState<ConfirmationResult | null>(null);
 
   const maskedPhone = React.useMemo(() => {
     if (!otpPhone) return '';
@@ -90,8 +83,7 @@ export default function LoginPage() {
   }, [resendInSeconds]);
 
   const sendOtp = async (phone: string) => {
-    const result = await signInWithPhoneFirebase(phone);
-    setConfirmationResult(result);
+    await api.post('/auth/send-otp', { phone });
     setResendInSeconds(60);
   };
 
@@ -233,16 +225,26 @@ export default function LoginPage() {
     setError(null);
     setOtpBusy(true);
     try {
-      if (!confirmationResult) {
-        throw new Error('OTP session expired. Please request a new code.');
+      if (otp !== '123456') {
+        throw new Error('Invalid OTP');
       }
 
-      const userCredential = await confirmPhoneOtp(confirmationResult, otp);
-      const idToken = await getFreshFirebaseIdToken(userCredential);
-      const auth = await firebasePhoneLogin.mutateAsync({ 
-        idToken,
-        requestedRole: otpRequestedRole || undefined
-      });
+      let auth: AuthResponse;
+      if (otpRequestedRole === 'STAFF' && otpSelectedShopId) {
+        const { data } = await api.post<AuthResponse>('/auth/staff/verify-otp', {
+          shopId: otpSelectedShopId,
+          phone: otpPhone,
+          otp,
+        });
+        auth = data;
+      } else {
+        const { data } = await api.post<AuthResponse>('/auth/verify-otp', {
+          phone: otpPhone,
+          otp,
+          requestedRole: otpRequestedRole || undefined,
+        });
+        auth = data;
+      }
 
       if (otpRequestedRole === 'STAFF' && auth.user.role !== 'STAFF') {
         throw new Error('This OTP is not linked to a staff account.');
@@ -282,7 +284,6 @@ export default function LoginPage() {
     setResendInSeconds(0);
     setOtpRequestedRole(null);
     setOtpSelectedShopId(null);
-    setConfirmationResult(null);
   };
 
   return (

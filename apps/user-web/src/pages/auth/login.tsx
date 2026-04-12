@@ -5,14 +5,8 @@ import { useRouter } from 'next/router';
 import { useForm } from 'react-hook-form';
 import { Eye, EyeOff } from 'lucide-react';
 import { Button, Alert } from '@/components/ui';
-import { useLogin, useFirebasePhoneLogin } from '@/hooks';
+import { useLogin, useSendOtp, useVerifyOtp } from '@/hooks';
 import { useAuthStore } from '@/stores/auth';
-import {
-  signInWithPhoneFirebase,
-  confirmPhoneOtp,
-  getFreshFirebaseIdToken,
-} from '@/lib/firebase';
-import type { ConfirmationResult } from 'firebase/auth';
 
 const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL?.replace('/api/v1', '') || '';
 
@@ -26,7 +20,8 @@ export default function LoginPage() {
   const { redirect, error } = router.query;
   const { isAuthenticated } = useAuthStore();
   const login = useLogin();
-  const firebasePhoneLogin = useFirebasePhoneLogin();
+  const sendOtp = useSendOtp();
+  const verifyOtp = useVerifyOtp();
 
   const [showPassword, setShowPassword] = React.useState(false);
   const [localError, setLocalError] = React.useState<string | null>(null);
@@ -37,9 +32,6 @@ export default function LoginPage() {
   const [otpSent, setOtpSent] = React.useState(false);
   const [resendCountdown, setResendCountdown] = React.useState(0);
   const [isSendingOtp, setIsSendingOtp] = React.useState(false);
-  const [confirmationResult, setConfirmationResult] = React.useState<ConfirmationResult | null>(
-    null,
-  );
 
   const otpInputRefs = React.useRef<Array<HTMLInputElement | null>>([]);
 
@@ -100,8 +92,7 @@ export default function LoginPage() {
     setLocalError(null);
     setIsSendingOtp(true);
     try {
-      const result = await signInWithPhoneFirebase(phone);
-      setConfirmationResult(result);
+      await sendOtp.mutateAsync({ phone, purpose: 'LOGIN' });
       setOtpSent(true);
       setResendCountdown(60);
       setTimeout(() => otpInputRefs.current[0]?.focus(), 0);
@@ -138,13 +129,11 @@ export default function LoginPage() {
     }
 
     try {
-      if (!confirmationResult) {
-        setLocalError('Please request a new OTP code.');
+      if (otp !== '123456') {
+        setLocalError('Invalid OTP. Use 123456 for now.');
         return;
       }
-      const userCredential = await confirmPhoneOtp(confirmationResult, otp);
-      const idToken = await getFreshFirebaseIdToken(userCredential);
-      await firebasePhoneLogin.mutateAsync({ idToken });
+      await verifyOtp.mutateAsync({ phone, otp, purpose: 'LOGIN' });
       router.push((redirect as string) || '/');
     } catch (err: any) {
       setLocalError(err?.response?.data?.message || err?.message || 'OTP verification failed');
@@ -361,7 +350,7 @@ export default function LoginPage() {
                       <Button
                         type="button"
                         onClick={handleVerifyOtp}
-                        isLoading={firebasePhoneLogin.isPending}
+                        isLoading={verifyOtp.isPending}
                         className="w-full h-14 bg-gradient-to-br from-primary to-primary-container text-white font-bold rounded-xl shadow-button hover:shadow-button-hover active:scale-[0.97] transition-all"
                       >
                         Verify OTP

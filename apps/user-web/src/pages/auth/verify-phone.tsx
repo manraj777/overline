@@ -5,31 +5,27 @@ import { useRouter } from 'next/router';
 import { Phone, CheckCircle, LogIn } from 'lucide-react';
 import { Button, Input, Card, Alert } from '@/components/ui';
 import { useAuthStore } from '@/stores/auth';
-import { useFirebasePhoneLogin, useLogout } from '@/hooks/useAuth';
-import { signInWithPhoneFirebase, confirmPhoneOtp, getFreshFirebaseIdToken } from '@/lib/firebase';
+import { useLogout } from '@/hooks/useAuth';
 import api from '@/lib/api';
-import type { ConfirmationResult } from 'firebase/auth';
 
 export default function VerifyPhonePage() {
   const router = useRouter();
   const { user, isAuthenticated } = useAuthStore();
   const { mutate: logoutMutate } = useLogout();
-  const firebasePhoneLogin = useFirebasePhoneLogin();
 
   const [phone, setPhone] = React.useState(user?.phone || '');
   const [otpCode, setOtpCode] = React.useState('');
   const [isOtpSent, setIsOtpSent] = React.useState(false);
   const [error, setError] = React.useState<string | null>(null);
   const [isLoading, setIsLoading] = React.useState(false);
-  const [confirmationResult, setConfirmationResult] = React.useState<ConfirmationResult | null>(null);
   // shown when the phone is already linked to another account
   const [showLoginInstead, setShowLoginInstead] = React.useState(false);
 
   React.useEffect(() => {
-    if (user?.isPhoneVerified && !firebasePhoneLogin.isPending) {
+    if (user?.isPhoneVerified) {
       router.replace('/');
     }
-  }, [user, router, firebasePhoneLogin.isPending]);
+  }, [user, router]);
 
   const handleSendOtp = async () => {
     const normalizedPhone = phone.replace(/\D/g, '');
@@ -61,8 +57,7 @@ export default function VerifyPhonePage() {
         }
       }
 
-      const result = await signInWithPhoneFirebase(phone);
-      setConfirmationResult(result);
+      await api.post('/users/me/otp/send');
       setIsOtpSent(true);
     } catch (err: any) {
       const msg: string = err?.response?.data?.message || err?.message || 'Failed to send OTP';
@@ -89,14 +84,11 @@ export default function VerifyPhonePage() {
     setIsLoading(true);
 
     try {
-      if (!confirmationResult) {
-        setError('Please request a new OTP code.');
+      if (otpCode !== '123456') {
+        setError('Invalid OTP. Use 123456 for now.');
         return;
       }
-
-      const userCredential = await confirmPhoneOtp(confirmationResult, otpCode);
-      const idToken = await getFreshFirebaseIdToken(userCredential);
-      await firebasePhoneLogin.mutateAsync({ idToken });
+      await api.post('/users/me/otp/verify', { code: otpCode });
       router.replace('/');
     } catch (err: any) {
       setError(err?.response?.data?.message || err?.message || 'Invalid or expired OTP code');
@@ -168,7 +160,6 @@ export default function VerifyPhonePage() {
                     setError(null);
                     setPhone('');
                     setIsOtpSent(false);
-                    setConfirmationResult(null);
                     setOtpCode('');
                   }}
                 >
@@ -213,7 +204,7 @@ export default function VerifyPhonePage() {
                 type="submit"
                 className="w-full"
                 size="lg"
-                isLoading={isLoading || firebasePhoneLogin.isPending}
+                isLoading={isLoading}
               >
                 Verify &amp; Continue
               </Button>
@@ -221,13 +212,12 @@ export default function VerifyPhonePage() {
                 type="button"
                 onClick={() => {
                   setIsOtpSent(false);
-                  setConfirmationResult(null);
                   setOtpCode('');
                 }}
                 variant="outline"
                 className="w-full"
                 size="sm"
-                disabled={isLoading || firebasePhoneLogin.isPending}
+                disabled={isLoading}
               >
                 Change Phone Number
               </Button>

@@ -49,6 +49,8 @@ const DayOfWeek = {
   SUNDAY: 'SUNDAY',
 } as const;
 
+const TEMP_OTP_CODE = '123456';
+
 export interface JwtPayload {
   sub: string;
   email: string;
@@ -248,18 +250,12 @@ export class AuthService {
       );
     }
 
-    const otp = this.generateOtpCode();
+    const otp = TEMP_OTP_CODE;
 
     await this.redis.set(`otp:${normalizedPhone}`, otp, 300);
-    try {
-      await this.sendOtpSms(normalizedPhone, otp);
-    } catch (error) {
-      await this.redis.del(`otp:${normalizedPhone}`);
-      throw error;
-    }
 
     return {
-      message: 'OTP sent successfully',
+      message: `OTP sent successfully (temporary code: ${TEMP_OTP_CODE})`,
       expiresInSeconds: 300,
       retryAfterSeconds: 60,
     };
@@ -267,18 +263,11 @@ export class AuthService {
 
   async verifyPhoneOtp(phone: string, otp: string, requestedRole?: string): Promise<TokenResponse> {
     const normalizedPhone = this.normalizePhone(phone);
-    const key = `otp:${normalizedPhone}`;
-    const cachedOtp = await this.redis.get(key);
-
-    if (!cachedOtp) {
-      throw new BadRequestException('OTP expired. Please request a new OTP.');
-    }
-
-    if (cachedOtp !== otp) {
+    if (otp !== TEMP_OTP_CODE) {
       throw new BadRequestException('Invalid OTP');
     }
 
-    await this.redis.del(key);
+    await this.redis.del(`otp:${normalizedPhone}`);
 
     return this.loginWithVerifiedPhone(normalizedPhone, requestedRole);
   }
@@ -373,17 +362,11 @@ export class AuthService {
       );
     }
 
-    const otp = this.generateOtpCode();
+    const otp = TEMP_OTP_CODE;
     await this.redis.set(`otp:staff:${shopId}:${normalizedPhone}`, otp, 300);
-    try {
-      await this.sendOtpSms(normalizedPhone, otp);
-    } catch (error) {
-      await this.redis.del(`otp:staff:${shopId}:${normalizedPhone}`);
-      throw error;
-    }
 
     return {
-      message: 'Staff OTP sent successfully',
+      message: `Staff OTP sent successfully (temporary code: ${TEMP_OTP_CODE})`,
       expiresInSeconds: 300,
       retryAfterSeconds: 60,
     };
@@ -397,18 +380,11 @@ export class AuthService {
       );
     }
 
-    const key = `otp:staff:${shopId}:${normalizedPhone}`;
-    const cachedOtp = await this.redis.get(key);
-
-    if (!cachedOtp) {
-      throw new BadRequestException('OTP expired. Please request a new OTP.');
-    }
-
-    if (cachedOtp !== otp) {
+    if (otp !== TEMP_OTP_CODE) {
       throw new BadRequestException('Invalid OTP');
     }
 
-    await this.redis.del(key);
+    await this.redis.del(`otp:staff:${shopId}:${normalizedPhone}`);
     let user = staff.userId
       ? await this.prisma.user.findUnique({ where: { id: staff.userId } })
       : null;
@@ -808,13 +784,12 @@ export class AuthService {
 
     // Generate OTP if phone is provided
     if (user.phone) {
-      const otpCode = this.generateOtpCode();
+      const otpCode = TEMP_OTP_CODE;
       const otpExpiresAt = new Date(Date.now() + 10 * 60 * 1000);
       user = await (this.prisma.user as any).update({
         where: { id: user.id },
         data: { otpCode, otpExpiresAt },
       } as any);
-      await this.sendOtpSms(this.normalizePhone(user.phone), otpCode);
     }
 
     // Generate tokens
