@@ -13,10 +13,25 @@ export class RolesGuard implements CanActivate {
 
   private normalizeRole(role: string | undefined | null): string {
     const normalized = String(role || '').trim().toUpperCase();
+    if (normalized === 'ADMIN_OWNER' || normalized === 'SHOP_OWNER' || normalized === 'BUSINESS_OWNER') {
+      return 'OWNER';
+    }
+    if (normalized === 'EMPLOYEE') {
+      return 'STAFF';
+    }
     if (normalized === 'SUPERADMIN') {
       return 'SUPER_ADMIN';
     }
     return normalized;
+  }
+
+  private getUserRoles(user: any): string[] {
+    const rolesFromArray = Array.isArray(user?.roles)
+      ? user.roles.map((role: string) => this.normalizeRole(role)).filter(Boolean)
+      : [];
+
+    const singleRole = this.normalizeRole(user?.role);
+    return Array.from(new Set([singleRole, ...rolesFromArray].filter(Boolean)));
   }
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
@@ -35,9 +50,9 @@ export class RolesGuard implements CanActivate {
       throw new ForbiddenException('Access denied');
     }
 
-    const userRole = this.normalizeRole(user.role);
+    const userRoles = this.getUserRoles(user);
     const requiredNormalized = requiredRoles.map((role) => this.normalizeRole(role));
-    let hasRole = requiredNormalized.some((role) => userRole === role);
+    let hasRole = requiredNormalized.some((role) => userRoles.includes(role));
 
     // Legacy compatibility: permit OWNER-required routes when this account
     // demonstrably owns or manages active shops, even if stored role is stale USER.
