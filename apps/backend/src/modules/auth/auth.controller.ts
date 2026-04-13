@@ -253,6 +253,12 @@ export class AuthController {
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Login as staff using phone and 6-digit PIN' })
   async staffLogin(@Body() dto: StaffLoginDto) {
+    // Use staffPinLogin (queries staff table with plaintext PIN) when shopId is provided.
+    // This matches how createStaff() saves the PIN to the staff table.
+    if (dto.shopId) {
+      return this.authService.staffPinLogin(dto.shopId, dto.phone, dto.pin);
+    }
+    // Fallback for clients that don't send shopId (backward compat)
     return this.authService.staffLogin(dto.phone, dto.pin);
   }
 

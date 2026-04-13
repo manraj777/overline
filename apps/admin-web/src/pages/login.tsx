@@ -169,6 +169,7 @@ export default function LoginPage() {
     try {
       const normalizedPhone = `+91${digits}`;
       const { data: auth } = await api.post<any>('/auth/staff-login', {
+        shopId: selectedShop.id,
         phone: normalizedPhone,
         pin: staffPin,
       });

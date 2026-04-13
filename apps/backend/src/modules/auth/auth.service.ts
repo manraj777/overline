@@ -975,6 +975,7 @@ export class AuthService {
           verifiedAt: googleVerification.isVerified ? new Date() : null,
           // Extended contact & address in settings JSON
           settings: {
+            shopType: dto.shopType,
             publicPhone,
             ownerPhone: ownerPhone,
             whatsappPhone: dto.whatsappPhone || null,
@@ -985,6 +986,7 @@ export class AuthService {
             locality: dto.locality || null,
             landmark: dto.landmark || null,
             formattedAddress: dto.formattedAddress || null,
+            location: dto.formattedAddress || dto.locality || dto.city || null,
           },
         },
       });

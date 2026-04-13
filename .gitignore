@@ -54,3 +54,4 @@ tmp
 apps/mobile-admin/android/app/google-services.json
 apps/mobile-user/android/app/google-services.json
 .env*.local
+.venv

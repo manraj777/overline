@@ -1,7 +1,12 @@
-import { IsString, IsNotEmpty, Length } from 'class-validator';
-import { ApiProperty } from '@nestjs/swagger';
+import { IsString, IsNotEmpty, Length, IsOptional } from 'class-validator';
+import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
 export class StaffLoginDto {
+  @ApiPropertyOptional({ example: 'shop-uuid', description: 'Shop ID to authenticate against' })
+  @IsString()
+  @IsOptional()
+  shopId?: string;
+
   @ApiProperty({ example: '+919876543210' })
   @IsString()
   @IsNotEmpty()

@@ -901,6 +901,20 @@ export class AdminService {
   async getShopSettings(shopId: string, tenantId: string) {
     const shop = await this.verifyShopAccess(shopId, tenantId);
 
+    // Fetch tenant type for the shop type dropdown
+    let shopType: string | undefined;
+    try {
+      const tenant = await this.prisma.tenant.findUnique({
+        where: { id: shop.tenantId },
+        select: { type: true },
+      });
+      shopType = tenant?.type || undefined;
+    } catch {
+      // ignore — type is optional
+    }
+
+    const settingsJson = (shop.settings as Record<string, any>) || {};
+
     return {
       id: shop.id,
       name: shop.name,
@@ -926,7 +940,11 @@ export class AdminService {
       allowReschedule: shop.allowReschedule,
       freeRescheduleMinutes: shop.freeRescheduleMinutes,
       requireOwnerApproval: shop.requireOwnerApproval,
-      settings: shop.settings,
+      settings: {
+        ...settingsJson,
+        shopType: settingsJson.shopType || shopType,
+        location: settingsJson.location || settingsJson.formattedAddress || shop.address,
+      },
     };
   }
 

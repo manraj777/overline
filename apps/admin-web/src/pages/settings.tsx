@@ -57,7 +57,7 @@ export default function SettingsPage() {
       city: shopData.city || '',
       state: shopData.state || '',
       postalCode: shopData.postalCode || '',
-      location: String(shopData.settings?.location || ''),
+      location: String(shopData.settings?.location || shopData.address || ''),
       latitude: shopData.latitude || '',
       longitude: shopData.longitude || '',
       googleMapLink: String(shopData.settings?.googleMapLink || ''),
