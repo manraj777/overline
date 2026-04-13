@@ -211,7 +211,7 @@ export default function RegisterPage() {
         .filter(Boolean)
         .join(', ') || locationData?.formattedAddress || data.city || 'Address';
 
-      await registerShop.mutateAsync({
+      const result = await registerShop.mutateAsync({
         email: data.email.trim().toLowerCase(),
         password: data.password,
         ownerName: data.ownerName,
@@ -242,7 +242,12 @@ export default function RegisterPage() {
         coverPhotoUrl: coverPhoto,
         galleryUrls: galleryPhotos,
       });
-      router.push('/login?registrationSubmitted=1');
+      // If tokens were stored by the hook, go directly to settings
+      if (result?.accessToken) {
+        router.push('/settings');
+      } else {
+        router.push('/login?registrationSubmitted=1');
+      }
     } catch (err: any) {
       setError(err.response?.data?.message || err.message || 'Registration failed');
     }

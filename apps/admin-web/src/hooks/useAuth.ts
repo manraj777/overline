@@ -61,14 +61,23 @@ export function useLogin() {
 
 export function useRegisterShop() {
   const queryClient = useQueryClient();
+  const { login, setShopId } = useAuthStore();
 
-  return useMutation<{ id: string; slug: string; name: string; verificationStatus: string; isActive: boolean }, Error, any>({
+  return useMutation<AuthResponse, Error, any>({
     mutationFn: async (payload) => {
       const { data } = await api.post('/auth/register-shop', payload);
       return data;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      // Store auth tokens so the user is immediately authenticated
+      if (data?.accessToken && data?.user) {
+        login(data.user, data.accessToken, data.refreshToken, data.user.shopId);
+        if (data.user.shopId) {
+          setShopId(data.user.shopId);
+        }
+      }
       queryClient.invalidateQueries({ queryKey: ['shops'] });
+      queryClient.invalidateQueries({ queryKey: ['admin', 'my-shops'] });
     },
   });
 }
