@@ -48,12 +48,17 @@ export class ShopOwnerGuard implements CanActivate {
       return true;
     }
 
-    if (
-      user.role === 'OWNER' &&
-      user.tenantId &&
-      shop.tenantId === user.tenantId
-    ) {
-      return true;
+    if (user.tenantId && shop.tenantId === user.tenantId) {
+      const ownerScopeCount = await this.prisma.shop.count({
+        where: {
+          ownerId: user.id,
+          tenantId: user.tenantId,
+          isActive: true,
+        },
+      });
+      if (ownerScopeCount > 0) {
+        return true;
+      }
     }
 
     throw new ForbiddenException('You do not own this shop');
