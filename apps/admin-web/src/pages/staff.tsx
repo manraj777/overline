@@ -36,7 +36,7 @@ const emptyForm: StaffFormData = {
 
 export default function StaffPage() {
   const { data: staff, isLoading } = useStaff();
-  const { toast } = useToast();
+  const { addToast } = useToast();
   const { data: services } = useServices();
   const createStaff = useCreateStaff();
   const updateStaff = useUpdateStaff();
@@ -99,7 +99,7 @@ export default function StaffPage() {
           await Promise.all(toUnassign.map((serviceId) => unassignServiceFromStaff.mutateAsync({ staffId: savedStaffId as string, serviceId })));
         }
       }
-      toast({ title: editingStaffId ? 'Staff updated' : 'Staff created', type: 'success' });
+      addToast({ title: editingStaffId ? 'Staff updated' : 'Staff created', type: 'success' });
       setShowForm(false);
       setEditingStaffId(null);
       setFormData({ ...emptyForm });
@@ -110,7 +110,7 @@ export default function StaffPage() {
       const message = err.response?.data?.message;
       const errorMsg = Array.isArray(message) ? message.join(', ') : message || 'Failed to save staff';
       setFormError(errorMsg);
-      toast({ title: 'Error saving staff', description: errorMsg, type: 'error' });
+      addToast({ title: 'Error saving staff', message: errorMsg, type: 'error' });
     }
   };
 

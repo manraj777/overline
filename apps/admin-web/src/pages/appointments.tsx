@@ -29,7 +29,7 @@ export default function AppointmentsPage() {
   const [searchQuery, setSearchQuery] = React.useState('');
   const queryClient = useQueryClient();
   const { user } = useAuthStore();
-  const { toast } = useToast();
+  const { addToast } = useToast();
 
   const { data: bookings, isLoading } = useAdminBookings({
     date: format(selectedDate, 'yyyy-MM-dd'),
@@ -258,7 +258,7 @@ export default function AppointmentsPage() {
                               onClick={() => {
                                 if (window.confirm('Cancel this appointment?')) {
                                   updateStatus.mutate({ bookingId: booking.id, status: 'CANCELLED' });
-                                  toast({ title: 'Appointment cancelled', type: 'info' });
+                                  addToast({ title: 'Appointment cancelled', type: 'info' });
                                 }
                               }}
                             >
@@ -273,7 +273,7 @@ export default function AppointmentsPage() {
                               onClick={() => {
                                 if (window.confirm('Mark customer as No-Show?')) {
                                   updateStatus.mutate({ bookingId: booking.id, status: 'NO_SHOW' });
-                                  toast({ title: 'Marked as No-Show', type: 'warning' });
+                                  addToast({ title: 'Marked as No-Show', type: 'warning' });
                                 }
                               }}
                             >

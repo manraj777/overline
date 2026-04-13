@@ -11,7 +11,7 @@ export default function ServicesPage() {
   const updateService = useUpdateService();
   const deleteService = useDeleteService();
 
-  const { toast } = useToast();
+  const { addToast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadingFor, setUploadingFor] = React.useState<string | null>(null);
   
@@ -39,7 +39,7 @@ export default function ServicesPage() {
         await updateService.mutateAsync({ id: uploadingFor, imageUrl: url });
       }
     } catch (err: any) {
-      toast({ title: 'Upload failed', description: err.message, type: 'error' });
+      addToast({ title: 'Upload failed', message: err.message, type: 'error' });
       console.error('Upload failed', err);
     } finally {
       setUploadingFor(null);
@@ -71,17 +71,17 @@ export default function ServicesPage() {
 
   const handleSaveNewRow = async (row: any) => {
     if (!row.name) {
-      toast({ title: 'Missing Name', description: 'Please enter a name for the service.', type: 'error' });
+      addToast({ title: 'Missing Name', message: 'Please enter a name for the service.', type: 'error' });
       return;
     }
     const price = parseInt(row.price);
     const duration = parseInt(row.durationMinutes);
     if (isNaN(price) || price < 0) {
-      toast({ title: 'Invalid Price', description: 'Please enter a valid price.', type: 'error' });
+      addToast({ title: 'Invalid Price', message: 'Please enter a valid price.', type: 'error' });
       return;
     }
     if (isNaN(duration) || duration < 1) {
-      toast({ title: 'Invalid Duration', description: 'Duration must be at least 1 minute.', type: 'error' });
+      addToast({ title: 'Invalid Duration', message: 'Duration must be at least 1 minute.', type: 'error' });
       return;
     }
 
@@ -93,11 +93,11 @@ export default function ServicesPage() {
         durationMinutes: duration,
         imageUrl: row.imageUrl || undefined,
       });
-      toast({ title: 'Service created', type: 'success' });
+      addToast({ title: 'Service created', type: 'success' });
       handleRemoveNewRow(row.id);
     } catch (err: any) {
       const msg = err.response?.data?.message || err.message;
-      toast({ title: 'Failed to create', description: Array.isArray(msg) ? msg[0] : msg, type: 'error' });
+      addToast({ title: 'Failed to create', message: Array.isArray(msg) ? msg[0] : msg, type: 'error' });
     }
   };
 
@@ -108,9 +108,9 @@ export default function ServicesPage() {
         id, 
         [field]: field === 'price' || field === 'durationMinutes' ? parseInt(value) : value 
       });
-      toast({ title: 'Updated', type: 'success' });
+      addToast({ title: 'Updated', type: 'success' });
     } catch (err: any) {
-      toast({ title: 'Update failed', description: err.message, type: 'error' });
+      addToast({ title: 'Update failed', message: err.message, type: 'error' });
     }
   };
 
