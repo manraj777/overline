@@ -424,12 +424,7 @@ export function useUpdateShopSettings() {
     mutationFn: async (payload: Record<string, any>) => {
       const activeShopId = shopId || (await resolveActiveShopId());
       await api.patch(`/admin/shops/${activeShopId}/settings`, payload);
-      const { data } = await api.get(`/admin/shops/${activeShopId}/settings`, {
-        headers: {
-          'Cache-Control': 'no-cache',
-          Pragma: 'no-cache',
-        },
-      });
+      const { data } = await api.get(`/admin/shops/${activeShopId}/settings`);
       return data;
     },
     onSuccess: (data) => {
