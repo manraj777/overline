@@ -1108,9 +1108,8 @@ export class AuthService {
       throw new UnauthorizedException('Invalid credentials');
     }
 
-    // Backward compatibility: if an account is still USER but already owns a shop,
-    // promote it to OWNER when explicitly logging into owner portal.
-    if (dto.requestedRole === 'OWNER' && user.role === UserRole.USER) {
+    // Owner portal rule: any successful owner-flow login is treated as OWNER.
+    if (dto.requestedRole === 'OWNER' && user.role !== UserRole.OWNER) {
       const [ownedShop, tenantShop] = await Promise.all([
         this.prisma.shop.findFirst({
           where: { ownerId: user.id, isActive: true },
@@ -1125,15 +1124,13 @@ export class AuthService {
       ]);
 
       const ownerContext = ownedShop || tenantShop;
-      if (ownerContext) {
-        user = await this.prisma.user.update({
-          where: { id: user.id },
-          data: {
-            role: UserRole.OWNER,
-            tenantId: user.tenantId || ownerContext.tenantId,
-          },
-        });
-      }
+      user = await this.prisma.user.update({
+        where: { id: user.id },
+        data: {
+          role: UserRole.OWNER,
+          tenantId: user.tenantId || ownerContext?.tenantId || null,
+        },
+      });
     }
 
     // Strict UI Role Verification (Phase 5 Alignment)
@@ -1145,11 +1142,6 @@ export class AuthService {
         throw new ForbiddenException('Access denied. You do not have an Owner or Staff account. Please use the standard Overline user app.');
       }
       
-      // Specifically block Staff from logging in via the Owner toggle
-      if (dto.requestedRole === 'OWNER' && user.role === 'STAFF') {
-        throw new ForbiddenException('Access denied. You attempted to log in as an Owner, but your account is registered as Staff. Please select the Staff tab and try again.');
-      }
-
       // Conversely, if an Owner tries to log in via the Staff toggle
       if (dto.requestedRole === 'STAFF' && user.role === 'OWNER') {
         throw new ForbiddenException('Access denied. You attempted to log in as Staff, but you are a Shop Owner. Please select the Shop Owner tab and try again.');
