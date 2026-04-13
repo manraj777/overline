@@ -11,11 +11,23 @@ export class ServicesService {
     private redis: RedisService,
   ) {}
 
-  async create(shopId: string, dto: CreateServiceDto, tenantId: string) {
-    // Verify shop belongs to tenant
-    const shop = await this.prisma.shop.findFirst({
-      where: { id: shopId, tenantId },
+  private async getAuthorizedShop(shopId: string, tenantId?: string) {
+    // SUPER_ADMIN or missing tenant context can still be authorized by shop existence.
+    if (!tenantId) {
+      return this.prisma.shop.findFirst({ where: { id: shopId } });
+    }
+
+    return this.prisma.shop.findFirst({
+      where: {
+        id: shopId,
+        OR: [{ tenantId }, { owner: { tenantId } }],
+      },
+      include: { owner: { select: { id: true, tenantId: true } } },
     });
+  }
+
+  async create(shopId: string, dto: CreateServiceDto, tenantId: string) {
+    const shop = await this.getAuthorizedShop(shopId, tenantId);
 
     if (!shop) {
       throw new ForbiddenException('Not authorized to manage this shop');
@@ -81,7 +93,8 @@ export class ServicesService {
       throw new NotFoundException('Service not found');
     }
 
-    if (service.shop.tenantId !== tenantId) {
+    const authorizedShop = await this.getAuthorizedShop(service.shopId, tenantId);
+    if (!authorizedShop) {
       throw new ForbiddenException('Not authorized to manage this service');
     }
 
@@ -111,7 +124,8 @@ export class ServicesService {
       throw new NotFoundException('Service not found');
     }
 
-    if (service.shop.tenantId !== tenantId) {
+    const authorizedShop = await this.getAuthorizedShop(service.shopId, tenantId);
+    if (!authorizedShop) {
       throw new ForbiddenException('Not authorized to manage this service');
     }
 
@@ -126,9 +140,7 @@ export class ServicesService {
   }
 
   async reorder(shopId: string, serviceIds: string[], tenantId: string) {
-    const shop = await this.prisma.shop.findFirst({
-      where: { id: shopId, tenantId },
-    });
+    const shop = await this.getAuthorizedShop(shopId, tenantId);
 
     if (!shop) {
       throw new ForbiddenException('Not authorized to manage this shop');
