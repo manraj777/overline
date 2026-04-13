@@ -88,6 +88,7 @@ export default function StaffPage() {
           avatarUrl: formData.avatarUrl || undefined,
         });
         savedStaffId = created?.id;
+      }
       if (savedStaffId) {
         const toAssign = selectedServiceIds.filter((id) => !initialServiceIds.includes(id));
         const toUnassign = initialServiceIds.filter((id) => !selectedServiceIds.includes(id));
