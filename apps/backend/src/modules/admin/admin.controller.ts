@@ -52,6 +52,17 @@ export class AdminController {
     return this.adminService.getMyShops(userId, tenantId, role);
   }
 
+  @Get('owner/my-shop')
+  @Roles(UserRole.OWNER, UserRole.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Get current owner primary shop details' })
+  async getOwnerMyShop(
+    @CurrentUser('id') ownerId: string,
+    @CurrentUser('tenantId') tenantId: string,
+    @CurrentUser('role') role: UserRole,
+  ) {
+    return this.adminService.getOwnerMyShop(ownerId, tenantId, role);
+  }
+
   @Get('shops/:shopId/dashboard')
   @UseGuards(ShopMemberGuard)
   @ShopIdParam('shopId')

@@ -899,13 +899,7 @@ export class AdminService {
    * Get shop settings
    */
   async getShopSettings(shopId: string, tenantId: string) {
-    const shop = await this.prisma.shop.findFirst({
-      where: { id: shopId, tenantId },
-    });
-
-    if (!shop) {
-      throw new ForbiddenException('Not authorized');
-    }
+    const shop = await this.verifyShopAccess(shopId, tenantId);
 
     return {
       id: shop.id,
@@ -934,6 +928,44 @@ export class AdminService {
       requireOwnerApproval: shop.requireOwnerApproval,
       settings: shop.settings,
     };
+  }
+
+  async getOwnerMyShop(ownerId: string, tenantId: string | null, role: string) {
+    if (role === 'SUPER_ADMIN') {
+      const firstShop = await this.prisma.shop.findFirst({
+        where: { isActive: true },
+        orderBy: { createdAt: 'asc' },
+        select: { id: true },
+      });
+      if (!firstShop) {
+        throw new NotFoundException('Shop not found');
+      }
+      return this.getShopSettings(firstShop.id, '');
+    }
+
+    const ownerShop = await this.prisma.shop.findFirst({
+      where: { ownerId, isActive: true },
+      orderBy: { createdAt: 'asc' },
+      select: { id: true },
+    });
+
+    if (ownerShop) {
+      return this.getShopSettings(ownerShop.id, tenantId || '');
+    }
+
+    if (tenantId) {
+      const tenantShop = await this.prisma.shop.findFirst({
+        where: { tenantId, isActive: true },
+        orderBy: { createdAt: 'asc' },
+        select: { id: true },
+      });
+
+      if (tenantShop) {
+        return this.getShopSettings(tenantShop.id, tenantId);
+      }
+    }
+
+    throw new NotFoundException('Shop not found for this owner');
   }
 
   /**

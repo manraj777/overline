@@ -9,8 +9,23 @@ async function resolveActiveShopId(): Promise<string> {
     return state.shopId;
   }
 
-  const { data: shops } = await api.get<Array<{ id: string }>>('/admin/my-shops');
-  const firstShopId = shops?.[0]?.id;
+  let firstShopId: string | undefined;
+  try {
+    const { data: shops } = await api.get<Array<{ id: string }>>('/admin/my-shops');
+    firstShopId = shops?.[0]?.id;
+  } catch {
+    // Fallback handled below
+  }
+
+  if (!firstShopId) {
+    try {
+      const { data: myShop } = await api.get<{ id: string }>('/admin/owner/my-shop');
+      firstShopId = myShop?.id;
+    } catch {
+      // Throw below
+    }
+  }
+
   if (!firstShopId) {
     throw new Error('No shop found for this account');
   }
