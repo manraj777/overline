@@ -32,7 +32,7 @@ export class ShopMemberGuard implements CanActivate {
       throw new ForbiddenException('shopId is required');
     }
 
-    if (user.role === 'SUPER_ADMIN') {
+    if (user.role === 'SUPER_ADMIN' || user.role === 'SUPERADMIN') {
       return true;
     }
 

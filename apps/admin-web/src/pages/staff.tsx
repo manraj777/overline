@@ -1,7 +1,7 @@
 import React from 'react';
 import Head from 'next/head';
 import { Plus, Edit2, Mail, Phone, Users, Check, Trash2 } from 'lucide-react';
-import { Card, Button, Input, Badge, Loading, ImageUpload } from '@/components/ui';
+import { Card, Button, Input, Badge, Loading, ImageUpload, useToast } from '@/components/ui';
 import {
   useStaff,
   useCreateStaff,
@@ -36,6 +36,7 @@ const emptyForm: StaffFormData = {
 
 export default function StaffPage() {
   const { data: staff, isLoading } = useStaff();
+  const { toast } = useToast();
   const { data: services } = useServices();
   const createStaff = useCreateStaff();
   const updateStaff = useUpdateStaff();
@@ -87,7 +88,6 @@ export default function StaffPage() {
           avatarUrl: formData.avatarUrl || undefined,
         });
         savedStaffId = created?.id;
-      }
       if (savedStaffId) {
         const toAssign = selectedServiceIds.filter((id) => !initialServiceIds.includes(id));
         const toUnassign = initialServiceIds.filter((id) => !selectedServiceIds.includes(id));
@@ -98,15 +98,18 @@ export default function StaffPage() {
           await Promise.all(toUnassign.map((serviceId) => unassignServiceFromStaff.mutateAsync({ staffId: savedStaffId as string, serviceId })));
         }
       }
+      toast({ title: editingStaffId ? 'Staff updated' : 'Staff created', type: 'success' });
       setShowForm(false);
       setEditingStaffId(null);
       setFormData({ ...emptyForm });
       setSelectedServiceIds([]);
       setInitialServiceIds([]);
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to save staff:', err);
-      const message = (err as any)?.response?.data?.message;
-      setFormError(Array.isArray(message) ? message.join(', ') : message || 'Failed to save staff');
+      const message = err.response?.data?.message;
+      const errorMsg = Array.isArray(message) ? message.join(', ') : message || 'Failed to save staff';
+      setFormError(errorMsg);
+      toast({ title: 'Error saving staff', description: errorMsg, type: 'error' });
     }
   };
 

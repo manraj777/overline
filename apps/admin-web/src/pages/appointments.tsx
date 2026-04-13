@@ -2,7 +2,7 @@ import React from 'react';
 import Head from 'next/head';
 import { format, addDays, subDays } from 'date-fns';
 import { ChevronLeft, ChevronRight, Filter, Plus, Search, Wifi, WifiOff, AlertTriangle } from 'lucide-react';
-import { Card, Button, Input, Badge, Loading } from '@/components/ui';
+import { Card, Button, Input, Badge, Loading, useToast } from '@/components/ui';
 import { useAdminBookings, useUpdateBookingStatus, useQueueSocket } from '@/hooks';
 import { useAuthStore } from '@/stores/auth';
 import { formatTime, cn } from '@/lib/utils';
@@ -29,6 +29,7 @@ export default function AppointmentsPage() {
   const [searchQuery, setSearchQuery] = React.useState('');
   const queryClient = useQueryClient();
   const { user } = useAuthStore();
+  const { toast } = useToast();
 
   const { data: bookings, isLoading } = useAdminBookings({
     date: format(selectedDate, 'yyyy-MM-dd'),
@@ -249,6 +250,36 @@ export default function AppointmentsPage() {
                       </td>
                       <td className="px-6 py-4 text-right">
                         <div className="flex items-center justify-end gap-2">
+                          {(booking.status === 'PENDING' || booking.status === 'CONFIRMED') && (
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="text-error hover:bg-error/10"
+                              onClick={() => {
+                                if (window.confirm('Cancel this appointment?')) {
+                                  updateStatus.mutate({ bookingId: booking.id, status: 'CANCELLED' });
+                                  toast({ title: 'Appointment cancelled', type: 'info' });
+                                }
+                              }}
+                            >
+                              Cancel
+                            </Button>
+                          )}
+                          {booking.status === 'CONFIRMED' && (
+                             <Button
+                              size="sm"
+                              variant="outline"
+                              className="text-error"
+                              onClick={() => {
+                                if (window.confirm('Mark customer as No-Show?')) {
+                                  updateStatus.mutate({ bookingId: booking.id, status: 'NO_SHOW' });
+                                  toast({ title: 'Marked as No-Show', type: 'warning' });
+                                }
+                              }}
+                            >
+                              No-Show
+                            </Button>
+                          )}
                           {booking.status === 'PENDING' && (
                             <Button
                               size="sm"

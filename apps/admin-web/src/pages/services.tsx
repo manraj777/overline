@@ -1,7 +1,7 @@
 import React, { useRef } from 'react';
 import Head from 'next/head';
 import { Plus, Trash2, ImageIcon, Image as ImageIconLib, Check, X } from 'lucide-react';
-import { Loading } from '@/components/ui';
+import { Loading, useToast } from '@/components/ui';
 import { useServices, useCreateService, useUpdateService, useDeleteService } from '@/hooks';
 import api from '@/lib/api';
 
@@ -11,6 +11,7 @@ export default function ServicesPage() {
   const updateService = useUpdateService();
   const deleteService = useDeleteService();
 
+  const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
   const [uploadingFor, setUploadingFor] = React.useState<string | null>(null);
   
@@ -37,7 +38,8 @@ export default function ServicesPage() {
       } else {
         await updateService.mutateAsync({ id: uploadingFor, imageUrl: url });
       }
-    } catch (err) {
+    } catch (err: any) {
+      toast({ title: 'Upload failed', description: err.message, type: 'error' });
       console.error('Upload failed', err);
     } finally {
       setUploadingFor(null);
@@ -68,20 +70,48 @@ export default function ServicesPage() {
   };
 
   const handleSaveNewRow = async (row: any) => {
-    if (!row.name || row.price < 0 || row.durationMinutes < 1) return;
-    await createService.mutateAsync({
-      name: row.name,
-      category: row.category,
-      price: parseInt(row.price),
-      durationMinutes: parseInt(row.durationMinutes),
-      imageUrl: row.imageUrl || undefined,
-    });
-    handleRemoveNewRow(row.id);
+    if (!row.name) {
+      toast({ title: 'Missing Name', description: 'Please enter a name for the service.', type: 'error' });
+      return;
+    }
+    const price = parseInt(row.price);
+    const duration = parseInt(row.durationMinutes);
+    if (isNaN(price) || price < 0) {
+      toast({ title: 'Invalid Price', description: 'Please enter a valid price.', type: 'error' });
+      return;
+    }
+    if (isNaN(duration) || duration < 1) {
+      toast({ title: 'Invalid Duration', description: 'Duration must be at least 1 minute.', type: 'error' });
+      return;
+    }
+
+    try {
+      await createService.mutateAsync({
+        name: row.name,
+        category: row.category,
+        price,
+        durationMinutes: duration,
+        imageUrl: row.imageUrl || undefined,
+      });
+      toast({ title: 'Service created', type: 'success' });
+      handleRemoveNewRow(row.id);
+    } catch (err: any) {
+      const msg = err.response?.data?.message || err.message;
+      toast({ title: 'Failed to create', description: Array.isArray(msg) ? msg[0] : msg, type: 'error' });
+    }
   };
 
-  const handleBlurUpdate = (id: string, field: string, value: any, originalValue: any) => {
+  const handleBlurUpdate = async (id: string, field: string, value: any, originalValue: any) => {
     if (value === originalValue) return;
-    updateService.mutateAsync({ id, [field]: field === 'price' || field === 'durationMinutes' ? parseInt(value) : value });
+    try {
+      await updateService.mutateAsync({ 
+        id, 
+        [field]: field === 'price' || field === 'durationMinutes' ? parseInt(value) : value 
+      });
+      toast({ title: 'Updated', type: 'success' });
+    } catch (err: any) {
+      toast({ title: 'Update failed', description: err.message, type: 'error' });
+    }
   };
 
   const handleToggleActive = (service: any) => {

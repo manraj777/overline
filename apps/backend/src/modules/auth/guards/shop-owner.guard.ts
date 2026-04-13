@@ -31,7 +31,7 @@ export class ShopOwnerGuard implements CanActivate {
       throw new ForbiddenException('shopId is required for owner access checks');
     }
 
-    if (user.role === 'SUPER_ADMIN') {
+    if (user.role === 'SUPER_ADMIN' || user.role === 'SUPERADMIN') {
       return true;
     }
 
