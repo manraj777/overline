@@ -11,23 +11,37 @@ export class ServicesService {
     private redis: RedisService,
   ) {}
 
-  private async getAuthorizedShop(shopId: string, tenantId?: string) {
-    // SUPER_ADMIN or missing tenant context can still be authorized by shop existence.
-    if (!tenantId) {
+  private async getAuthorizedShop(shopId: string, user: any) {
+    if (!user) {
+      return null;
+    }
+
+    // SUPER_ADMIN has global access
+    if (user.role === 'SUPER_ADMIN' || user.role === 'SUPERADMIN') {
       return this.prisma.shop.findFirst({ where: { id: shopId } });
     }
 
-    return this.prisma.shop.findFirst({
-      where: {
-        id: shopId,
-        OR: [{ tenantId }, { owner: { tenantId } }],
-      },
-      include: { owner: { select: { id: true, tenantId: true } } },
-    });
+    // STAFF or OWNER authorized if they belong to the shop
+    if (user.shopIds && Array.isArray(user.shopIds) && user.shopIds.includes(shopId)) {
+      return this.prisma.shop.findFirst({ where: { id: shopId } });
+    }
+
+    // Tenant check fallback for owners
+    if (user.tenantId) {
+      return this.prisma.shop.findFirst({
+        where: {
+          id: shopId,
+          OR: [{ tenantId: user.tenantId }, { owner: { tenantId: user.tenantId } }],
+        },
+        include: { owner: { select: { id: true, tenantId: true } } },
+      });
+    }
+
+    return null;
   }
 
-  async create(shopId: string, dto: CreateServiceDto, tenantId: string) {
-    const shop = await this.getAuthorizedShop(shopId, tenantId);
+  async create(shopId: string, dto: CreateServiceDto, user: any) {
+    const shop = await this.getAuthorizedShop(shopId, user);
 
     if (!shop) {
       throw new ForbiddenException('Not authorized to manage this shop');
@@ -57,7 +71,7 @@ export class ServicesService {
 
   async findByShop(shopId: string) {
     return this.prisma.service.findMany({
-      where: { shopId },
+      where: { shopId, isActive: true },
       orderBy: { sortOrder: 'asc' },
     });
   }
@@ -83,7 +97,7 @@ export class ServicesService {
     return service;
   }
 
-  async update(serviceId: string, dto: UpdateServiceDto, tenantId: string) {
+  async update(serviceId: string, dto: UpdateServiceDto, user: any) {
     const service = await this.prisma.service.findUnique({
       where: { id: serviceId },
       include: { shop: true },
@@ -93,7 +107,7 @@ export class ServicesService {
       throw new NotFoundException('Service not found');
     }
 
-    const authorizedShop = await this.getAuthorizedShop(service.shopId, tenantId);
+    const authorizedShop = await this.getAuthorizedShop(service.shopId, user);
     if (!authorizedShop) {
       throw new ForbiddenException('Not authorized to manage this service');
     }
@@ -114,7 +128,7 @@ export class ServicesService {
     return updated;
   }
 
-  async delete(serviceId: string, tenantId: string) {
+  async delete(serviceId: string, user: any) {
     const service = await this.prisma.service.findUnique({
       where: { id: serviceId },
       include: { shop: true },
@@ -124,7 +138,7 @@ export class ServicesService {
       throw new NotFoundException('Service not found');
     }
 
-    const authorizedShop = await this.getAuthorizedShop(service.shopId, tenantId);
+    const authorizedShop = await this.getAuthorizedShop(service.shopId, user);
     if (!authorizedShop) {
       throw new ForbiddenException('Not authorized to manage this service');
     }
@@ -139,8 +153,8 @@ export class ServicesService {
     return deleted;
   }
 
-  async reorder(shopId: string, serviceIds: string[], tenantId: string) {
-    const shop = await this.getAuthorizedShop(shopId, tenantId);
+  async reorder(shopId: string, serviceIds: string[], user: any) {
+    const shop = await this.getAuthorizedShop(shopId, user);
 
     if (!shop) {
       throw new ForbiddenException('Not authorized to manage this shop');

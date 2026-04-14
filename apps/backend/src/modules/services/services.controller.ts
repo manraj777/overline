@@ -17,15 +17,15 @@ export class ServicesController {
   constructor(private readonly servicesService: ServicesService) {}
 
   @Post('shop/:shopId')
-  @Roles(UserRole.OWNER, UserRole.SUPER_ADMIN)
+  @Roles(UserRole.OWNER, UserRole.STAFF, UserRole.SUPER_ADMIN)
   @ApiOperation({ summary: 'Create a new service for a shop' })
   @ApiParam({ name: 'shopId', description: 'Shop ID' })
   async create(
     @Param('shopId') shopId: string,
     @Body() dto: CreateServiceDto,
-    @CurrentUser('tenantId') tenantId: string,
+    @CurrentUser() user: any,
   ) {
-    return this.servicesService.create(shopId, dto, tenantId);
+    return this.servicesService.create(shopId, dto, user);
   }
 
   @Get('shop/:shopId')
@@ -45,34 +45,34 @@ export class ServicesController {
   }
 
   @Patch(':id')
-  @Roles(UserRole.OWNER, UserRole.SUPER_ADMIN)
+  @Roles(UserRole.OWNER, UserRole.STAFF, UserRole.SUPER_ADMIN)
   @ApiOperation({ summary: 'Update a service' })
   @ApiParam({ name: 'id', description: 'Service ID' })
   async update(
     @Param('id') id: string,
     @Body() dto: UpdateServiceDto,
-    @CurrentUser('tenantId') tenantId: string,
+    @CurrentUser() user: any,
   ) {
-    return this.servicesService.update(id, dto, tenantId);
+    return this.servicesService.update(id, dto, user);
   }
 
   @Delete(':id')
-  @Roles(UserRole.OWNER, UserRole.SUPER_ADMIN)
+  @Roles(UserRole.OWNER, UserRole.STAFF, UserRole.SUPER_ADMIN)
   @ApiOperation({ summary: 'Delete (deactivate) a service' })
   @ApiParam({ name: 'id', description: 'Service ID' })
-  async delete(@Param('id') id: string, @CurrentUser('tenantId') tenantId: string) {
-    return this.servicesService.delete(id, tenantId);
+  async delete(@Param('id') id: string, @CurrentUser() user: any) {
+    return this.servicesService.delete(id, user);
   }
 
   @Patch('shop/:shopId/reorder')
-  @Roles(UserRole.OWNER, UserRole.SUPER_ADMIN)
+  @Roles(UserRole.OWNER, UserRole.STAFF, UserRole.SUPER_ADMIN)
   @ApiOperation({ summary: 'Reorder services for a shop' })
   @ApiParam({ name: 'shopId', description: 'Shop ID' })
   async reorder(
     @Param('shopId') shopId: string,
     @Body() body: { serviceIds: string[] },
-    @CurrentUser('tenantId') tenantId: string,
+    @CurrentUser() user: any,
   ) {
-    return this.servicesService.reorder(shopId, body.serviceIds, tenantId);
+    return this.servicesService.reorder(shopId, body.serviceIds, user);
   }
 }
