@@ -23,6 +23,16 @@ export class CreateServiceDto {
   @Min(0)
   price: number;
 
+  @ApiPropertyOptional({ description: 'Category' })
+  @IsOptional()
+  @IsString()
+  category?: string;
+
+  @ApiPropertyOptional({ description: 'Image URL' })
+  @IsOptional()
+  @IsString()
+  imageUrl?: string;
+
   @ApiPropertyOptional({ description: 'Currency code', default: 'INR' })
   @IsOptional()
   @IsString()

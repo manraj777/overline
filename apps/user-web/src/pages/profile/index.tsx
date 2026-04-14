@@ -252,18 +252,16 @@ export default function ProfilePage() {
 
                   <div className="space-y-2">
                     <label className="label-m3">Email</label>
-                    <input
-                      type="email"
-                      className="input-m3"
-                      {...register('email', {
-                        required: 'Email is required',
-                        pattern: {
-                          value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
-                          message: 'Invalid email',
-                        },
-                      })}
-                    />
-                    {errors.email && <p className="text-error text-xs font-medium">{errors.email.message}</p>}
+                    <div className="relative">
+                      <input
+                        type="email"
+                        className="input-m3 text-outline cursor-not-allowed opacity-60"
+                        {...register('email')}
+                        disabled
+                      />
+                      <Lock className="w-4 h-4 absolute right-4 top-1/2 -translate-y-1/2 text-outline-variant" />
+                    </div>
+                    <p className="text-[11px] text-outline px-1">Email cannot be changed</p>
                   </div>
 
                   <div className="space-y-2">

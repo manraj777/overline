@@ -31,6 +31,16 @@ export class UpdateServiceDto {
   @IsBoolean()
   isActive?: boolean;
 
+  @ApiPropertyOptional({ description: 'Category' })
+  @IsOptional()
+  @IsString()
+  category?: string;
+
+  @ApiPropertyOptional({ description: 'Image URL' })
+  @IsOptional()
+  @IsString()
+  imageUrl?: string;
+
   @ApiPropertyOptional({ description: 'Sort order' })
   @IsOptional()
   @IsNumber()

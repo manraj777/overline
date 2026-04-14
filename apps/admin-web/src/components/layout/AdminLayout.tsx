@@ -180,6 +180,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
         title: 'Admin',
         items: [
           { name: 'Shop Profile', href: '/owner/shop', icon: Store },
+          { name: 'Notifications', href: '/owner/notifications', icon: Bell },
           { name: 'Settings', href: '/owner/settings', icon: Settings },
         ],
       },
@@ -205,7 +206,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
         title: 'Account',
         items: [
           { name: 'Reviews', href: '/staff/reviews', icon: Star },
-          { name: 'Notifications', href: '/staff/notifications', icon: Settings },
+          { name: 'Notifications', href: '/staff/notifications', icon: Bell },
           { name: 'Profile', href: '/staff/profile', icon: Settings },
         ],
       },
@@ -372,7 +373,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
             <div className="flex items-center gap-2">
               {/* Notifications */}
               <button
-                onClick={() => router.push(isStaff ? '/staff/notifications' : '/notifications')}
+                onClick={() => router.push(isStaff ? '/staff/notifications' : '/owner/notifications')}
                 className="relative p-2.5 rounded-xl hover:bg-surface-container-low transition-colors"
                 title="Notifications"
               >

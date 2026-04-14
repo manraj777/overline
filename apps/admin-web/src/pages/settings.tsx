@@ -433,6 +433,7 @@ export default function SettingsPage() {
                       required
                       value={shopForm.phone}
                       onChange={(e) => setShopForm((prev) => ({ ...prev, phone: e.target.value }))}
+                      disabled
                     />
                     <Input
                       label="Email"
@@ -440,6 +441,7 @@ export default function SettingsPage() {
                       required
                       value={shopForm.email}
                       onChange={(e) => setShopForm((prev) => ({ ...prev, email: e.target.value }))}
+                      disabled
                     />
                   </div>
 

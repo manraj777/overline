@@ -236,9 +236,10 @@ export default function StaffPage() {
                   <input
                     type="email"
                     placeholder="email@example.com"
-                    className="input-m3"
+                    className="input-m3 disabled:opacity-60 disabled:cursor-not-allowed"
                     value={formData.email}
                     onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+                    disabled={!!editingStaffId}
                   />
                 </div>
               </div>
@@ -248,9 +249,10 @@ export default function StaffPage() {
                   <input
                     type="tel"
                     placeholder="+91 9876543210"
-                    className="input-m3"
+                    className="input-m3 disabled:opacity-60 disabled:cursor-not-allowed"
                     value={formData.phone}
                     onChange={(e) => setFormData({ ...formData, phone: e.target.value.replace(/[^\d+\s-]/g, '') })}
+                    disabled={!!editingStaffId}
                   />
                 </div>
                 <div className="space-y-2">
