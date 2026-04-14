@@ -281,6 +281,27 @@ export class ShopsService {
    * Find shop by slug or ID (supports both for mobile app compatibility)
    */
   async findBySlug(slugOrId: string) {
+    const cacheKey = `shop:profile:${slugOrId}`;
+    let cached = null;
+
+    try {
+      cached = await this.redis.get(cacheKey);
+      if (cached) {
+        const parsedShop = JSON.parse(cached);
+        const queueStats = await this.redis.getShopQueueStats(parsedShop.id);
+        return {
+          ...parsedShop,
+          queueStats: queueStats || {
+            waitingCount: 0,
+            estimatedWaitMinutes: 0,
+            nextSlot: null,
+          },
+        };
+      }
+    } catch (e) {
+      // Ignore cache mis-reads
+    }
+
     // Check if the parameter is a UUID (ID) or a slug
     const isUuid = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(slugOrId);
 
@@ -308,6 +329,8 @@ export class ShopsService {
               serviceId: true,
             },
           },
+          staffWorkingHours: true,
+          staffTimeOffs: true,
         },
       },
       workingHours: {
@@ -337,6 +360,12 @@ export class ShopsService {
       throw new NotFoundException('Shop not found');
     }
 
+    try {
+      await this.redis.set(cacheKey, JSON.stringify(shop), 300); // 5 min TTL
+    } catch (e) {
+      // Ignore cache write errors
+    }
+
     // Get queue stats
     const queueStats = await this.redis.getShopQueueStats(shop.id);
 
@@ -351,6 +380,16 @@ export class ShopsService {
   }
 
   async findById(id: string) {
+    const cacheKey = `shop:profile:${id}`;
+    let cached = null;
+
+    try {
+      cached = await this.redis.get(cacheKey);
+      if (cached) {
+        return JSON.parse(cached);
+      }
+    } catch (e) {}
+
     const shop = await this.prisma.shop.findUnique({
       where: { id },
       include: {
@@ -376,6 +415,10 @@ export class ShopsService {
     if (!shop) {
       throw new NotFoundException('Shop not found');
     }
+
+    try {
+      await this.redis.set(cacheKey, JSON.stringify(shop), 300);
+    } catch (e) {}
 
     return shop;
   }
@@ -624,6 +667,15 @@ export class ShopsService {
   }
 
   async getTrendingShops(limit: number = 10) {
+    const cacheKey = `trending_shops:${limit}`;
+    let cached = null;
+    try {
+      cached = await this.redis.get(cacheKey);
+      if (cached) {
+        return JSON.parse(cached);
+      }
+    } catch (e) {}
+
     const sevenDaysAgo = new Date();
     sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
 
@@ -655,6 +707,10 @@ export class ShopsService {
     // Sort to match trending order
     const sortedShops = shopIds.map((id) => shops.find((s) => s.id === id)).filter(Boolean);
 
-    return { data: sortedShops };
+    const result = { data: sortedShops };
+    try {
+      await this.redis.set(cacheKey, JSON.stringify(result), 3600); // 1 hour TTL
+    } catch (e) {}
+    return result;
   }
 }

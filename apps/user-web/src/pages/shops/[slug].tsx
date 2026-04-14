@@ -81,6 +81,28 @@ export default function ShopDetailPage() {
 
   const createBooking = useCreateBooking();
 
+  const isStaffAbsent = React.useCallback((person: any) => {
+    if (!person) return false;
+    const now = new Date();
+    const todayStr = format(now, 'EEEE').toUpperCase();
+    const wh = person.staffWorkingHours?.find((h: any) => h.dayOfWeek === todayStr);
+    if (wh?.isOff) return true;
+    
+    if (person.staffTimeOffs?.length > 0) {
+      return person.staffTimeOffs.some((to: any) => {
+        const start = new Date(to.startTime);
+        const end = new Date(to.endTime);
+        return now >= start && now <= end;
+      });
+    }
+    return false;
+  }, []);
+
+  const todayStr = React.useMemo(() => format(new Date(), 'EEEE').toUpperCase(), []);
+  const todayHours = React.useMemo(() => shop?.workingHours?.find((h: any) => h.dayOfWeek === todayStr), [shop, todayStr]);
+  const isShopClosedToday = !shop || !todayHours || todayHours.isClosed;
+
+
   const eligibleStaff = React.useMemo(() => {
     if (!shop?.staff || selectedServices.length === 0) {
       return shop?.staff || [];
@@ -531,7 +553,13 @@ export default function ShopDetailPage() {
                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                        <div className="p-5 bg-surface-container-low rounded-2xl border border-outline-variant/10">
                           <h3 className="font-bold text-on-surface flex items-center gap-2 mb-3"><Clock className="w-5 h-5 text-primary" /> Today's Hours</h3>
-                          <p className="text-on-surface-variant">Open • Closes at 9:00 PM</p>
+                          <p className="text-on-surface-variant font-bold">
+                            {isShopClosedToday ? (
+                              <span className="text-error">Closed Today</span>
+                            ) : (
+                              <span>Open • Closes at {todayHours.closeTime}</span>
+                            )}
+                          </p>
                        </div>
                        <div className="p-5 bg-surface-container-low rounded-2xl border border-outline-variant/10">
                           <h3 className="font-bold text-on-surface flex items-center gap-2 mb-3"><MapPin className="w-5 h-5 text-primary" /> Location</h3>
@@ -587,12 +615,13 @@ export default function ShopDetailPage() {
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                       {shop.staff?.map((person: any) => {
                         const personServiceIds = new Set((person.staffServices || []).map((ss: any) => ss.serviceId));
-                        const personServices = shop.services?.filter((s) => personServiceIds.has(s.id)) || [];
+                        const personServices = shop.services?.filter((s: any) => personServiceIds.has(s.id)) || [];
+                        const isAbsent = isStaffAbsent(person);
 
                         return (
-                          <div key={person.id} className="p-6 rounded-3xl bg-surface-container-low border border-outline-variant/10 hover:border-primary/20 transition-all">
+                          <div key={person.id} className={`p-6 rounded-3xl bg-surface-container-low border transition-all ${isAbsent ? 'opacity-60 grayscale border-outline-variant/5' : 'border-outline-variant/10 hover:border-primary/20'}`}>
                              <div className="flex items-center gap-4 mb-6">
-                                <div className="w-16 h-16 rounded-2xl bg-primary/10 overflow-hidden flex items-center justify-center">
+                                <div className="w-16 h-16 rounded-2xl bg-primary/10 overflow-hidden flex items-center justify-center relative">
                                    {person.avatarUrl ? (
                                      <img src={person.avatarUrl} alt={person.name} className="w-full h-full object-cover" />
                                    ) : (
@@ -600,7 +629,10 @@ export default function ShopDetailPage() {
                                    )}
                                 </div>
                                 <div>
-                                   <h3 className="text-xl font-black text-on-surface leading-tight">{person.name}</h3>
+                                   <div className="flex items-center gap-2">
+                                     <h3 className="text-xl font-black text-on-surface leading-tight">{person.name}</h3>
+                                     {isAbsent && <span className="px-2 py-0.5 rounded-md bg-error/10 text-error text-[10px] font-black uppercase">Absent</span>}
+                                   </div>
                                    <p className="text-sm font-bold text-primary uppercase tracking-widest">{person.role || 'Professional'}</p>
                                 </div>
                              </div>
@@ -609,7 +641,7 @@ export default function ShopDetailPage() {
                                 <p className="text-xs font-bold text-outline uppercase tracking-wider mb-2">Services</p>
                                 {personServices.length > 0 ? (
                                   <div className="space-y-2">
-                                    {personServices.map((service) => (
+                                    {personServices.map((service: any) => (
                                       <div key={service.id} className="flex items-center justify-between p-3 rounded-xl bg-surface hover:bg-surface-container transition-colors border border-outline-variant/5">
                                          <div className="flex flex-col">
                                             <span className="text-sm font-black text-on-surface">{service.name}</span>
@@ -619,13 +651,15 @@ export default function ShopDetailPage() {
                                          </div>
                                          <button 
                                           onClick={() => {
+                                            if (isAbsent) return;
                                             if (!selectedServices.some(s => s.id === service.id)) {
                                               handleToggleService(service);
                                             }
                                             setStaff(person);
                                             setStep('datetime');
                                           }}
-                                          className="btn-tonal px-3 py-1.5 text-xs font-black rounded-lg"
+                                          disabled={isAbsent}
+                                          className="btn-tonal px-3 py-1.5 text-xs font-black rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
                                          >
                                            SELECT
                                          </button>

@@ -489,9 +489,6 @@ export class BookingsService {
     return booking;
   }
 
-  /**
-   * Send notification to shop admin about new booking
-   */
   private async sendAdminBookingNotification(booking: any, shop: any) {
     // Find all admin/owner users for this shop's tenant
     const adminUsers = await this.prisma.user.findMany({
@@ -503,14 +500,36 @@ export class BookingsService {
       select: { id: true },
     });
 
+    const notifyUserIds = new Set(adminUsers.map(u => u.id));
+
+    // If there's an assigned staff member, notify them too
+    if (booking.staffProfileId) {
+      const staffProfile = await this.prisma.staffProfile.findUnique({
+        where: { id: booking.staffProfileId },
+        select: { userId: true },
+      });
+      if (staffProfile && staffProfile.userId) {
+        notifyUserIds.add(staffProfile.userId);
+      }
+    } else if (booking.staffId) {
+      // Legacy staff
+      const legacyStaff = await this.prisma.staff.findUnique({
+        where: { id: booking.staffId },
+        select: { userId: true },
+      });
+      if (legacyStaff && legacyStaff.userId) {
+        notifyUserIds.add(legacyStaff.userId);
+      }
+    }
+
     const customerName = booking.user?.name || booking.customerName || 'Guest';
     const serviceNames = booking.services?.map((s: any) => s.serviceName).join(', ') || 'Service';
     const startTime = new Date(booking.startTime);
     const timeStr = startTime.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
 
-    for (const admin of adminUsers) {
+    for (const userId of Array.from(notifyUserIds)) {
       await this.notificationsService.send({
-        userId: admin.id,
+        userId,
         bookingId: booking.id,
         type: NotificationType.BOOKING_CONFIRMED,
         title: `New Booking from ${customerName}`,

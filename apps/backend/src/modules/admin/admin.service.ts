@@ -1143,12 +1143,17 @@ export class AdminService {
       };
     }
 
-    await this.prisma.shop.update({
+    const updatedShop = await this.prisma.shop.update({
       where: { id: shopId },
       data: updateData,
     });
 
-    return this.prisma.shop.findUnique({ where: { id: shopId } });
+    try {
+      await this.redis.del(`shop:profile:${updatedShop.id}`);
+      await this.redis.del(`shop:profile:${updatedShop.slug}`);
+    } catch {}
+
+    return updatedShop;
   }
 
   async updateOwnerPayoutSettings(shopId: string, ownerId: string, dto: UpdateOwnerPayoutDto) {
@@ -2339,6 +2344,15 @@ export class AdminService {
 
   private async invalidateSlotCache(shopId: string): Promise<void> {
     await this.redis.invalidateSlots(shopId);
+    
+    // Also invalidate the profile cache
+    try {
+      await this.redis.del(`shop:profile:${shopId}`);
+      const shop = await this.prisma.shop.findUnique({ where: { id: shopId }, select: { slug: true } });
+      if (shop?.slug) {
+        await this.redis.del(`shop:profile:${shop.slug}`);
+      }
+    } catch {}
   }
 
   private async verifyOwnerShopAccess(shopId: string, ownerId: string) {

@@ -65,6 +65,17 @@ export class ServicesService {
       },
     });
 
+    if (user.role === 'STAFF' && user.staffProfileId) {
+      await this.prisma.staffProfile.update({
+        where: { id: user.staffProfileId },
+        data: {
+          services: {
+            connect: { id: created.id },
+          },
+        },
+      });
+    }
+
     await this.redis.invalidateSlots(shopId);
     return created;
   }
