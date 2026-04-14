@@ -230,13 +230,6 @@ export default function LoginPage() {
         throw new Error('Invalid OTP');
       }
 
-      if (otpRequestedRole === 'OWNER') {
-        clearOtpPending();
-        const role = useAuthStore.getState().user?.role;
-        router.push(getDefaultRouteForRole(role));
-        return;
-      }
-
       let auth: AuthResponse;
       if (otpRequestedRole === 'STAFF' && otpSelectedShopId) {
         const { data } = await api.post<AuthResponse>('/auth/staff/verify-otp', {
