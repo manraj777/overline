@@ -230,6 +230,21 @@ export default function LoginPage() {
         throw new Error('Invalid OTP');
       }
 
+      // ── OWNER FLOW ──
+      // The user is already fully authenticated from the email+password login.
+      // The OTP step is purely phone verification — do NOT call /auth/verify-otp
+      // because it generates a brand-new token set via generateTokens(), which
+      // can re-evaluate the role and incorrectly return STAFF if the user also
+      // has an entry in the staff table. Just validate the OTP client-side,
+      // clear OTP state, and redirect to the owner dashboard.
+      if (otpRequestedRole === 'OWNER') {
+        clearOtpPending();
+        router.push('/owner/dashboard');
+        return;
+      }
+
+      // ── STAFF FLOW ──
+      // For staff, OTP IS the authentication — we need backend token generation.
       let auth: AuthResponse;
       if (otpRequestedRole === 'STAFF' && otpSelectedShopId) {
         const { data } = await api.post<AuthResponse>('/auth/staff/verify-otp', {
