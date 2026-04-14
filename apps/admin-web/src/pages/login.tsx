@@ -70,7 +70,14 @@ export default function LoginPage() {
 
   React.useEffect(() => {
     if (isAuthenticated && !pendingOtpVerification) {
-      router.replace(getDefaultRouteForRole(useAuthStore.getState().user?.role));
+      const role = useAuthStore.getState().user?.role;
+      // Explicit routing — no ambiguity
+      if (role === 'STAFF') {
+        router.replace('/staff/dashboard');
+      } else {
+        // OWNER, SUPER_ADMIN, or any other role defaults to owner dashboard
+        router.replace('/owner/dashboard');
+      }
     }
   }, [isAuthenticated, pendingOtpVerification, router]);
 
@@ -106,17 +113,9 @@ export default function LoginPage() {
         // Keep login successful even if shops fetch fails; route will handle setup.
       }
 
-      const phone = auth?.user?.phone;
-      const nextRoute = getDefaultRouteForRole(auth?.user?.role);
-      if (!phone) {
-        router.push(nextRoute);
-        return;
-      }
-      await sendOtp(phone);
-      setOtpRequestedRole('OWNER');
-      setOtpSelectedShopId(null);
-      setOtpPending(normalizeIndianPhone(phone));
-      setOtp('');
+      // Owner is already authenticated via email+password.
+      // Go directly to owner dashboard — no OTP needed.
+      router.push('/owner/dashboard');
     } catch (err: any) {
       setError(err.response?.data?.message || err.message || 'Login failed');
     }
