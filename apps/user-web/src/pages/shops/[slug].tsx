@@ -30,7 +30,7 @@ export default function ShopDetailPage() {
   const { slug } = router.query;
   const { isAuthenticated } = useAuthStore();
 
-  const [step, setStep] = React.useState<BookingStep>('services');
+  const [step] = React.useState<BookingStep>('services');
   const [error, setError] = React.useState<string | null>(null);
   const [galleryOpen, setGalleryOpen] = React.useState(false);
   const [galleryIndex, setGalleryIndex] = React.useState(0);
@@ -105,16 +105,30 @@ export default function ShopDetailPage() {
 
   const eligibleStaff = React.useMemo(() => {
     if (!shop?.staff || selectedServices.length === 0) {
-      return shop?.staff || [];
+      return (shop?.staff || []).filter((person: any) => !isStaffAbsent(person));
     }
     const selectedServiceIds = new Set(selectedServices.map((service) => service.id));
     return shop.staff.filter((person: any) => {
+      if (isStaffAbsent(person)) {
+        return false;
+      }
       const personServiceIds = new Set(
         (person.staffServices || []).map((staffService: any) => staffService.serviceId),
       );
       return Array.from(selectedServiceIds).every((serviceId) => personServiceIds.has(serviceId));
     });
-  }, [shop?.staff, selectedServices]);
+  }, [shop?.staff, selectedServices, isStaffAbsent]);
+
+  React.useEffect(() => {
+    if (eligibleStaff.length === 0) {
+      setStaff(null);
+      return;
+    }
+
+    if (!selectedStaff || !eligibleStaff.some((person) => person.id === selectedStaff.id)) {
+      setStaff(eligibleStaff[0]);
+    }
+  }, [eligibleStaff, selectedStaff, setStaff]);
 
   React.useEffect(() => {
     if (!selectedStaff) return;
@@ -169,18 +183,27 @@ export default function ShopDetailPage() {
     return Array.from(grouped.entries()).map(([category, services]) => ({ category, services }));
   }, [shop?.services]);
 
-  const steps: BookingStep[] = ['services', 'staff', 'datetime', 'confirm'];
+  const serviceStaffLabels = React.useMemo(() => {
+    const labels: Record<string, string> = {};
+    if (!shop?.services?.length || !shop?.staff?.length) {
+      return labels;
+    }
 
-  const handleNextStep = () => {
-    const idx = steps.indexOf(step);
-    if (idx < steps.length - 1) setStep(steps[idx + 1]);
-  };
+    for (const service of shop.services) {
+      const names = shop.staff
+        .filter((person: any) => !isStaffAbsent(person))
+        .filter((person: any) => (person.staffServices || []).some((ss: any) => ss.serviceId === service.id))
+        .map((person: any) => person.name)
+        .filter(Boolean);
+      if (names.length > 0) {
+        labels[service.id] = names.join(', ');
+      }
+    }
 
-  const handlePrevStep = () => {
-    const idx = steps.indexOf(step);
-    if (idx > 0) setStep(steps[idx - 1]);
-    else router.back();
-  };
+    return labels;
+  }, [shop?.services, shop?.staff, isStaffAbsent]);
+
+  const steps: BookingStep[] = ['services'];
 
   const handleConfirmBooking = async () => {
     if (!isAuthenticated) {
@@ -218,13 +241,38 @@ export default function ShopDetailPage() {
     }
   };
 
-  const canProceed = () => {
-    switch (step) {
-      case 'services': return selectedServices.length > 0;
-      case 'staff': return true;
-      case 'datetime': return selectedDate && selectedSlot;
-      case 'confirm': return true;
-      default: return false;
+  const canProceed = () => selectedServices.length > 0 && !!selectedDate && !!selectedSlot;
+
+  const handlePrevStep = () => {
+    router.back();
+  };
+
+  const handleNextStep = () => {
+    setActiveTab('Book Service');
+    if (typeof window !== 'undefined') {
+      document.getElementById('booking-checkout')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  };
+
+  const handleShareShop = async () => {
+    if (!shop) return;
+
+    const shareUrl = typeof window !== 'undefined' ? window.location.href : `https://overline-user-web.vercel.app/shops/${shop.slug}`;
+    const sharePayload = {
+      title: shop.name,
+      text: `Book services at ${shop.name} on Overline`,
+      url: shareUrl,
+    };
+
+    try {
+      if (navigator.share) {
+        await navigator.share(sharePayload);
+        return;
+      }
+      await navigator.clipboard.writeText(shareUrl);
+      alert('Shop link copied to clipboard');
+    } catch {
+      // Ignore cancelled share flows.
     }
   };
 
@@ -464,7 +512,10 @@ export default function ShopDetailPage() {
                         {shop.phone}
                       </a>
                     )}
-                    <button className="flex items-center gap-2 text-sm font-medium text-on-surface-variant hover:text-primary transition-colors">
+                    <button
+                      onClick={handleShareShop}
+                      className="flex items-center gap-2 text-sm font-medium text-on-surface-variant hover:text-primary transition-colors"
+                    >
                       <Share2 className="w-4 h-4" />
                       Share
                     </button>
@@ -533,6 +584,7 @@ export default function ShopDetailPage() {
                               services={group.services}
                               selectedServices={selectedServices}
                               onToggleService={handleToggleService}
+                              staffLabelByServiceId={serviceStaffLabels}
                             />
                           </section>
                         ))}
@@ -540,6 +592,117 @@ export default function ShopDetailPage() {
                     ) : (
                       <div className="p-10 text-center bg-surface-container-low rounded-2xl border border-dashed border-outline-variant/20">
                         <p className="text-on-surface-variant font-medium">No services currently available.</p>
+                      </div>
+                    )}
+
+                    {selectedServices.length > 0 && (
+                      <div id="booking-checkout" className="mt-10 space-y-8 border-t border-outline-variant/20 pt-8">
+                        <div>
+                          <h3 className="text-xl font-black tracking-tight text-on-surface mb-3">Pick Date & Time</h3>
+                          {queueStats && (
+                            <p className="text-sm text-on-surface-variant mb-4">
+                              Current queue: {queueStats.waitingCount} waiting, estimated {queueStats.estimatedWaitMinutes} min.
+                              Only present/future slots are shown in 30 minute intervals.
+                            </p>
+                          )}
+                          <DatePicker selectedDate={selectedDate} onSelectDate={setDate} />
+                          {selectedDate && (
+                            <div className="mt-8">
+                              <h4 className="text-lg font-bold text-on-surface mb-4">
+                                Available on {format(selectedDate, 'MMM d, yyyy')}
+                              </h4>
+                              <SlotPicker
+                                slots={slots || []}
+                                selectedSlot={selectedSlot}
+                                onSelectSlot={setSlot}
+                                isLoading={loadingSlots}
+                              />
+                            </div>
+                          )}
+                        </div>
+
+                        {error && <Alert variant="error">{error}</Alert>}
+
+                        <div className="space-y-6 max-w-2xl">
+                          <div className="p-5 bg-surface-container-low rounded-2xl border border-outline-variant/10">
+                            <label className="flex items-center gap-4 cursor-pointer group">
+                              <div className="relative flex items-center justify-center">
+                                <input
+                                  type="checkbox"
+                                  checked={bookingForOther}
+                                  onChange={(e) => setBookingForOther(e.target.checked)}
+                                  className="peer sr-only"
+                                />
+                                <div className="w-6 h-6 border-2 border-outline-variant rounded-lg peer-checked:bg-primary peer-checked:border-primary transition-colors" />
+                                <Check className="w-4 h-4 text-white absolute opacity-0 peer-checked:opacity-100 transition-opacity" />
+                              </div>
+                              <div className="flex items-center gap-3">
+                                <div className="w-9 h-9 rounded-xl bg-surface-container flex items-center justify-center">
+                                  <UserPlus className="w-4 h-4 text-primary" />
+                                </div>
+                                <span className="font-bold text-on-surface">Booking for someone else?</span>
+                              </div>
+                            </label>
+
+                            {bookingForOther && (
+                              <div className="mt-5 space-y-4 animate-fade-in-up">
+                                <div className="space-y-2">
+                                  <label className="label-m3">Guest Name</label>
+                                  <input
+                                    type="text"
+                                    value={customerName}
+                                    onChange={(e) => setCustomerName(e.target.value)}
+                                    placeholder="Enter full name"
+                                    className="input-m3"
+                                    required
+                                  />
+                                </div>
+                                <div className="space-y-2">
+                                  <label className="label-m3">Guest Phone (optional)</label>
+                                  <input
+                                    type="tel"
+                                    value={customerPhone}
+                                    onChange={(e) => setCustomerPhone(e.target.value)}
+                                    placeholder="+91 XXXXX XXXXX"
+                                    className="input-m3"
+                                  />
+                                </div>
+                              </div>
+                            )}
+                          </div>
+
+                          <div>
+                            <label className="label-m3 mb-2 block">Special Requests</label>
+                            <textarea
+                              value={notes}
+                              onChange={(e) => setNotes(e.target.value)}
+                              placeholder="Anything we should know before you arrive?"
+                              className="input-m3 min-h-[120px] resize-none"
+                              rows={4}
+                            />
+                          </div>
+
+                          {!isAuthenticated && (
+                            <div className="bg-tertiary-fixed/30 border border-tertiary/20 rounded-2xl p-5 text-center">
+                              <p className="text-on-surface font-bold mb-3">Almost there!</p>
+                              <button
+                                onClick={() => router.push(`/auth/login?redirect=/shops/${slug}`)}
+                                className="w-full btn-primary py-3"
+                              >
+                                Login to Complete Booking
+                              </button>
+                            </div>
+                          )}
+
+                          <Button
+                            onClick={handleConfirmBooking}
+                            isLoading={createBooking.isPending}
+                            disabled={!canProceed() || !isAuthenticated}
+                            className="btn-primary px-12 py-3.5 rounded-xl font-black shadow-button-hover"
+                          >
+                            Confirm & Book Now
+                          </Button>
+                        </div>
                       </div>
                     )}
                   </div>
@@ -655,13 +818,11 @@ export default function ShopDetailPage() {
                                             if (!selectedServices.some(s => s.id === service.id)) {
                                               handleToggleService(service);
                                             }
-                                            setStaff(person);
-                                            setStep('datetime');
                                           }}
                                           disabled={isAbsent}
                                           className="btn-tonal px-3 py-1.5 text-xs font-black rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
                                          >
-                                           SELECT
+                                             ADD
                                          </button>
                                       </div>
                                     ))}
@@ -677,152 +838,6 @@ export default function ShopDetailPage() {
                   </div>
                 )}
 
-                {step === 'staff' && (
-                  <div className="animate-fade-in">
-                    <h2 className="text-2xl font-black tracking-tight text-on-surface mb-6">Select Professional</h2>
-                    {eligibleStaff.length > 0 ? (
-                      <StaffPicker staff={eligibleStaff} selectedStaff={selectedStaff} onSelectStaff={setStaff} />
-                    ) : (
-                      <div className="p-10 text-center bg-surface-container-low rounded-2xl border border-dashed border-outline-variant/20">
-                        <p className="text-on-surface-variant font-medium">
-                          {selectedServices.length > 0
-                            ? 'No professionals are currently mapped for the selected service(s).'
-                            : 'No specific professionals available.'}
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {step === 'datetime' && (
-                  <div className="animate-fade-in">
-                    <h2 className="text-2xl font-black tracking-tight text-on-surface mb-6">When is good?</h2>
-                    {queueStats && (
-                      <p className="text-sm text-on-surface-variant mb-4">
-                        Current queue: {queueStats.waitingCount} waiting, estimated {queueStats.estimatedWaitMinutes} min.
-                        Slots shown are live and only include present/future availability.
-                      </p>
-                    )}
-                    <DatePicker selectedDate={selectedDate} onSelectDate={setDate} />
-                    {selectedDate && (
-                      <div className="mt-10 animate-fade-in-up">
-                        <h3 className="text-lg font-bold text-on-surface mb-4">
-                          Available on {format(selectedDate, 'MMM d, yyyy')}
-                        </h3>
-                        <SlotPicker slots={slots || []} selectedSlot={selectedSlot} onSelectSlot={setSlot} isLoading={loadingSlots} />
-                      </div>
-                    )}
-                  </div>
-                )}
-
-                {step === 'confirm' && (
-                  <div className="animate-fade-in max-w-2xl mx-auto">
-                    <h2 className="text-2xl font-black tracking-tight text-on-surface mb-8 text-center">Final Details</h2>
-                    {error && <Alert variant="error" className="mb-6">{error}</Alert>}
-
-                    <div className="space-y-6">
-                      {/* Booking For Someone Else */}
-                      <div className="p-5 bg-surface-container-low rounded-2xl border border-outline-variant/10">
-                        <label className="flex items-center gap-4 cursor-pointer group">
-                          <div className="relative flex items-center justify-center">
-                            <input
-                              type="checkbox"
-                              checked={bookingForOther}
-                              onChange={(e) => setBookingForOther(e.target.checked)}
-                              className="peer sr-only"
-                            />
-                            <div className="w-6 h-6 border-2 border-outline-variant rounded-lg peer-checked:bg-primary peer-checked:border-primary transition-colors" />
-                            <Check className="w-4 h-4 text-white absolute opacity-0 peer-checked:opacity-100 transition-opacity" />
-                          </div>
-                          <div className="flex items-center gap-3">
-                            <div className="w-9 h-9 rounded-xl bg-surface-container flex items-center justify-center">
-                              <UserPlus className="w-4 h-4 text-primary" />
-                            </div>
-                            <span className="font-bold text-on-surface">Booking for someone else?</span>
-                          </div>
-                        </label>
-
-                        {bookingForOther && (
-                          <div className="mt-5 space-y-4 animate-fade-in-up">
-                            <div className="space-y-2">
-                              <label className="label-m3">Guest Name</label>
-                              <input
-                                type="text"
-                                value={customerName}
-                                onChange={(e) => setCustomerName(e.target.value)}
-                                placeholder="Enter full name"
-                                className="input-m3"
-                                required
-                              />
-                            </div>
-                            <div className="space-y-2">
-                              <label className="label-m3">Guest Phone (optional)</label>
-                              <input
-                                type="tel"
-                                value={customerPhone}
-                                onChange={(e) => setCustomerPhone(e.target.value)}
-                                placeholder="+91 XXXXX XXXXX"
-                                className="input-m3"
-                              />
-                            </div>
-                          </div>
-                        )}
-                      </div>
-
-                      <div>
-                        <label className="label-m3 mb-2 block">Special Requests</label>
-                        <textarea
-                          value={notes}
-                          onChange={(e) => setNotes(e.target.value)}
-                          placeholder="Anything we should know before you arrive?"
-                          className="input-m3 min-h-[120px] resize-none"
-                          rows={4}
-                        />
-                      </div>
-
-                      {!isAuthenticated && (
-                        <div className="bg-tertiary-fixed/30 border border-tertiary/20 rounded-2xl p-5 text-center">
-                          <p className="text-on-surface font-bold mb-3">Almost there!</p>
-                          <button
-                            onClick={() => router.push(`/auth/login?redirect=/shops/${slug}`)}
-                            className="w-full btn-primary py-3"
-                          >
-                            Login to Complete Booking
-                          </button>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                )}
-              </div>
-
-              {/* Navigation Buttons */}
-              <div className="flex flex-col-reverse sm:flex-row justify-between gap-4 mt-6 pb-8">
-                <button
-                  onClick={handlePrevStep}
-                  className="btn-tonal px-8 py-3.5 rounded-xl font-bold"
-                >
-                  {step === 'services' ? 'Cancel' : 'Go Back'}
-                </button>
-
-                {step !== 'confirm' ? (
-                  <button
-                    onClick={handleNextStep}
-                    disabled={!canProceed()}
-                    className="btn-primary px-10 py-3.5 rounded-xl font-bold disabled:opacity-40 disabled:cursor-not-allowed"
-                  >
-                    Continue
-                  </button>
-                ) : (
-                  <Button
-                    onClick={handleConfirmBooking}
-                    isLoading={createBooking.isPending}
-                    disabled={!canProceed() || !isAuthenticated}
-                    className="btn-primary px-12 py-3.5 rounded-xl font-black shadow-button-hover"
-                  >
-                    Confirm & Book Now
-                  </Button>
-                )}
               </div>
 
               {step === 'services' && selectedServices.length > 0 && (

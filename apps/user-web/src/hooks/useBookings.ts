@@ -20,6 +20,23 @@ interface GetSlotsParams {
   serviceIds: string[];
 }
 
+const toIsoStartTime = (scheduledDate: string, scheduledTime: string) => {
+  if (scheduledTime.includes('T')) {
+    const parsed = new Date(scheduledTime);
+    if (!Number.isNaN(parsed.getTime())) {
+      return parsed.toISOString();
+    }
+  }
+
+  const normalizedTime = scheduledTime.length === 5 ? `${scheduledTime}:00` : scheduledTime;
+  const parsed = new Date(`${scheduledDate}T${normalizedTime}`);
+  if (!Number.isNaN(parsed.getTime())) {
+    return parsed.toISOString();
+  }
+
+  return `${scheduledDate}T${normalizedTime}`;
+};
+
 export function useAvailableSlots(params: GetSlotsParams) {
   return useQuery<TimeSlot[]>({
     queryKey: ['slots', params],
@@ -31,8 +48,22 @@ export function useAvailableSlots(params: GetSlotsParams) {
 
       const slots: TimeSlot[] = Array.isArray(data) ? data : [];
       const today = new Date().toISOString().slice(0, 10);
+
+      const isThirtyMinuteFrame = (slot: TimeSlot) => {
+        if (slot.startTime.includes('T')) {
+          const parsed = new Date(slot.startTime);
+          return !Number.isNaN(parsed.getTime()) && parsed.getMinutes() % 30 === 0;
+        }
+
+        const normalizedTime = slot.startTime.length === 5 ? `${slot.startTime}:00` : slot.startTime;
+        const parsed = new Date(`${params.date}T${normalizedTime}`);
+        return !Number.isNaN(parsed.getTime()) && parsed.getMinutes() % 30 === 0;
+      };
+
+      const framedSlots = slots.filter(isThirtyMinuteFrame);
+
       if (params.date !== today) {
-        return slots;
+        return framedSlots;
       }
 
       const nowMs = Date.now();
@@ -45,7 +76,7 @@ export function useAvailableSlots(params: GetSlotsParams) {
       };
 
       // Only show present/future slots on the current date.
-      return slots.filter((slot) => Number.isFinite(toDateMs(slot)) && toDateMs(slot) >= nowMs);
+      return framedSlots.filter((slot) => Number.isFinite(toDateMs(slot)) && toDateMs(slot) >= nowMs);
     },
     enabled: !!params.shopId && !!params.date && params.serviceIds.length > 0,
     staleTime: 1000 * 60, // 1 minute
@@ -83,8 +114,8 @@ export function useCreateBooking() {
 
   return useMutation<Booking, Error, CreateBookingPayload>({
     mutationFn: async ({ scheduledDate, scheduledTime, ...rest }) => {
-      // Combine date + time into ISO datetime string for backend
-      const startTime = `${scheduledDate}T${scheduledTime}:00`;
+      // Normalize start time into an ISO datetime payload accepted by backend validators.
+      const startTime = toIsoStartTime(scheduledDate, scheduledTime);
       const { data } = await api.post('/bookings', { ...rest, startTime });
       return data;
     },
@@ -132,8 +163,8 @@ export function useRescheduleBooking() {
     { bookingId: string; scheduledDate: string; scheduledTime: string }
   >({
     mutationFn: async ({ bookingId, scheduledDate, scheduledTime }) => {
-      // Combine date + time into ISO datetime string for backend
-      const newStartTime = `${scheduledDate}T${scheduledTime}:00`;
+      // Normalize start time into an ISO datetime payload accepted by backend validators.
+      const newStartTime = toIsoStartTime(scheduledDate, scheduledTime);
       const { data } = await api.patch(`/bookings/${bookingId}/reschedule`, {
         newStartTime,
       });

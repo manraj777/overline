@@ -294,6 +294,21 @@ export default function ExplorePage() {
               </div>
             </header>
 
+            <form onSubmit={handleSearch} className="mb-6 flex flex-col sm:flex-row gap-2">
+              <div className="relative flex-1">
+                <Search className="w-4 h-4 text-outline absolute left-3 top-1/2 -translate-y-1/2" />
+                <input
+                  value={searchQuery}
+                  onChange={(event) => setSearchQuery(event.target.value)}
+                  placeholder="Search shops by name, service, city..."
+                  className="w-full rounded-xl border border-outline-variant/20 bg-surface-container-low pl-9 pr-3 py-2.5 text-sm text-on-surface placeholder:text-outline-variant focus:outline-none focus:ring-2 focus:ring-primary/20"
+                />
+              </div>
+              <button type="submit" className="btn-primary px-5 py-2.5 text-sm font-bold rounded-xl">
+                Search
+              </button>
+            </form>
+
             {/* Active Filter Tags */}
             {(selectedType || selectedCity || searchQuery || selectedRadiusKm || selectedMaxPrice || selectedMinRating) && (
               <div className="flex items-center gap-2 mb-6 flex-wrap">

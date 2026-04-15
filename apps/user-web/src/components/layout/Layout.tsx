@@ -322,8 +322,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         ))}
       </nav>
 
-      {/* AI Chat Widget */}
-      <ChatWidget />
+      {/* AI Chat Widget (homepage only) */}
+      {router.pathname === '/' && <ChatWidget />}
     </div>
   );
 };

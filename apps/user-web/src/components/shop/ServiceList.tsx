@@ -8,12 +8,14 @@ interface ServiceListProps {
   services: Service[];
   selectedServices: Service[];
   onToggleService: (service: Service) => void;
+  staffLabelByServiceId?: Record<string, string>;
 }
 
 const ServiceList: React.FC<ServiceListProps> = ({
   services,
   selectedServices,
   onToggleService,
+  staffLabelByServiceId,
 }) => {
   const isSelected = (serviceId: string) =>
     selectedServices.some((s) => s.id === serviceId);
@@ -66,6 +68,12 @@ const ServiceList: React.FC<ServiceListProps> = ({
               {service.description && (
                 <p className="text-xs text-on-surface-variant mt-2 line-clamp-2 leading-relaxed max-w-[90%]">
                   {service.description}
+                </p>
+              )}
+
+              {staffLabelByServiceId?.[service.id] && (
+                <p className="text-[11px] mt-2 text-on-surface-variant/60 font-semibold">
+                  ~ {staffLabelByServiceId[service.id]}
                 </p>
               )}
             </div>
