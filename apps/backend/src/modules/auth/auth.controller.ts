@@ -262,6 +262,13 @@ export class AuthController {
     return this.authService.staffLogin(dto.phone, dto.pin);
   }
 
+  @Post('staff/login')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Login as staff using phone and 6-digit PIN (legacy path alias)' })
+  async staffLoginAlias(@Body() dto: StaffLoginDto) {
+    return this.staffLogin(dto);
+  }
+
   @Post('verify-otp')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Verify phone OTP and login/signup user' })

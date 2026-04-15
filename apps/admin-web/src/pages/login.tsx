@@ -167,11 +167,25 @@ export default function LoginPage() {
     setStaffAuthBusy(true);
     try {
       const normalizedPhone = `+91${digits}`;
-      const { data: auth } = await api.post<any>('/auth/staff-login', {
+      const payload = {
         shopId: selectedShop.id,
         phone: normalizedPhone,
         pin: staffPin,
-      });
+      };
+
+      let auth: any;
+      try {
+        const primary = await api.post<any>('/auth/staff-login', payload);
+        auth = primary.data;
+      } catch (primaryError: any) {
+        // Compatibility fallback for environments that expose staff login at a legacy path.
+        const shouldTryFallback = !primaryError?.response || primaryError?.response?.status === 404;
+        if (!shouldTryFallback) {
+          throw primaryError;
+        }
+        const fallback = await api.post<any>('/auth/staff/login', payload);
+        auth = fallback.data;
+      }
 
       if (auth.mustSetPin) {
         setError('Please set up your PIN first using the temporary token.');

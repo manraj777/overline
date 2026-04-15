@@ -19,6 +19,29 @@ interface StaffBookingParams {
   limit?: number;
 }
 
+interface CreateStaffOwnServicePayload {
+  shopId: string;
+  name: string;
+  description?: string;
+  imageUrl?: string;
+  price: number;
+  durationMinutes: number;
+  maxClientsPerHour?: number;
+  category?: string;
+}
+
+interface UpdateStaffOwnServicePayload {
+  id: string;
+  name?: string;
+  description?: string;
+  imageUrl?: string;
+  price?: number;
+  durationMinutes?: number;
+  maxClientsPerHour?: number;
+  category?: string;
+  isActive?: boolean;
+}
+
 export function useStaffMe() {
   return useQuery<StaffProfile>({
     queryKey: ['staff', 'me'],
@@ -157,6 +180,52 @@ export function useStaffAssignedServices() {
     queryFn: async () => {
       const { data } = await api.get('/admin/staff/me/services');
       return data;
+    },
+  });
+}
+
+export function useCreateStaffOwnService() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (payload: CreateStaffOwnServicePayload) => {
+      const { data } = await api.post('/admin/staff/me/services', payload);
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['staff', 'services'] });
+      queryClient.invalidateQueries({ queryKey: ['admin', 'services'] });
+    },
+  });
+}
+
+export function useUpdateStaffOwnService() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async ({ id, ...payload }: UpdateStaffOwnServicePayload) => {
+      const { data } = await api.patch(`/admin/staff/me/services/${id}`, payload);
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['staff', 'services'] });
+      queryClient.invalidateQueries({ queryKey: ['admin', 'services'] });
+    },
+  });
+}
+
+export function useDeleteStaffOwnService() {
+  const queryClient = useQueryClient();
+
+  return useMutation({
+    mutationFn: async (id: string) => {
+      // Staff controller currently exposes update only; soft-delete by setting isActive false.
+      const { data } = await api.patch(`/admin/staff/me/services/${id}`, { isActive: false });
+      return data;
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['staff', 'services'] });
+      queryClient.invalidateQueries({ queryKey: ['admin', 'services'] });
     },
   });
 }

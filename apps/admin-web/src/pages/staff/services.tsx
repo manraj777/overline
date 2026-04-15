@@ -2,8 +2,14 @@ import { useEffect, useMemo, useState } from 'react';
 import Head from 'next/head';
 import { Edit2, ImageIcon, Plus, Trash2, Video } from 'lucide-react';
 import { Badge, Button, Card, Input, Loading, useToast } from '@/components/ui';
-import { useCreateService, useDeleteService, useStaffAssignedServices, useUpdateService } from '@/hooks';
+import {
+  useCreateStaffOwnService,
+  useDeleteStaffOwnService,
+  useStaffAssignedServices,
+  useUpdateStaffOwnService,
+} from '@/hooks';
 import { formatDuration, formatPrice } from '@/lib/utils';
+import { useAuthStore } from '@/stores/auth';
 
 type ServiceFormState = {
   id?: string;
@@ -62,10 +68,11 @@ const extractApiErrorMessage = (error: any): string => {
 
 export default function StaffServicesPage() {
   const { addToast } = useToast();
+  const { shopId } = useAuthStore();
   const { data: assignedData, isLoading } = useStaffAssignedServices();
-  const createService = useCreateService();
-  const updateService = useUpdateService();
-  const deleteService = useDeleteService();
+  const createService = useCreateStaffOwnService();
+  const updateService = useUpdateStaffOwnService();
+  const deleteService = useDeleteStaffOwnService();
 
   const [showFormModal, setShowFormModal] = useState(false);
   const [showMediaModal, setShowMediaModal] = useState(false);
@@ -163,6 +170,11 @@ export default function StaffServicesPage() {
       return;
     }
 
+    if (!shopId && !serviceForm.id) {
+      addToast({ type: 'warning', title: 'Shop missing', message: 'Please re-login to refresh your shop context.' });
+      return;
+    }
+
     try {
       const basePayload = {
         name: trimmedName,
@@ -171,6 +183,7 @@ export default function StaffServicesPage() {
         price,
         durationMinutes,
         imageUrl: serviceForm.coverPhoto || undefined,
+        maxClientsPerHour: Number(serviceForm.maxClientsPerHour || 1),
       };
 
       if (serviceForm.id) {
@@ -189,7 +202,10 @@ export default function StaffServicesPage() {
         persistAvailabilityMeta(nextMeta);
         addToast({ type: 'success', title: 'Service updated' });
       } else {
-        const created = await createService.mutateAsync(basePayload);
+        const created = await createService.mutateAsync({
+          ...basePayload,
+          shopId: shopId!,
+        });
         const nextMeta = {
           ...availabilityMeta,
           [created.id]: {
