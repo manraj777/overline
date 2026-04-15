@@ -166,6 +166,8 @@ export interface Booking {
   customerPhone?: string;
   customerEmail?: string;
   queuePosition?: number;
+  verificationCode?: string;
+  serviceStatus?: string;
   notes?: string;
   adminNotes?: string;
   arrivedAt?: string;

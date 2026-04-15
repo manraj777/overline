@@ -23,6 +23,9 @@ const statusConfig: Record<BookingStatus, { label: string; variant: 'default' | 
 const BookingCard: React.FC<BookingCardProps> = ({ booking }) => {
   const config = statusConfig[booking.status as BookingStatus] || statusConfig[BookingStatus.PENDING];
   const totalDuration = booking.totalDurationMinutes || booking.services?.reduce((acc, bs) => acc + (bs.durationMinutes || 0), 0) || 0;
+  const shouldShowCode = [BookingStatus.PENDING, BookingStatus.CONFIRMED, BookingStatus.IN_PROGRESS].includes(
+    booking.status as BookingStatus,
+  );
 
   return (
     <Link href={`/bookings/${booking.id}`}>
@@ -60,6 +63,13 @@ const BookingCard: React.FC<BookingCardProps> = ({ booking }) => {
         <div className="text-sm text-gray-600 mb-3">
           {booking.services?.map((bs) => bs.serviceName).join(', ')}
         </div>
+
+        {shouldShowCode && booking.verificationCode && (
+          <div className="mb-3 rounded-lg bg-indigo-50 border border-indigo-100 p-2.5">
+            <p className="text-[10px] font-bold uppercase tracking-wider text-indigo-700">Service Code</p>
+            <p className="text-base font-black text-indigo-900 tracking-[0.12em]">{booking.verificationCode}</p>
+          </div>
+        )}
 
         {/* Date & Time */}
         <div className="flex items-center justify-between pt-3 border-t border-gray-100">

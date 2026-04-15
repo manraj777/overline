@@ -1,8 +1,8 @@
 import { useMemo, useState } from 'react';
 import Head from 'next/head';
 import { format } from 'date-fns';
-import { Loading } from '@/components/ui';
-import { useStaffOwnBookings, useUpdateStaffOwnBookingStatus } from '@/hooks';
+import { Loading, useToast } from '@/components/ui';
+import { useQueueStartService, useStaffOwnBookings, useUpdateStaffOwnBookingStatus } from '@/hooks';
 import { BookingStatus } from '@/types';
 import { formatPrice, formatTime, cn } from '@/lib/utils';
 
@@ -30,6 +30,7 @@ const STATUS_BADGE: Record<string, string> = {
 };
 
 export default function StaffBookingsPage() {
+	const { addToast } = useToast();
 	const [statusFilter, setStatusFilter] = useState<BookingStatus | 'ALL'>('ALL');
 	const [search, setSearch] = useState('');
 
@@ -39,6 +40,26 @@ export default function StaffBookingsPage() {
 		limit: 100,
 	});
 	const updateStatus = useUpdateStaffOwnBookingStatus();
+	const startService = useQueueStartService();
+
+	const handleStartWithCode = async (bookingId: string) => {
+		const enteredCode = window.prompt('Enter customer 4-digit verification code');
+		if (!enteredCode) return;
+
+		try {
+			await startService.mutateAsync({
+				bookingId,
+				verificationCode: enteredCode.trim(),
+			});
+			addToast({ type: 'success', title: 'Service started', message: 'Verification code accepted.' });
+		} catch (error: any) {
+			addToast({
+				type: 'error',
+				title: 'Invalid code',
+				message: error?.response?.data?.message || 'Could not start service.',
+			});
+		}
+	};
 
 	const bookings = useMemo(() => {
 		const list = data?.data || [];
@@ -133,8 +154,8 @@ export default function StaffBookingsPage() {
 												)}
 												{booking.status === BookingStatus.CONFIRMED && (
 													<button
-														onClick={() => updateStatus.mutate({ bookingId: booking.id, status: BookingStatus.IN_PROGRESS })}
-														disabled={updateStatus.isPending}
+														onClick={() => handleStartWithCode(booking.id)}
+														disabled={startService.isPending}
 														className="btn-primary px-3 py-1 text-[10px] disabled:opacity-50"
 													>
 														Start

@@ -272,6 +272,14 @@ export default function BookingDetailPage() {
                   </span>
                 </div>
               </div>
+
+              {['PENDING', 'CONFIRMED', 'IN_PROGRESS'].includes(booking.status) && booking.verificationCode && (
+                <div className="mt-4 p-4 rounded-lg border border-indigo-100 bg-indigo-50">
+                  <p className="text-xs font-bold uppercase tracking-widest text-indigo-700 mb-1">Service Verification Code</p>
+                  <p className="text-2xl font-black tracking-[0.2em] text-indigo-900">{booking.verificationCode}</p>
+                  <p className="text-xs text-indigo-700 mt-2">Share this code with staff to start your service.</p>
+                </div>
+              )}
             </Card>
 
             {/* Live Queue Position */}

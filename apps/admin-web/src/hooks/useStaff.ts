@@ -1,6 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { AxiosError } from 'axios';
 import api from '@/lib/api';
+import { useAuthStore } from '@/stores/auth';
 import type {
   Booking,
   BookingStatus,
@@ -40,6 +41,41 @@ interface UpdateStaffOwnServicePayload {
   maxClientsPerHour?: number;
   category?: string;
   isActive?: boolean;
+}
+
+let supportsStaffSelfServiceEndpoints: boolean | null = null;
+let supportsStaffEarningsEndpoint: boolean | null = null;
+
+function resolveStaffShopId(): string {
+  const state = useAuthStore.getState();
+  const fallbackShopId = state.shopId || state.user?.shopId || state.user?.shopIds?.[0];
+  if (!fallbackShopId) {
+    throw new Error('No staff shop found for this account');
+  }
+  return fallbackShopId;
+}
+
+function mapToGenericCreatePayload(payload: CreateStaffOwnServicePayload) {
+  return {
+    name: payload.name,
+    description: payload.description,
+    imageUrl: payload.imageUrl,
+    durationMinutes: payload.durationMinutes,
+    price: payload.price,
+    category: payload.category,
+  };
+}
+
+function mapToGenericUpdatePayload(payload: Omit<UpdateStaffOwnServicePayload, 'id'>) {
+  return {
+    name: payload.name,
+    description: payload.description,
+    imageUrl: payload.imageUrl,
+    durationMinutes: payload.durationMinutes,
+    price: payload.price,
+    category: payload.category,
+    isActive: payload.isActive,
+  };
 }
 
 export function useStaffMe() {
@@ -178,9 +214,28 @@ export function useStaffAssignedServices() {
   return useQuery({
     queryKey: ['staff', 'services'],
     queryFn: async () => {
-      const { data } = await api.get('/admin/staff/me/services');
-      return data;
+      if (supportsStaffSelfServiceEndpoints !== false) {
+        try {
+          const { data } = await api.get('/admin/staff/me/services');
+          supportsStaffSelfServiceEndpoints = true;
+          return data;
+        } catch (error) {
+          const status = (error as AxiosError)?.response?.status;
+          if (status !== 404) {
+            throw error;
+          }
+          supportsStaffSelfServiceEndpoints = false;
+        }
+      }
+
+      const shopId = resolveStaffShopId();
+      const { data } = await api.get(`/services/shop/${shopId}`);
+      return {
+        legacyServices: Array.isArray(data) ? data : [],
+        profileServices: [],
+      };
     },
+    retry: false,
   });
 }
 
@@ -189,7 +244,24 @@ export function useCreateStaffOwnService() {
 
   return useMutation({
     mutationFn: async (payload: CreateStaffOwnServicePayload) => {
-      const { data } = await api.post('/admin/staff/me/services', payload);
+      if (supportsStaffSelfServiceEndpoints !== false) {
+        try {
+          const { data } = await api.post('/admin/staff/me/services', payload);
+          supportsStaffSelfServiceEndpoints = true;
+          return data;
+        } catch (error) {
+          const status = (error as AxiosError)?.response?.status;
+          if (status !== 404) {
+            throw error;
+          }
+          supportsStaffSelfServiceEndpoints = false;
+        }
+      }
+
+      const { data } = await api.post(
+        `/services/shop/${payload.shopId}`,
+        mapToGenericCreatePayload(payload),
+      );
       return data;
     },
     onSuccess: () => {
@@ -204,7 +276,21 @@ export function useUpdateStaffOwnService() {
 
   return useMutation({
     mutationFn: async ({ id, ...payload }: UpdateStaffOwnServicePayload) => {
-      const { data } = await api.patch(`/admin/staff/me/services/${id}`, payload);
+      if (supportsStaffSelfServiceEndpoints !== false) {
+        try {
+          const { data } = await api.patch(`/admin/staff/me/services/${id}`, payload);
+          supportsStaffSelfServiceEndpoints = true;
+          return data;
+        } catch (error) {
+          const status = (error as AxiosError)?.response?.status;
+          if (status !== 404) {
+            throw error;
+          }
+          supportsStaffSelfServiceEndpoints = false;
+        }
+      }
+
+      const { data } = await api.patch(`/services/${id}`, mapToGenericUpdatePayload(payload));
       return data;
     },
     onSuccess: () => {
@@ -219,8 +305,22 @@ export function useDeleteStaffOwnService() {
 
   return useMutation({
     mutationFn: async (id: string) => {
-      // Staff controller currently exposes update only; soft-delete by setting isActive false.
-      const { data } = await api.patch(`/admin/staff/me/services/${id}`, { isActive: false });
+      if (supportsStaffSelfServiceEndpoints !== false) {
+        try {
+          // Staff controller currently exposes update only; soft-delete by setting isActive false.
+          const { data } = await api.patch(`/admin/staff/me/services/${id}`, { isActive: false });
+          supportsStaffSelfServiceEndpoints = true;
+          return data;
+        } catch (error) {
+          const status = (error as AxiosError)?.response?.status;
+          if (status !== 404) {
+            throw error;
+          }
+          supportsStaffSelfServiceEndpoints = false;
+        }
+      }
+
+      const { data } = await api.patch(`/services/${id}`, { isActive: false });
       return data;
     },
     onSuccess: () => {
@@ -234,12 +334,25 @@ export function useStaffOwnEarnings(params?: { startDate?: string; endDate?: str
   return useQuery<StaffEarningsResponse>({
     queryKey: ['staff', 'earnings', params],
     queryFn: async () => {
+      if (supportsStaffEarningsEndpoint === false) {
+        return {
+          totalEarnings: 0,
+          commissionRate: 0,
+          breakdownType: params?.breakdown || 'daily',
+          breakdown: [],
+          pendingPayment: 0,
+          lastPayout: null,
+        };
+      }
+
       try {
         const { data } = await api.get('/admin/staff/me/earnings', { params });
+        supportsStaffEarningsEndpoint = true;
         return data;
       } catch (error) {
         const status = (error as AxiosError)?.response?.status;
         if (status === 404) {
+          supportsStaffEarningsEndpoint = false;
           return {
             totalEarnings: 0,
             commissionRate: 0,

@@ -28,7 +28,24 @@ export function useAvailableSlots(params: GetSlotsParams) {
       const { data } = await api.get(`/queue/slots/${shopId}`, {
         params: { ...rest, serviceIds: serviceIds.join(',') },
       });
-      return data;
+
+      const slots: TimeSlot[] = Array.isArray(data) ? data : [];
+      const today = new Date().toISOString().slice(0, 10);
+      if (params.date !== today) {
+        return slots;
+      }
+
+      const nowMs = Date.now();
+      const toDateMs = (slot: TimeSlot) => {
+        if (slot.startTime.includes('T')) {
+          return new Date(slot.startTime).getTime();
+        }
+        const normalizedTime = slot.startTime.length === 5 ? `${slot.startTime}:00` : slot.startTime;
+        return new Date(`${params.date}T${normalizedTime}`).getTime();
+      };
+
+      // Only show present/future slots on the current date.
+      return slots.filter((slot) => Number.isFinite(toDateMs(slot)) && toDateMs(slot) >= nowMs);
     },
     enabled: !!params.shopId && !!params.date && params.serviceIds.length > 0,
     staleTime: 1000 * 60, // 1 minute
