@@ -49,6 +49,17 @@ const EMPTY_FORM: ServiceFormState = {
   dayAvailability: defaultDayAvailability(),
 };
 
+const extractApiErrorMessage = (error: any): string => {
+  const message = error?.response?.data?.message;
+  if (Array.isArray(message)) {
+    return message.join(', ');
+  }
+  if (typeof message === 'string' && message.trim().length > 0) {
+    return message;
+  }
+  return 'Try again.';
+};
+
 export default function StaffServicesPage() {
   const { addToast } = useToast();
   const { data: assignedData, isLoading } = useStaffAssignedServices();
@@ -133,19 +144,41 @@ export default function StaffServicesPage() {
   };
 
   const submitService = async () => {
+    const trimmedName = serviceForm.name.trim();
+    const price = Number(serviceForm.price);
+    const durationMinutes = Number(serviceForm.durationMinutes);
+
+    if (!trimmedName) {
+      addToast({ type: 'warning', title: 'Name required', message: 'Please enter a service name.' });
+      return;
+    }
+
+    if (!Number.isFinite(price) || price < 0) {
+      addToast({ type: 'warning', title: 'Invalid price', message: 'Price must be 0 or greater.' });
+      return;
+    }
+
+    if (!Number.isFinite(durationMinutes) || durationMinutes < 5) {
+      addToast({ type: 'warning', title: 'Invalid duration', message: 'Duration must be at least 5 minutes.' });
+      return;
+    }
+
     try {
-      const payload = {
-        name: serviceForm.name,
+      const basePayload = {
+        name: trimmedName,
         description: serviceForm.description || undefined,
         category: serviceForm.category || undefined,
-        price: Number(serviceForm.price || 0),
-        durationMinutes: Number(serviceForm.durationMinutes || 30),
+        price,
+        durationMinutes,
         imageUrl: serviceForm.coverPhoto || undefined,
-        isActive: serviceForm.isActive,
       };
 
       if (serviceForm.id) {
-        const updated = await updateService.mutateAsync({ id: serviceForm.id, ...payload });
+        const updated = await updateService.mutateAsync({
+          id: serviceForm.id,
+          ...basePayload,
+          isActive: serviceForm.isActive,
+        });
         const nextMeta = {
           ...availabilityMeta,
           [updated.id]: {
@@ -156,7 +189,7 @@ export default function StaffServicesPage() {
         persistAvailabilityMeta(nextMeta);
         addToast({ type: 'success', title: 'Service updated' });
       } else {
-        const created = await createService.mutateAsync(payload);
+        const created = await createService.mutateAsync(basePayload);
         const nextMeta = {
           ...availabilityMeta,
           [created.id]: {
@@ -177,7 +210,7 @@ export default function StaffServicesPage() {
           message: 'Current backend permissions may restrict staff create/edit/delete. UI is ready for enabled access.',
         });
       } else {
-        addToast({ type: 'error', title: 'Save failed', message: error?.response?.data?.message || 'Try again.' });
+        addToast({ type: 'error', title: 'Save failed', message: extractApiErrorMessage(error) });
       }
     }
   };

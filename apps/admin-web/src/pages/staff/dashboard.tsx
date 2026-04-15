@@ -10,7 +10,6 @@ import {
 	useStaffOwnEarnings,
 	useStaffOwnSchedule,
 	useUpdateStaffOwnBookingStatus,
-	useShopSettings,
 } from '@/hooks';
 import { Booking, BookingStatus } from '@/types';
 import { formatPrice, formatTime } from '@/lib/utils';
@@ -35,7 +34,6 @@ export default function StaffDashboardPage() {
 		breakdown: 'daily',
 	});
 	const { data: scheduleData } = useStaffOwnSchedule();
-	const { data: shopData } = useShopSettings();
 	const updateBooking = useUpdateStaffOwnBookingStatus();
 
 	const bookings = useMemo(() => bookingsData?.data || [], [bookingsData?.data]);
@@ -79,6 +77,9 @@ export default function StaffDashboardPage() {
 
 	const totalEarnings = Number(earningsData?.totalEarnings || 0);
 	const myRating = 4.9;
+	const shopName = bookings[0]?.shop?.name || 'Your Shop';
+	const shopAddress = bookings[0]?.shop?.address || 'Shop location will appear here';
+	const shopCover = bookings[0]?.shop?.logoUrl || 'https://images.unsplash.com/photo-1521590832167-7bcbfaa6381f?q=80&w=1600';
 
 	if (loadingBookings || loadingEarnings) {
 		return <Loading text="Loading staff dashboard..." />;
@@ -103,13 +104,13 @@ export default function StaffDashboardPage() {
 					<div
 						className="h-40 w-full bg-cover bg-center"
 						style={{
-							backgroundImage: `url(${shopData?.coverPhotoUrl || shopData?.logoUrl || 'https://images.unsplash.com/photo-1521590832167-7bcbfaa6381f?q=80&w=1600'})`,
+							backgroundImage: `url(${shopCover})`,
 						}}
 					/>
 					<div className="p-5">
 						<p className="label-m3 mb-1">Assigned Shop</p>
-						<h2 className="text-xl font-black text-on-surface">{shopData?.name || 'Your Shop'}</h2>
-						<p className="text-sm text-on-surface-variant mt-1">{shopData?.address || 'Shop location will appear here'}</p>
+						<h2 className="text-xl font-black text-on-surface">{shopName}</h2>
+						<p className="text-sm text-on-surface-variant mt-1">{shopAddress}</p>
 					</div>
 				</div>
 
@@ -233,7 +234,7 @@ export default function StaffDashboardPage() {
 						{/* Earnings Donut */}
 						<div className="card-m3 p-6">
 							<h2 className="mb-4 text-sm font-bold text-on-surface">My earnings today</h2>
-							<div className="h-52">
+							<div className="h-52 min-h-[208px] min-w-0">
 								<ResponsiveContainer width="100%" height="100%">
 									<PieChart>
 										<Pie data={earningsSplit} dataKey="value" nameKey="name" innerRadius={55} outerRadius={80} paddingAngle={4}>

@@ -1,4 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
+import { AxiosError } from 'axios';
 import api from '@/lib/api';
 import type {
   Booking,
@@ -164,9 +165,25 @@ export function useStaffOwnEarnings(params?: { startDate?: string; endDate?: str
   return useQuery<StaffEarningsResponse>({
     queryKey: ['staff', 'earnings', params],
     queryFn: async () => {
-      const { data } = await api.get('/admin/staff/me/earnings', { params });
-      return data;
+      try {
+        const { data } = await api.get('/admin/staff/me/earnings', { params });
+        return data;
+      } catch (error) {
+        const status = (error as AxiosError)?.response?.status;
+        if (status === 404) {
+          return {
+            totalEarnings: 0,
+            commissionRate: 0,
+            breakdownType: params?.breakdown || 'daily',
+            breakdown: [],
+            pendingPayment: 0,
+            lastPayout: null,
+          };
+        }
+        throw error;
+      }
     },
+    retry: false,
   });
 }
 
