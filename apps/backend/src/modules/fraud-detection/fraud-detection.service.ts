@@ -58,7 +58,7 @@ export interface ShopRegistrationContext {
   ownerEmail: string;
   shopName: string;
   address: string;
-  phone: string;
+  phone?: string;
   ip: string;
   userAgent: string;
 }
@@ -778,7 +778,11 @@ export class FraudDetectionService {
   /**
    * Check phone number pattern validity
    */
-  private checkPhonePattern(phone: string): number {
+  private checkPhonePattern(phone?: string): number {
+    if (!phone) {
+      return 10;
+    }
+
     // Remove common formatting
     const digits = phone.replace(/\D/g, '');
 

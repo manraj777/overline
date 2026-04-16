@@ -1,9 +1,10 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
-import { Home, Search, Calendar, User, Menu, X, LogOut, Bell } from 'lucide-react';
+import { Home, Search, Calendar, User, Menu, X, LogOut, Bell, ShoppingCart } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/stores/auth';
+import { useBookingStore } from '@/stores/booking';
 import { Avatar, Button } from '@/components/ui';
 import { useLogout } from '@/hooks/useAuth';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -16,6 +17,7 @@ interface LayoutProps {
 const Layout: React.FC<LayoutProps> = ({ children }) => {
   const router = useRouter();
   const { user, isAuthenticated } = useAuthStore();
+  const selectedServicesCount = useBookingStore((state) => state.selectedServices.length);
   const { mutate: logoutMutate } = useLogout();
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
@@ -107,6 +109,20 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
               className="p-2 text-on-surface-variant hover:text-primary rounded-full hover:bg-surface-container-low transition-all active:scale-90"
             >
               <Bell className="w-5 h-5" />
+            </button>
+
+            {/* Cart */}
+            <button
+              onClick={() => router.push('/cart')}
+              aria-label="Open cart"
+              className="relative p-2 text-on-surface-variant hover:text-primary rounded-full hover:bg-surface-container-low transition-all active:scale-90"
+            >
+              <ShoppingCart className="w-5 h-5" />
+              {selectedServicesCount > 0 && (
+                <span className="absolute -top-1 -right-1 min-w-[18px] h-[18px] px-1 rounded-full bg-primary text-white text-[10px] font-black flex items-center justify-center">
+                  {selectedServicesCount}
+                </span>
+              )}
             </button>
 
             {/* User Menu */}

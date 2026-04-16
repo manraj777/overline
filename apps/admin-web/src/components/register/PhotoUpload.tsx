@@ -1,6 +1,7 @@
 import React from 'react';
 import { Camera, X, Image as ImageIcon, Upload, AlertCircle, CheckCircle2 } from 'lucide-react';
 import api from '@/lib/api';
+import axios from 'axios';
 
 interface PhotoUploadProps {
   mainPhoto: string;
@@ -21,6 +22,35 @@ export default function PhotoUpload({
 }: PhotoUploadProps) {
   const [uploading, setUploading] = React.useState<string | null>(null);
 
+  const getUploadErrorMessage = (err: unknown): string => {
+    if (axios.isAxiosError(err)) {
+      const status = err.response?.status;
+      const apiMessage =
+        (typeof err.response?.data?.message === 'string' && err.response?.data?.message) ||
+        (Array.isArray(err.response?.data?.message) && err.response?.data?.message.join(', '));
+
+      if (status === 409) {
+        return apiMessage || 'Conflict detected while uploading. Please retry with a different image.';
+      }
+
+      if (status && status >= 500) {
+        return 'Backend service is temporarily unavailable (5xx). Please retry in a moment.';
+      }
+
+      if (status === 400 || status === 413 || status === 415) {
+        return apiMessage || 'Invalid image file. Please upload a smaller JPG/PNG/WebP/GIF image.';
+      }
+
+      if (!err.response) {
+        return 'Network/CORS issue while uploading image. Verify backend URL and CORS on Railway.';
+      }
+
+      return apiMessage || `Upload failed (HTTP ${status}).`;
+    }
+
+    return 'Image upload failed. Please try again.';
+  };
+
   const handleUpload = async (file: File, type: 'main' | 'cover' | 'gallery') => {
     setUploading(type);
     try {
@@ -39,7 +69,7 @@ export default function PhotoUpload({
       else onGalleryChange([...gallery, url]);
     } catch (err) {
       console.error('Upload failed:', err);
-      alert('Image upload failed. Please try again.');
+      alert(getUploadErrorMessage(err));
     } finally {
       setUploading(null);
     }

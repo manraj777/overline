@@ -3,18 +3,16 @@ import Head from 'next/head';
 import { useRouter } from 'next/router';
 import {
   ArrowLeft, MapPin, Clock, Star, Phone, Share2,
-  MessageSquare, ChevronLeft, ChevronRight, X, Camera, UserPlus, Check,
+  MessageSquare, ChevronLeft, ChevronRight, X, Camera, Check,
 } from 'lucide-react';
-import { Button, Badge, Loading, Alert, Input } from '@/components/ui';
+import { Badge, Loading } from '@/components/ui';
 import { ConfirmModal } from '@/components/ui/ConfirmModal';
-import { ServiceList, StaffPicker, LiveQueueStatus, ShopMap } from '@/components/shop';
-import { DatePicker, SlotPicker, BookingSummary } from '@/components/booking';
+import { ServiceList, LiveQueueStatus, ShopMap } from '@/components/shop';
+import { BookingSummary } from '@/components/booking';
 import { ReviewList } from '@/components/reviews';
-import { useShop, useShopQueueStats, useAvailableSlots, useCreateBooking, useShopRatingStats } from '@/hooks';
+import { useShop, useShopQueueStats, useShopRatingStats } from '@/hooks';
 import { useBookingStore } from '@/stores/booking';
-import { useAuthStore } from '@/stores/auth';
 import { format } from 'date-fns';
-import { saveQueueSession } from '@/lib/queue-session';
 
 type BookingStep = 'services' | 'staff' | 'datetime' | 'confirm';
 
@@ -28,10 +26,8 @@ const getStepLabels = (type?: string): Record<BookingStep, string> => ({
 export default function ShopDetailPage() {
   const router = useRouter();
   const { slug } = router.query;
-  const { isAuthenticated } = useAuthStore();
 
   const [step] = React.useState<BookingStep>('services');
-  const [error, setError] = React.useState<string | null>(null);
   const [galleryOpen, setGalleryOpen] = React.useState(false);
   const [galleryIndex, setGalleryIndex] = React.useState(0);
 
@@ -45,41 +41,17 @@ export default function ShopDetailPage() {
   const {
     selectedServices,
     selectedStaff,
-    selectedDate,
-    selectedSlot,
     shop: storeShop,
     setShop,
     clearCartAndSetShop,
     toggleService,
     setStaff,
-    setDate,
-    setSlot,
-    notes,
-    setNotes,
-    offerCode,
-    bookingForOther,
-    customerName,
-    customerPhone,
-    setBookingForOther,
-    setCustomerName,
-    setCustomerPhone,
-    getTotalDuration,
-    reset,
   } = useBookingStore();
 
   const [pendingServiceToggle, setPendingServiceToggle] = React.useState<any>(null);
   const [showCartConflictModal, setShowCartConflictModal] = React.useState(false);
   const [fastSearchOpen, setFastSearchOpen] = React.useState(false);
   const [fastSearchStaffId, setFastSearchStaffId] = React.useState<string | null>(null);
-
-  const { data: slots, isLoading: loadingSlots } = useAvailableSlots({
-    shopId: shop?.id || '',
-    date: selectedDate ? format(selectedDate, 'yyyy-MM-dd') : '',
-    staffId: selectedStaff?.id,
-    serviceIds: selectedServices.map((s) => s.id),
-  });
-
-  const createBooking = useCreateBooking();
 
   const isStaffAbsent = React.useCallback((person: any) => {
     if (!person) return false;
@@ -205,53 +177,12 @@ export default function ShopDetailPage() {
 
   const steps: BookingStep[] = ['services'];
 
-  const handleConfirmBooking = async () => {
-    if (!isAuthenticated) {
-      router.push(`/auth/login?redirect=/shops/${slug}`);
-      return;
-    }
-    if (!shop || !selectedDate || !selectedSlot || selectedServices.length === 0) {
-      setError('Please complete all booking steps');
-      return;
-    }
-    try {
-      const booking = await createBooking.mutateAsync({
-        shopId: shop.id,
-        serviceIds: selectedServices.map((s) => s.id),
-        staffId: selectedStaff?.id,
-        scheduledDate: format(selectedDate, 'yyyy-MM-dd'),
-        scheduledTime: selectedSlot.startTime,
-        notes,
-        ...(offerCode ? { offerCode } : {}),
-        ...(bookingForOther && customerName ? {
-          customerName,
-          customerPhone: customerPhone || undefined,
-        } : {}),
-      });
-      if (booking?.id && booking?.bookingNumber) {
-        saveQueueSession({
-          shopId: shop.id,
-          bookingId: booking.id,
-          tokenCode: booking.bookingNumber,
-        });
-      }
-      router.push(`/bookings/${booking.id}?success=true`);
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to create booking');
-    }
-  };
-
-  const canProceed = () => selectedServices.length > 0 && !!selectedDate && !!selectedSlot;
-
   const handlePrevStep = () => {
     router.back();
   };
 
   const handleNextStep = () => {
-    setActiveTab('Book Service');
-    if (typeof window !== 'undefined') {
-      document.getElementById('booking-checkout')?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }
+    router.push('/cart');
   };
 
   const handleShareShop = async () => {
@@ -595,116 +526,6 @@ export default function ShopDetailPage() {
                       </div>
                     )}
 
-                    {selectedServices.length > 0 && (
-                      <div id="booking-checkout" className="mt-10 space-y-8 border-t border-outline-variant/20 pt-8">
-                        <div>
-                          <h3 className="text-xl font-black tracking-tight text-on-surface mb-3">Pick Date & Time</h3>
-                          {queueStats && (
-                            <p className="text-sm text-on-surface-variant mb-4">
-                              Current queue: {queueStats.waitingCount} waiting, estimated {queueStats.estimatedWaitMinutes} min.
-                              Only present/future slots are shown in 30 minute intervals.
-                            </p>
-                          )}
-                          <DatePicker selectedDate={selectedDate} onSelectDate={setDate} />
-                          {selectedDate && (
-                            <div className="mt-8">
-                              <h4 className="text-lg font-bold text-on-surface mb-4">
-                                Available on {format(selectedDate, 'MMM d, yyyy')}
-                              </h4>
-                              <SlotPicker
-                                slots={slots || []}
-                                selectedSlot={selectedSlot}
-                                onSelectSlot={setSlot}
-                                isLoading={loadingSlots}
-                              />
-                            </div>
-                          )}
-                        </div>
-
-                        {error && <Alert variant="error">{error}</Alert>}
-
-                        <div className="space-y-6 max-w-2xl">
-                          <div className="p-5 bg-surface-container-low rounded-2xl border border-outline-variant/10">
-                            <label className="flex items-center gap-4 cursor-pointer group">
-                              <div className="relative flex items-center justify-center">
-                                <input
-                                  type="checkbox"
-                                  checked={bookingForOther}
-                                  onChange={(e) => setBookingForOther(e.target.checked)}
-                                  className="peer sr-only"
-                                />
-                                <div className="w-6 h-6 border-2 border-outline-variant rounded-lg peer-checked:bg-primary peer-checked:border-primary transition-colors" />
-                                <Check className="w-4 h-4 text-white absolute opacity-0 peer-checked:opacity-100 transition-opacity" />
-                              </div>
-                              <div className="flex items-center gap-3">
-                                <div className="w-9 h-9 rounded-xl bg-surface-container flex items-center justify-center">
-                                  <UserPlus className="w-4 h-4 text-primary" />
-                                </div>
-                                <span className="font-bold text-on-surface">Booking for someone else?</span>
-                              </div>
-                            </label>
-
-                            {bookingForOther && (
-                              <div className="mt-5 space-y-4 animate-fade-in-up">
-                                <div className="space-y-2">
-                                  <label className="label-m3">Guest Name</label>
-                                  <input
-                                    type="text"
-                                    value={customerName}
-                                    onChange={(e) => setCustomerName(e.target.value)}
-                                    placeholder="Enter full name"
-                                    className="input-m3"
-                                    required
-                                  />
-                                </div>
-                                <div className="space-y-2">
-                                  <label className="label-m3">Guest Phone (optional)</label>
-                                  <input
-                                    type="tel"
-                                    value={customerPhone}
-                                    onChange={(e) => setCustomerPhone(e.target.value)}
-                                    placeholder="+91 XXXXX XXXXX"
-                                    className="input-m3"
-                                  />
-                                </div>
-                              </div>
-                            )}
-                          </div>
-
-                          <div>
-                            <label className="label-m3 mb-2 block">Special Requests</label>
-                            <textarea
-                              value={notes}
-                              onChange={(e) => setNotes(e.target.value)}
-                              placeholder="Anything we should know before you arrive?"
-                              className="input-m3 min-h-[120px] resize-none"
-                              rows={4}
-                            />
-                          </div>
-
-                          {!isAuthenticated && (
-                            <div className="bg-tertiary-fixed/30 border border-tertiary/20 rounded-2xl p-5 text-center">
-                              <p className="text-on-surface font-bold mb-3">Almost there!</p>
-                              <button
-                                onClick={() => router.push(`/auth/login?redirect=/shops/${slug}`)}
-                                className="w-full btn-primary py-3"
-                              >
-                                Login to Complete Booking
-                              </button>
-                            </div>
-                          )}
-
-                          <Button
-                            onClick={handleConfirmBooking}
-                            isLoading={createBooking.isPending}
-                            disabled={!canProceed() || !isAuthenticated}
-                            className="btn-primary px-12 py-3.5 rounded-xl font-black shadow-button-hover"
-                          >
-                            Confirm & Book Now
-                          </Button>
-                        </div>
-                      </div>
-                    )}
                   </div>
                 )}
 

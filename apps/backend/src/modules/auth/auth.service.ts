@@ -14,10 +14,12 @@ import { v4 as uuidv4 } from 'uuid';
 import { OAuth2Client } from 'google-auth-library';
 import { Twilio } from 'twilio';
 import * as admin from 'firebase-admin';
+import { Prisma } from '@prisma/client';
 import { PrismaService } from '@/common/prisma/prisma.service';
 import { RedisService } from '@/common/redis/redis.service';
 import {
   FraudDetectionService,
+  FraudAssessment,
   LoginContext,
   ShopRegistrationContext,
 } from '../fraud-detection/fraud-detection.service';
@@ -802,15 +804,34 @@ export class AuthService {
   ): Promise<TokenResponse> {
     // --- FRAUD DETECTION FOR SHOP REGISTRATION ---
     if (requestContext) {
+      const fraudPhone = dto.phone || dto.ownerPhone || dto.publicPhone || '';
       const fraudContext: ShopRegistrationContext = {
         ownerEmail: dto.email,
         shopName: dto.shopName,
         address: dto.address,
-        phone: dto.phone,
+        phone: fraudPhone,
         ip: requestContext.ip,
         userAgent: requestContext.userAgent,
       };
-      const assessment = await this.fraudDetection.analyzeShopRegistration(fraudContext);
+      let assessment: FraudAssessment | null = null;
+      try {
+        assessment = await this.fraudDetection.analyzeShopRegistration(fraudContext);
+      } catch (error) {
+        this.logger.warn('Shop registration fraud assessment failed, continuing registration flow', {
+          email: dto.email,
+          error: error instanceof Error ? error.message : 'unknown_error',
+        });
+      }
+
+      if (!assessment) {
+        assessment = {
+          riskScore: 0,
+          riskLevel: 'LOW',
+          action: 'ALLOW',
+          signals: [],
+          requiresVerification: false,
+        };
+      }
 
       // Log suspicious attempts
       if (assessment.riskLevel !== 'LOW') {
@@ -874,176 +895,206 @@ export class AuthService {
     } = { isVerified: false };
 
     if (this.googlePlaces.isConfigured()) {
-      console.log(`[ShopRegistration] Checking Google Places for: ${dto.shopName}`);
-      const googleResult = await this.googlePlaces.searchShop(
-        dto.shopName,
-        dto.address,
-        dto.city,
-        dto.phone,
-      );
+      try {
+        console.log(`[ShopRegistration] Checking Google Places for: ${dto.shopName}`);
+        const googleResult = await this.googlePlaces.searchShop(
+          dto.shopName,
+          dto.address,
+          dto.city,
+          dto.phone,
+        );
 
-      if (googleResult.found) {
-        googleVerification = {
-          isVerified: true,
-          placeId: googleResult.placeId,
-          rating: googleResult.rating,
-          reviewsCount: googleResult.reviewsCount,
-          verifiedLocation: googleResult.location,
-        };
-        console.log(
-          `[ShopRegistration] ✓ Google verified: ${dto.shopName} (${googleResult.placeId})`,
-        );
-        console.log(
-          `[ShopRegistration] Rating: ${googleResult.rating}/5 (${googleResult.reviewsCount} reviews)`,
-        );
-      } else {
-        console.log(`[ShopRegistration] ✗ Not found on Google: ${dto.shopName}`);
+        if (googleResult.found) {
+          googleVerification = {
+            isVerified: true,
+            placeId: googleResult.placeId,
+            rating: googleResult.rating,
+            reviewsCount: googleResult.reviewsCount,
+            verifiedLocation: googleResult.location,
+          };
+          console.log(
+            `[ShopRegistration] ✓ Google verified: ${dto.shopName} (${googleResult.placeId})`,
+          );
+          console.log(
+            `[ShopRegistration] Rating: ${googleResult.rating}/5 (${googleResult.reviewsCount} reviews)`,
+          );
+        } else {
+          console.log(`[ShopRegistration] ✗ Not found on Google: ${dto.shopName}`);
+        }
+      } catch (error) {
+        this.logger.warn('Google Places verification failed, continuing without verification', {
+          shopName: dto.shopName,
+          email: dto.email,
+          error: error instanceof Error ? error.message : 'unknown_error',
+        });
       }
     }
 
     // Create Tenant, Shop, Owner, QueueStats, and WorkingHours in a transaction
-    const user = await this.prisma.$transaction(async (tx) => {
-      // 1. Create Tenant
-      const tenant = await tx.tenant.create({
-        data: {
-          name: dto.shopName + ' Tenant',
-          type: dto.shopType,
-        },
-      });
+    let user;
 
-      // 2. Create or Update Shop Owner (User)
-      const ownerPhone = dto.ownerPhone || dto.phone;
-      const owner = existingUser
-        ? await tx.user.update({
-            where: { id: existingUser.id },
-            data: {
-              name: dto.ownerName,
-              phone: ownerPhone,
-              hashedPassword,
-              role: UserRole.OWNER,
-              tenantId: tenant.id,
-              isPhoneVerified: dto.phoneVerified || false,
-              isEmailVerified: dto.emailVerified || false,
+    try {
+      user = await this.prisma.$transaction(async (tx) => {
+        // 1. Create Tenant
+        const tenant = await tx.tenant.create({
+          data: {
+            name: dto.shopName + ' Tenant',
+            type: dto.shopType,
+          },
+        });
+
+        // 2. Create or Update Shop Owner (User)
+        const ownerPhone = dto.ownerPhone || dto.phone;
+        const owner = existingUser
+          ? await tx.user.update({
+              where: { id: existingUser.id },
+              data: {
+                name: dto.ownerName,
+                phone: ownerPhone,
+                hashedPassword,
+                role: UserRole.OWNER,
+                tenantId: tenant.id,
+                isPhoneVerified: dto.phoneVerified || false,
+                isEmailVerified: dto.emailVerified || false,
+              },
+            })
+          : await tx.user.create({
+              data: {
+                email,
+                name: dto.ownerName,
+                phone: ownerPhone,
+                hashedPassword,
+                role: UserRole.OWNER,
+                tenantId: tenant.id,
+                isPhoneVerified: dto.phoneVerified || false,
+                isEmailVerified: dto.emailVerified || false,
+              },
+            });
+
+        // 3. Resolve contact numbers
+        const publicPhone = dto.sameAsOwnerPhone ? ownerPhone : (dto.publicPhone || ownerPhone);
+        const fullAddress = [dto.building, dto.floor, dto.address, dto.locality, dto.landmark]
+          .filter(Boolean)
+          .join(', ');
+
+        // 4. Create Shop
+        const shop = await tx.shop.create({
+          data: {
+            tenantId: tenant.id,
+            ownerId: owner.id,
+            name: dto.shopName,
+            slug,
+            description: dto.shopDescription || null,
+            address: fullAddress || dto.address,
+            city: dto.city,
+            state: dto.state,
+            postalCode: dto.postalCode,
+            phone: publicPhone,
+            email: dto.email,
+            latitude: googleVerification.verifiedLocation?.lat || dto.latitude,
+            longitude: googleVerification.verifiedLocation?.lng || dto.longitude,
+            logoUrl: dto.mainPhotoUrl || null,
+            coverUrl: dto.coverPhotoUrl || null,
+            photoUrls: dto.galleryUrls || [],
+            autoAcceptBookings: true,
+            maxConcurrentBookings: 1,
+            // Google Verification fields
+            isGoogleVerified: googleVerification.isVerified,
+            googlePlaceId: dto.googlePlaceId || googleVerification.placeId,
+            googleRating: googleVerification.rating,
+            googleReviewsCount: googleVerification.reviewsCount || 0,
+            verificationStatus: googleVerification.isVerified ? 'GOOGLE_VERIFIED' : 'PENDING',
+            verifiedAt: googleVerification.isVerified ? new Date() : null,
+            // Extended contact & address in settings JSON
+            settings: {
+              shopType: dto.shopType,
+              publicPhone,
+              ownerPhone: ownerPhone,
+              whatsappPhone: dto.whatsappPhone || null,
+              whatsappOptIn: dto.whatsappOptIn || false,
+              sameAsOwnerPhone: dto.sameAsOwnerPhone || false,
+              building: dto.building || null,
+              floor: dto.floor || null,
+              locality: dto.locality || null,
+              landmark: dto.landmark || null,
+              formattedAddress: dto.formattedAddress || null,
+              location: dto.formattedAddress || dto.locality || dto.city || null,
             },
-          })
-        : await tx.user.create({
+          },
+        });
+
+        // 4. Create Queue Stats
+        await tx.queueStats.create({
+          data: {
+            shopId: shop.id,
+            currentWaitingCount: 0,
+            estimatedWaitMinutes: 0,
+          },
+        });
+
+        // 5. Create Default Working Hours (Mon-Fri 09:00 to 18:00)
+        const weekdays = [
+          DayOfWeek.MONDAY,
+          DayOfWeek.TUESDAY,
+          DayOfWeek.WEDNESDAY,
+          DayOfWeek.THURSDAY,
+          DayOfWeek.FRIDAY,
+        ];
+
+        for (const day of weekdays) {
+          await tx.workingHours.create({
             data: {
-              email,
-              name: dto.ownerName,
-              phone: ownerPhone,
-              hashedPassword,
-              role: UserRole.OWNER,
-              tenantId: tenant.id,
-              isPhoneVerified: dto.phoneVerified || false,
-              isEmailVerified: dto.emailVerified || false,
+              shopId: shop.id,
+              dayOfWeek: day,
+              openTime: '09:00',
+              closeTime: '18:00',
+              breakWindows: [],
             },
           });
+        }
 
-      // 3. Resolve contact numbers
-      const publicPhone = dto.sameAsOwnerPhone ? ownerPhone : (dto.publicPhone || ownerPhone);
-      const fullAddress = [dto.building, dto.floor, dto.address, dto.locality, dto.landmark]
-        .filter(Boolean)
-        .join(', ');
-
-      // 4. Create Shop
-      const shop = await tx.shop.create({
-        data: {
-          tenantId: tenant.id,
-          ownerId: owner.id,
-          name: dto.shopName,
-          slug,
-          description: dto.shopDescription || null,
-          address: fullAddress || dto.address,
-          city: dto.city,
-          state: dto.state,
-          postalCode: dto.postalCode,
-          phone: publicPhone,
-          email: dto.email,
-          latitude: googleVerification.verifiedLocation?.lat || dto.latitude,
-          longitude: googleVerification.verifiedLocation?.lng || dto.longitude,
-          logoUrl: dto.mainPhotoUrl || null,
-          coverUrl: dto.coverPhotoUrl || null,
-          photoUrls: dto.galleryUrls || [],
-          autoAcceptBookings: true,
-          maxConcurrentBookings: 1,
-          // Google Verification fields
-          isGoogleVerified: googleVerification.isVerified,
-          googlePlaceId: dto.googlePlaceId || googleVerification.placeId,
-          googleRating: googleVerification.rating,
-          googleReviewsCount: googleVerification.reviewsCount || 0,
-          verificationStatus: googleVerification.isVerified ? 'GOOGLE_VERIFIED' : 'PENDING',
-          verifiedAt: googleVerification.isVerified ? new Date() : null,
-          // Extended contact & address in settings JSON
-          settings: {
-            shopType: dto.shopType,
-            publicPhone,
-            ownerPhone: ownerPhone,
-            whatsappPhone: dto.whatsappPhone || null,
-            whatsappOptIn: dto.whatsappOptIn || false,
-            sameAsOwnerPhone: dto.sameAsOwnerPhone || false,
-            building: dto.building || null,
-            floor: dto.floor || null,
-            locality: dto.locality || null,
-            landmark: dto.landmark || null,
-            formattedAddress: dto.formattedAddress || null,
-            location: dto.formattedAddress || dto.locality || dto.city || null,
-          },
-        },
-      });
-
-      // 4. Create Queue Stats
-      await tx.queueStats.create({
-        data: {
-          shopId: shop.id,
-          currentWaitingCount: 0,
-          estimatedWaitMinutes: 0,
-        },
-      });
-
-      // 5. Create Default Working Hours (Mon-Fri 09:00 to 18:00)
-      const weekdays = [
-        DayOfWeek.MONDAY,
-        DayOfWeek.TUESDAY,
-        DayOfWeek.WEDNESDAY,
-        DayOfWeek.THURSDAY,
-        DayOfWeek.FRIDAY,
-      ];
-
-      for (const day of weekdays) {
         await tx.workingHours.create({
           data: {
             shopId: shop.id,
-            dayOfWeek: day,
-            openTime: '09:00',
-            closeTime: '18:00',
+            dayOfWeek: DayOfWeek.SATURDAY,
+            openTime: '10:00',
+            closeTime: '15:00',
             breakWindows: [],
           },
         });
+
+        await tx.workingHours.create({
+          data: {
+            shopId: shop.id,
+            dayOfWeek: DayOfWeek.SUNDAY,
+            openTime: '09:00',
+            closeTime: '18:00',
+            isClosed: true,
+            breakWindows: [],
+          },
+        });
+
+        return owner;
+      });
+    } catch (error) {
+      if (error instanceof Prisma.PrismaClientKnownRequestError) {
+        if (error.code === 'P2002') {
+          throw new ConflictException(
+            'A shop owner with the same email/phone or shop identifier already exists.',
+          );
+        }
+        if (error.code === 'P2003') {
+          throw new BadRequestException('Invalid registration data. Please review and try again.');
+        }
       }
 
-      await tx.workingHours.create({
-        data: {
-          shopId: shop.id,
-          dayOfWeek: DayOfWeek.SATURDAY,
-          openTime: '10:00',
-          closeTime: '15:00',
-          breakWindows: [],
-        },
+      this.logger.error('Shop registration failed', {
+        email: dto.email,
+        shopName: dto.shopName,
+        error: error instanceof Error ? error.message : 'unknown_error',
       });
-
-      await tx.workingHours.create({
-        data: {
-          shopId: shop.id,
-          dayOfWeek: DayOfWeek.SUNDAY,
-          openTime: '09:00',
-          closeTime: '18:00',
-          isClosed: true,
-          breakWindows: [],
-        },
-      });
-
-      return owner;
-    });
+      throw error;
+    }
 
     // Generate tokens for the new owner
     return this.generateTokens(user);

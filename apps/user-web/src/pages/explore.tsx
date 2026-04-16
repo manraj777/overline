@@ -48,6 +48,37 @@ export default function ExplorePage() {
     }
   }, [location?.address, extractCityFromAddress]);
 
+  const shouldApplyLocationFilter = !!(
+    location?.lat &&
+    location?.lng &&
+    location?.address &&
+    location.address.toLowerCase() !== 'current location'
+  );
+
+  React.useEffect(() => {
+    if (viewMode !== 'map' || location) {
+      return;
+    }
+
+    if (typeof window === 'undefined' || !navigator.geolocation) {
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        setLocation({
+          lat: position.coords.latitude,
+          lng: position.coords.longitude,
+          address: 'Current Location',
+        });
+      },
+      () => {
+        // Keep existing fallback behavior if location is denied.
+      },
+      { enableHighAccuracy: true, timeout: 10000 },
+    );
+  }, [viewMode, location]);
+
   const { data: shops, isLoading, error } = useShops({
     query: searchQuery,
     city: selectedCity || undefined,
@@ -56,8 +87,8 @@ export default function ExplorePage() {
     minRating: selectedMinRating,
     maxPrice: selectedMaxPrice,
     limit: 20,
-    latitude: location?.lat || undefined,
-    longitude: location?.lng || undefined,
+    latitude: shouldApplyLocationFilter ? location?.lat : undefined,
+    longitude: shouldApplyLocationFilter ? location?.lng : undefined,
   });
 
   const handleSearch = (e: React.FormEvent) => {
@@ -389,8 +420,18 @@ export default function ExplorePage() {
                 </button>
               </div>
             ) : viewMode === 'map' ? (
-              <div className="h-[600px] w-full rounded-3xl overflow-hidden shadow-card border border-outline-variant/10">
-                <ShopMap shops={shops?.data || []} userLocation={location} />
+              <div className="space-y-6">
+                <div className="h-[600px] w-full rounded-3xl overflow-hidden shadow-card border border-outline-variant/10">
+                  <ShopMap shops={shops?.data || []} userLocation={location} />
+                </div>
+                <div>
+                  <h3 className="text-base font-black tracking-tight text-on-surface mb-3">Shop Cards</h3>
+                  <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                    {shops?.data.map((shop) => (
+                      <ShopCard key={shop.id} shop={shop} userLocation={location} />
+                    ))}
+                  </div>
+                </div>
               </div>
             ) : (
               <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
