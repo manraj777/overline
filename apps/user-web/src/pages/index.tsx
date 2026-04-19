@@ -84,9 +84,14 @@ export default function HomePage() {
                 premium experience.
               </motion.h1>
 
-              <motion.p variants={itemVariants} className="text-white/85 text-lg md:text-xl font-semibold mb-7">
+              <motion.p variants={itemVariants} className="text-white/85 text-lg md:text-xl font-semibold mb-2">
                 Don't waste your time in line.
               </motion.p>
+              <motion.div variants={itemVariants} className="text-white/70 text-sm md:text-base font-medium max-w-2xl mb-7">
+                Overline is an appointment booking and live queue platform for salons, spas, gyms, and clinics. 
+                Users can discover service providers, book time slots, track live wait times, and manage appointments online. 
+                Businesses can use Overline to accept bookings and organize customer flow more efficiently.
+              </motion.div>
 
               {/* Search Bar */}
               <motion.div variants={itemVariants}>
@@ -341,21 +346,37 @@ export default function HomePage() {
       {/* 7. Data Transparency Section (Google Requirement)          */}
       {/* ═══════════════════════════════════════════════════════════ */}
       <section className="py-20 bg-inverse-surface text-inverse-on-surface rounded-t-5xl">
-        <div className="max-w-4xl mx-auto px-6 text-center">
-          <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-primary-fixed/20 text-primary-fixed mb-8 border border-primary-fixed/30">
-            <ShieldCheck className="w-4 h-4" />
-            <span className="text-xs font-bold uppercase tracking-widest">Trust & Transparency</span>
+        <div className="max-w-4xl mx-auto px-6 text-left">
+          <div className="flex justify-center mb-8">
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-primary-fixed/20 text-primary-fixed border border-primary-fixed/30">
+              <ShieldCheck className="w-4 h-4" />
+              <span className="text-xs font-bold uppercase tracking-widest">Trust & Transparency</span>
+            </div>
           </div>
-          <h2 className="text-3xl md:text-5xl font-black tracking-tight mb-8">Your Data, Explained</h2>
-          <p className="text-xl text-inverse-on-surface/80 max-w-2xl mx-auto mb-8 leading-relaxed font-medium">
-            We use your Google name and email to create your account and send booking confirmations. Nothing else.
-          </p>
 
-          <div className="mt-12 flex flex-col items-center gap-4">
-            <p className="text-sm text-inverse-on-surface/40">Read our full commitment in the documents below:</p>
-            <div className="flex gap-4">
-              <Link href="/privacy" className="text-primary-fixed hover:underline font-bold transition-all">Privacy Policy</Link>
-              <Link href="/terms" className="text-primary-fixed hover:underline font-bold transition-all">Terms of Service</Link>
+          <div className="space-y-12">
+            <div>
+              <h2 className="text-2xl md:text-3xl font-black tracking-tight mb-4">About Overline</h2>
+              <p className="text-inverse-on-surface/80 leading-relaxed font-medium">
+                Overline is an appointment booking and live queue platform for salons, spas, gyms, and clinics. Users can discover service providers, book appointments online, track live wait times, and manage their bookings in one place. Businesses can use Overline to accept bookings and improve customer flow.
+              </p>
+            </div>
+
+            <div>
+              <h2 className="text-2xl md:text-3xl font-black tracking-tight mb-4">How Overline uses Google Sign-In</h2>
+              <div className="text-inverse-on-surface/80 leading-relaxed font-medium space-y-2">
+                <p>Overline offers Google Sign-In so users can create an account and sign in securely. If a user chooses Google Sign-In, Overline accesses basic profile information such as the user’s name and email address. We use this information to create the user’s account, personalize their profile, and send booking-related confirmations or updates. Overline does not use Google data for purposes unrelated to authentication and the core booking experience.</p>
+              </div>
+            </div>
+
+            <div className="pt-8 border-t border-inverse-on-surface/10 text-center">
+              <p className="text-sm font-medium text-inverse-on-surface/80 mb-4">
+                Read our Privacy Policy and Terms of Service. These pages are publicly accessible and explain how Overline handles user information and platform usage.
+              </p>
+              <div className="flex justify-center gap-6">
+                <Link href="/privacy" className="text-primary-fixed hover:underline font-bold transition-all">Privacy Policy</Link>
+                <Link href="/terms" className="text-primary-fixed hover:underline font-bold transition-all">Terms of Service</Link>
+              </div>
             </div>
           </div>
         </div>
