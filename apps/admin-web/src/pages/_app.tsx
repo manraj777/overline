@@ -27,6 +27,8 @@ const inter = Inter({
 function AuthBootstrap() {
   const router = useRouter();
   const { accessToken, isAuthenticated, logout } = useAuthStore();
+  const lastValidatedAtRef = React.useRef(0);
+  const lastValidatedTokenRef = React.useRef<string | null>(null);
 
   React.useEffect(() => {
     const publicPath = isPublicRoute(router.pathname);
@@ -49,10 +51,22 @@ function AuthBootstrap() {
       }
     }
 
+    const now = Date.now();
+    const tokenChanged = lastValidatedTokenRef.current !== accessToken;
+    const shouldValidate = tokenChanged || now - lastValidatedAtRef.current > 2 * 60 * 1000;
+
+    if (!shouldValidate) {
+      return;
+    }
+
     let cancelled = false;
     const validateSession = async () => {
       try {
         await api.get('/users/me');
+        if (!cancelled) {
+          lastValidatedAtRef.current = Date.now();
+          lastValidatedTokenRef.current = accessToken;
+        }
       } catch (err: any) {
         const status = err?.response?.status;
         if (!cancelled && (status === 401 || status === 403)) {

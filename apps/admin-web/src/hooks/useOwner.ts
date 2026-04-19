@@ -2,35 +2,49 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import api from '@/lib/api';
 import { useAuthStore } from '@/stores/auth';
 
+let activeShopIdPromise: Promise<string> | null = null;
+
 async function resolveActiveShopId(): Promise<string> {
   const state = useAuthStore.getState();
   if (state.shopId) {
     return state.shopId;
   }
 
-  let firstShopId: string | undefined;
-  try {
-    const { data: shops } = await api.get<Array<{ id: string }>>('/admin/my-shops');
-    firstShopId = shops?.[0]?.id;
-  } catch {
-    // Fallback handled below
+  if (activeShopIdPromise) {
+    return activeShopIdPromise;
   }
 
-  if (!firstShopId) {
+  activeShopIdPromise = (async () => {
+    let firstShopId: string | undefined;
     try {
-      const { data: myShop } = await api.get<{ id: string }>('/admin/owner/my-shop');
-      firstShopId = myShop?.id;
+      const { data: shops } = await api.get<Array<{ id: string }>>('/admin/my-shops');
+      firstShopId = shops?.[0]?.id;
     } catch {
-      // Throw below
+      // Fallback handled below
     }
-  }
 
-  if (!firstShopId) {
-    throw new Error('No shop found for this account');
-  }
+    if (!firstShopId) {
+      try {
+        const { data: myShop } = await api.get<{ id: string }>('/admin/owner/my-shop');
+        firstShopId = myShop?.id;
+      } catch {
+        // Throw below
+      }
+    }
 
-  state.setShopId(firstShopId);
-  return firstShopId;
+    if (!firstShopId) {
+      throw new Error('No shop found for this account');
+    }
+
+    state.setShopId(firstShopId);
+    return firstShopId;
+  })();
+
+  try {
+    return await activeShopIdPromise;
+  } finally {
+    activeShopIdPromise = null;
+  }
 }
 
 export function useOwnerFinancials(params?: {

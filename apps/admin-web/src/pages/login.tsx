@@ -103,14 +103,23 @@ export default function LoginPage() {
       });
 
       login(auth.user, auth.accessToken, auth.refreshToken, auth.user.shopId);
+      if (auth.user.shopId) {
+        setShopId(auth.user.shopId);
+      }
 
-      try {
-        const { data: shops } = await api.get<Array<{ id: string; name: string }>>('/admin/my-shops');
-        if (shops?.length) {
-          setShopId(shops[0].id);
-        }
-      } catch {
-        // Keep login successful even if shops fetch fails; route will handle setup.
+      // Do not block navigation on optional shop lookup.
+      // If shopId is missing in auth payload, resolve in background.
+      if (!auth.user.shopId) {
+        void api
+          .get<Array<{ id: string; name: string }>>('/admin/my-shops')
+          .then(({ data: shops }) => {
+            if (shops?.length) {
+              setShopId(shops[0].id);
+            }
+          })
+          .catch(() => {
+            // Keep login successful even if shop lookup fails.
+          });
       }
 
       // Owner is already authenticated via email+password.

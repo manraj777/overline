@@ -99,24 +99,11 @@ const PrivacyPolicy = () => {
           </div>
 
           <div className="space-y-6">
-            <h2 className="text-2xl font-black text-on-surface tracking-tight">Google API Disclosure</h2>
+            <h2 className="text-2xl font-black text-on-surface tracking-tight">Google User Data Disclosure</h2>
             <div className="p-8 rounded-3xl bg-surface-container-low border border-outline-variant/10">
-              <p className="text-on-surface-variant leading-relaxed mb-4">
-                Overline uses Google APIs to facilitate secure user authentication via Google Sign-In. Overline's use and transfer to any other app of information received from Google APIs will adhere to the{' '}
-                <a 
-                  href="https://developers.google.com/terms/api-services-user-data-policy"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-primary hover:underline font-bold"
-                >
-                  Google API Services User Data Policy
-                </a>, including the Limited Use requirements.
+              <p className="text-on-surface-variant leading-relaxed">
+                Overline accesses your Google profile name and email address to create your account and send booking confirmations. We do not share this data with third parties or use it for marketing without your explicit consent.
               </p>
-              <ul className="list-disc pl-6 space-y-2 text-on-surface-variant">
-                <li>We only request access to your primary Google account email address and basic profile information (name, profile picture).</li>
-                <li>This data is used exclusively to create and manage your Overline user profile.</li>
-                <li>We do not share your Google user data with any third-party AI models or unauthorized external services.</li>
-              </ul>
             </div>
           </div>
         </div>

@@ -276,17 +276,12 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-gradient-to-br from-primary/20 to-secondary/20 blur-[120px] rounded-full translate-x-1/3 -translate-y-1/3 pointer-events-none" />
 
           <div className="relative z-10 grid lg:grid-cols-2 gap-16 lg:gap-8 items-end">
-            <div>
-              <h2 className="text-5xl md:text-7xl font-black tracking-tighter mb-8 leading-[1.1]">
-                Ready to
-                <br />
-                <span className="text-transparent bg-clip-text bg-gradient-to-r from-primary-fixed-dim via-inverse-primary to-secondary-fixed-dim">
-                  book now?
-                </span>
-              </h2>
-              <p className="text-inverse-on-surface/60 text-lg md:text-xl max-w-md mb-10 leading-relaxed font-medium">
-                Skip the line and experience premium grooming. Secure your appointment in seconds.
-              </p>
+            <div className="space-y-4">
+              <h4 className="text-inverse-on-surface/40 font-semibold tracking-wide uppercase text-sm">About</h4>
+              <div className="text-inverse-on-surface/60 text-lg max-w-sm mb-10 leading-relaxed font-medium space-y-4">
+                <p>Overline is a premium booking platform for salons, clinics, and spas.</p>
+                <p>We use Google Sign-In to securely manage your appointments.</p>
+              </div>
             </div>
 
             <div className="flex flex-col sm:flex-row justify-between lg:justify-end gap-12 lg:gap-24">
@@ -304,7 +299,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                 <div className="flex flex-col gap-3">
                   <Link href="/privacy" className="font-semibold hover:text-inverse-primary transition-colors">Privacy Policy</Link>
                   <Link href="/terms" className="font-semibold hover:text-inverse-primary transition-colors">Terms of Service</Link>
-                  <a href={process.env.NEXT_PUBLIC_ADMIN_URL || 'https://admin.overline.in'} target="_blank" rel="noreferrer" className="font-semibold hover:text-inverse-primary transition-colors text-inverse-on-surface/30">
+                  <a href={process.env.NEXT_PUBLIC_ADMIN_URL || 'https://overline-admin-web.vercel.app'} target="_blank" rel="noreferrer" className="font-semibold hover:text-inverse-primary transition-colors text-inverse-on-surface/30">
                     Partner Login
                   </a>
                 </div>
@@ -312,9 +307,12 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             </div>
           </div>
 
-          <div className="mt-24 pt-8 border-t border-white/10 flex flex-col md:flex-row justify-between items-center gap-4 text-sm font-medium text-inverse-on-surface/40 relative z-10">
+          <div className="mt-24 pt-8 border-t border-white/10 flex flex-col md:flex-row justify-between items-center gap-4 text-sm font-medium text-inverse-on-surface/40 relative z-10 w-full">
             <p>© {new Date().getFullYear()} Overline. All rights reserved.</p>
-            <p>Engineered for performance.</p>
+            <div className="flex flex-col md:items-end text-center md:text-right gap-1">
+              <p>Engineered for performance.</p>
+              <p className="text-[10px] text-inverse-on-surface/20">Overline uses Google Identity Services for secure authentication. View our Privacy Policy to see how we protect your data.</p>
+            </div>
           </div>
         </div>
       </footer>

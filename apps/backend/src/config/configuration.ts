@@ -44,6 +44,18 @@ const normalizeRedisUrl = (redisUrl?: string): string | undefined => {
   }
 };
 
+const isProduction = process.env.NODE_ENV === 'production';
+const defaultUserFrontendUrl = isProduction ? 'https://overline.in' : 'http://localhost:3000';
+const defaultAdminFrontendUrl = isProduction
+  ? 'https://admin.overline.in'
+  : 'http://localhost:3002';
+const defaultCorsOrigins = [
+  'http://localhost:3000',
+  'http://localhost:3002',
+  'https://overline.in',
+  'https://admin.overline.in',
+];
+
 export default () => ({
   port: parseInt(process.env.PORT || '3001', 10),
   apiPrefix: process.env.API_PREFIX || 'api/v1',
@@ -71,10 +83,7 @@ export default () => ({
   },
 
   cors: {
-    origin: process.env.CORS_ORIGIN?.split(',') || [
-      'http://localhost:3000',
-      'http://localhost:3002',
-    ],
+    origin: process.env.CORS_ORIGIN?.split(',') || defaultCorsOrigins,
   },
 
   throttle: {
@@ -143,11 +152,11 @@ export default () => ({
       process.env.USER_WEB_URL ||
       process.env.USER_FRONTEND_URL ||
       process.env.FRONTEND_USER_URL ||
-      'http://localhost:3000',
+      defaultUserFrontendUrl,
     admin:
       process.env.ADMIN_WEB_URL ||
       process.env.ADMIN_FRONTEND_URL ||
       process.env.FRONTEND_ADMIN_URL ||
-      'http://localhost:3002',
+      defaultAdminFrontendUrl,
   },
 });
