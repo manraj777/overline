@@ -5,7 +5,7 @@
 ### 1. Shop Owner Registration Journey
 
 #### Step 1: Register Page
-**URL:** `https://admin.overline.app/auth/register`
+**URL:** `https://admin.overline.in/auth/register`
 
 ```
 ┌─────────────────────────────────────────────────┐
@@ -157,7 +157,7 @@
 
 ### 2. Admin Dashboard - Shop Setup Wizard
 
-**URL:** `https://admin.overline.app/dashboard`
+**URL:** `https://admin.overline.in/dashboard`
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -196,7 +196,7 @@
 
 ### 3. Shop Details & Verification Tab
 
-**URL:** `https://admin.overline.app/shop/settings`
+**URL:** `https://admin.overline.in/shop/settings`
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -266,7 +266,7 @@
 
 ### 4. Services Management
 
-**URL:** `https://admin.overline.app/services`
+**URL:** `https://admin.overline.in/services`
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -297,7 +297,7 @@
 
 ### 5. Staff Management
 
-**URL:** `https://admin.overline.app/staff`
+**URL:** `https://admin.overline.in/staff`
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -336,7 +336,7 @@
 
 ### 6. Bookings & Queue Management
 
-**URL:** `https://admin.overline.app/appointments`
+**URL:** `https://admin.overline.in/appointments`
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -386,7 +386,7 @@
 
 ### 7. Analytics & Reports
 
-**URL:** `https://admin.overline.app/analytics`
+**URL:** `https://admin.overline.in/analytics`
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -546,9 +546,9 @@ Appears in Top Rated Section
 
 ## Support & Help
 
-- **Email:** support@overline.app
+- **Email:** support@overline.in
 - **Chat:** In-app chat (bottom-right corner)
-- **Knowledge Base:** https://help.overline.app
-- **Video Tutorials:** https://youtube.com/@overlineapp
+- **Knowledge Base:** https://help.overline.in
+- **Video Tutorials:** https://youtube.com/@overlinein
 - **Phone:** +91 XXXX-XXX-XXXX (9 AM - 6 PM IST)
 

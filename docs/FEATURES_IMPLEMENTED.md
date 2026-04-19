@@ -585,7 +585,7 @@ Ready for testing:
 
 | Email | Password | Role | Purpose |
 |-------|----------|------|---------|
-| admin@overline.app | test123 | Super Admin | System admin |
+| admin@overline.in | test123 | Super Admin | System admin |
 | owner@stylecuts.in | test123 | Shop Owner | Salon owner |
 | user@demo.com | test123 | Customer | Regular user |
 

@@ -154,7 +154,7 @@ export class NotificationsService {
     }
 
     const fromEmail =
-      this.configService.get<string>('SENDGRID_FROM_EMAIL') || 'noreply@overline.app';
+      this.configService.get<string>('SENDGRID_FROM_EMAIL') || 'noreply@overline.in';
 
     try {
       await sgMail.send({

@@ -244,7 +244,7 @@ chmod +x test-api.sh
 npm run seed
 
 ✅ Demo Accounts Created:
-  Admin: admin@overline.app / admin123
+  Admin: admin@overline.in / admin123
   Owner: owner@stylecuts.in / admin123
   User: user@demo.com / admin123
 

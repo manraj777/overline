@@ -443,7 +443,7 @@ After Customer Verification:
 
 ### For Shop Owner (First Time)
 
-1. Go to https://admin.overline.app/auth/register
+1. Go to https://admin.overline.in/auth/register
 2. Fill in owner information
 3. Fill in shop information
 4. Click "Register Shop"
@@ -472,7 +472,7 @@ After Customer Verification:
 
 ### For Customer (User Website)
 
-1. Go to https://overline.app
+1. Go to https://overline.in
 2. Search shops by location/service
 3. See verified shops with badges
 4. Check Google ratings (if verified)

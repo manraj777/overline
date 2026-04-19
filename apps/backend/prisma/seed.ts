@@ -10,10 +10,10 @@ async function main() {
   const hashedPassword = await bcrypt.hash('admin123', 12);
 
   const superAdmin = await prisma.user.upsert({
-    where: { email: 'admin@overline.app' },
+    where: { email: 'admin@overline.in' },
     update: {},
     create: {
-      email: 'admin@overline.app',
+      email: 'admin@overline.in',
       name: 'Super Admin',
       hashedPassword,
       role: UserRole.SUPER_ADMIN,
@@ -522,7 +522,7 @@ async function main() {
 
   console.log('\n🎉 Database seeding completed!');
   console.log('\n📧 Demo Accounts:');
-  console.log('  Super Admin: admin@overline.app / admin123');
+  console.log('  Super Admin: admin@overline.in / admin123');
   console.log('  Salon Owner: owner@stylecuts.in / admin123');
   console.log('  Demo User: user@demo.com / admin123');
 }

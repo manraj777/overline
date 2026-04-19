@@ -188,7 +188,7 @@ export default function ShopDetailPage() {
   const handleShareShop = async () => {
     if (!shop) return;
 
-    const shareUrl = typeof window !== 'undefined' ? window.location.href : `https://overline-user-web.vercel.app/shops/${shop.slug}`;
+    const shareUrl = typeof window !== 'undefined' ? window.location.href : `https://overline.in/shops/${shop.slug}`;
     const sharePayload = {
       title: shop.name,
       text: `Book services at ${shop.name} on Overline`,

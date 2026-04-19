@@ -64,7 +64,7 @@ REDIS_PASSWORD=your-password
 JWT_SECRET=generate-a-strong-secret-min-32-chars
 JWT_ACCESS_EXPIRATION=15m
 JWT_REFRESH_EXPIRATION=7d
-CORS_ORIGIN=https://app.overline.app,https://admin.overline.app
+CORS_ORIGIN=https://app.overline.in,https://admin.overline.in
 BCRYPT_SALT_ROUNDS=12
 ```
 
@@ -93,7 +93,7 @@ BCRYPT_SALT_ROUNDS=12
    NEXT_PUBLIC_API_URL=https://your-backend-url.up.railway.app/api/v1
    NEXT_PUBLIC_APP_NAME=Overline
    ```
-5. Deploy → Get URL (e.g., `https://overline-user.vercel.app`)
+5. Deploy → Add custom domain `overline.in`
 
 ### Admin Web App
 
@@ -105,7 +105,7 @@ BCRYPT_SALT_ROUNDS=12
    NEXT_PUBLIC_API_URL=https://your-backend-url.up.railway.app/api/v1
    NEXT_PUBLIC_APP_NAME=Overline Admin
    ```
-4. Deploy → Get URL (e.g., `https://overline-admin.vercel.app`)
+4. Deploy → Add custom domain `admin.overline.in`
 
 ## Step 5: Run Database Migrations (Production)
 
@@ -127,12 +127,12 @@ npx prisma db seed
 
 ### Vercel
 1. Project Settings → Domains
-2. Add your domain (e.g., `app.overline.app`)
+2. Add your domain (e.g., `app.overline.in`)
 3. Follow DNS instructions
 
 ### Railway
 1. Settings → Domains
-2. Add custom domain (e.g., `api.overline.app`)
+2. Add custom domain (e.g., `api.overline.in`)
 3. Configure DNS CNAME record
 
 ## Environment Variables Summary

@@ -171,7 +171,7 @@ Multi-layer protection:
 ```
 ┌─────────────────────────────────────────────┐
 │          User Web (Customer)                │
-│     https://overline.app                    │
+│     https://overline.in                    │
 └────────────┬────────────────────────────────┘
              │ API calls
 ┌────────────v────────────────────────────────┐
@@ -194,7 +194,7 @@ Multi-layer protection:
 
 ┌─────────────────────────────────────────────┐
 │     Admin Web (Shop Owner)                  │
-│   https://admin.overline.app                │
+│   https://admin.overline.in                │
 └─────────────────────────────────────────────┘
 ```
 

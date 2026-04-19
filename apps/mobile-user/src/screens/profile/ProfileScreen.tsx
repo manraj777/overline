@@ -70,7 +70,7 @@ export default function ProfileScreen() {
   const handleShareReferral = async () => {
     try {
       await Share.share({
-        message: `Join Overline and get ₹50 gift! Use my referral code: ${profile?.referralCode}. Download: https://overline.app`,
+        message: `Join Overline and get ₹50 gift! Use my referral code: ${profile?.referralCode}. Download: https://overline.in`,
       });
     } catch (error) {
       console.error('Error sharing:', error);
@@ -105,9 +105,9 @@ export default function ProfileScreen() {
     {
       title: 'Assistance & Legal',
       items: [
-        { id: 'help', label: 'Help Center', icon: <HelpCircle size={20} color="#EC4899" />, onPress: () => Linking.openURL('https://overline.app/support') },
+        { id: 'help', label: 'Help Center', icon: <HelpCircle size={20} color="#EC4899" />, onPress: () => Linking.openURL('https://overline.in/support') },
         { id: 'rate', label: 'Rate the App', icon: <Star size={20} color="#FACC15" />, onPress: () => {} },
-        { id: 'terms', label: 'Terms of Service', icon: <FileText size={20} color="#94A3B8" />, onPress: () => Linking.openURL('https://overline.app/terms') },
+        { id: 'terms', label: 'Terms of Service', icon: <FileText size={20} color="#94A3B8" />, onPress: () => Linking.openURL('https://overline.in/terms') },
       ]
     }
   ];

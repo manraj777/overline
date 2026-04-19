@@ -389,7 +389,7 @@ export default function LoginPage() {
                 type="button"
                 onClick={handleGoogleLogin}
                 disabled={isGoogleLoading}
-                className="w-full h-14 flex items-center justify-center gap-3 rounded-xl bg-surface-container-lowest border border-outline-variant/20 font-semibold text-on-surface-variant hover:bg-surface-container-low transition-colors active:scale-[0.97] duration-200"
+                className="w-full h-14 flex items-center justify-center gap-3 rounded-[4px] bg-white border border-[#dadce0] font-medium text-[#3c4043] hover:bg-[#f8f9fa] transition-colors active:scale-[0.97] duration-200"
               >
                 <svg className="w-5 h-5" viewBox="0 0 24 24">
                   <path
@@ -409,8 +409,11 @@ export default function LoginPage() {
                     fill="#EA4335"
                   />
                 </svg>
-                {isGoogleLoading ? 'Connecting...' : 'Google'}
+                {isGoogleLoading ? 'Connecting...' : 'Sign in with Google'}
               </button>
+              <p className="mt-2 text-center text-[11px] text-on-surface-variant/70 leading-relaxed max-w-sm mx-auto">
+                Overline uses your Google name and email address to create your account, sign you in securely, and send booking confirmations.
+              </p>
 
               {/* Sign Up Link */}
               <p className="mt-10 text-center text-sm font-medium text-on-surface-variant">
@@ -426,13 +429,16 @@ export default function LoginPage() {
           </div>
 
           {/* Footer */}
-          <footer className="w-full py-8 px-12 flex flex-col md:flex-row justify-between items-center gap-4 text-[11px] font-bold tracking-widest uppercase text-outline">
+          <footer className="w-full py-8 px-12 flex flex-col items-center gap-4 text-[11px] font-bold tracking-widest uppercase text-outline">
             <div className="flex gap-8">
               <a className="hover:text-primary transition-colors" href="#">Privacy</a>
               <a className="hover:text-primary transition-colors" href="#">Terms</a>
               <a className="hover:text-primary transition-colors" href="#">Support</a>
             </div>
-            <span>© {new Date().getFullYear()} Overline. Built for clarity.</span>
+            <div className="flex flex-col items-center gap-1">
+              <span>© {new Date().getFullYear()} Overline. Built for clarity.</span>
+              <span className="normal-case text-[10px] text-outline-variant font-medium">Google is a trademark of Google LLC.</span>
+            </div>
           </footer>
         </section>
       </div>

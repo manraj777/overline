@@ -36,7 +36,7 @@ describe('AuthService firebasePhoneLogin', () => {
 
   const buildUser = (overrides: Record<string, unknown> = {}) => ({
     id: 'user-1',
-    email: 'user@overline.app',
+    email: 'user@overline.in',
     name: 'Test User',
     phone: '+919876543210',
     role: 'USER',
@@ -118,7 +118,7 @@ describe('AuthService firebasePhoneLogin', () => {
         authProvider: 'firebase',
         name: 'New User',
         role: 'USER',
-        email: expect.stringMatching(/^919876543210\.[0-9]+@phone\.overline\.app$/),
+        email: expect.stringMatching(/^919876543210\.[0-9]+@phone\.overline\.in$/),
       }),
     });
     expect(result.user.id).toBe('user-2');

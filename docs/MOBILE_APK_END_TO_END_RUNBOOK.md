@@ -55,7 +55,7 @@ pnpm run prisma:seed
 ```
 
 Expected demo credentials from seed output:
-- `admin@overline.app / admin123`
+- `admin@overline.in / admin123`
 - `owner@stylecuts.in / admin123`
 - `user@demo.com / admin123`
 

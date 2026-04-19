@@ -347,20 +347,9 @@ export default function HomePage() {
             <span className="text-xs font-bold uppercase tracking-widest">Trust & Transparency</span>
           </div>
           <h2 className="text-3xl md:text-5xl font-black tracking-tight mb-8">Your Data, Explained</h2>
-          <p className="text-xl text-inverse-on-surface/60 mb-12 leading-relaxed">
-            Overline respects your privacy. We use your Google account information solely to provide a secure and frictionless login experience.
+          <p className="text-xl text-inverse-on-surface/80 max-w-2xl mx-auto mb-8 leading-relaxed font-medium">
+            We use your Google name and email to create your account and send booking confirmations. Nothing else.
           </p>
-
-          <div className="grid sm:grid-cols-2 gap-8 text-left">
-            <div className="p-6 rounded-3xl bg-white/5 border border-white/10">
-              <h4 className="font-bold text-white mb-2">Why Google Auth?</h4>
-              <p className="text-sm text-inverse-on-surface/50">We use Google Sign-In to verify your identity and protect your bookings from unauthorized access.</p>
-            </div>
-            <div className="p-6 rounded-3xl bg-white/5 border border-white/10">
-              <h4 className="font-bold text-white mb-2">What we collect?</h4>
-              <p className="text-sm text-inverse-on-surface/50">We only request your name and email address to create your profile and send booking confirmations.</p>
-            </div>
-          </div>
 
           <div className="mt-12 flex flex-col items-center gap-4">
             <p className="text-sm text-inverse-on-surface/40">Read our full commitment in the documents below:</p>

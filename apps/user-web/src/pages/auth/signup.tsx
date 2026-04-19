@@ -261,7 +261,7 @@ export default function SignupPage() {
               {/* Google Sign-Up */}
               <a
                 href={`${BACKEND_URL}/api/v1/auth/google/redirect`}
-                className="w-full h-14 flex items-center justify-center gap-3 rounded-xl bg-surface-container-lowest border border-outline-variant/20 font-semibold text-on-surface-variant hover:bg-surface-container-low transition-colors active:scale-[0.97] duration-200"
+                className="w-full h-14 flex items-center justify-center gap-3 rounded-[4px] bg-white border border-[#dadce0] font-medium text-[#3c4043] hover:bg-[#f8f9fa] transition-colors active:scale-[0.97] duration-200"
               >
                 <svg className="w-5 h-5" viewBox="0 0 24 24">
                   <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4" />
@@ -269,8 +269,11 @@ export default function SignupPage() {
                   <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05" />
                   <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335" />
                 </svg>
-                Google
+                Sign up with Google
               </a>
+              <p className="mt-2 text-center text-[11px] text-on-surface-variant/70 leading-relaxed max-w-sm mx-auto">
+                Overline uses your Google name and email address to create your account, sign you in securely, and send booking confirmations.
+              </p>
 
               {/* Terms + Login link */}
               <p className="text-center text-on-surface-variant text-xs mt-6 leading-relaxed">
@@ -293,13 +296,16 @@ export default function SignupPage() {
           </div>
 
           {/* Footer */}
-          <footer className="w-full py-8 px-12 flex flex-col md:flex-row justify-between items-center gap-4 text-[11px] font-bold tracking-widest uppercase text-outline">
+          <footer className="w-full py-8 px-12 flex flex-col items-center gap-4 text-[11px] font-bold tracking-widest uppercase text-outline">
             <div className="flex gap-8">
               <a className="hover:text-primary transition-colors" href="#">Privacy</a>
               <a className="hover:text-primary transition-colors" href="#">Terms</a>
               <a className="hover:text-primary transition-colors" href="#">Support</a>
             </div>
-            <span>© {new Date().getFullYear()} Overline. Built for clarity.</span>
+            <div className="flex flex-col items-center gap-1">
+              <span>© {new Date().getFullYear()} Overline. Built for clarity.</span>
+              <span className="normal-case text-[10px] text-outline-variant font-medium">Google is a trademark of Google LLC.</span>
+            </div>
           </footer>
         </section>
       </div>

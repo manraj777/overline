@@ -411,7 +411,7 @@ export class AuthService {
           },
         });
       } else {
-        const generatedEmail = `${normalizedPhone.replace(/\D/g, '')}.${Date.now()}@staff.overline.app`;
+        const generatedEmail = `${normalizedPhone.replace(/\D/g, '')}.${Date.now()}@staff.overline.in`;
         user = await this.prisma.user.create({
           data: {
             name: staff.name || `Staff ${normalizedPhone.slice(-4)}`,
@@ -478,7 +478,7 @@ export class AuthService {
           },
         });
       } else {
-        const generatedEmail = `${normalizedPhone.replace(/\D/g, '')}.${Date.now()}@staff.overline.app`;
+        const generatedEmail = `${normalizedPhone.replace(/\D/g, '')}.${Date.now()}@staff.overline.in`;
         user = await this.prisma.user.create({
           data: {
             name: staff.name || `Staff ${normalizedPhone.slice(-4)}`,
@@ -577,7 +577,7 @@ export class AuthService {
           );
         }
 
-        const generatedEmail = `${normalizedPhone.replace(/\D/g, '')}.${Date.now()}@staff.overline.app`;
+        const generatedEmail = `${normalizedPhone.replace(/\D/g, '')}.${Date.now()}@staff.overline.in`;
         const provisionedUser = await tx.user.create({
           data: {
             phone: normalizedPhone,
@@ -604,7 +604,7 @@ export class AuthService {
 
       if (requestedRole === 'OWNER') {
         const emailPrefix = normalizedPhone.replace(/\D/g, '');
-        const generatedEmail = `${emailPrefix}.${Date.now()}@phone.overline.app`;
+        const generatedEmail = `${emailPrefix}.${Date.now()}@phone.overline.in`;
         return tx.user.create({
           data: {
             phone: normalizedPhone,
@@ -625,7 +625,7 @@ export class AuthService {
       }
 
       const emailPrefix = normalizedPhone.replace(/\D/g, '');
-      const generatedEmail = `${emailPrefix}.${Date.now()}@phone.overline.app`;
+      const generatedEmail = `${emailPrefix}.${Date.now()}@phone.overline.in`;
       return tx.user.create({
         data: {
           phone: normalizedPhone,
@@ -697,7 +697,7 @@ export class AuthService {
       }
 
       const emailPrefix = normalizedPhone.replace(/\D/g, '');
-      const generatedEmail = `${emailPrefix}.${Date.now()}@phone.overline.app`;
+      const generatedEmail = `${emailPrefix}.${Date.now()}@phone.overline.in`;
       const name = decodedToken.name?.trim() || `User ${normalizedPhone.slice(-4)}`;
       const roleToAssign = requestedRole === 'OWNER' ? UserRole.OWNER : UserRole.USER;
 

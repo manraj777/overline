@@ -102,7 +102,7 @@ const PrivacyPolicy = () => {
             <h2 className="text-2xl font-black text-on-surface tracking-tight">Google API Disclosure</h2>
             <div className="p-8 rounded-3xl bg-surface-container-low border border-outline-variant/10">
               <p className="text-on-surface-variant leading-relaxed mb-4">
-                Overline uses Google APIs to facilitate secure user authentication via Google Sign-In. Our use and transfer to any other app of information received from Google APIs will adhere to the{' '}
+                Overline uses Google APIs to facilitate secure user authentication via Google Sign-In. Overline's use and transfer to any other app of information received from Google APIs will adhere to the{' '}
                 <a 
                   href="https://developers.google.com/terms/api-services-user-data-policy"
                   target="_blank"

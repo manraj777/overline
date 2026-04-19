@@ -101,7 +101,7 @@ import axios from 'axios';
 import * as SecureStore from 'expo-secure-store';
 
 const api = axios.create({
-  baseURL: process.env.EXPO_PUBLIC_API_URL || 'https://api.overline.app',
+  baseURL: process.env.EXPO_PUBLIC_API_URL || 'https://api.overline.in',
   timeout: 10000,
 });
 
@@ -309,7 +309,7 @@ const colors = {
 ### Required Environment Variables
 ```env
 # apps/mobile/.env
-EXPO_PUBLIC_API_URL=https://api.overline.app
+EXPO_PUBLIC_API_URL=https://api.overline.in
 EXPO_PUBLIC_GOOGLE_MAPS_KEY=your_google_maps_key
 ```
 
