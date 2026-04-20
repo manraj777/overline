@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { motion, useScroll, useSpring } from 'framer-motion';
 import {
   Search, MapPin, Scissors, Stethoscope, ArrowRight,
-  Loader2, Dumbbell, Flower2, Calendar
+  Loader2, Dumbbell, Flower2, Calendar, Sparkles, Zap, ShieldCheck
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { ShopCard, ShopMap } from '@/components/shop';
