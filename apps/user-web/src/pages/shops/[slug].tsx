@@ -334,7 +334,7 @@ export default function ShopDetailPage() {
             setFastSearchStaffId(null);
             setFastSearchOpen(true);
           }}
-          className="fixed bottom-24 lg:bottom-10 right-6 lg:right-10 w-16 h-16 bg-primary text-white rounded-full shadow-[0_8px_30px_rgb(0,0,0,0.3)] flex items-center justify-center z-40 hover:-translate-y-1 transition-all duration-300"
+          className="fixed bottom-32 lg:bottom-10 right-6 lg:right-10 w-16 h-16 bg-primary text-white rounded-full shadow-[0_8px_30px_rgb(0,0,0,0.3)] flex items-center justify-center z-40 hover:-translate-y-1 transition-all duration-300"
           title="Fast Menu Search"
         >
           <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
@@ -662,7 +662,7 @@ export default function ShopDetailPage() {
               </div>
 
               {step === 'services' && selectedServices.length > 0 && (
-                <div className="fixed bottom-6 left-0 right-0 z-50 flex justify-center px-4 pointer-events-none animate-fade-in-up">
+                <div className="fixed bottom-32 left-0 right-0 z-50 flex justify-center px-4 pointer-events-none animate-fade-in-up">
                   <div className="bg-primary text-white rounded-2xl shadow-glass-strong w-full max-w-lg lg:max-w-2xl px-6 py-4 flex items-center justify-between pointer-events-auto">
                     <div>
                       <p className="text-sm font-medium text-white/80 uppercase tracking-widest">{selectedServices.length} ITEM{selectedServices.length > 1 ? 'S' : ''} ADDED</p>

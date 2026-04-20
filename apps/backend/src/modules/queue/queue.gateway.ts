@@ -158,4 +158,15 @@ export class QueueGateway implements OnGatewayConnection, OnGatewayDisconnect {
       timestamp: new Date().toISOString(),
     });
   }
+
+  /**
+   * Emit waitlist offer lifecycle updates for a booking.
+   */
+  emitSlotOfferUpdate(bookingId: string, update: any) {
+    this.server.to(`booking:${bookingId}`).emit('slotOfferUpdate', {
+      bookingId,
+      ...update,
+      timestamp: new Date().toISOString(),
+    });
+  }
 }

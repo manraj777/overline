@@ -24,6 +24,9 @@ import { FraudDetectionService } from '../fraud-detection/fraud-detection.servic
 import { CallAheadDto } from './dto/call-ahead.dto';
 import { SkipCustomerDto } from './dto/skip-customer.dto';
 import { HandleOverrunDto } from './dto/handle-overrun.dto';
+import { JoinWaitlistDto } from './dto/join-waitlist.dto';
+import { OfferSlotDto } from './dto/offer-slot.dto';
+import { RespondSlotOfferDto } from './dto/respond-slot-offer.dto';
 
 @ApiTags('queue')
 @Controller('queue')
@@ -36,6 +39,13 @@ export class QueueController {
     private readonly notificationsService: NotificationsService,
     private readonly fraudDetectionService: FraudDetectionService,
   ) {}
+
+  @Get('policy')
+  @Public()
+  @ApiOperation({ summary: 'Get queue and waitlist policy constants' })
+  async getQueuePolicy() {
+    return this.queueService.getQueuePolicy();
+  }
 
   @Get('slots')
   @Public()
@@ -147,6 +157,121 @@ export class QueueController {
       }
       throw new BadRequestException(message);
     }
+  }
+
+  @Post(':shopId/waitlist/join')
+  @Public()
+  @ApiOperation({ summary: 'Join waitlist for a desired slot' })
+  async joinWaitlist(@Param('shopId') shopId: string, @Body() dto: JoinWaitlistDto) {
+    try {
+      const booking = await this.queueService.joinWaitlist({
+        shopId,
+        userId: dto.userId,
+        customerName: dto.customerName,
+        customerPhone: dto.customerPhone,
+        serviceId: dto.serviceId,
+        desiredStartTime: dto.desiredStartTime,
+        preferredStaffProfileId: dto.preferredStaffProfileId,
+        maxWaitMinutes: dto.maxWaitMinutes,
+        preferenceNote: dto.preferenceNote,
+      });
+
+      await this.queueGateway.emitQueueUpdate(shopId);
+      return booking;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unable to join waitlist';
+      if (message.toLowerCase().includes('not found')) {
+        throw new NotFoundException(message);
+      }
+      throw new BadRequestException(message);
+    }
+  }
+
+  @Post(':shopId/waitlist/offer')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'Send slot offer to a waitlisted customer' })
+  async sendWaitlistOffer(
+    @Param('shopId') shopId: string,
+    @Body() dto: OfferSlotDto,
+    @CurrentUser('id') userId: string,
+  ) {
+    try {
+      const booking = await this.queueService.sendWaitlistOffer({
+        shopId,
+        bookingId: dto.bookingId,
+        staffId: userId,
+        slotStartTime: dto.slotStartTime,
+        durationMinutes: dto.durationMinutes,
+        message: dto.message,
+      });
+
+      await Promise.all([
+        this.queueGateway.emitQueueUpdate(shopId),
+        this.queueGateway.emitBookingUpdate(dto.bookingId, {
+          status: booking.status,
+          serviceStatus: booking.serviceStatus,
+        }),
+        this.queueGateway.emitSlotOfferUpdate(dto.bookingId, {
+          status: booking.status,
+          offerExpiresAt: booking.offerExpiresAt,
+        }),
+      ]);
+
+      return booking;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Unable to send waitlist offer';
+      if (message.toLowerCase().includes('not found')) {
+        throw new NotFoundException(message);
+      }
+      throw new BadRequestException(message);
+    }
+  }
+
+  @Post('waitlist/:bookingId/respond')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'Accept or decline a waitlist slot offer' })
+  async respondToWaitlistOffer(
+    @Param('bookingId') bookingId: string,
+    @Body() dto: RespondSlotOfferDto,
+  ) {
+    try {
+      const booking = await this.queueService.respondToWaitlistOffer({
+        bookingId,
+        accepted: dto.accepted,
+        keepWaitlistedOnDecline: dto.keepWaitlistedOnDecline,
+        responseNote: dto.responseNote,
+      });
+
+      await Promise.all([
+        this.queueGateway.emitQueueUpdate(booking.shopId),
+        this.queueGateway.emitBookingUpdate(booking.id, {
+          status: booking.status,
+          serviceStatus: booking.serviceStatus,
+        }),
+        this.queueGateway.emitSlotOfferUpdate(booking.id, {
+          status: booking.status,
+          callAheadReply: booking.callAheadReply,
+        }),
+      ]);
+
+      return booking;
+    } catch (error) {
+      const message =
+        error instanceof Error ? error.message : 'Unable to process waitlist offer response';
+      if (message.toLowerCase().includes('not found')) {
+        throw new NotFoundException(message);
+      }
+      throw new BadRequestException(message);
+    }
+  }
+
+  @Post(':shopId/waitlist/expire-stale')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'Expire stale slot offers for a shop' })
+  async expireStaleWaitlistOffers(@Param('shopId') shopId: string) {
+    const expired = await this.queueService.expireStaleSlotOffers(shopId);
+    await this.queueGateway.emitQueueUpdate(shopId);
+    return { expired };
   }
 
   @Post(':shopId/call-next')

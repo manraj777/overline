@@ -1,9 +1,9 @@
 # Stage 1: Build
-FROM node:20-alpine AS builder
+FROM cgr.dev/chainguard/node:20-dev AS builder
 
 WORKDIR /app
 
-RUN apk update && apk upgrade && apk add --no-cache python3 make g++ openssl && npm install -g pnpm@9
+RUN corepack enable && corepack prepare pnpm@9.15.4 --activate
 
 # Copy monorepo config first (for better layer caching)
 COPY .npmrc package.json pnpm-lock.yaml pnpm-workspace.yaml tsconfig.base.json ./
@@ -36,11 +36,9 @@ RUN NODE_OPTIONS='--max-old-space-size=2048' npx nest build
 RUN ls -la dist/main.js
 
 # Stage 2: Production
-FROM node:20-alpine
+FROM cgr.dev/chainguard/node:20
 
 WORKDIR /app
-
-RUN apk update && apk upgrade && apk add --no-cache openssl && npm install -g pnpm@9 && rm -rf /var/cache/apk/*
 
 # Copy entire built workspace from builder (includes node_modules, dist, prisma client)
 COPY --from=builder /app ./
@@ -50,4 +48,4 @@ WORKDIR /app/apps/backend
 ENV NODE_ENV=production
 EXPOSE 3001
 
-CMD ["sh", "-c", "npx prisma migrate deploy && node -r tsconfig-paths/register dist/main.js"]
+CMD ["node", "-e", "const {spawnSync}=require('node:child_process');let r=spawnSync('npx',['prisma','migrate','deploy'],{stdio:'inherit'});if(r.status!==0)process.exit(r.status??1);r=spawnSync('node',['-r','tsconfig-paths/register','dist/main.js'],{stdio:'inherit'});process.exit(r.status??0);"]

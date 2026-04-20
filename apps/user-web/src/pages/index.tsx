@@ -1,16 +1,16 @@
 import React from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
-import { motion } from 'framer-motion';
+import { motion, useScroll, useSpring } from 'framer-motion';
 import {
-  Search, MapPin, Scissors, Stethoscope, ArrowRight, Star,
-  Navigation, Loader2, Sparkles, Zap, ShieldCheck, HeartHandshake,
-  Dumbbell, Flower2, Calendar
+  Search, MapPin, Scissors, Stethoscope, ArrowRight,
+  Loader2, Dumbbell, Flower2, Calendar
 } from 'lucide-react';
-import { Button, Input } from '@/components/ui';
 import { cn } from '@/lib/utils';
 import { ShopCard, ShopMap } from '@/components/shop';
 import { useShops, useLocation, useAiRecommendations } from '@/hooks';
+import { ElectricCard } from '@/components/ElectricCard';
+import { Globe } from '@/components/Globe';
 
 export default function HomePage() {
   const [searchQuery, setSearchQuery] = React.useState('');
@@ -22,6 +22,13 @@ export default function HomePage() {
     latitude: location?.lat,
     longitude: location?.lng,
     radiusKm: 50,
+  });
+
+  const { scrollYProgress } = useScroll();
+  const scaleX = useSpring(scrollYProgress, {
+    stiffness: 100,
+    damping: 30,
+    restDelta: 0.001
   });
 
   const categories = [
@@ -51,96 +58,85 @@ export default function HomePage() {
         <meta name="description" content="Find your next premium experience. Don't waste your time in line." />
       </Head>
 
+      <motion.div
+        className="fixed top-0 left-0 right-0 h-1 bg-primary origin-left z-[100]"
+        style={{ scaleX }}
+      />
+
       {/* ═══════════════════════════════════════════════════════════ */}
       {/* 1. Hero Search Section — Gradient Banner                   */}
       {/* ═══════════════════════════════════════════════════════════ */}
       <section className="relative overflow-hidden pt-12 pb-16">
         <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="relative rounded-4xl overflow-hidden bg-gradient-to-br from-primary to-secondary p-8 md:p-12 lg:p-16 text-white">
-            {/* Abstract Background Image */}
-            <div className="absolute top-0 right-0 h-full w-1/3 pointer-events-none opacity-30 mix-blend-overlay">
-              <div className="h-full w-full bg-gradient-to-l from-white/10 to-transparent" />
-            </div>
-            {/* Decorative Glow */}
-            <div className="absolute -right-20 -top-20 w-80 h-80 bg-white/5 rounded-full blur-[80px] pointer-events-none" />
-
-            <motion.div
-              className="relative z-10 max-w-3xl"
-              variants={containerVariants}
-              initial="hidden"
-              animate="show"
-            >
-              <motion.div variants={itemVariants} className="mb-5 inline-flex items-center gap-3 rounded-2xl bg-white/10 backdrop-blur-md px-4 py-2 border border-white/20">
-                <img src="/overline-logo.png" alt="Overline" className="w-8 h-8 rounded-lg object-cover" />
-                <span className="text-sm font-bold tracking-wide">Overline</span>
-              </motion.div>
-
-              <motion.h1
-                variants={itemVariants}
-                className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight mb-6 leading-tight"
+          <div className="relative rounded-4xl overflow-hidden bg-gradient-to-br from-primary to-secondary p-8 md:p-12 lg:p-16 text-white flex items-center">
+            <div className="relative z-10 max-w-3xl">
+              <motion.div
+                variants={containerVariants}
+                initial="hidden"
+                animate="show"
               >
-                Find your next
-                <br />
-                premium experience.
-              </motion.h1>
+                <motion.div variants={itemVariants} className="mb-5 inline-flex items-center gap-3 rounded-2xl bg-white/10 backdrop-blur-md px-4 py-2 border border-white/20">
+                  <span className="text-sm font-bold tracking-wide">Overline</span>
+                </motion.div>
 
-              <motion.p variants={itemVariants} className="text-white/85 text-lg md:text-xl font-semibold mb-2">
-                Don't waste your time in line.
-                <br />
-                Book instantly, track live queues, and skip the wait.
-              </motion.p>
+                <motion.h1
+                  variants={itemVariants}
+                  className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight mb-6 leading-tight"
+                >
+                  Find your next
+                  <br />
+                  premium experience.
+                </motion.h1>
 
+                <motion.p variants={itemVariants} className="text-white/85 text-lg md:text-xl font-semibold mb-8">
+                  Don't waste your time in line.
+                  <br />
+                  Book instantly, track live queues, and skip the wait.
+                </motion.p>
 
-              {/* Search Bar */}
-              <motion.div variants={itemVariants}>
-                <div className="flex flex-col md:flex-row gap-2 bg-surface-container-lowest p-2 rounded-2xl shadow-xl">
-                  <div className="flex-1 flex items-center px-4 py-3 bg-surface-container-low rounded-xl group focus-within:ring-2 ring-primary/20 transition-all">
-                    <Search className="w-5 h-5 text-primary mr-3 flex-shrink-0" />
-                    <div className="flex flex-col flex-1">
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-outline">What are you looking for?</span>
-                      <input
-                        className="bg-transparent border-none p-0 focus:ring-0 text-on-surface placeholder:text-outline-variant font-medium text-sm w-full"
-                        placeholder="Salons, clinics, spas..."
-                        value={searchQuery}
-                        onChange={(e) => setSearchQuery(e.target.value)}
-                      />
+                {/* Search Bar */}
+                <motion.div variants={itemVariants}>
+                  <div className="flex flex-col md:flex-row gap-2 bg-surface-container-lowest p-2 rounded-2xl shadow-xl">
+                    <div className="flex-1 flex items-center px-4 py-3 bg-surface-container-low rounded-xl group focus-within:ring-2 ring-primary/20 transition-all">
+                      <Search className="w-5 h-5 text-primary mr-3 flex-shrink-0" />
+                      <div className="flex flex-col flex-1">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-outline">What are you looking for?</span>
+                        <input
+                          className="bg-transparent border-none p-0 focus:ring-0 text-on-surface placeholder:text-outline-variant font-medium text-sm w-full"
+                          placeholder="Salons, clinics, spas..."
+                          value={searchQuery}
+                          onChange={(e) => setSearchQuery(e.target.value)}
+                        />
+                      </div>
                     </div>
-                  </div>
 
-                  <div className="hidden md:block w-px h-12 bg-outline-variant/20 mx-1 self-center" />
+                    <div className="hidden md:block w-px h-12 bg-outline-variant/20 mx-1 self-center" />
 
-                  <div className="flex items-center px-4 py-3 bg-surface-container-low rounded-xl group focus-within:ring-2 ring-primary/20 transition-all min-w-[200px]">
-                    <MapPin className="w-5 h-5 text-primary mr-3 flex-shrink-0" />
-                    <div className="flex flex-col flex-1">
-                      <span className="text-[10px] font-bold uppercase tracking-wider text-outline">Location</span>
-                      <input
-                        className="bg-transparent border-none p-0 focus:ring-0 text-on-surface font-medium text-sm w-full"
-                        value={locationQuery || location?.address || ''}
-                        onChange={(e) => setLocationQuery(e.target.value)}
-                        placeholder="Enter location..."
-                      />
+                    <div className="flex items-center px-4 py-3 bg-surface-container-low rounded-xl group focus-within:ring-2 ring-primary/20 transition-all min-w-[200px]">
+                      <MapPin className="w-5 h-5 text-primary mr-3 flex-shrink-0" />
+                      <div className="flex flex-col flex-1">
+                        <span className="text-[10px] font-bold uppercase tracking-wider text-outline">Location</span>
+                        <input
+                          className="bg-transparent border-none p-0 focus:ring-0 text-on-surface font-medium text-sm w-full"
+                          value={locationQuery || location?.address || ''}
+                          onChange={(e) => setLocationQuery(e.target.value)}
+                          placeholder="Enter location..."
+                        />
+                      </div>
                     </div>
+
+                    <Link href={location ? `/explore?q=${encodeURIComponent(searchQuery)}&lat=${location.lat}&lng=${location.lng}` : `/explore?q=${encodeURIComponent(searchQuery)}`}>
+                      <button className="w-full md:w-auto bg-gradient-to-br from-primary to-primary-container text-white px-10 py-4 rounded-xl font-bold active:scale-95 transition-all shadow-lg shadow-primary/20 text-sm">
+                        Explore
+                      </button>
+                    </Link>
                   </div>
-
-                  <Link href={location ? `/explore?q=${encodeURIComponent(searchQuery)}&lat=${location.lat}&lng=${location.lng}` : `/explore?q=${encodeURIComponent(searchQuery)}`}>
-                    <button className="w-full md:w-auto bg-gradient-to-br from-primary to-primary-container text-white px-10 py-4 rounded-xl font-bold active:scale-95 transition-all shadow-lg shadow-primary/20 text-sm">
-                      Explore
-                    </button>
-                  </Link>
-                </div>
+                </motion.div>
               </motion.div>
-
-              {/* Quick Category Tags */}
-              <motion.div variants={itemVariants} className="mt-6 flex flex-wrap gap-2">
-                {categories.map((cat) => (
-                  <Link key={cat.name} href={cat.href}>
-                    <span className="px-4 py-1.5 rounded-full bg-white/10 backdrop-blur-md border border-white/10 text-sm font-semibold hover:bg-white/20 cursor-pointer transition-all">
-                      {cat.name}
-                    </span>
-                  </Link>
-                ))}
-              </motion.div>
-            </motion.div>
+            </div>
+            <div className="hidden lg:block absolute right-0 top-0 h-full w-1/2 opacity-50 pointer-events-none">
+              <Globe />
+            </div>
           </div>
         </div>
       </section>
@@ -330,11 +326,11 @@ export default function HomePage() {
                 desc: 'Monitor your place in the live queue and walk in exactly when you are expected.' 
               }
             ].map((s) => (
-              <div key={s.step} className="relative p-8 rounded-4xl bg-surface-container-lowest border border-outline-variant/5 shadow-sm hover:shadow-md transition-all">
+              <ElectricCard key={s.step} className="p-8 h-full rounded-[2.5rem]">
                 <span className="text-5xl font-black text-primary/10 absolute top-4 right-8">{s.step}</span>
-                <h3 className="text-2xl font-black text-on-surface mb-4 leading-tight">{s.title}</h3>
-                <p className="text-on-surface-variant leading-relaxed">{s.desc}</p>
-              </div>
+                <h3 className="text-2xl font-black text-on-surface mb-4 leading-tight relative">{s.title}</h3>
+                <p className="text-on-surface-variant leading-relaxed relative">{s.desc}</p>
+              </ElectricCard>
             ))}
           </div>
         </div>

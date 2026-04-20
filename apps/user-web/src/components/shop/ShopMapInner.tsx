@@ -101,10 +101,10 @@ export const ShopMapInner: React.FC<ShopMapProps> = ({
                         >
                             <Popup className="custom-popup">
                                 <div className="p-1 min-w-[200px]">
-                                    {/* Shop Cover Image */}
+                                {/* Shop Cover Image */}
                                     <div
-                                        className="h-24 w-full rounded-xl bg-gray-200 mb-3 bg-cover bg-center"
-                                        style={{ backgroundImage: `url(${shop.coverUrl || shop.logoUrl || 'https://images.unsplash.com/photo-1560066984-138dadb4c035?w=500&q=80'})` }}
+                                        className="h-32 w-full rounded-t-xl bg-gray-200 mb-3 bg-cover bg-center"
+                                        style={{ backgroundImage: `url(${shop.coverUrl || shop.logoUrl || shop.photoUrls?.[0] || 'https://images.unsplash.com/photo-1560066984-138dadb4c035?w=500&q=80'})` }}
                                     />
 
                                     <h3 className="font-bold text-lexo-black text-lg leading-tight mb-1">{shop.name}</h3>
@@ -120,19 +120,22 @@ export const ShopMapInner: React.FC<ShopMapProps> = ({
 
                                     <div className="flex justify-between items-center mb-3">
                                         <span className="flex items-center gap-1 text-amber-500 text-sm font-bold bg-amber-50 px-2 py-0.5 rounded-md">
-                                            <Star className="w-3 h-3 fill-current" /> 4.9
+                                            <Star className="w-3 h-3 fill-current" /> {shop.googleRating || 4.9}
                                         </span>
-                                        <span className="flex items-center gap-1 text-green-600 text-sm font-bold bg-green-50 px-2 py-0.5 rounded-md">
-                                            <Clock className="w-3 h-3" /> 0 wait
+                                        <span className="flex items-center gap-1 text-primary text-sm font-bold bg-primary-fixed/30 px-2 py-0.5 rounded-md">
+                                            <Clock className="w-3 h-3" /> {(shop as any).queueStats?.waitingCount || 0} waiting
                                         </span>
                                     </div>
 
-                                    <button
-                                        onClick={() => router.push(`/shops/${shop.slug}`)}
-                                        className="w-full bg-lexo-black text-white text-sm font-bold py-2 rounded-lg hover:bg-lexo-dark transition-colors"
-                                    >
-                                        View Details
-                                    </button>
+                                    <div className="pb-1">
+                                        <button
+                                            onMouseDown={(e) => { e.stopPropagation(); router.push(`/shops/${shop.slug}`); }}
+                                            onTouchStart={(e) => { e.stopPropagation(); router.push(`/shops/${shop.slug}`); }}
+                                            className="w-full bg-primary text-white text-sm font-bold py-2.5 rounded-lg hover:bg-primary-container active:scale-95 transition-all shadow-button relative z-50 pointer-events-auto cursor-pointer"
+                                        >
+                                            View Details
+                                        </button>
+                                    </div>
                                 </div>
                             </Popup>
                         </Marker>

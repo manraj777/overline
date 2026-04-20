@@ -105,10 +105,10 @@ export class ShopsService {
     const maxPrice = dto.maxPrice !== undefined ? Number(dto.maxPrice) : undefined;
 
     // Explicitly cast coordinates intercepting from the URL so JS bounding box math
-    // doesn't accidentally do string-concatenation and crash the Prisma Driver
     const latitude = dto.latitude !== undefined ? Number(dto.latitude) : undefined;
     const longitude = dto.longitude !== undefined ? Number(dto.longitude) : undefined;
-    const radiusKm = dto.radiusKm !== undefined ? Number(dto.radiusKm) : 10;
+    // Increase default radius so city-searches don't aggressively drop valid shops
+    const radiusKm = dto.radiusKm !== undefined ? Number(dto.radiusKm) : 50;
 
     const skip = (Number(page) - 1) * Number(limit);
     const where: Prisma.ShopWhereInput = { isActive: true };

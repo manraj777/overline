@@ -7,11 +7,26 @@ import { v4 as uuidv4 } from 'uuid';
 
 @Injectable()
 export class QueueService {
+  private static readonly OFFER_EXPIRY_MINUTES = 10;
+  private static readonly SCHEDULED_INSERTION_QUEUE_CALLS = 2;
+  private static readonly SCHEDULED_GRACE_BEFORE_MINUTES = 10;
+  private static readonly SCHEDULED_GRACE_AFTER_MINUTES = 5;
+
   constructor(
     private prisma: PrismaService,
     private redis: RedisService,
     private slotEngine: SlotEngineService,
   ) {}
+
+  getQueuePolicy() {
+    return {
+      offerExpiryMinutes: QueueService.OFFER_EXPIRY_MINUTES,
+      scheduledInsertionAfterQueueCalls: QueueService.SCHEDULED_INSERTION_QUEUE_CALLS,
+      scheduledGraceBeforeMinutes: QueueService.SCHEDULED_GRACE_BEFORE_MINUTES,
+      scheduledGraceAfterMinutes: QueueService.SCHEDULED_GRACE_AFTER_MINUTES,
+      note: 'In-service customers are never preempted by scheduled arrivals.',
+    };
+  }
 
   /**
    * Update queue statistics for a shop
@@ -23,7 +38,14 @@ export class QueueService {
     const waitingCount = await this.prisma.booking.count({
       where: {
         shopId,
-        status: { in: ['PENDING', 'CONFIRMED'] },
+        status: {
+          in: [
+            BookingStatus.PENDING,
+            BookingStatus.CONFIRMED,
+            BookingStatus.PENDING_APPROVAL,
+            BookingStatus.WAITLISTED,
+          ],
+        },
         startTime: { gte: now },
       },
     });
@@ -76,6 +98,292 @@ export class QueueService {
 
   private generateVerificationCode(): string {
     return Math.floor(1000 + Math.random() * 9000).toString();
+  }
+
+  private appendAdminNote(existing: string | null | undefined, note: string): string {
+    return existing ? `${existing}\n${note}` : note;
+  }
+
+  private isWithinScheduledGraceWindow(startTime: Date, now: Date): boolean {
+    const lower = new Date(startTime.getTime() - QueueService.SCHEDULED_GRACE_BEFORE_MINUTES * 60000);
+    const upper = new Date(startTime.getTime() + QueueService.SCHEDULED_GRACE_AFTER_MINUTES * 60000);
+    return now >= lower && now <= upper;
+  }
+
+  private isScheduledBookingSource(source: BookingSource): boolean {
+    return source !== BookingSource.WALK_IN;
+  }
+
+  async expireStaleSlotOffers(shopId: string): Promise<number> {
+    const expiryCutoff = new Date(Date.now() - QueueService.OFFER_EXPIRY_MINUTES * 60000);
+
+    const staleOffers = await this.prisma.booking.findMany({
+      where: {
+        shopId,
+        status: BookingStatus.PENDING_APPROVAL,
+        callAheadSentAt: { lte: expiryCutoff },
+        OR: [{ callAheadReply: null }, { callAheadReply: '' }],
+      },
+      select: { id: true, adminNotes: true },
+    });
+
+    if (!staleOffers.length) {
+      return 0;
+    }
+
+    await this.prisma.$transaction(
+      staleOffers.map((offer) =>
+        this.prisma.booking.update({
+          where: { id: offer.id },
+          data: {
+            status: BookingStatus.WAITLISTED,
+            callAheadReply: 'expired',
+            adminNotes: this.appendAdminNote(offer.adminNotes, 'Slot offer expired automatically.'),
+          },
+        }),
+      ),
+    );
+
+    await this.updateQueueStats(shopId);
+    return staleOffers.length;
+  }
+
+  async joinWaitlist(params: {
+    shopId: string;
+    userId?: string;
+    customerName?: string;
+    customerPhone?: string;
+    serviceId: string;
+    desiredStartTime: string;
+    preferredStaffProfileId?: string;
+    maxWaitMinutes?: number;
+    preferenceNote?: string;
+  }) {
+    const {
+      shopId,
+      userId,
+      customerName,
+      customerPhone,
+      serviceId,
+      desiredStartTime,
+      preferredStaffProfileId,
+      maxWaitMinutes,
+      preferenceNote,
+    } = params;
+
+    const [shop, service] = await Promise.all([
+      this.prisma.shop.findUnique({ where: { id: shopId } }),
+      this.prisma.service.findFirst({ where: { id: serviceId, shopId, isActive: true } }),
+    ]);
+
+    if (!shop) {
+      throw new Error('Shop not found');
+    }
+
+    if (!service) {
+      throw new Error('Service not found for shop');
+    }
+
+    const startTime = new Date(desiredStartTime);
+    if (Number.isNaN(startTime.getTime())) {
+      throw new Error('Invalid desiredStartTime');
+    }
+
+    const endTime = new Date(startTime.getTime() + service.durationMinutes * 60 * 1000);
+    const slotDate = new Date(startTime);
+    slotDate.setHours(0, 0, 0, 0);
+    const slotTime = startTime.toISOString().slice(11, 16);
+    const slotEndTime = endTime.toISOString().slice(11, 16);
+
+    const waitlistCount = await this.prisma.booking.count({
+      where: {
+        shopId,
+        staffProfileId: preferredStaffProfileId || null,
+        slotDate,
+        slotTime,
+        status: BookingStatus.WAITLISTED,
+      },
+    });
+
+    const policyNoteParts = [
+      'Waitlist enrollment',
+      preferredStaffProfileId ? `preferredStaffProfileId=${preferredStaffProfileId}` : 'preferredStaffProfileId=any',
+      maxWaitMinutes ? `maxWaitMinutes=${maxWaitMinutes}` : 'maxWaitMinutes=unspecified',
+      preferenceNote ? `note=${preferenceNote}` : null,
+    ].filter(Boolean);
+
+    const booking = await this.prisma.booking.create({
+      data: {
+        bookingNumber: this.generateBookingNumber(),
+        userId,
+        shopId,
+        staffProfileId: preferredStaffProfileId || null,
+        serviceId: service.id,
+        startTime,
+        endTime,
+        slotDate,
+        slotTime,
+        slotEndTime,
+        totalDurationMinutes: service.durationMinutes,
+        totalAmount: service.price,
+        serviceAmount: service.price,
+        displayAmount: service.price,
+        freeCashAmount: 0,
+        verificationCode: this.generateVerificationCode(),
+        serviceStatus: ServiceStatus.AWAITING_CODE,
+        paymentType: 'PAY_LATER',
+        status: BookingStatus.WAITLISTED,
+        source: userId ? BookingSource.WEB : BookingSource.WALK_IN,
+        customerName: userId ? undefined : customerName,
+        customerPhone: userId ? undefined : customerPhone,
+        queuePosition: waitlistCount + 1,
+        adminNotes: policyNoteParts.join(' | '),
+        services: {
+          create: [
+            {
+              serviceId: service.id,
+              serviceName: service.name,
+              durationMinutes: service.durationMinutes,
+              price: service.price,
+            },
+          ],
+        },
+      },
+      include: {
+        services: true,
+      },
+    });
+
+    await this.updateQueueStats(shopId);
+    return booking;
+  }
+
+  async sendWaitlistOffer(params: {
+    shopId: string;
+    bookingId: string;
+    staffId: string;
+    slotStartTime: string;
+    durationMinutes?: number;
+    message?: string;
+  }) {
+    const { shopId, bookingId, staffId, slotStartTime, durationMinutes, message } = params;
+
+    const booking = await this.prisma.booking.findFirst({
+      where: {
+        id: bookingId,
+        shopId,
+        status: { in: [BookingStatus.WAITLISTED, BookingStatus.PENDING_APPROVAL] },
+      },
+    });
+
+    if (!booking) {
+      throw new Error('Waitlisted booking not found for offer');
+    }
+
+    const startTime = new Date(slotStartTime);
+    if (Number.isNaN(startTime.getTime())) {
+      throw new Error('Invalid slotStartTime');
+    }
+
+    const offerDuration = durationMinutes || booking.totalDurationMinutes || 30;
+    const endTime = new Date(startTime.getTime() + offerDuration * 60 * 1000);
+    const slotDate = new Date(startTime);
+    slotDate.setHours(0, 0, 0, 0);
+    const slotTime = startTime.toISOString().slice(11, 16);
+    const slotEndTime = endTime.toISOString().slice(11, 16);
+
+    const now = new Date();
+    const expiresAt = new Date(now.getTime() + QueueService.OFFER_EXPIRY_MINUTES * 60000);
+    const offerNote = message?.trim()
+      ? `Slot offer by ${staffId}: ${message.trim()}`
+      : `Slot offer by ${staffId}`;
+
+    const updated = await this.prisma.booking.update({
+      where: { id: booking.id },
+      data: {
+        status: BookingStatus.PENDING_APPROVAL,
+        startTime,
+        endTime,
+        slotDate,
+        slotTime,
+        slotEndTime,
+        callAheadSentAt: now,
+        callAheadReply: null,
+        adminNotes: this.appendAdminNote(booking.adminNotes, offerNote),
+      },
+    });
+
+    await this.updateQueueStats(shopId);
+    return {
+      ...updated,
+      offerExpiresAt: expiresAt.toISOString(),
+    };
+  }
+
+  async respondToWaitlistOffer(params: {
+    bookingId: string;
+    accepted: boolean;
+    keepWaitlistedOnDecline?: boolean;
+    responseNote?: string;
+  }) {
+    const { bookingId, accepted, keepWaitlistedOnDecline = true, responseNote } = params;
+
+    const booking = await this.prisma.booking.findUnique({
+      where: { id: bookingId },
+    });
+
+    if (!booking || booking.status !== BookingStatus.PENDING_APPROVAL) {
+      throw new Error('Active slot offer not found');
+    }
+
+    if (!booking.callAheadSentAt) {
+      throw new Error('Offer timestamp missing');
+    }
+
+    const expiryCutoff = new Date(
+      booking.callAheadSentAt.getTime() + QueueService.OFFER_EXPIRY_MINUTES * 60000,
+    );
+
+    if (new Date() > expiryCutoff) {
+      const expired = await this.prisma.booking.update({
+        where: { id: booking.id },
+        data: {
+          status: BookingStatus.WAITLISTED,
+          callAheadReply: 'expired',
+          adminNotes: this.appendAdminNote(booking.adminNotes, 'Slot offer expired before response.'),
+        },
+      });
+
+      await this.updateQueueStats(expired.shopId);
+      throw new Error('Offer expired. Please wait for the next slot offer.');
+    }
+
+    const responseSuffix = responseNote?.trim() ? ` (${responseNote.trim()})` : '';
+
+    const updated = await this.prisma.booking.update({
+      where: { id: booking.id },
+      data: accepted
+        ? {
+            status: BookingStatus.CONFIRMED,
+            queuePosition: null,
+            callAheadReply: `accepted${responseSuffix}`,
+            adminNotes: this.appendAdminNote(booking.adminNotes, 'Customer accepted slot offer.'),
+          }
+        : {
+            status: keepWaitlistedOnDecline ? BookingStatus.WAITLISTED : BookingStatus.CANCELLED,
+            cancelledAt: keepWaitlistedOnDecline ? null : new Date(),
+            callAheadReply: `declined${responseSuffix}`,
+            adminNotes: this.appendAdminNote(
+              booking.adminNotes,
+              keepWaitlistedOnDecline
+                ? 'Customer declined slot offer and remains waitlisted.'
+                : 'Customer declined slot offer and booking was cancelled.',
+            ),
+          },
+    });
+
+    await this.updateQueueStats(updated.shopId);
+    return updated;
   }
 
   private async promoteNextWaitlisted(
@@ -247,18 +555,60 @@ export class QueueService {
   }
 
   async callNextCustomer(shopId: string, _staffId?: string) {
+    await this.expireStaleSlotOffers(shopId);
+
     const now = new Date();
     const startOfDay = new Date(now);
     startOfDay.setHours(0, 0, 0, 0);
 
-    const nextBooking = await this.prisma.booking.findFirst({
+    const key = `queue:scheduled-priority:${shopId}`;
+    const scheduledCounter = Number.parseInt((await this.redis.get(key)) || '0', 10) || 0;
+
+    const candidates = await this.prisma.booking.findMany({
       where: {
         shopId,
         startTime: { gte: startOfDay },
-        status: { in: [BookingStatus.PENDING, BookingStatus.CONFIRMED] },
+        status: {
+          in: [BookingStatus.PENDING, BookingStatus.CONFIRMED, BookingStatus.PENDING_APPROVAL],
+        },
       },
       orderBy: [{ queuePosition: 'asc' }, { startTime: 'asc' }],
     });
+
+    const queueCandidates = candidates.filter((booking) =>
+      !this.isScheduledBookingSource(booking.source),
+    );
+
+    const scheduledCandidates = candidates.filter(
+      (booking) =>
+        this.isScheduledBookingSource(booking.source) &&
+        !!booking.arrivedAt &&
+        this.isWithinScheduledGraceWindow(booking.startTime, now),
+    );
+
+    let nextBooking = null as (typeof candidates)[number] | null;
+
+    if (queueCandidates.length && scheduledCandidates.length) {
+      if (scheduledCounter >= QueueService.SCHEDULED_INSERTION_QUEUE_CALLS) {
+        nextBooking = scheduledCandidates[0];
+        await this.redis.set(key, '0', 3600);
+      } else {
+        nextBooking = queueCandidates[0];
+        await this.redis.set(key, String(scheduledCounter + 1), 3600);
+      }
+    } else if (scheduledCandidates.length) {
+      nextBooking = scheduledCandidates[0];
+      await this.redis.set(key, '0', 3600);
+    } else if (queueCandidates.length) {
+      nextBooking = queueCandidates[0];
+      await this.redis.set(
+        key,
+        String(Math.min(scheduledCounter + 1, QueueService.SCHEDULED_INSERTION_QUEUE_CALLS)),
+        3600,
+      );
+    } else {
+      nextBooking = candidates[0] || null;
+    }
 
     if (!nextBooking) {
       throw new Error('No waiting customer in queue');

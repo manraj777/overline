@@ -1077,15 +1077,21 @@ export class AuthService {
         return owner;
       });
     } catch (error) {
-      if (error instanceof Prisma.PrismaClientKnownRequestError) {
-        if (error.code === 'P2002') {
-          throw new ConflictException(
-            'A shop owner with the same email/phone or shop identifier already exists.',
-          );
-        }
-        if (error.code === 'P2003') {
-          throw new BadRequestException('Invalid registration data. Please review and try again.');
-        }
+      const prismaCode =
+        typeof error === 'object' &&
+        error !== null &&
+        'code' in error &&
+        typeof (error as { code?: unknown }).code === 'string'
+          ? (error as { code: string }).code
+          : null;
+
+      if (prismaCode === 'P2002') {
+        throw new ConflictException(
+          'A shop owner with the same email/phone or shop identifier already exists.',
+        );
+      }
+      if (prismaCode === 'P2003') {
+        throw new BadRequestException('Invalid registration data. Please review and try again.');
       }
 
       this.logger.error('Shop registration failed', {

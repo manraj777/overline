@@ -6,6 +6,7 @@ import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/stores/auth';
 import { useBookingStore } from '@/stores/booking';
 import { Avatar, Button } from '@/components/ui';
+import { ThemeToggle } from '@/components/ThemeToggle';
 import { useLogout } from '@/hooks/useAuth';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ChatWidget } from '@/components/chat/ChatWidget';
@@ -102,6 +103,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
 
           {/* Right: Actions */}
           <div className="flex items-center gap-4">
+            <ThemeToggle />
+            
             {/* Notifications */}
             <button
               onClick={() => router.push('/profile/notifications')}

@@ -9,6 +9,7 @@ import { ToastProvider } from '@/components/ui';
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
 import { SmoothScrollProvider } from '@/components/layout/SmoothScrollProvider';
 import { AuthGuard } from '@/components/auth/AuthGuard';
+import { ThemeProvider } from 'next-themes';
 
 const inter = Inter({
   subsets: ['latin'],
@@ -19,8 +20,9 @@ const inter = Inter({
 
 export default function App({ Component, pageProps }: AppProps) {
   return (
-    <QueryClientProvider client={queryClient}>
-      <ErrorBoundary>
+    <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+      <QueryClientProvider client={queryClient}>
+        <ErrorBoundary>
         <SmoothScrollProvider>
           <div className={`${inter.variable} font-sans`}>
             <ToastProvider>
@@ -35,5 +37,6 @@ export default function App({ Component, pageProps }: AppProps) {
       </ErrorBoundary>
       <ReactQueryDevtools initialIsOpen={false} />
     </QueryClientProvider>
+    </ThemeProvider>
   );
 }

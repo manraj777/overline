@@ -23,6 +23,7 @@ import { useToast, BookingApprovalModal } from '@/components/ui';
 import { useQueryClient } from '@tanstack/react-query';
 import { UserRole } from '@/types';
 import { getDefaultRouteForRole, isPublicRoute } from '@/lib/role-routing';
+import { ThemeToggle } from '@/components/ThemeToggle';
 
 interface PendingBooking {
   id: string;
@@ -371,6 +372,8 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
             <div className="flex-1" />
 
             <div className="flex items-center gap-2">
+              <ThemeToggle />
+
               {/* Notifications */}
               <button
                 onClick={() => router.push(isStaff ? '/staff/notifications' : '/owner/notifications')}

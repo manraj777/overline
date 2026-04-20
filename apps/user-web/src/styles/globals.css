@@ -7,48 +7,93 @@
 /* ============================================================ */
 
 :root {
-  /* Primary Palette */
-  --ovl-primary: #4648d4;
-  --ovl-primary-container: #6063ee;
-  --ovl-primary-fixed: #e1e0ff;
+  /* Primary Palette (Crimson Red) */
+  --ovl-primary: #d32f2f;
+  --ovl-primary-container: #b71c1c;
+  --ovl-primary-fixed: #ffcdd2;
   --ovl-on-primary: #ffffff;
-  --ovl-on-primary-container: #fffbff;
+  --ovl-on-primary-container: #ffffff;
 
-  /* Secondary Palette */
-  --ovl-secondary: #6b38d4;
-  --ovl-secondary-container: #8455ef;
+  /* Secondary Palette (Charcoal) */
+  --ovl-secondary: #27272a;
+  --ovl-secondary-container: #18181b;
 
   /* Tertiary Palette */
-  --ovl-tertiary: #006c49;
-  --ovl-tertiary-container: #00885d;
+  --ovl-tertiary: #b91c1c;
+  --ovl-tertiary-container: #991b1b;
 
-  /* Surfaces */
-  --ovl-surface: #f8f9ff;
-  --ovl-surface-container: #e5eeff;
-  --ovl-surface-container-low: #eff4ff;
-  --ovl-surface-container-high: #dce9ff;
-  --ovl-surface-container-highest: #d3e4fe;
+  /* Surfaces (Light Mode) */
+  --ovl-surface: #ffffff;
+  --ovl-surface-container: #f4f4f5;
+  --ovl-surface-container-low: #fafafa;
+  --ovl-surface-container-high: #e4e4e7;
+  --ovl-surface-container-highest: #d4d4d8;
   --ovl-surface-container-lowest: #ffffff;
 
-  /* Text */
-  --ovl-on-surface: #0b1c30;
-  --ovl-on-surface-variant: #464554;
-  --ovl-outline: #767586;
-  --ovl-outline-variant: #c7c4d7;
+  /* Text (Dark on Light) */
+  --ovl-on-surface: #09090b;
+  --ovl-on-surface-variant: #52525b;
+  --ovl-outline: #a1a1aa;
+  --ovl-outline-variant: #e4e4e7;
 
-  /* Background */
-  --ovl-bg: #f8f9ff;
+  /* Background Glow */
+  --ovl-bg: #f8f9fa;
   --ovl-bg-gradient: radial-gradient(
       ellipse 1200px 600px at 10% -10%,
-      rgba(70, 72, 212, 0.08),
+      rgba(211, 47, 47, 0.05),
       transparent 60%
     ),
     radial-gradient(
       ellipse 900px 500px at 100% 5%,
-      rgba(107, 56, 212, 0.06),
+      rgba(0, 0, 0, 0.02),
       transparent 55%
     ),
-    #f8f9ff;
+    #f8f9fa;
+}
+
+.dark {
+  /* Primary Palette (Crimson Red) */
+  --ovl-primary: #d32f2f;
+  --ovl-primary-container: #b71c1c;
+  --ovl-primary-fixed: #ffcdd2;
+  --ovl-on-primary: #ffffff;
+  --ovl-on-primary-container: #ffffff;
+
+  /* Secondary Palette (Charcoal) */
+  --ovl-secondary: #27272a;
+  --ovl-secondary-container: #18181b;
+
+  /* Tertiary Palette */
+  --ovl-tertiary: #b91c1c;
+  --ovl-tertiary-container: #991b1b;
+
+  /* Surfaces (Dark Mode Zinc) */
+  --ovl-surface: #09090b;
+  --ovl-surface-container: #18181b;
+  --ovl-surface-container-low: #000000;
+  --ovl-surface-container-high: #27272a;
+  --ovl-surface-container-highest: #3f3f46;
+  --ovl-surface-container-lowest: #09090b;
+
+  /* Text (Light on Dark) */
+  --ovl-on-surface: #f4f4f5;
+  --ovl-on-surface-variant: #a1a1aa;
+  --ovl-outline: #52525b;
+  --ovl-outline-variant: #3f3f46;
+
+  /* Background Glow */
+  --ovl-bg: #000000;
+  --ovl-bg-gradient: radial-gradient(
+      ellipse 1200px 600px at 10% -10%,
+      rgba(211, 47, 47, 0.15),
+      transparent 60%
+    ),
+    radial-gradient(
+      ellipse 900px 500px at 100% 5%,
+      rgba(255, 255, 255, 0.05),
+      transparent 55%
+    ),
+    #000000;
 }
 
 /* ============================================================ */
@@ -143,9 +188,9 @@ body {
 
   /* Card Styles */
   .card-m3 {
-    @apply bg-surface-container-lowest rounded-4xl shadow-card overflow-hidden;
+    @apply bg-surface-container rounded-4xl shadow-card overflow-hidden;
     @apply hover:shadow-card-hover transition-all duration-300;
-    border: 1px solid rgba(199, 196, 215, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.05);
   }
 
   .card-m3-flat {

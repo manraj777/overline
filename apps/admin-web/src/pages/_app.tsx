@@ -10,6 +10,7 @@ import { ToastProvider } from '@/components/ui';
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
 import api from '@/lib/api';
 import { useAuthStore } from '@/stores/auth';
+import { ThemeProvider } from 'next-themes';
 import {
   canAccessPath,
   getDefaultRouteForRole,
@@ -89,17 +90,19 @@ function AuthBootstrap() {
 
 export default function App({ Component, pageProps }: AppProps) {
   return (
-    <div className={`${inter.variable} font-sans`}>
-      <QueryClientProvider client={queryClient}>
-        <ErrorBoundary>
-          <AuthBootstrap />
-          <ToastProvider>
-            <AdminLayout>
-              <Component {...pageProps} />
-            </AdminLayout>
-          </ToastProvider>
-        </ErrorBoundary>
-      </QueryClientProvider>
-    </div>
+    <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
+      <div className={`${inter.variable} font-sans`}>
+        <QueryClientProvider client={queryClient}>
+          <ErrorBoundary>
+            <AuthBootstrap />
+            <ToastProvider>
+              <AdminLayout>
+                <Component {...pageProps} />
+              </AdminLayout>
+            </ToastProvider>
+          </ErrorBoundary>
+        </QueryClientProvider>
+      </div>
+    </ThemeProvider>
   );
 }
