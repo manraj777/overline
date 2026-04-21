@@ -111,7 +111,7 @@ export class AuthService {
     private googlePlaces: GooglePlacesService,
   ) {
     this.googleClient = new OAuth2Client(this.configService.get<string>('google.clientId'));
-
+  }
     
   private normalizePhone(phone: string): string {
     const cleaned = phone.replace(/\D/g, '');
