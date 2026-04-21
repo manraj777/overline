@@ -12,7 +12,7 @@ import { ConfigService } from '@nestjs/config';
 import * as bcrypt from 'bcryptjs';
 import { v4 as uuidv4 } from 'uuid';
 import { OAuth2Client } from 'google-auth-library';
-import { Twilio } from 'twilio';
+import axios from 'axios';
 import * as admin from 'firebase-admin';
 import { Prisma } from '@prisma/client';
 import { PrismaService } from '@/common/prisma/prisma.service';
@@ -99,7 +99,7 @@ export interface StaffShopSummary {
 export class AuthService {
   private readonly logger = new Logger(AuthService.name);
   private googleClient: OAuth2Client;
-  private twilioClient: Twilio | null = null;
+  
   private firebaseAuth: admin.auth.Auth | null = null;
 
   constructor(
@@ -112,17 +112,7 @@ export class AuthService {
   ) {
     this.googleClient = new OAuth2Client(this.configService.get<string>('google.clientId'));
 
-    const twilioSid =
-      this.configService.get<string>('TWILIO_ACCOUNT_SID') || process.env.TWILIO_ACCOUNT_SID;
-    const twilioAuthToken =
-      this.configService.get<string>('TWILIO_AUTH_TOKEN') || process.env.TWILIO_AUTH_TOKEN;
-    if (twilioSid && twilioAuthToken) {
-      this.twilioClient = new Twilio(twilioSid, twilioAuthToken);
-    } else {
-      this.logger.warn('Twilio credentials are missing. OTP SMS delivery is disabled unless running in non-production dev fallback.');
-    }
-  }
-
+    
   private normalizePhone(phone: string): string {
     const cleaned = phone.replace(/\D/g, '');
     if (cleaned.length === 10) {
@@ -212,27 +202,24 @@ export class AuthService {
       this.configService.get<string>('TWILIO_PHONE_NUMBER') ||
       process.env.TWILIO_PHONE ||
       process.env.TWILIO_PHONE_NUMBER;
+        const fast2smsApiKey = this.configService.get<string>('FAST2SMS_API_KEY') || process.env.FAST2SMS_API_KEY;
 
-    if (!this.twilioClient || !fromPhone) {
+    if (!fast2smsApiKey) {
       if (!isProduction) {
         console.log(`[DEV OTP] ${phone}: ${otp}`);
         return;
       }
 
       throw new InternalServerErrorException(
-        'OTP provider is not configured. Please set Twilio credentials on the server.',
+        'FAST2SMS_API_KEY is not configured. Please set it on the server.',
       );
     }
 
     try {
-      await this.twilioClient.messages.create({
-        body: `Your Overline OTP is ${otp}. It expires in 5 minutes.`,
-        from: fromPhone,
-        to: phone,
-      });
-    } catch (error: any) {
+      await axios.get('https://www.fast2sms.com/dev/bulkV2', { params: { authorization: fast2smsApiKey, variables_values: otp, route: 'otp', numbers: phone.replace('+91', '').replace('+', ''), }, });
+              } catch (error: any) {
       this.logger.error(
-        `[sendOtpSms] Twilio send failed for ${phone}: ${error?.message || 'unknown error'}`,
+        `[sendOtpSms] Fast2SMS send failed for ${phone}: ${error?.message || 'unknown error'}`,
       );
       throw new InternalServerErrorException('Unable to send OTP SMS right now. Please try again.');
     }
@@ -252,12 +239,13 @@ export class AuthService {
       );
     }
 
-    const otp = TEMP_OTP_CODE;
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
 
     await this.redis.set(`otp:${normalizedPhone}`, otp, 300);
+        await this.sendOtpSms(normalizedPhone, otp);
 
     return {
-      message: `OTP sent successfully (temporary code: ${TEMP_OTP_CODE})`,
+      message: `OTP sent successfully to ${phone}`,
       expiresInSeconds: 300,
       retryAfterSeconds: 60,
     };
@@ -364,11 +352,11 @@ export class AuthService {
       );
     }
 
-    const otp = TEMP_OTP_CODE;
+    const otp = Math.floor(100000 + Math.random() * 900000).toString();
     await this.redis.set(`otp:staff:${shopId}:${normalizedPhone}`, otp, 300);
 
     return {
-      message: `Staff OTP sent successfully (temporary code: ${TEMP_OTP_CODE})`,
+      message: `Staff OTP sent successfully to ${phone}`,
       expiresInSeconds: 300,
       retryAfterSeconds: 60,
     };
