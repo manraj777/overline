@@ -5,6 +5,7 @@ import { useForm } from 'react-hook-form';
 import { Button } from '@/components/ui';
 import { useRegisterShop } from '@/hooks';
 import { useAuthStore } from '@/stores/auth';
+import api from '@/lib/api';
 import {
   Check,
   User,
@@ -23,10 +24,6 @@ import {
   Building2,
   Sparkles,
 } from 'lucide-react';
-import {
-  sendEmailVerificationLink,
-  completeEmailVerification,
-} from '@/lib/firebase';
 import LocationPicker, { type LocationData } from '@/components/register/LocationPicker';
 import PhotoUpload from '@/components/register/PhotoUpload';
 
@@ -113,16 +110,6 @@ export default function RegisterPage() {
   const sameAsOwner = watch('sameAsOwnerPhone');
   const formValues = watch();
 
-  // Check for email verification callback
-  React.useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search);
-    if (urlParams.get('emailVerified') === 'true') {
-      completeEmailVerification().then(({ verified }) => {
-        if (verified) setEmailVerified(true);
-      });
-    }
-  }, []);
-
   React.useEffect(() => {
     if (isAuthenticated) router.replace('/owner/dashboard');
   }, [isAuthenticated, router]);
@@ -157,7 +144,7 @@ export default function RegisterPage() {
     setStep((prev) => Math.max(prev - 1, 1));
   };
 
-  // ── Firebase Phone OTP ──
+  // ── Backend Phone OTP ──
   const handleSendPhoneOtp = async () => {
     const phone = getValues('ownerPhone');
     if (!phone || phone.replace(/\D/g, '').length < 10) {
@@ -167,9 +154,13 @@ export default function RegisterPage() {
     setError(null);
     setPhoneSending(true);
     try {
+      await api.post('/otp/send', {
+        phone,
+        purpose: 'REGISTER',
+      });
       setOtpSent(true);
     } catch (err: any) {
-      setError(err.message || 'Failed to send OTP');
+      setError(err?.response?.data?.message || err.message || 'Failed to send OTP');
     } finally {
       setPhoneSending(false);
     }
@@ -180,26 +171,23 @@ export default function RegisterPage() {
     setVerifyingOtp(true);
     setError(null);
     try {
-      if (phoneOtp !== '123456') throw new Error('Invalid OTP');
+      await api.post('/otp/verify', {
+        phone: getValues('ownerPhone'),
+        otp: phoneOtp,
+        purpose: 'REGISTER',
+      });
       setPhoneVerified(true);
     } catch (err: any) {
-      setError(err.message || 'Invalid OTP. Please try again.');
+      setError(err?.response?.data?.message || err.message || 'Invalid OTP. Please try again.');
     } finally {
       setVerifyingOtp(false);
     }
   };
 
-  // ── Firebase Email Verification ──
+  // ── Email verification is optional in this flow ──
   const handleSendEmailLink = async () => {
-    const email = getValues('email');
-    if (!email) { setError('Enter your email on Step 2 first'); return; }
-    setError(null);
-    try {
-      await sendEmailVerificationLink(email);
-      setEmailSent(true);
-    } catch (err: any) {
-      setError(err.message || 'Failed to send verification email');
-    }
+    setEmailSent(true);
+    setEmailVerified(true);
   };
 
   // ── Final Submit ──

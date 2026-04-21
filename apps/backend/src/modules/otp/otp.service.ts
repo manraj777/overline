@@ -440,7 +440,7 @@ export class OtpService {
   async sendOtp(
     phone: string,
     purpose: OtpPurpose,
-  ): Promise<{ message: string; expiresAt: Date }> {
+  ): Promise<{ message: string; expiresAt: Date; channel: 'WHATSAPP' | 'SMS' }> {
     if (!this.isValidIndianPhone(phone)) {
       throw new BadRequestException('Invalid phone number format. Use +91XXXXXXXXXX');
     }
@@ -450,10 +450,11 @@ export class OtpService {
     await this.enforceCooldown(cooldownKey);
 
     const otp = this.generateOtp();
+    let channelUsed: 'WHATSAPP' | 'SMS' = 'WHATSAPP';
     const expiresAt = await this.createOtpRecord({
       target: phone,
       purpose,
-      channel: 'SMS',
+      channel: channelUsed,
       otp,
       expiryMinutes: OTP_CONFIG.PHONE_EXPIRY_MINUTES,
     });
@@ -461,17 +462,27 @@ export class OtpService {
     await this.redis.set(cooldownKey, 'active', OTP_CONFIG.RESEND_COOLDOWN_SECONDS);
 
     try {
-      await this.sendAuthkeyOtp({ mobile: phone, otp, channel: 'SMS' });
+      await this.sendAuthkeyOtp({ mobile: phone, otp, channel: 'WHATSAPP' });
     } catch (error) {
-      if ((process.env.NODE_ENV || '').toLowerCase() === 'production') {
-        throw error;
+      try {
+        await this.sendAuthkeyOtp({ mobile: phone, otp, channel: 'SMS' });
+        channelUsed = 'SMS';
+      } catch (smsError) {
+        if ((process.env.NODE_ENV || '').toLowerCase() === 'production') {
+          throw smsError;
+        }
+        channelUsed = 'SMS';
+        this.logger.warn(`[DEV OTP FALLBACK] ${phone} -> ${otp}`);
       }
-      this.logger.warn(`[DEV OTP FALLBACK] ${phone} -> ${otp}`);
     }
 
     return {
-      message: `OTP sent to ${phone}`,
+      message:
+        channelUsed === 'WHATSAPP'
+          ? `OTP sent to ${phone} via WhatsApp`
+          : `OTP sent to ${phone} via SMS`,
       expiresAt,
+      channel: channelUsed,
     };
   }
 

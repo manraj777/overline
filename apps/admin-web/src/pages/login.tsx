@@ -89,8 +89,12 @@ export default function LoginPage() {
     return () => window.clearInterval(timer);
   }, [resendInSeconds]);
 
-  const sendOtp = async (phone: string) => {
-    await api.post('/auth/send-otp', { phone });
+  const sendOtp = async (phone: string, options?: { staffShopId?: string }) => {
+    if (options?.staffShopId) {
+      await api.post('/auth/staff/send-otp', { shopId: options.staffShopId, phone });
+    } else {
+      await api.post('/auth/send-otp', { phone });
+    }
     setResendInSeconds(60);
   };
 
@@ -227,7 +231,7 @@ export default function LoginPage() {
     setStaffAuthBusy(true);
     try {
       const normalizedPhone = `+91${digits}`;
-      await sendOtp(normalizedPhone);
+      await sendOtp(normalizedPhone, { staffShopId: selectedShop.id });
       setOtpRequestedRole('STAFF');
       setOtpSelectedShopId(selectedShop.id);
       setOtpPending(normalizedPhone);
@@ -248,17 +252,7 @@ export default function LoginPage() {
     setError(null);
     setOtpBusy(true);
     try {
-      if (otp !== '123456') {
-        throw new Error('Invalid OTP');
-      }
-
-      // ── OWNER FLOW ──
-      // The user is already fully authenticated from the email+password login.
-      // The OTP step is purely phone verification — do NOT call /auth/verify-otp
-      // because it generates a brand-new token set via generateTokens(), which
-      // can re-evaluate the role and incorrectly return STAFF if the user also
-      // has an entry in the staff table. Just validate the OTP client-side,
-      // clear OTP state, and redirect to the owner dashboard.
+      // Owner login currently does not use OTP state. This guard avoids accidental fallback.
       if (otpRequestedRole === 'OWNER') {
         clearOtpPending();
         router.push('/owner/dashboard');

@@ -4,8 +4,6 @@ import * as Twilio from 'twilio';
 import { PrismaService } from '@/common/prisma/prisma.service';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 
-const TEMP_OTP_CODE = '123456';
-
 @Injectable()
 export class UsersService {
   private twilioClient: Twilio.Twilio | null = null;
@@ -122,7 +120,7 @@ export class UsersService {
       throw new BadRequestException('User does not have a phone number set');
     }
 
-    const otpCode = TEMP_OTP_CODE;
+    const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
     const otpExpiresAt = new Date(Date.now() + 10 * 60 * 1000);
 
     await (this.prisma.user as any).update({
@@ -130,11 +128,17 @@ export class UsersService {
       data: { otpCode, otpExpiresAt },
     } as any);
 
-    // Temporary OTP bypass mode: do not send SMS.
-
-    console.log(
-      `\n\n=== [OTP SIMULATION BASE] ===\nGenerated OTP ${otpCode} for ${user.phone}\n=============================\n\n`,
-    );
+    if (this.twilioClient && this.twilioPhone) {
+      await this.twilioClient.messages.create({
+        body: `Your Overline verification code is ${otpCode}. It expires in 10 minutes.`,
+        from: this.twilioPhone,
+        to: user.phone,
+      });
+    } else {
+      console.log(
+        `\n\n=== [OTP DEV FALLBACK] ===\nGenerated OTP ${otpCode} for ${user.phone}\n==========================\n\n`,
+      );
+    }
 
     return { success: true, message: 'OTP sent successfully' };
   }
@@ -155,7 +159,7 @@ export class UsersService {
       throw new BadRequestException('OTP has expired');
     }
 
-    if (code !== TEMP_OTP_CODE) {
+    if (code !== (user as any).otpCode) {
       throw new BadRequestException('Invalid OTP code');
     }
 

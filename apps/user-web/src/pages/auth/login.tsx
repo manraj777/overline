@@ -129,10 +129,6 @@ export default function LoginPage() {
     }
 
     try {
-      if (otp !== '123456') {
-        setLocalError('Invalid OTP. Use 123456 for now.');
-        return;
-      }
       await verifyOtp.mutateAsync({ phone, otp, purpose: 'LOGIN' });
       router.push((redirect as string) || '/');
     } catch (err: any) {

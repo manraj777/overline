@@ -84,10 +84,6 @@ export default function VerifyPhonePage() {
     setIsLoading(true);
 
     try {
-      if (otpCode !== '123456') {
-        setError('Invalid OTP. Use 123456 for now.');
-        return;
-      }
       await api.post('/users/me/otp/verify', { code: otpCode });
       router.replace('/');
     } catch (err: any) {
