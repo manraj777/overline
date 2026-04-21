@@ -2,6 +2,7 @@ import { NestFactory } from '@nestjs/core';
 import { ValidationPipe, VersioningType } from '@nestjs/common';
 import { SwaggerModule, DocumentBuilder } from '@nestjs/swagger';
 import { IoAdapter } from '@nestjs/platform-socket.io';
+import { ConfigService } from '@nestjs/config';
 import { AppModule } from './app.module';
 import { SentryExceptionFilter } from './filters/sentry-exception.filter';
 import * as express from 'express';
@@ -28,6 +29,8 @@ async function bootstrap() {
     rawBody: true,
   });
 
+  const configService = app.get(ConfigService);
+
   const expandOrigin = (origin: string): string[] => {
     const normalized = origin.trim().replace(/\/$/, '');
     if (!normalized) return [];
@@ -45,11 +48,26 @@ async function bootstrap() {
     return [normalized];
   };
 
-  // Completely bulletproof Custom Express CORS Middleware to bypass edge/proxy bugs
+  const configuredOrigins =
+    configService.get<string[]>('cors.origin') || [
+      'http://localhost:3000',
+      'http://localhost:3002',
+      'https://overline.in',
+      'https://admin.overline.in',
+    ];
+  const allowedOrigins = new Set(configuredOrigins.flatMap(expandOrigin));
+
+  // Strict CORS allow-list for production domains with localhost support in dev.
   app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
-    // Dynamically reflect the origin, or default to wildcard
-    const origin = req.headers.origin || '*';
-    res.setHeader('Access-Control-Allow-Origin', origin);
+    const origin = req.headers.origin as string | undefined;
+
+    if (!origin) {
+      res.setHeader('Access-Control-Allow-Origin', '*');
+    } else if (allowedOrigins.has(origin.replace(/\/$/, ''))) {
+      res.setHeader('Access-Control-Allow-Origin', origin);
+      res.setHeader('Vary', 'Origin');
+    }
+
     res.setHeader('Access-Control-Allow-Methods', 'GET, HEAD, PUT, PATCH, POST, DELETE, OPTIONS');
     res.setHeader('Access-Control-Allow-Headers', 'Content-Type, Accept, Authorization, X-Requested-With, Cache-Control, Pragma');
     res.setHeader('Access-Control-Allow-Credentials', 'true');
@@ -60,9 +78,19 @@ async function bootstrap() {
     
     // Explicitly handle preflight OPTIONS checks to immediately return 204
     if (req.method === 'OPTIONS') {
-      res.status(204).end();
+      if (!origin || allowedOrigins.has(origin.replace(/\/$/, ''))) {
+        res.status(204).end();
+        return;
+      }
+      res.status(403).json({ message: 'Not allowed by CORS' });
       return;
     }
+
+    if (origin && !allowedOrigins.has(origin.replace(/\/$/, ''))) {
+      res.status(403).json({ message: 'Not allowed by CORS' });
+      return;
+    }
+
     next();
   });
 

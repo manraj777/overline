@@ -1,3 +1,5 @@
+import { DOMAIN_CONFIG } from './domain.constants';
+
 const resolveDatabaseUrl = (): string | undefined => {
   const directUrl =
     process.env.DATABASE_URL ||
@@ -45,15 +47,13 @@ const normalizeRedisUrl = (redisUrl?: string): string | undefined => {
 };
 
 const isProduction = process.env.NODE_ENV === 'production';
-const defaultUserFrontendUrl = isProduction ? 'https://overline.in' : 'http://localhost:3000';
-const defaultAdminFrontendUrl = isProduction
-  ? 'https://admin.overline.in'
-  : 'http://localhost:3002';
+const defaultUserFrontendUrl = isProduction ? DOMAIN_CONFIG.appUrl : 'http://localhost:3000';
+const defaultAdminFrontendUrl = isProduction ? DOMAIN_CONFIG.adminUrl : 'http://localhost:3002';
 const defaultCorsOrigins = [
   'http://localhost:3000',
   'http://localhost:3002',
-  'https://overline.in',
-  'https://admin.overline.in',
+  DOMAIN_CONFIG.appUrl,
+  DOMAIN_CONFIG.adminUrl,
 ];
 
 export default () => ({
@@ -126,7 +126,17 @@ export default () => ({
   google: {
     clientId: process.env.GOOGLE_CLIENT_ID,
     clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-    callbackUrl: process.env.GOOGLE_CALLBACK_URL,
+    callbackUrl: process.env.GOOGLE_CALLBACK_URL || `${DOMAIN_CONFIG.apiUrl}/api/v1/auth/google/callback`,
+  },
+
+  domains: DOMAIN_CONFIG,
+
+  authkey: {
+    baseUrl: process.env.AUTHKEY_BASE_URL || 'https://console.authkey.io',
+    apiKey: process.env.AUTHKEY_API_KEY,
+    smsSid: process.env.AUTHKEY_SMS_SID,
+    waWid: process.env.AUTHKEY_WA_WID,
+    emailTemplate: process.env.AUTHKEY_EMAIL_TEMPLATE,
   },
 
   firebase: {
@@ -145,7 +155,7 @@ export default () => ({
     geminiApiKey: process.env.GOOGLE_GEMINI_API_KEY,
   },
 
-  backendUrl: process.env.BACKEND_URL || 'http://localhost:3001',
+  backendUrl: process.env.BACKEND_URL || DOMAIN_CONFIG.apiUrl,
 
   frontendUrls: {
     user:

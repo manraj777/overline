@@ -790,6 +790,12 @@ export class AuthService {
     dto: RegisterShopDto,
     requestContext?: RequestContext,
   ): Promise<TokenResponse> {
+    if (!dto.phoneVerified) {
+      throw new BadRequestException(
+        'Phone verification is required before shop owner registration.',
+      );
+    }
+
     // --- FRAUD DETECTION FOR SHOP REGISTRATION ---
     if (requestContext) {
       const fraudPhone = dto.phone || dto.ownerPhone || dto.publicPhone || '';
