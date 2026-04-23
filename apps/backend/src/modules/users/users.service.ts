@@ -1,26 +1,10 @@
 import { Injectable, NotFoundException, BadRequestException } from '@nestjs/common';
-import { ConfigService } from '@nestjs/config';
-import * as Twilio from 'twilio';
 import { PrismaService } from '@/common/prisma/prisma.service';
 import { UpdateProfileDto } from './dto/update-profile.dto';
 
 @Injectable()
 export class UsersService {
-  private twilioClient: Twilio.Twilio | null = null;
-  private twilioPhone: string | null = null;
-
-  constructor(
-    private prisma: PrismaService,
-    private configService: ConfigService,
-  ) {
-    const accountSid = this.configService.get<string>('TWILIO_ACCOUNT_SID');
-    const authToken = this.configService.get<string>('TWILIO_AUTH_TOKEN');
-    this.twilioPhone = this.configService.get<string>('TWILIO_PHONE_NUMBER');
-
-    if (accountSid && authToken) {
-      this.twilioClient = Twilio(accountSid, authToken);
-    }
-  }
+  constructor(private prisma: PrismaService) {}
 
   async findById(userId: string) {
     const user = await this.prisma.user.findUnique({
@@ -112,67 +96,6 @@ export class UsersService {
         readAt: new Date(),
       },
     });
-  }
-
-  async sendOtp(userId: string) {
-    const user = await this.prisma.user.findUnique({ where: { id: userId } });
-    if (!user || !user.phone) {
-      throw new BadRequestException('User does not have a phone number set');
-    }
-
-    const otpCode = Math.floor(100000 + Math.random() * 900000).toString();
-    const otpExpiresAt = new Date(Date.now() + 10 * 60 * 1000);
-
-    await (this.prisma.user as any).update({
-      where: { id: userId },
-      data: { otpCode, otpExpiresAt },
-    } as any);
-
-    if (this.twilioClient && this.twilioPhone) {
-      await this.twilioClient.messages.create({
-        body: `Your Overline verification code is ${otpCode}. It expires in 10 minutes.`,
-        from: this.twilioPhone,
-        to: user.phone,
-      });
-    } else {
-      console.log(
-        `\n\n=== [OTP DEV FALLBACK] ===\nGenerated OTP ${otpCode} for ${user.phone}\n==========================\n\n`,
-      );
-    }
-
-    return { success: true, message: 'OTP sent successfully' };
-  }
-
-  async verifyOtp(userId: string, code: string) {
-    const user = await this.prisma.user.findUnique({ where: { id: userId } });
-    if (!user) throw new NotFoundException('User not found');
-
-    if (user.isPhoneVerified) {
-      return { success: true, message: 'Phone already verified' };
-    }
-
-    if (!(user as any).otpCode || !(user as any).otpExpiresAt) {
-      throw new BadRequestException('No OTP was requested');
-    }
-
-    if (new Date() > (user as any).otpExpiresAt) {
-      throw new BadRequestException('OTP has expired');
-    }
-
-    if (code !== (user as any).otpCode) {
-      throw new BadRequestException('Invalid OTP code');
-    }
-
-    await (this.prisma.user as any).update({
-      where: { id: userId },
-      data: {
-        isPhoneVerified: true,
-        otpCode: null,
-        otpExpiresAt: null,
-      },
-    } as any);
-
-    return { success: true, message: 'Phone verified successfully' };
   }
 
   async updateFcmToken(userId: string, token: string) {

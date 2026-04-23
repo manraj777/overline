@@ -195,16 +195,12 @@ export class AuthService {
 
   private async sendOtpSms(phone: string, otp: string): Promise<void> {
     const isProduction = (process.env.NODE_ENV || '').toLowerCase() === 'production';
-    const fromPhone =
-      this.configService.get<string>('TWILIO_PHONE') ||
-      this.configService.get<string>('TWILIO_PHONE_NUMBER') ||
-      process.env.TWILIO_PHONE ||
-      process.env.TWILIO_PHONE_NUMBER;
-        const fast2smsApiKey = this.configService.get<string>('FAST2SMS_API_KEY') || process.env.FAST2SMS_API_KEY;
+    const fast2smsApiKey =
+      this.configService.get<string>('FAST2SMS_API_KEY') || process.env.FAST2SMS_API_KEY;
 
     if (!fast2smsApiKey) {
       if (!isProduction) {
-        console.log(`[DEV OTP] ${phone}: ${otp}`);
+        this.logger.warn(`[DEV OTP] ${phone}: ${otp}`);
         return;
       }
 
@@ -213,9 +209,19 @@ export class AuthService {
       );
     }
 
+    const cleanNumber = phone.replace(/^\+91/, '').replace(/^\+/, '');
+
     try {
-      await axios.get('https://www.fast2sms.com/dev/bulkV2', { params: { authorization: fast2smsApiKey, variables_values: otp, route: 'otp', numbers: phone.replace('+91', '').replace('+', ''), }, });
-              } catch (error: any) {
+      await axios.get('https://www.fast2sms.com/dev/bulkV2', {
+        params: {
+          authorization: fast2smsApiKey,
+          variables_values: otp,
+          route: 'otp',
+          numbers: cleanNumber,
+        },
+      });
+      this.logger.log(`Fast2SMS OTP sent to ${phone}`);
+    } catch (error: any) {
       this.logger.error(
         `[sendOtpSms] Fast2SMS send failed for ${phone}: ${error?.message || 'unknown error'}`,
       );

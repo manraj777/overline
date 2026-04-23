@@ -13,7 +13,7 @@ import { RedisService } from '@/common/redis/redis.service';
 import { AuthService, TokenResponse } from '../auth/auth.service';
 import axios from 'axios';
 import * as crypto from 'crypto';
-import * as sgMail from '@sendgrid/mail';
+import * as nodemailer from 'nodemailer';
 
 export const OTP_CONFIG = {
   LENGTH: 6,
@@ -48,7 +48,6 @@ export interface EmailVerifyResult {
 @Injectable()
 export class OtpService {
   private readonly logger = new Logger(OtpService.name);
-  private sendgridEnabled = false;
 
   constructor(
     private prisma: PrismaService,
@@ -56,13 +55,7 @@ export class OtpService {
     private redis: RedisService,
     @Inject(forwardRef(() => AuthService))
     private authService: AuthService,
-  ) {
-    const sendgridKey = this.configService.get<string>('SENDGRID_API_KEY');
-    if (sendgridKey) {
-      sgMail.setApiKey(sendgridKey);
-      this.sendgridEnabled = true;
-    }
-  }
+  ) {}
 
   private generateOtp(): string {
     return Math.floor(100000 + Math.random() * 900000).toString();
@@ -142,67 +135,74 @@ export class OtpService {
   }
 
   private async sendEmailOtpMessage(email: string, otp: string): Promise<void> {
-    const fromEmail =
-      this.configService.get<string>('MAIL_FROM') ||
-      this.configService.get<string>('SENDGRID_FROM_EMAIL') ||
-      'no-reply@overline.in';
+    const fromEmail = this.configService.get<string>('SMTP_FROM') || 'noreply@overline.in';
+    const supportEmail = 'support@overline.in';
 
-    const supportEmail = this.configService.get<string>('SUPPORT_EMAIL') || 'support@overline.in';
+    const smtpHost = this.configService.get<string>('SMTP_HOST');
+    const smtpUser = this.configService.get<string>('SMTP_USER');
+    const smtpPass = this.configService.get<string>('SMTP_PASS');
+    const smtpPort = this.configService.get<string>('SMTP_PORT') || '465';
 
-    if (!this.sendgridEnabled) {
+    if (!smtpHost || !smtpUser || !smtpPass) {
       if ((process.env.NODE_ENV || '').toLowerCase() !== 'production') {
         this.logger.warn(`[DEV EMAIL OTP] ${email} -> ${otp}`);
         return;
       }
-      throw new InternalServerErrorException('Email OTP provider is not configured.');
+      throw new InternalServerErrorException('SMTP is not configured for email OTP.');
     }
 
-    await sgMail.send({
+    const transporter = nodemailer.createTransport({
+      host: smtpHost,
+      port: Number.parseInt(smtpPort, 10),
+      secure: smtpPort === '465',
+      auth: { user: smtpUser, pass: smtpPass },
+    });
+
+    await transporter.sendMail({
       to: email,
       from: fromEmail,
-      subject: 'Your Overline login OTP',
+      subject: 'Your Overline Login OTP',
       text: `Your OTP is ${otp}. It expires in ${OTP_CONFIG.EMAIL_EXPIRY_MINUTES} minutes.`,
-      html: `<p>Your OTP is <strong>${otp}</strong>.</p><p>It expires in ${OTP_CONFIG.EMAIL_EXPIRY_MINUTES} minutes.</p><p>If you did not request this, contact ${supportEmail}.</p>`,
+      html: `<p>Your OTP is <strong>${otp}</strong>.</p>
+           <p>It expires in ${OTP_CONFIG.EMAIL_EXPIRY_MINUTES} minutes.</p>
+           <p>If you did not request this, contact ${supportEmail}.</p>`,
     });
+
+    this.logger.log(`Email OTP sent to ${email} via Zoho SMTP`);
   }
 
-  private async sendAuthkeyOtp(params: {
+  private async sendFast2SmsOtp(params: {
     mobile: string;
     otp: string;
-    name?: string;
-    channel: 'WHATSAPP' | 'SMS';
   }): Promise<void> {
-    const { mobile, otp, name = 'User', channel } = params;
-    const baseUrl = this.configService.get<string>('AUTHKEY_BASE_URL') || 'https://console.authkey.io';
-    const apiKey = this.configService.get<string>('AUTHKEY_API_KEY');
-    const smsSid = this.configService.get<string>('AUTHKEY_SMS_SID');
-    const waWid = this.configService.get<string>('AUTHKEY_WA_WID');
+    const { mobile, otp } = params;
 
-    if (!apiKey) {
+    const fast2smsApiKey = this.configService.get<string>('FAST2SMS_API_KEY');
+
+    if (!fast2smsApiKey) {
       if ((process.env.NODE_ENV || '').toLowerCase() !== 'production') {
-        this.logger.warn(`[DEV ${channel} OTP] ${mobile} -> ${otp}`);
+        this.logger.warn(`[DEV SMS OTP] ${mobile} -> ${otp}`);
         return;
       }
-      throw new InternalServerErrorException('AUTHKEY_API_KEY is not configured.');
+      throw new InternalServerErrorException('FAST2SMS_API_KEY is not configured.');
     }
 
-    const paramsObj: Record<string, string | number> = {
-      authkey: apiKey,
-      mobile: mobile.replace(/^\+/, ''),
-      country_code: 91,
-      name,
-      otp,
-    };
+    const cleanMobile = mobile.replace(/^\+91/, '').replace(/^91/, '');
 
-    if (channel === 'WHATSAPP') {
-      if (!waWid) throw new InternalServerErrorException('AUTHKEY_WA_WID is not configured.');
-      paramsObj.wid = waWid;
-    } else {
-      if (!smsSid) throw new InternalServerErrorException('AUTHKEY_SMS_SID is not configured.');
-      paramsObj.sid = smsSid;
+    try {
+      await axios.get('https://www.fast2sms.com/dev/bulkV2', {
+        params: {
+          authorization: fast2smsApiKey,
+          variables_values: otp,
+          route: 'otp',
+          numbers: cleanMobile,
+        },
+      });
+      this.logger.log(`Fast2SMS OTP sent to ${mobile}`);
+    } catch (error: any) {
+      this.logger.error(`Fast2SMS error: ${error?.message || 'unknown error'}`);
+      throw new InternalServerErrorException('Failed to send SMS OTP');
     }
-
-    await axios.get(`${baseUrl}/request`, { params: paramsObj });
   }
 
   async sendEmailOtp(
@@ -314,7 +314,7 @@ export class OtpService {
     channel?: 'WHATSAPP' | 'SMS';
     name?: string;
   }): Promise<{ message: string; channel: 'WHATSAPP' | 'SMS'; expiresAt: Date }> {
-    const { userId, phone, channel = 'WHATSAPP', name } = params;
+    const { userId, phone } = params;
     const normalizedPhone = this.normalizePhone(phone);
 
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
@@ -325,7 +325,7 @@ export class OtpService {
     if ((user as any).phoneVerifiedAt || user.isPhoneVerified) {
       return {
         message: 'Phone is already verified.',
-        channel,
+        channel: 'SMS',
         expiresAt: new Date(),
       };
     }
@@ -337,39 +337,17 @@ export class OtpService {
     const expiresAt = await this.createOtpRecord({
       target: normalizedPhone,
       purpose: 'PHONE_VERIFY',
-      channel,
+      channel: 'SMS',
       otp,
       expiryMinutes: OTP_CONFIG.PHONE_EXPIRY_MINUTES,
     });
 
-    try {
-      await this.sendAuthkeyOtp({
-        mobile: normalizedPhone,
-        otp,
-        channel,
-        name,
-      });
-    } catch (error) {
-      if (channel === 'WHATSAPP') {
-        await this.sendAuthkeyOtp({
-          mobile: normalizedPhone,
-          otp,
-          channel: 'SMS',
-          name,
-        });
-      } else {
-        throw error;
-      }
-    }
+    await this.sendFast2SmsOtp({ mobile: normalizedPhone, otp });
 
     const userUpdateData: any = {
       phone: normalizedPhone,
+      smsOtpAttempts: { increment: 1 },
     };
-    if (channel === 'WHATSAPP') {
-      userUpdateData.whatsAppOtpAttempts = { increment: 1 };
-    } else {
-      userUpdateData.smsOtpAttempts = { increment: 1 };
-    }
 
     await this.prisma.user.update({
       where: { id: user.id },
@@ -383,11 +361,8 @@ export class OtpService {
     );
 
     return {
-      message:
-        channel === 'WHATSAPP'
-          ? 'WhatsApp OTP sent. Use SMS resend if delivery fails.'
-          : 'SMS OTP sent.',
-      channel,
+      message: 'SMS OTP sent.',
+      channel: 'SMS',
       expiresAt,
     };
   }
@@ -440,7 +415,7 @@ export class OtpService {
   async sendOtp(
     phone: string,
     purpose: OtpPurpose,
-  ): Promise<{ message: string; expiresAt: Date; channel: 'WHATSAPP' | 'SMS' }> {
+  ): Promise<{ message: string; expiresAt: Date }> {
     if (!this.isValidIndianPhone(phone)) {
       throw new BadRequestException('Invalid phone number format. Use +91XXXXXXXXXX');
     }
@@ -450,39 +425,21 @@ export class OtpService {
     await this.enforceCooldown(cooldownKey);
 
     const otp = this.generateOtp();
-    let channelUsed: 'WHATSAPP' | 'SMS' = 'WHATSAPP';
     const expiresAt = await this.createOtpRecord({
       target: phone,
       purpose,
-      channel: channelUsed,
+      channel: 'SMS',
       otp,
       expiryMinutes: OTP_CONFIG.PHONE_EXPIRY_MINUTES,
     });
 
     await this.redis.set(cooldownKey, 'active', OTP_CONFIG.RESEND_COOLDOWN_SECONDS);
 
-    try {
-      await this.sendAuthkeyOtp({ mobile: phone, otp, channel: 'WHATSAPP' });
-    } catch (error) {
-      try {
-        await this.sendAuthkeyOtp({ mobile: phone, otp, channel: 'SMS' });
-        channelUsed = 'SMS';
-      } catch (smsError) {
-        if ((process.env.NODE_ENV || '').toLowerCase() === 'production') {
-          throw smsError;
-        }
-        channelUsed = 'SMS';
-        this.logger.warn(`[DEV OTP FALLBACK] ${phone} -> ${otp}`);
-      }
-    }
+    await this.sendFast2SmsOtp({ mobile: phone, otp });
 
     return {
-      message:
-        channelUsed === 'WHATSAPP'
-          ? `OTP sent to ${phone} via WhatsApp`
-          : `OTP sent to ${phone} via SMS`,
+      message: `OTP sent to ${phone} via SMS`,
       expiresAt,
-      channel: channelUsed,
     };
   }
 
