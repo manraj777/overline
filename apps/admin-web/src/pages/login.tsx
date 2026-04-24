@@ -12,7 +12,10 @@ import { getDefaultRouteForRole } from '@/lib/role-routing';
 import { Shield, Users, ArrowRight, Lock, Mail, Eye, EyeOff, Smartphone, Building2 } from 'lucide-react';
 import { AuthResponse } from '@/types';
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL?.replace('/api/v1', '') || '';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || '/api/v1';
+const BACKEND_URL = API_BASE_URL
+  .replace(/\/api\/v1\/?$/, '')
+  .replace(/\/api\/?$/, '');
 
 interface LoginForm {
   email: string;
@@ -562,7 +565,11 @@ export default function LoginPage() {
                     {/* Google Sign-In */}
                     <div className="flex justify-center w-full">
                       <a
-                        href={`${BACKEND_URL}/api/v1/auth/google/redirect?from=admin`}
+                        href={
+                          BACKEND_URL
+                            ? `${BACKEND_URL}/api/v1/auth/google/redirect?from=admin`
+                            : '/api/v1/auth/google/redirect?from=admin'
+                        }
                         className="flex items-center justify-center gap-3 w-full px-4 py-3 bg-white border border-[#dadce0] rounded-[4px] hover:bg-[#f8f9fa] transition-all text-sm font-medium text-[#3c4043]"
                       >
                         <svg className="w-5 h-5" viewBox="0 0 24 24">

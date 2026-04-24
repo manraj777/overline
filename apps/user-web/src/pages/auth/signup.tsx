@@ -8,7 +8,10 @@ import { Button, Alert } from '@/components/ui';
 import { useSignup } from '@/hooks';
 import { useAuthStore } from '@/stores/auth';
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL?.replace('/api/v1', '') || '';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || '/api/v1';
+const BACKEND_URL = API_BASE_URL
+  .replace(/\/api\/v1\/?$/, '')
+  .replace(/\/api\/?$/, '');
 
 interface SignupForm {
   name: string;
@@ -260,7 +263,7 @@ export default function SignupPage() {
 
               {/* Google Sign-Up */}
               <a
-                href={`${BACKEND_URL}/api/v1/auth/google/redirect`}
+                href={BACKEND_URL ? `${BACKEND_URL}/api/v1/auth/google/redirect` : '/api/v1/auth/google/redirect'}
                 className="w-full h-14 flex items-center justify-center gap-3 rounded-[4px] bg-white border border-[#dadce0] font-medium text-[#3c4043] hover:bg-[#f8f9fa] transition-colors active:scale-[0.97] duration-200"
               >
                 <svg className="w-5 h-5" viewBox="0 0 24 24">

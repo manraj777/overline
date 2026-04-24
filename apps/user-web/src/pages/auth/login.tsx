@@ -8,7 +8,10 @@ import { Button, Alert } from '@/components/ui';
 import { useLogin, useSendOtp, useVerifyOtp } from '@/hooks';
 import { useAuthStore } from '@/stores/auth';
 
-const BACKEND_URL = process.env.NEXT_PUBLIC_API_URL?.replace('/api/v1', '') || '';
+const API_BASE_URL = process.env.NEXT_PUBLIC_API_URL || '/api/v1';
+const BACKEND_URL = API_BASE_URL
+  .replace(/\/api\/v1\/?$/, '')
+  .replace(/\/api\/?$/, '');
 
 interface LoginForm {
   email: string;
@@ -71,7 +74,7 @@ export default function LoginPage() {
     setIsGoogleLoading(true);
     setLocalError(null);
     try {
-      const redirectUri = `${BACKEND_URL}/api/v1/auth/google`;
+      const redirectUri = BACKEND_URL ? `${BACKEND_URL}/api/v1/auth/google` : '/api/v1/auth/google';
       window.location.href = redirectUri;
     } catch (err: any) {
       setLocalError('Google sign-in failed. Please try again.');
