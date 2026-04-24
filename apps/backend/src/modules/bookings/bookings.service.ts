@@ -400,8 +400,8 @@ export class BookingsService {
       // Determine payment type from DTO (default to PAY_LATER)
       const paymentType = dto.paymentType || PaymentType.PAY_LATER;
 
-      // Determine initial status
-      const status = shop.autoAcceptBookings ? BookingStatus.CONFIRMED : BookingStatus.PENDING;
+      // Temporary approval-first flow: every new booking starts in pending approval.
+      const status = BookingStatus.PENDING_APPROVAL;
 
       // Get queue position
       const queuePosition = await this.queueService.getNextQueuePosition(shopId);
@@ -523,24 +523,34 @@ export class BookingsService {
     }
 
     const customerName = booking.user?.name || booking.customerName || 'Guest';
+    const customerPhone = booking.user?.phone || booking.customerPhone || 'N/A';
     const serviceNames = booking.services?.map((s: any) => s.serviceName).join(', ') || 'Service';
     const startTime = new Date(booking.startTime);
     const timeStr = startTime.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+    const dateStr = startTime.toLocaleDateString('en-IN', {
+      day: '2-digit',
+      month: 'short',
+      year: 'numeric',
+    });
+    const shopAddress = booking.shop?.address || shop?.address || 'Address not available';
 
     for (const userId of Array.from(notifyUserIds)) {
       await this.notificationsService.send({
         userId,
         bookingId: booking.id,
-        type: NotificationType.BOOKING_CONFIRMED,
-        title: `New Booking from ${customerName}`,
-        body: `${customerName} booked ${serviceNames} at ${timeStr}. Booking #${booking.bookingNumber}`,
+        type: NotificationType.BOOKING_CREATED,
+        title: `Booking Approval Needed: ${customerName}`,
+        body: `${customerName} (${customerPhone}) requested ${serviceNames} on ${dateStr} at ${timeStr}. Address: ${shopAddress}.`,
         data: {
           bookingNumber: booking.bookingNumber,
           customerName,
+          customerPhone,
           services: serviceNames,
+          address: shopAddress,
+          bookingDate: dateStr,
           time: timeStr,
         },
-        channels: [NotificationChannel.EMAIL],
+        channels: [NotificationChannel.PUSH, NotificationChannel.EMAIL],
       });
     }
   }
@@ -660,17 +670,28 @@ export class BookingsService {
       if (status === 'upcoming') {
         // Upcoming = future bookings that are not completed/cancelled
         where.startTime = { gte: now };
-        where.status = { in: [BookingStatus.PENDING, BookingStatus.CONFIRMED] };
+        where.status = {
+          in: [BookingStatus.PENDING, BookingStatus.PENDING_APPROVAL, BookingStatus.CONFIRMED],
+        };
       } else if (status === 'past') {
         // Past = completed, cancelled, no-show, or past start time
         where.OR = [
           {
             status: {
-              in: [BookingStatus.COMPLETED, BookingStatus.CANCELLED, BookingStatus.NO_SHOW],
+              in: [
+                BookingStatus.COMPLETED,
+                BookingStatus.CANCELLED,
+                BookingStatus.NO_SHOW,
+                BookingStatus.REJECTED,
+              ],
             },
           },
           { startTime: { lt: now } },
         ];
+      } else if (status === 'cancelled') {
+        where.status = {
+          in: [BookingStatus.CANCELLED, BookingStatus.REJECTED, BookingStatus.NO_SHOW],
+        };
       } else if (Object.values(BookingStatus).includes(status as BookingStatus)) {
         where.status = status;
       }

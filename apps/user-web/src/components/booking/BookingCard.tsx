@@ -12,6 +12,7 @@ interface BookingCardProps {
 
 const statusConfig: Record<BookingStatus, { label: string; variant: 'default' | 'success' | 'warning' | 'error' | 'info' }> = {
   [BookingStatus.PENDING]: { label: 'Pending', variant: 'warning' },
+  [BookingStatus.PENDING_APPROVAL]: { label: 'Pending Approval', variant: 'warning' },
   [BookingStatus.CONFIRMED]: { label: 'Confirmed', variant: 'info' },
   [BookingStatus.IN_PROGRESS]: { label: 'In Progress', variant: 'info' },
   [BookingStatus.COMPLETED]: { label: 'Completed', variant: 'success' },
@@ -21,7 +22,13 @@ const statusConfig: Record<BookingStatus, { label: string; variant: 'default' | 
 };
 
 const BookingCard: React.FC<BookingCardProps> = ({ booking }) => {
-  const config = statusConfig[booking.status as BookingStatus] || statusConfig[BookingStatus.PENDING];
+  const baseConfig = statusConfig[booking.status as BookingStatus] || statusConfig[BookingStatus.PENDING];
+  const config =
+    booking.status === BookingStatus.REJECTED && booking.adminNotes?.toUpperCase().includes('FAKE_USER')
+      ? { label: 'Fake User', variant: 'error' as const }
+      : booking.status === BookingStatus.REJECTED
+        ? { label: 'Disapproved', variant: 'error' as const }
+        : baseConfig;
   const totalDuration = booking.totalDurationMinutes || booking.services?.reduce((acc, bs) => acc + (bs.durationMinutes || 0), 0) || 0;
   const shouldShowCode = [BookingStatus.PENDING, BookingStatus.CONFIRMED, BookingStatus.IN_PROGRESS].includes(
     booking.status as BookingStatus,

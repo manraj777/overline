@@ -64,6 +64,12 @@ export default function CartPage() {
       return;
     }
 
+    const manualOtp = window.prompt('Enter verification code to complete booking', '');
+    if (manualOtp !== '123456') {
+      setError('Invalid verification code. Please enter 123456.');
+      return;
+    }
+
     try {
       const booking = await createBooking.mutateAsync({
         shopId: shop.id,

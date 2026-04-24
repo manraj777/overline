@@ -144,6 +144,7 @@ export default function BookingDetailPage() {
 
   const canCancel =
     booking.status === BookingStatus.PENDING ||
+    booking.status === BookingStatus.PENDING_APPROVAL ||
     booking.status === BookingStatus.CONFIRMED;
 
   const statusConfig: Record<
@@ -154,6 +155,11 @@ export default function BookingDetailPage() {
       icon: <AlertCircle className="w-5 h-5" />,
       color: 'text-amber-600 bg-amber-100',
       label: 'Pending Confirmation',
+    },
+    [BookingStatus.PENDING_APPROVAL]: {
+      icon: <AlertCircle className="w-5 h-5" />,
+      color: 'text-amber-600 bg-amber-100',
+      label: 'Pending Staff Approval',
     },
     [BookingStatus.CONFIRMED]: {
       icon: <CheckCircle className="w-5 h-5" />,
@@ -187,7 +193,21 @@ export default function BookingDetailPage() {
     },
   };
 
-  const status = statusConfig[booking.status as BookingStatus];
+  const baseStatus = statusConfig[booking.status as BookingStatus];
+  const status =
+    booking.status === BookingStatus.REJECTED && booking.adminNotes?.toUpperCase().includes('FAKE_USER')
+      ? {
+          icon: <XCircle className="w-5 h-5" />,
+          color: 'text-red-600 bg-red-100',
+          label: 'Rejected as Fake User',
+        }
+      : booking.status === BookingStatus.REJECTED
+        ? {
+            icon: <XCircle className="w-5 h-5" />,
+            color: 'text-red-600 bg-red-100',
+            label: 'Disapproved',
+          }
+        : baseStatus;
 
   return (
     <>

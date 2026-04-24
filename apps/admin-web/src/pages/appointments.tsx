@@ -50,6 +50,7 @@ export default function AppointmentsPage() {
 
   const statusOptions = [
     { value: undefined, label: 'All' },
+    { value: 'PENDING_APPROVAL', label: 'Pending Approval' },
     { value: 'PENDING', label: 'Pending' },
     { value: 'CONFIRMED', label: 'Confirmed' },
     { value: 'IN_PROGRESS', label: 'In Progress' },
@@ -58,12 +59,14 @@ export default function AppointmentsPage() {
   ];
 
   const statusConfig: Record<string, { label: string; variant: 'success' | 'warning' | 'info' | 'error' | 'default' }> = {
+    PENDING_APPROVAL: { label: 'Pending Approval', variant: 'warning' },
     PENDING: { label: 'Pending', variant: 'warning' },
     CONFIRMED: { label: 'Confirmed', variant: 'info' },
     IN_PROGRESS: { label: 'In Progress', variant: 'info' },
     COMPLETED: { label: 'Completed', variant: 'success' },
     CANCELLED: { label: 'Cancelled', variant: 'error' },
     NO_SHOW: { label: 'No Show', variant: 'error' },
+    REJECTED: { label: 'Disapproved', variant: 'error' },
   };
 
   const handlePrevDay = () => setSelectedDate(subDays(selectedDate, 1));
@@ -210,9 +213,9 @@ export default function AppointmentsPage() {
                         <div className="flex items-start gap-2">
                           <div>
                             <p className="font-medium text-gray-900">
-                              {booking.user?.name || 'Walk-in'}
+                              {booking.user?.name || booking.customerName || 'Walk-in'}
                             </p>
-                            <p className="text-sm text-gray-500">{booking.user?.phone}</p>
+                            <p className="text-sm text-gray-500">{booking.user?.phone || booking.customerPhone || '-'}</p>
                           </div>
                           {/* Trust Score Warning Indicators */}
                           {trustLevel === 'danger' && (
@@ -250,7 +253,7 @@ export default function AppointmentsPage() {
                       </td>
                       <td className="px-6 py-4 text-right">
                         <div className="flex items-center justify-end gap-2">
-                          {(booking.status === 'PENDING' || booking.status === 'CONFIRMED') && (
+                          {(booking.status === 'PENDING' || booking.status === 'PENDING_APPROVAL' || booking.status === 'CONFIRMED') && (
                             <Button
                               size="sm"
                               variant="ghost"
@@ -264,6 +267,67 @@ export default function AppointmentsPage() {
                             >
                               Cancel
                             </Button>
+                          )}
+                          {(booking.status === 'PENDING' || booking.status === 'PENDING_APPROVAL') && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="text-green-700 border-green-300"
+                              onClick={() => {
+                                updateStatus.mutate({
+                                  bookingId: booking.id,
+                                  status: 'CONFIRMED',
+                                  adminNotes: 'APPROVED_BY_STAFF',
+                                });
+                                addToast({ title: 'Booking approved', type: 'success' });
+                              }}
+                            >
+                              Approve
+                            </Button>
+                          )}
+                          {(booking.status === 'PENDING' || booking.status === 'PENDING_APPROVAL') && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="text-red-700 border-red-300"
+                              onClick={() => {
+                                const reason = window.prompt('Reason for disapproval:', 'DISAPPROVED_BY_STAFF') || 'DISAPPROVED_BY_STAFF';
+                                updateStatus.mutate({
+                                  bookingId: booking.id,
+                                  status: 'REJECTED',
+                                  adminNotes: reason,
+                                });
+                                addToast({ title: 'Booking disapproved', type: 'warning' });
+                              }}
+                            >
+                              Disapprove
+                            </Button>
+                          )}
+                          {(booking.status === 'PENDING' || booking.status === 'PENDING_APPROVAL') && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="text-orange-700 border-orange-300"
+                              onClick={() => {
+                                updateStatus.mutate({
+                                  bookingId: booking.id,
+                                  status: 'REJECTED',
+                                  adminNotes: 'FAKE_USER',
+                                });
+                                addToast({ title: 'Marked as fake user', type: 'warning' });
+                              }}
+                            >
+                              Fake User
+                            </Button>
+                          )}
+                          {(booking.user?.phone || booking.customerPhone) && (
+                            <a
+                              href={`tel:${booking.user?.phone || booking.customerPhone}`}
+                              className="inline-flex items-center rounded-md border border-blue-300 px-2 py-1 text-xs font-semibold text-blue-700 hover:bg-blue-50"
+                              title="Call user for confirmation"
+                            >
+                              Call User
+                            </a>
                           )}
                           {booking.status === 'CONFIRMED' && (
                              <Button
