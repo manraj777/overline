@@ -60,10 +60,11 @@ async function bootstrap() {
   // Strict CORS allow-list for production domains with localhost support in dev.
   app.use((req: express.Request, res: express.Response, next: express.NextFunction) => {
     const origin = req.headers.origin as string | undefined;
+    const isAllowed = origin && (allowedOrigins.has('*') || allowedOrigins.has(origin.replace(/\/$/, '')));
 
     if (!origin) {
       res.setHeader('Access-Control-Allow-Origin', '*');
-    } else if (allowedOrigins.has(origin.replace(/\/$/, ''))) {
+    } else if (isAllowed) {
       res.setHeader('Access-Control-Allow-Origin', origin);
       res.setHeader('Vary', 'Origin');
     }
@@ -78,7 +79,7 @@ async function bootstrap() {
     
     // Explicitly handle preflight OPTIONS checks to immediately return 204
     if (req.method === 'OPTIONS') {
-      if (!origin || allowedOrigins.has(origin.replace(/\/$/, ''))) {
+      if (!origin || isAllowed) {
         res.status(204).end();
         return;
       }
@@ -86,7 +87,7 @@ async function bootstrap() {
       return;
     }
 
-    if (origin && !allowedOrigins.has(origin.replace(/\/$/, ''))) {
+    if (origin && !isAllowed) {
       res.status(403).json({ message: 'Not allowed by CORS' });
       return;
     }

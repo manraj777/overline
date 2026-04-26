@@ -171,37 +171,67 @@ export class OtpService {
     this.logger.log(`Email OTP sent to ${email} via Zoho SMTP`);
   }
 
-  private async sendFast2SmsOtp(params: {
+  private async sendWhatsAppOtp(params: {
     mobile: string;
     otp: string;
   }): Promise<void> {
     const { mobile, otp } = params;
+    const accessToken = this.configService.get<string>('WHATSAPP_ACCESS_TOKEN');
+    const phoneNumberId = this.configService.get<string>('WHATSAPP_PHONE_NUMBER_ID');
 
-    const fast2smsApiKey = this.configService.get<string>('FAST2SMS_API_KEY');
-
-    if (!fast2smsApiKey) {
+    if (!accessToken || !phoneNumberId) {
       if ((process.env.NODE_ENV || '').toLowerCase() !== 'production') {
-        this.logger.warn(`[DEV SMS OTP] ${mobile} -> ${otp}`);
+        this.logger.warn(`[DEV WHATSAPP OTP] ${mobile} -> ${otp}`);
         return;
       }
-      throw new InternalServerErrorException('FAST2SMS_API_KEY is not configured.');
+      throw new InternalServerErrorException('WhatsApp API is not configured.');
     }
 
-    const cleanMobile = mobile.replace(/^\+91/, '').replace(/^91/, '');
+    const cleaned = mobile.replace(/\D/g, '');
+    const e164 =
+      cleaned.length === 10
+        ? `91${cleaned}`
+        : cleaned.startsWith('91') && cleaned.length === 12
+          ? cleaned
+          : cleaned;
 
     try {
-      await axios.get('https://www.fast2sms.com/dev/bulkV2', {
-        params: {
-          authorization: fast2smsApiKey,
-          variables_values: otp,
-          route: 'otp',
-          numbers: cleanMobile,
+      await axios.post(
+        `https://graph.facebook.com/v20.0/${phoneNumberId}/messages`,
+        {
+          messaging_product: 'whatsapp',
+          to: e164,
+          type: 'template',
+          template: {
+            name: 'otp_verification',
+            language: { code: 'en_US' },
+            components: [
+              {
+                type: 'body',
+                parameters: [{ type: 'text', text: otp }],
+              },
+              {
+                type: 'button',
+                sub_type: 'url',
+                index: '0',
+                parameters: [{ type: 'text', text: otp }],
+              },
+            ],
+          },
         },
-      });
-      this.logger.log(`Fast2SMS OTP sent to ${mobile}`);
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
+          },
+        },
+      );
+      this.logger.log(`WhatsApp OTP sent to ${mobile}`);
     } catch (error: any) {
-      this.logger.error(`Fast2SMS error: ${error?.message || 'unknown error'}`);
-      throw new InternalServerErrorException('Failed to send SMS OTP');
+      this.logger.error(
+        `WhatsApp API error: ${JSON.stringify(error?.response?.data || error?.message)}`,
+      );
+      throw new InternalServerErrorException('Failed to send WhatsApp OTP');
     }
   }
 
@@ -325,7 +355,7 @@ export class OtpService {
     if ((user as any).phoneVerifiedAt || user.isPhoneVerified) {
       return {
         message: 'Phone is already verified.',
-        channel: 'SMS',
+        channel: 'WHATSAPP',
         expiresAt: new Date(),
       };
     }
@@ -337,12 +367,12 @@ export class OtpService {
     const expiresAt = await this.createOtpRecord({
       target: normalizedPhone,
       purpose: 'PHONE_VERIFY',
-      channel: 'SMS',
+      channel: 'WHATSAPP',
       otp,
       expiryMinutes: OTP_CONFIG.PHONE_EXPIRY_MINUTES,
     });
 
-    await this.sendFast2SmsOtp({ mobile: normalizedPhone, otp });
+    await this.sendWhatsAppOtp({ mobile: normalizedPhone, otp });
 
     const userUpdateData: any = {
       phone: normalizedPhone,
@@ -361,8 +391,8 @@ export class OtpService {
     );
 
     return {
-      message: 'SMS OTP sent.',
-      channel: 'SMS',
+      message: 'WhatsApp OTP sent.',
+      channel: 'WHATSAPP',
       expiresAt,
     };
   }
@@ -428,17 +458,17 @@ export class OtpService {
     const expiresAt = await this.createOtpRecord({
       target: phone,
       purpose,
-      channel: 'SMS',
+      channel: 'WHATSAPP',
       otp,
       expiryMinutes: OTP_CONFIG.PHONE_EXPIRY_MINUTES,
     });
 
     await this.redis.set(cooldownKey, 'active', OTP_CONFIG.RESEND_COOLDOWN_SECONDS);
 
-    await this.sendFast2SmsOtp({ mobile: phone, otp });
+    await this.sendWhatsAppOtp({ mobile: phone, otp });
 
     return {
-      message: `OTP sent to ${phone} via SMS`,
+      message: `OTP sent to ${phone} via WhatsApp`,
       expiresAt,
     };
   }

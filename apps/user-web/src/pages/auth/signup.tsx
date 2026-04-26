@@ -85,8 +85,7 @@ export default function SignupPage() {
           </div>
           <div className="relative z-10 flex flex-col justify-between p-16 w-full">
             <div className="flex items-center gap-3">
-              <img src="/overline-logo.png" alt="Overline" className="w-10 h-10 rounded-xl" />
-              <span className="text-3xl font-black tracking-tighter text-white">Overline</span>
+              <img src="/overline-logo.png" alt="Overline" className="h-10 w-auto object-contain dark:invert" />
             </div>
             <div className="max-w-md">
               <h1 className="text-5xl font-extrabold tracking-tight text-white mb-6 leading-tight">
@@ -124,8 +123,7 @@ export default function SignupPage() {
           {/* Mobile Logo */}
           <div className="lg:hidden p-8">
             <Link href="/" className="flex items-center gap-3">
-              <img src="/overline-logo.png" alt="Overline" className="w-8 h-8 rounded-lg" />
-              <span className="text-2xl font-black tracking-tighter text-primary">Overline</span>
+              <img src="/overline-logo.png" alt="Overline" className="h-8 w-auto object-contain dark:invert" />
             </Link>
           </div>
 

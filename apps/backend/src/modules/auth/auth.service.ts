@@ -193,39 +193,68 @@ export class AuthService {
     return Math.floor(100000 + Math.random() * 900000).toString();
   }
 
-  private async sendOtpSms(phone: string, otp: string): Promise<void> {
+  private async sendWhatsAppOtp(phone: string, otp: string): Promise<void> {
     const isProduction = (process.env.NODE_ENV || '').toLowerCase() === 'production';
-    const fast2smsApiKey =
-      this.configService.get<string>('FAST2SMS_API_KEY') || process.env.FAST2SMS_API_KEY;
+    const accessToken = this.configService.get<string>('WHATSAPP_ACCESS_TOKEN');
+    const phoneNumberId = this.configService.get<string>('WHATSAPP_PHONE_NUMBER_ID');
 
-    if (!fast2smsApiKey) {
+    if (!accessToken || !phoneNumberId) {
       if (!isProduction) {
-        this.logger.warn(`[DEV OTP] ${phone}: ${otp}`);
+        this.logger.warn(`[DEV WHATSAPP OTP] ${phone}: ${otp}`);
         return;
       }
 
       throw new InternalServerErrorException(
-        'FAST2SMS_API_KEY is not configured. Please set it on the server.',
+        'WhatsApp API is not configured. Please set WHATSAPP_ACCESS_TOKEN and WHATSAPP_PHONE_NUMBER_ID.',
       );
     }
 
-    const cleanNumber = phone.replace(/^\+91/, '').replace(/^\+/, '');
+    // Convert to E.164 without '+' (WhatsApp API format: 91XXXXXXXXXX)
+    const cleaned = phone.replace(/\D/g, '');
+    const e164 =
+      cleaned.length === 10
+        ? `91${cleaned}`
+        : cleaned.startsWith('91') && cleaned.length === 12
+          ? cleaned
+          : cleaned;
 
     try {
-      await axios.get('https://www.fast2sms.com/dev/bulkV2', {
-        params: {
-          authorization: fast2smsApiKey,
-          variables_values: otp,
-          route: 'otp',
-          numbers: cleanNumber,
+      await axios.post(
+        `https://graph.facebook.com/v20.0/${phoneNumberId}/messages`,
+        {
+          messaging_product: 'whatsapp',
+          to: e164,
+          type: 'template',
+          template: {
+            name: 'otp_verification',
+            language: { code: 'en_US' },
+            components: [
+              {
+                type: 'body',
+                parameters: [{ type: 'text', text: otp }],
+              },
+              {
+                type: 'button',
+                sub_type: 'url',
+                index: '0',
+                parameters: [{ type: 'text', text: otp }],
+              },
+            ],
+          },
         },
-      });
-      this.logger.log(`Fast2SMS OTP sent to ${phone}`);
+        {
+          headers: {
+            Authorization: `Bearer ${accessToken}`,
+            'Content-Type': 'application/json',
+          },
+        },
+      );
+      this.logger.log(`WhatsApp OTP sent to ${phone}`);
     } catch (error: any) {
       this.logger.error(
-        `[sendOtpSms] Fast2SMS send failed for ${phone}: ${error?.message || 'unknown error'}`,
+        `[sendWhatsAppOtp] WhatsApp API failed for ${phone}: ${JSON.stringify(error?.response?.data || error?.message)}`,
       );
-      throw new InternalServerErrorException('Unable to send OTP SMS right now. Please try again.');
+      throw new InternalServerErrorException('Unable to send OTP right now. Please try again.');
     }
   }
 
@@ -246,7 +275,7 @@ export class AuthService {
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
 
     await this.redis.set(`otp:${normalizedPhone}`, otp, 300);
-        await this.sendOtpSms(normalizedPhone, otp);
+        await this.sendWhatsAppOtp(normalizedPhone, otp);
 
     return {
       message: `OTP sent successfully to ${phone}`,
@@ -363,7 +392,7 @@ export class AuthService {
 
     const otp = Math.floor(100000 + Math.random() * 900000).toString();
     await this.redis.set(`otp:staff:${shopId}:${normalizedPhone}`, otp, 300);
-    await this.sendOtpSms(normalizedPhone, otp);
+    await this.sendWhatsAppOtp(normalizedPhone, otp);
 
     return {
       message: `Staff OTP sent successfully to ${phone}`,

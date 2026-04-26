@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import { useRouter } from 'next/router';
 import { Home, Search, Calendar, User, Menu, X, LogOut, Bell, ShoppingCart } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -70,7 +71,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
         className={cn(
           'fixed top-0 w-full z-50 transition-all duration-500',
           scrolled
-            ? 'bg-white/70 backdrop-blur-xl shadow-glass'
+            ? 'bg-white/80 dark:bg-gray-950/80 backdrop-blur-xl shadow-glass'
             : 'bg-transparent'
         )}
       >
@@ -78,8 +79,14 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           {/* Left: Logo & Nav */}
           <div className="flex items-center gap-8">
             <Link href="/" className="flex items-center gap-2 group">
-              <img src="/overline-logo.png" alt="Overline" className="w-8 h-8 rounded-lg object-cover" />
-              <span className="text-xl font-black tracking-tighter text-primary">Overline</span>
+              <Image
+                src="/overline-logo.png"
+                alt="Overline"
+                width={120}
+                height={36}
+                priority
+                className="h-9 w-auto max-w-[140px] object-contain dark:invert"
+              />
             </Link>
 
             {/* Desktop Navigation */}
@@ -109,7 +116,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             <button
               onClick={() => router.push('/profile/notifications')}
               aria-label="Open notifications"
-              className="p-2 text-on-surface-variant hover:text-primary rounded-full hover:bg-surface-container-low transition-all active:scale-90"
+              className="p-2 text-on-surface-variant dark:text-gray-200 hover:text-primary rounded-full hover:bg-surface-container-low dark:hover:bg-gray-800 transition-all active:scale-90"
             >
               <Bell className="w-5 h-5" />
             </button>
@@ -118,7 +125,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             <button
               onClick={() => router.push('/cart')}
               aria-label="Open cart"
-              className="relative p-2 text-on-surface-variant hover:text-primary rounded-full hover:bg-surface-container-low transition-all active:scale-90"
+              className="relative p-2 text-on-surface-variant dark:text-gray-200 hover:text-primary rounded-full hover:bg-surface-container-low dark:hover:bg-gray-800 transition-all active:scale-90"
             >
               <ShoppingCart className="w-5 h-5" />
               {selectedServicesCount > 0 && (
@@ -321,7 +328,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       </footer>
 
       {/* Bottom Mobile Nav */}
-      <nav className="md:hidden fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 pb-6 pt-3 bg-white/80 backdrop-blur-2xl shadow-nav rounded-t-3xl">
+      <nav className="md:hidden fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 pb-6 pt-3 bg-white/90 dark:bg-gray-950/95 border-t border-gray-200 dark:border-gray-800 backdrop-blur-2xl shadow-nav rounded-t-3xl">
         {navigation.map((item) => (
           <Link
             key={item.name}
@@ -329,8 +336,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             className={cn(
               'flex flex-col items-center justify-center px-4 py-2 rounded-2xl transition-all active:scale-90 duration-150',
               isActive(item.href)
-                ? 'bg-primary-fixed/30 text-primary'
-                : 'text-on-surface-variant hover:text-primary'
+                ? 'bg-primary-fixed/30 text-red-600 dark:text-red-400'
+                : 'text-gray-500 dark:text-gray-500 hover:text-primary dark:hover:text-gray-200'
             )}
           >
             <item.icon className={cn('w-5 h-5 mb-0.5', isActive(item.href) && 'fill-primary/10')} />

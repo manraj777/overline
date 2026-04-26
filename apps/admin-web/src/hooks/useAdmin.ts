@@ -228,15 +228,19 @@ export function useAdminBookings(params: GetBookingsParams = {}) {
     queryKey: ['admin', 'bookings', shopId, params],
     queryFn: async () => {
       const activeShopId = shopId || (await resolveActiveShopId());
-      const { data } = await api.get('/admin/bookings', {
-        params: {
-          ...params,
-          shopId: activeShopId,
+      const { data } = await api.get(`/admin/shops/${activeShopId}/bookings`, {
+        params,
+        headers: {
+          'Cache-Control': 'no-store, no-cache, must-revalidate',
+          Pragma: 'no-cache',
         },
       });
       return data;
     },
     enabled: isAuthenticated,
+    staleTime: 0,
+    refetchOnMount: 'always',
+    refetchOnWindowFocus: true,
     refetchInterval: 1000 * 30, // Refresh every 30 seconds
   });
 }
