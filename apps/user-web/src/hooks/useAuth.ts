@@ -1,6 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '@/lib/api';
 import { useAuthStore } from '@/stores/auth';
+import { useBookingStore } from '@/stores/booking';
 import type { User, AuthResponse } from '@/types';
 
 interface LoginCredentials {
@@ -100,11 +101,13 @@ export function useLogout() {
     },
     onSuccess: () => {
       logout();
+      useBookingStore.getState().reset();
       queryClient.clear();
       void clearSession();
     },
     onError: () => {
       logout();
+      useBookingStore.getState().reset();
       queryClient.clear();
       void clearSession();
     },

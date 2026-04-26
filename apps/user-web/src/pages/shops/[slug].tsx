@@ -410,7 +410,7 @@ export default function ShopDetailPage() {
 
                     <div className="absolute bottom-5 left-5 right-5 flex justify-between items-end">
                       <div className="flex gap-2">
-                        <span className="px-3 py-1 rounded-lg bg-tertiary text-white text-[10px] font-black uppercase tracking-widest">Open</span>
+                        <span className={`px-3 py-1 rounded-lg text-white text-[10px] font-black uppercase tracking-widest ${isShopClosedToday ? 'bg-error' : 'bg-tertiary'}`}>{isShopClosedToday ? 'Closed' : 'Open'}</span>
                         {ratingStats && (
                           <span className="flex items-center gap-1 px-3 py-1 rounded-lg bg-white/20 backdrop-blur-md text-white text-xs font-bold">
                             <Star className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />
@@ -666,11 +666,8 @@ export default function ShopDetailPage() {
                   <div className="bg-primary text-white rounded-2xl shadow-glass-strong w-full max-w-lg lg:max-w-2xl px-6 py-4 flex items-center justify-between pointer-events-auto">
                     <div>
                       <p className="text-sm font-medium text-white/80 uppercase tracking-widest">{selectedServices.length} ITEM{selectedServices.length > 1 ? 'S' : ''} ADDED</p>
-                      <p className="font-black text-xl flex items-center gap-2">
+                      <p className="font-black text-xl">
                         ₹{selectedServices.reduce((sum, s) => sum + Number(s.price || 0), 0)}
-                        <span className="text-sm font-medium opacity-80 line-through">
-                          ₹{Math.floor(selectedServices.reduce((sum, s) => sum + Number(s.price || 0), 0) * 1.2)}
-                        </span>
                       </p>
                     </div>
                     <button

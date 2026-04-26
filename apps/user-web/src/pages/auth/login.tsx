@@ -205,13 +205,13 @@ export default function LoginPage() {
               )}
 
               {/* Auth Mode Toggle */}
-              <div className="mb-6 grid grid-cols-2 rounded-xl bg-surface-container-high p-1">
+              <div className="mb-6 grid grid-cols-2 rounded-xl bg-surface-container-high dark:bg-gray-800 p-1">
                 <button
                   type="button"
                   onClick={() => setAuthMode('email')}
                   className={`rounded-lg px-3 py-2.5 text-sm font-bold transition-all ${
                     authMode === 'email'
-                      ? 'bg-white text-on-surface shadow-sm'
+                      ? 'bg-white dark:bg-gray-700 text-on-surface shadow-sm'
                       : 'text-on-surface-variant hover:text-on-surface'
                   }`}
                 >
@@ -222,7 +222,7 @@ export default function LoginPage() {
                   onClick={() => setAuthMode('phone')}
                   className={`rounded-lg px-3 py-2.5 text-sm font-bold transition-all ${
                     authMode === 'phone'
-                      ? 'bg-white text-on-surface shadow-sm'
+                      ? 'bg-white dark:bg-gray-700 text-on-surface shadow-sm'
                       : 'text-on-surface-variant hover:text-on-surface'
                   }`}
                 >

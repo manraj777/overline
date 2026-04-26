@@ -125,7 +125,11 @@ export default function HomePage() {
                       </div>
                     </div>
 
-                    <Link href={location ? `/explore?q=${encodeURIComponent(searchQuery)}&lat=${location.lat}&lng=${location.lng}` : `/explore?q=${encodeURIComponent(searchQuery)}`}>
+                    <Link href={
+                      location
+                        ? `/explore?q=${encodeURIComponent(searchQuery)}&lat=${location.lat}&lng=${location.lng}${locationQuery ? `&city=${encodeURIComponent(locationQuery)}` : ''}`
+                        : `/explore?q=${encodeURIComponent(searchQuery)}${locationQuery ? `&city=${encodeURIComponent(locationQuery)}` : ''}`
+                    }>
                       <button className="w-full md:w-auto bg-gradient-to-br from-primary to-primary-container text-white px-10 py-4 rounded-xl font-bold active:scale-95 transition-all shadow-lg shadow-primary/20 text-sm">
                         Explore
                       </button>

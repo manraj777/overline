@@ -35,6 +35,7 @@ export default function CartPage() {
   } = useBookingStore();
 
   const [error, setError] = React.useState<string | null>(null);
+  const submittingRef = React.useRef(false);
 
   const { data: queueStats } = useShopQueueStats(shop?.id || '');
   const { data: slots, isLoading: loadingSlots } = useAvailableSlots({
@@ -49,6 +50,9 @@ export default function CartPage() {
   const canBook = selectedServices.length > 0 && !!selectedDate && !!selectedSlot;
 
   const handleConfirmBooking = async () => {
+    // Double-submit guard
+    if (submittingRef.current || createBooking.isPending) return;
+
     if (!shop) {
       router.push('/explore');
       return;
@@ -64,11 +68,13 @@ export default function CartPage() {
       return;
     }
 
-    const manualOtp = window.prompt('Enter verification code to complete booking', '');
-    if (manualOtp !== '123456') {
-      setError('Invalid verification code. Please enter 123456.');
+    if (bookingForOther && !customerName.trim()) {
+      setError('Please enter the guest name when booking for someone else.');
       return;
     }
+
+    submittingRef.current = true;
+    setError(null);
 
     try {
       const booking = await createBooking.mutateAsync({
@@ -97,6 +103,8 @@ export default function CartPage() {
       router.push(`/bookings/${booking.id}?success=true`);
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to create booking');
+    } finally {
+      submittingRef.current = false;
     }
   };
 
@@ -273,10 +281,10 @@ export default function CartPage() {
                 <Button
                   onClick={handleConfirmBooking}
                   isLoading={createBooking.isPending}
-                  disabled={!canBook}
-                  className="w-full btn-primary py-3 mt-6 font-black"
+                  disabled={!canBook || createBooking.isPending}
+                  className="w-full btn-primary py-3 mt-6 font-black disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  Confirm & Book Now
+                  {createBooking.isPending ? 'Booking...' : 'Confirm & Book Now'}
                 </Button>
               )}
             </div>

@@ -128,21 +128,8 @@ export default function BookingsPage() {
     return <Loading text="Loading..." />;
   }
 
-  if (!user?.isPhoneVerified) {
-    return (
-      <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-10">
-        <div className="card-m3 p-8 md:p-10 text-center">
-          <h1 className="text-2xl font-black tracking-tight text-on-surface mb-3">Verify mobile number first</h1>
-          <p className="text-on-surface-variant mb-7 max-w-xl mx-auto">
-            To view your latest and past bookings, please verify your phone number from profile settings.
-          </p>
-          <button onClick={() => router.push('/profile')} className="btn-primary px-8 py-3">
-            Open Profile
-          </button>
-        </div>
-      </div>
-    );
-  }
+  // Show a gentle nudge for unverified phone, but don't block access
+  const showPhoneVerifyBanner = isAuthenticated && user && !user.isPhoneVerified;
 
   const tabs: { value: FilterTab; label: string }[] = [
     { value: 'upcoming', label: 'Upcoming' },
@@ -172,6 +159,18 @@ export default function BookingsPage() {
             </button>
           </Link>
         </div>
+
+        {/* Phone verification nudge banner */}
+        {showPhoneVerifyBanner && (
+          <div className="card-m3 p-4 mb-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800">
+            <p className="text-sm text-amber-800 dark:text-amber-200 font-medium">
+              Verify your phone number to receive booking updates via WhatsApp.
+            </p>
+            <button onClick={() => router.push('/profile')} className="btn-tonal px-4 py-2 text-xs font-bold whitespace-nowrap">
+              Verify Now
+            </button>
+          </div>
+        )}
 
         {/* Filter Tabs */}
         <div className="flex gap-2 mb-8 overflow-x-auto no-scrollbar pb-1">
@@ -261,7 +260,7 @@ export default function BookingsPage() {
         {/* Bookings List */}
         {isLoading ? (
           <Loading text="Loading your bookings..." />
-        ) : bookings?.data.length === 0 ? (
+        ) : (bookings?.data ?? []).length === 0 ? (
           <div className="card-m3 text-center py-16 px-8">
             <Calendar className="w-14 h-14 text-outline-variant mx-auto mb-5" />
             <h3 className="text-xl font-bold text-on-surface mb-2">
@@ -280,7 +279,7 @@ export default function BookingsPage() {
           </div>
         ) : (
           <div className="space-y-4">
-            {bookings?.data.map((booking) => (
+            {(bookings?.data ?? []).map((booking) => (
               <BookingCard key={booking.id} booking={booking} />
             ))}
           </div>

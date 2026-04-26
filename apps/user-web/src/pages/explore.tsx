@@ -18,9 +18,9 @@ export default function ExplorePage() {
   const [showFilters, setShowFilters] = React.useState(false);
   const [viewMode, setViewMode] = React.useState<'list' | 'map'>('list');
   const [location, setLocation] = React.useState<{ lat: number; lng: number; address?: string } | undefined>();
-  const [selectedRadiusKm, setSelectedRadiusKm] = React.useState<number>(Number(radiusKm || 5));
-  const [selectedMaxPrice, setSelectedMaxPrice] = React.useState<number>(Number(maxPrice || 1500));
-  const [selectedMinRating, setSelectedMinRating] = React.useState<number>(Number(minRating || 4));
+  const [selectedRadiusKm, setSelectedRadiusKm] = React.useState<number | undefined>(radiusKm ? Number(radiusKm) : undefined);
+  const [selectedMaxPrice, setSelectedMaxPrice] = React.useState<number | undefined>(maxPrice ? Number(maxPrice) : undefined);
+  const [selectedMinRating, setSelectedMinRating] = React.useState<number | undefined>(minRating ? Number(minRating) : undefined);
 
   const extractCityFromAddress = React.useCallback((address?: string) => {
     if (!address) return '';
@@ -36,9 +36,9 @@ export default function ExplorePage() {
   }, [city]);
 
   React.useEffect(() => {
-    setSelectedRadiusKm(Number(radiusKm || 5));
-    setSelectedMaxPrice(Number(maxPrice || 1500));
-    setSelectedMinRating(Number(minRating || 4));
+    setSelectedRadiusKm(radiusKm ? Number(radiusKm) : undefined);
+    setSelectedMaxPrice(maxPrice ? Number(maxPrice) : undefined);
+    setSelectedMinRating(minRating ? Number(minRating) : undefined);
   }, [radiusKm, maxPrice, minRating]);
 
   React.useEffect(() => {
@@ -111,9 +111,9 @@ export default function ExplorePage() {
     setSearchQuery('');
     setSelectedType(undefined);
     setSelectedCity('');
-    setSelectedRadiusKm(5);
-    setSelectedMaxPrice(1500);
-    setSelectedMinRating(4);
+    setSelectedRadiusKm(undefined);
+    setSelectedMaxPrice(undefined);
+    setSelectedMinRating(undefined);
     setLocation(undefined);
     router.push('/explore');
   };
@@ -134,7 +134,7 @@ export default function ExplorePage() {
       <div className="flex flex-col md:flex-row min-h-screen overflow-hidden">
         {/* ── Sidebar Filters ── */}
         <aside className={cn(
-          'w-full md:w-80 lg:w-[320px] shrink-0 bg-white border-r border-outline-variant/10 overflow-y-auto no-scrollbar transition-all',
+          'w-full md:w-80 lg:w-[320px] shrink-0 bg-surface dark:bg-gray-950 border-r border-outline-variant/10 overflow-y-auto no-scrollbar transition-all',
           showFilters ? 'block' : 'hidden md:block'
         )}>
           <div className="p-6 space-y-8">
@@ -193,7 +193,7 @@ export default function ExplorePage() {
                 {[1, 5, 10, 25].map((km) => (
                   <button
                     key={km}
-                    onClick={() => setSelectedRadiusKm(km)}
+                    onClick={() => setSelectedRadiusKm(selectedRadiusKm === km ? undefined : km)}
                     className={cn(
                       'px-4 py-2 rounded-full text-xs font-medium cursor-pointer transition-all',
                       selectedRadiusKm === km
@@ -218,7 +218,7 @@ export default function ExplorePage() {
                 ].map((option) => (
                   <button
                     key={option.label}
-                    onClick={() => setSelectedMaxPrice(option.value)}
+                    onClick={() => setSelectedMaxPrice(selectedMaxPrice === option.value ? undefined : option.value)}
                     className={cn(
                       'flex-1 py-2.5 rounded-xl text-sm font-bold transition-all active:scale-95',
                       selectedMaxPrice === option.value
@@ -239,7 +239,7 @@ export default function ExplorePage() {
                 {[4.8, 4.5, 4.0, 3.5].map((rating) => (
                   <button
                     key={rating}
-                    onClick={() => setSelectedMinRating(rating)}
+                    onClick={() => setSelectedMinRating(selectedMinRating === rating ? undefined : rating)}
                     className={cn(
                       'px-3 py-2 rounded-xl text-sm font-semibold text-left transition-colors',
                       selectedMinRating === rating
@@ -369,7 +369,7 @@ export default function ExplorePage() {
                 )}
                 {!!selectedRadiusKm && (
                   <button
-                    onClick={() => setSelectedRadiusKm(5)}
+                    onClick={() => setSelectedRadiusKm(undefined)}
                     className="inline-flex items-center gap-1 px-3 py-1.5 bg-tertiary-fixed text-tertiary rounded-full text-xs font-bold"
                   >
                     {selectedRadiusKm}km <X className="w-3 h-3" />
@@ -377,7 +377,7 @@ export default function ExplorePage() {
                 )}
                 {!!selectedMaxPrice && (
                   <button
-                    onClick={() => setSelectedMaxPrice(1500)}
+                    onClick={() => setSelectedMaxPrice(undefined)}
                     className="inline-flex items-center gap-1 px-3 py-1.5 bg-surface-container-high text-on-surface rounded-full text-xs font-bold"
                   >
                     up to ₹{selectedMaxPrice} <X className="w-3 h-3" />
@@ -385,7 +385,7 @@ export default function ExplorePage() {
                 )}
                 {!!selectedMinRating && (
                   <button
-                    onClick={() => setSelectedMinRating(4)}
+                    onClick={() => setSelectedMinRating(undefined)}
                     className="inline-flex items-center gap-1 px-3 py-1.5 bg-secondary-fixed text-secondary rounded-full text-xs font-bold"
                   >
                     {selectedMinRating}+ stars <X className="w-3 h-3" />
