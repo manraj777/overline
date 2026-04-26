@@ -152,7 +152,8 @@ export default function LoginPage() {
           <div className="absolute inset-0 z-0">
             <img
               alt="Professional grooming salon"
-              src="https://images.unsplash.com/photo-1521590832167-7bfcbaa63645?w=1200&q=80"
+              src="https://images.unsplash.com/photo-1521590832167-7bcbfaa6381f?w=1200&q=80"
+              crossOrigin="anonymous"
               className="h-full w-full object-cover"
             />
             <div className="absolute inset-0 bg-gradient-to-tr from-primary/90 via-primary/40 to-transparent" />
@@ -234,9 +235,11 @@ export default function LoginPage() {
                 <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
                   {/* Email Input */}
                   <div className="space-y-2">
-                    <label className="label-m3">Email or Phone</label>
+                    <label htmlFor="email" className="label-m3">Email or Phone</label>
                     <input
+                      id="email"
                       type="email"
+                      autoComplete="email"
                       placeholder="name@company.com"
                       className="input-m3"
                       {...register('email', {
@@ -255,7 +258,7 @@ export default function LoginPage() {
                   {/* Password Input */}
                   <div className="space-y-2">
                     <div className="flex justify-between items-end px-1">
-                      <label className="label-m3">Password</label>
+                      <label htmlFor="password" className="label-m3">Password</label>
                       <a
                         className="text-xs font-semibold text-primary hover:text-primary-container transition-colors"
                         href="#"
@@ -265,7 +268,9 @@ export default function LoginPage() {
                     </div>
                     <div className="relative">
                       <input
+                        id="password"
                         type={showPassword ? 'text' : 'password'}
+                        autoComplete="current-password"
                         placeholder="••••••••"
                         className="input-m3 pr-12"
                         {...register('password', {
@@ -304,9 +309,11 @@ export default function LoginPage() {
                 <div className="space-y-5">
                   <div id="recaptcha-container" className="h-0 overflow-hidden" />
                   <div className="space-y-2">
-                    <label className="label-m3">Phone Number</label>
+                    <label htmlFor="phone" className="label-m3">Phone Number</label>
                     <input
+                      id="phone"
                       type="tel"
+                      autoComplete="tel"
                       placeholder="+91XXXXXXXXXX"
                       value={phone}
                       onChange={(e) => setPhone(e.target.value)}
@@ -335,6 +342,7 @@ export default function LoginPage() {
                             }}
                             type="text"
                             inputMode="numeric"
+                            autoComplete="one-time-code"
                             maxLength={1}
                             value={digit}
                             onChange={(e) => handleOtpDigitChange(index, e.target.value)}

@@ -79,6 +79,7 @@ export default function SignupPage() {
             <img
               alt="Premium spa interior"
               src="https://images.unsplash.com/photo-1560066984-138dadb4c035?w=1200&q=80"
+              crossOrigin="anonymous"
               className="h-full w-full object-cover"
             />
             <div className="absolute inset-0 bg-gradient-to-tr from-secondary/90 via-secondary/40 to-transparent" />
@@ -149,9 +150,11 @@ export default function SignupPage() {
               <form onSubmit={handleSubmit(onSubmit)} className="space-y-5">
                 {/* Full Name */}
                 <div className="space-y-2">
-                  <label className="label-m3">Full Name</label>
+                  <label htmlFor="name" className="label-m3">Full Name</label>
                   <input
+                    id="name"
                     type="text"
+                    autoComplete="name"
                     placeholder="John Doe"
                     className="input-m3"
                     {...register('name', {
@@ -164,9 +167,11 @@ export default function SignupPage() {
 
                 {/* Email */}
                 <div className="space-y-2">
-                  <label className="label-m3">Email</label>
+                  <label htmlFor="email" className="label-m3">Email</label>
                   <input
+                    id="email"
                     type="email"
+                    autoComplete="email"
                     placeholder="name@company.com"
                     className="input-m3"
                     {...register('email', {
@@ -182,9 +187,11 @@ export default function SignupPage() {
 
                 {/* Phone */}
                 <div className="space-y-2">
-                  <label className="label-m3">Phone Number</label>
+                  <label htmlFor="phone" className="label-m3">Phone Number</label>
                   <input
+                    id="phone"
                     type="tel"
+                    autoComplete="tel"
                     placeholder="+91 9876543210"
                     className="input-m3"
                     {...register('phone', {
@@ -200,10 +207,12 @@ export default function SignupPage() {
 
                 {/* Password */}
                 <div className="space-y-2">
-                  <label className="label-m3">Password</label>
+                  <label htmlFor="password" className="label-m3">Password</label>
                   <div className="relative">
                     <input
+                      id="password"
                       type={showPassword ? 'text' : 'password'}
+                      autoComplete="new-password"
                       placeholder="••••••••"
                       className="input-m3 pr-12"
                       {...register('password', {
@@ -224,9 +233,11 @@ export default function SignupPage() {
 
                 {/* Confirm Password */}
                 <div className="space-y-2">
-                  <label className="label-m3">Confirm Password</label>
+                  <label htmlFor="confirmPassword" className="label-m3">Confirm Password</label>
                   <input
+                    id="confirmPassword"
                     type="password"
+                    autoComplete="new-password"
                     placeholder="••••••••"
                     className="input-m3"
                     {...register('confirmPassword', {
