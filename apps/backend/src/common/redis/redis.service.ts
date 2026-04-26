@@ -37,7 +37,7 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
         enableOfflineQueue: false,
         lazyConnect: true,
         // Silence ioredis "Connection lost" noise — we handle via 'error' event
-        showFriendlyErrorStack: false,
+        showFriendlyErrorStack: false,       tls: {},
       };
 
       if (redisUrl) {
