@@ -79,16 +79,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           {/* Left: Logo & Nav */}
           <div className="flex items-center gap-8">
             <Link href="/" className="flex items-center gap-2 group">
-              <Image
-                src="/overline-logo.png"
-                alt="Overline"
-                width={120}
-                height={36}
-                priority
-                className="h-9 w-auto max-w-[140px] object-contain dark:invert"
-              />
-            </Link>
-
+            <span className="text-xl font-bold tracking-widest text-white">OVERLINE</span>            </Link>
+                      
             {/* Desktop Navigation */}
             <nav className="hidden md:flex items-center gap-1">
               {navigation.slice(0, 3).map((item) => (
