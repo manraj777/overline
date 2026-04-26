@@ -349,7 +349,7 @@ export default function HomePage() {
 }
 
 function AiRecommendationsSection({ location }: { location: { lat: number; lng: number; address?: string } | null }) {
-  const { data: recommendations, isLoading } = useAiRecommendations(8);
+  const { data: recommendations, isLoading, isError } = useAiRecommendations(8);
 
   if (!location) {
     return (
@@ -363,6 +363,10 @@ function AiRecommendationsSection({ location }: { location: { lat: number; lng: 
         </div>
       </section>
     );
+  }
+
+  if (isError) {
+    return null; // Gracefully hide the section if the AI endpoint fails
   }
 
   return (
