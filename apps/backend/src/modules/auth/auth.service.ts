@@ -26,6 +26,8 @@ import {
 import { GooglePlacesService } from '../google/google-places.service';
 import { SignupDto } from './dto/signup.dto';
 import { LoginDto } from './dto/login.dto';
+import { ResetPasswordDto } from './dto/reset-password.dto';
+import * as crypto from 'crypto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { GoogleLoginDto } from './dto/google-login.dto';
 import { RegisterShopDto } from './dto/register-shop.dto';
@@ -109,6 +111,10 @@ export class AuthService {
     private googlePlaces: GooglePlacesService,
   ) {
     this.googleClient = new OAuth2Client(this.configService.get<string>('google.clientId'));
+  }
+    
+  private hashOtp(otp: string): string {
+    return crypto.createHash('sha256').update(otp).digest('hex');
   }
     
   private normalizePhone(phone: string): string {
@@ -1761,6 +1767,71 @@ export class AuthService {
         createdAt: user.createdAt,
       },
     };
+  }
+
+  async resetPassword(dto: ResetPasswordDto): Promise<{ message: string }> {
+    const { identifier, otp, newPassword } = dto;
+    let target = identifier.trim().toLowerCase();
+    
+    // Check if it's a phone number and normalize
+    if (/^\+?\d+$/.test(target)) {
+      target = this.normalizePhone(target);
+    }
+
+    // Get active OTP for this target, purpose can be LOGIN or PHONE_VERIFY or anything active
+    const record = await this.prisma.otpVerification.findFirst({
+      where: {
+        phone: target,
+        isVerified: false,
+        expiresAt: { gt: new Date() },
+      },
+      orderBy: { createdAt: 'desc' },
+    });
+
+    if (!record) {
+      throw new BadRequestException('OTP expired or not found. Please request a new one.');
+    }
+
+    if (record.attempts >= 3) {
+      throw new BadRequestException('Maximum OTP attempts exceeded.');
+    }
+
+    await this.prisma.otpVerification.update({
+      where: { id: record.id },
+      data: { attempts: { increment: 1 } },
+    });
+
+    const otpHash = this.hashOtp(otp);
+    if (record.otp !== otpHash) {
+      throw new BadRequestException('Invalid OTP.');
+    }
+
+    await this.prisma.otpVerification.update({
+      where: { id: record.id },
+      data: { isVerified: true },
+    });
+
+    // Find user by phone or email
+    let user = await this.prisma.user.findFirst({
+      where: {
+        OR: [
+          { phone: { in: this.phoneVariants(target) } },
+          { email: target }
+        ]
+      }
+    });
+
+    if (!user) {
+      throw new UnauthorizedException('User not found.');
+    }
+
+    const hashedPassword = await bcrypt.hash(newPassword, 10);
+    await this.prisma.user.update({
+      where: { id: user.id },
+      data: { password: hashedPassword },
+    });
+
+    return { message: 'Password has been successfully reset.' };
   }
 
   private calculateExpiration(duration: string): Date {

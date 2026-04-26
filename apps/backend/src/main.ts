@@ -29,6 +29,9 @@ async function bootstrap() {
     rawBody: true,
   });
 
+  const expressApp = app.getHttpAdapter().getInstance();
+  expressApp.set('trust proxy', 1);
+
   const configService = app.get(ConfigService);
 
   const expandOrigin = (origin: string): string[] => {

@@ -196,3 +196,12 @@ export function useFirebasePhoneLogin() {
     },
   });
 }
+
+export function useResetPassword() {
+  return useMutation<{ message: string }, Error, any>({
+    mutationFn: async (payload) => {
+      const { data } = await api.post('/auth/reset-password', payload);
+      return data;
+    },
+  });
+}

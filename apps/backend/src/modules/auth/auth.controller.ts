@@ -23,6 +23,7 @@ import { GoogleLoginDto } from './dto/google-login.dto';
 import { RegisterShopDto } from './dto/register-shop.dto';
 import { SendOtpDto } from './dto/send-otp.dto';
 import { VerifyOtpDto } from './dto/verify-otp.dto';
+import { ResetPasswordDto } from './dto/reset-password.dto';
 import { FirebasePhoneLoginDto } from './dto/firebase-phone-login.dto';
 import { StaffLoginDto } from './dto/staff-login.dto';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
@@ -116,6 +117,14 @@ export class AuthController {
   @ApiResponse({ status: 401, description: 'Invalid credentials' })
   async login(@Body() dto: LoginDto, @Req() req: any): Promise<TokenResponse> {
     return this.authService.login(dto, this.getRequestContext(req));
+  }
+
+  @Post('reset-password')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Reset password via OTP' })
+  @ApiResponse({ status: 200, description: 'Password reset successful' })
+  async resetPassword(@Body() dto: ResetPasswordDto): Promise<{ message: string }> {
+    return this.authService.resetPassword(dto);
   }
 
   @Post('google')

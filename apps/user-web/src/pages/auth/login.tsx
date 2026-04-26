@@ -160,7 +160,7 @@ export default function LoginPage() {
           </div>
           <div className="relative z-10 flex flex-col justify-between p-16 w-full">
             <div className="flex items-center gap-3">
-              <img src="/overline-logo.png" alt="Overline" className="h-10 w-auto object-contain dark:invert" />
+              <img src="/overline-logo.png" alt="Overline" className="h-10 w-auto object-contain brightness-0 invert" />
             </div>
             <div className="max-w-md">
               <h1 className="text-5xl font-extrabold tracking-tight text-white mb-6 leading-tight">
@@ -259,12 +259,12 @@ export default function LoginPage() {
                   <div className="space-y-2">
                     <div className="flex justify-between items-end px-1">
                       <label htmlFor="password" className="label-m3">Password</label>
-                      <a
+                      <Link
                         className="text-xs font-semibold text-primary hover:text-primary-container transition-colors"
-                        href="#"
+                        href="/auth/forgot-password"
                       >
                         Forgot Password?
-                      </a>
+                      </Link>
                     </div>
                     <div className="relative">
                       <input
@@ -309,7 +309,21 @@ export default function LoginPage() {
                 <div className="space-y-5">
                   <div id="recaptcha-container" className="h-0 overflow-hidden" />
                   <div className="space-y-2">
-                    <label htmlFor="phone" className="label-m3">Phone Number</label>
+                    <div className="flex justify-between items-center mb-1">
+                      <label htmlFor="phone" className="label-m3">Phone Number</label>
+                      {otpSent && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setOtpSent(false);
+                            setOtpDigits(['', '', '', '', '', '']);
+                          }}
+                          className="text-xs font-semibold text-primary hover:underline"
+                        >
+                          Change
+                        </button>
+                      )}
+                    </div>
                     <input
                       id="phone"
                       type="tel"
@@ -318,6 +332,7 @@ export default function LoginPage() {
                       value={phone}
                       onChange={(e) => setPhone(e.target.value)}
                       className="input-m3"
+                      disabled={otpSent}
                     />
                   </div>
 
@@ -337,6 +352,8 @@ export default function LoginPage() {
                         {otpDigits.map((digit, index) => (
                           <input
                             key={index}
+                            id={`otp-digit-${index}`}
+                            name={`otp-digit-${index}`}
                             ref={(el) => {
                               otpInputRefs.current[index] = el;
                             }}

@@ -86,7 +86,7 @@ export default function SignupPage() {
           </div>
           <div className="relative z-10 flex flex-col justify-between p-16 w-full">
             <div className="flex items-center gap-3">
-              <img src="/overline-logo.png" alt="Overline" className="h-10 w-auto object-contain dark:invert" />
+              <img src="/overline-logo.png" alt="Overline" className="h-10 w-auto object-contain brightness-0 invert" />
             </div>
             <div className="max-w-md">
               <h1 className="text-5xl font-extrabold tracking-tight text-white mb-6 leading-tight">
