@@ -16,18 +16,21 @@ export default function GoogleCallbackPage() {
     const error = params.get('error');
 
     if (error || !accessToken || !refreshToken || !userStr) {
-      router.replace('/login?error=google_auth_failed');
+      console.error('Google Auth callback missing params:', { error, hasAccessToken: !!accessToken, hasRefreshToken: !!refreshToken, hasUserStr: !!userStr, search: window.location.search });
+      router.replace('/login?error=google_auth_failed&details=missing_params');
       return;
     }
 
     try {
-      const user = JSON.parse(userStr);
+      const decodedUser = atob(userStr);
+      const user = JSON.parse(decodedUser);
       // Admin login stores shopId if available
       login(user, accessToken, refreshToken, user.shopId);
 
       router.replace(getDefaultRouteForRole(user.role));
-    } catch {
-      router.replace('/login?error=google_auth_failed');
+    } catch (e) {
+      console.error('Failed to parse base64 user payload from URL', e); 
+      router.replace('/login?error=google_auth_failed&details=parse_error');
     }
   }, [router, login]);
 

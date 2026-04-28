@@ -1,4 +1,5 @@
 import { INestApplication, CanActivate, ExecutionContext } from '@nestjs/common';
+import { ConfigModule, ConfigService } from '@nestjs/config';
 import { Test, TestingModule } from '@nestjs/testing';
 import { QueueModule } from '../src/modules/queue/queue.module';
 import { PrismaService } from '../src/common/prisma/prisma.service';
@@ -56,10 +57,24 @@ describe('Queue HTTP Lifecycle + Fraud Persistence (e2e)', () => {
     },
   };
 
+  const mockConfigService = {
+    get: jest.fn((key: string, defaultValue?: any) => {
+      const config: Record<string, any> = {
+        JWT_SECRET: 'test-secret',
+        JWT_EXPIRES_IN: '1h',
+        JWT_REFRESH_SECRET: 'test-refresh-secret',
+        JWT_REFRESH_EXPIRES_IN: '7d',
+      };
+      return config[key] ?? defaultValue;
+    }),
+  };
+
   beforeAll(async () => {
     const moduleRef: TestingModule = await Test.createTestingModule({
-      imports: [QueueModule],
+      imports: [ConfigModule.forRoot({ isGlobal: true }), QueueModule],
     })
+      .overrideProvider(ConfigService)
+      .useValue(mockConfigService)
       .overrideProvider(RedisService)
       .useValue(redisMock)
       .overrideProvider(QueueGateway)
@@ -146,7 +161,9 @@ describe('Queue HTTP Lifecycle + Fraud Persistence (e2e)', () => {
   });
 
   afterAll(async () => {
-    await app.close();
+    if (app) {
+      await app.close();
+    }
   });
 
   const joinQueue = async (customerName: string, customerPhone: string) => {

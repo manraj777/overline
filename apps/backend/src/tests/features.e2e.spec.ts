@@ -8,6 +8,8 @@ import { RedisService } from '../common/redis/redis.service';
 import { FREE_CASH_CONFIG } from '../modules/wallet/wallet.service';
 import { Decimal } from '@prisma/client/runtime/library';
 
+import { AuthService } from '../modules/auth/auth.service';
+
 const PaymentType = {
   PREPAID: 'PREPAID',
   PAY_LATER: 'PAY_LATER',
@@ -78,6 +80,7 @@ describe('Overline Features - Integration Tests', () => {
         OtpService,
         PrismaService,
         RedisService,
+        { provide: AuthService, useValue: {} },
         { provide: ConfigService, useValue: mockConfigService },
       ],
     }).compile();

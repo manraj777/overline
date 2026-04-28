@@ -3,7 +3,7 @@ import Head from 'next/head';
 import { useRouter } from 'next/router';
 import {
   ArrowLeft, MapPin, Clock, Star, Phone, Share2,
-  MessageSquare, ChevronLeft, ChevronRight, X, Camera, Check,
+  MessageSquare, ChevronLeft, ChevronRight, X, Camera, Check, RefreshCw,
 } from 'lucide-react';
 import { Badge, Loading } from '@/components/ui';
 import { ConfirmModal } from '@/components/ui/ConfirmModal';
@@ -31,12 +31,15 @@ export default function ShopDetailPage() {
   const [galleryOpen, setGalleryOpen] = React.useState(false);
   const [galleryIndex, setGalleryIndex] = React.useState(0);
 
-  const { data: shop, isLoading: loadingShop } = useShop(slug as string);
-  const { data: queueStats } = useShopQueueStats(shop?.id || '');
-  const { data: ratingStats } = useShopRatingStats(shop?.id || '');
+  const { data: shop, isLoading: loadingShop, refetch: refetchShop } = useShop(slug as string);
+  const { data: queueStats, refetch: refetchQueue } = useShopQueueStats(shop?.id || '');
+  const { data: ratingStats, refetch: refetchRating } = useShopRatingStats(shop?.id || '');
 
   const [activeTab, setActiveTab] = React.useState('Book Service');
   const tabs = ['Overview', 'Book Service', 'Team', 'Reviews', 'Photos', 'Info'];
+
+  const [isRefreshing, setIsRefreshing] = React.useState(false);
+  const [lastRefreshAt, setLastRefreshAt] = React.useState<Date | null>(null);
 
   const {
     selectedServices,
@@ -204,6 +207,16 @@ export default function ShopDetailPage() {
       alert('Shop link copied to clipboard');
     } catch {
       // Ignore cancelled share flows.
+    }
+  };
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    try {
+      await Promise.all([refetchShop(), refetchQueue(), refetchRating()]);
+      setLastRefreshAt(new Date());
+    } finally {
+      setIsRefreshing(false);
     }
   };
 
@@ -427,7 +440,7 @@ export default function ShopDetailPage() {
                   </div>
 
                   {/* Info Row */}
-                  <div className="flex flex-wrap items-center gap-x-8 gap-y-3 mt-6 text-on-surface">
+                  <div className="flex flex-wrap items-center gap-x-6 gap-y-3 mt-6 text-on-surface">
                     <a
                       href={`https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(`${shop.address}, ${shop.city}`)}`}
                       target="_blank"
@@ -450,6 +463,19 @@ export default function ShopDetailPage() {
                       <Share2 className="w-4 h-4" />
                       Share
                     </button>
+                    <button
+                      onClick={handleRefresh}
+                      className="flex items-center gap-2 text-sm font-semibold text-on-surface-variant hover:text-primary transition-colors"
+                      disabled={isRefreshing}
+                      title="Refresh shop details"
+                    >
+                      <RefreshCw className={`w-4 h-4 ${isRefreshing ? 'animate-spin' : ''}`} />
+                      {isRefreshing ? 'Refreshing' : 'Refresh'}
+                    </button>
+                  </div>
+
+                  <div className="mt-3 text-xs font-semibold tracking-wide text-outline">
+                    Auto-refreshes every 30s{lastRefreshAt ? ` • Last refresh ${format(lastRefreshAt, 'HH:mm:ss')}` : ''}
                   </div>
 
                   {shop.latitude && shop.longitude && (

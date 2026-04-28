@@ -222,7 +222,7 @@ export class AuthController {
         accessToken: tokens.accessToken,
         refreshToken: tokens.refreshToken,
         expiresIn: String(tokens.expiresIn),
-        user: JSON.stringify(tokens.user),
+        user: Buffer.from(JSON.stringify(tokens.user)).toString('base64'),
       });
 
       if (isAdmin && !tokens.user.shopId) {

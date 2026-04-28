@@ -29,6 +29,8 @@ export function useShopRatingStats(shopId: string) {
       return data;
     },
     enabled: !!shopId,
+    staleTime: 1000 * 30,
+    refetchInterval: 1000 * 30,
   });
 }
 

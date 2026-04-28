@@ -178,6 +178,10 @@ export class OtpService {
     const { mobile, otp } = params;
     const accessToken = this.configService.get<string>('WHATSAPP_ACCESS_TOKEN');
     const phoneNumberId = this.configService.get<string>('WHATSAPP_PHONE_NUMBER_ID');
+    const templateName =
+      this.configService.get<string>('WHATSAPP_TEMPLATE_NAME') || 'otp_verification';
+    const templateLanguage =
+      this.configService.get<string>('WHATSAPP_TEMPLATE_LANGUAGE') || 'en';
 
     if (!accessToken || !phoneNumberId) {
       this.logger.warn(`[MOCK WHATSAPP OTP] ${mobile} -> ${otp} (Missing Credentials)`);
@@ -193,15 +197,15 @@ export class OtpService {
           : cleaned;
 
     try {
-      await axios.post(
+      const response = await axios.post(
         `https://graph.facebook.com/v20.0/${phoneNumberId}/messages`,
         {
           messaging_product: 'whatsapp',
           to: e164,
           type: 'template',
           template: {
-            name: 'otp_verification',
-            language: { code: 'en_US' },
+            name: templateName,
+            language: { code: templateLanguage },
             components: [
               {
                 type: 'body',
@@ -223,10 +227,13 @@ export class OtpService {
           },
         },
       );
-      this.logger.log(`WhatsApp OTP sent to ${mobile}`);
+      this.logger.log(
+        `WhatsApp OTP sent to ${mobile} (status ${response.status})`,
+      );
     } catch (error: any) {
+      const status = error?.response?.status;
       this.logger.error(
-        `WhatsApp API error: ${JSON.stringify(error?.response?.data || error?.message)}`,
+        `WhatsApp API error (${status || 'unknown'}): ${JSON.stringify(error?.response?.data || error?.message)}`,
       );
       this.logger.warn(`[MOCK WHATSAPP OTP] ${mobile} -> ${otp} (API Failed)`);
       // Gracefully return instead of throwing 500 so the UI proceeds to verify step

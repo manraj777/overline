@@ -198,6 +198,38 @@ Use at least:
 
 ## 7. Result Summary
 
+## 8. Checkpoint Test Cases
+
+Use these checkpoints as a release gate. Each checkpoint should have a pass/fail note.
+
+### 8.1 Auth Checkpoints
+
+- [ ] OTP request succeeds and timer/cooldown UI reflects the retry window
+- [ ] OTP delivery confirmed on device within expected time
+- [ ] Invalid OTP shows a clear error and does not log the user in
+- [ ] Valid OTP logs in and persists session across app restart
+
+### 8.2 Shop Detail Checkpoints
+
+- [ ] Shop detail loads within 2 seconds on Wi-Fi
+- [ ] Refresh action updates queue stats and rating without full page reload
+- [ ] Photo gallery opens and closes without layout shift
+- [ ] Services list renders with correct prices and durations
+
+### 8.3 Queue Lifecycle Checkpoints (Admin)
+
+- [ ] Call Next updates status to CONFIRMED and appears on client list
+- [ ] Check-in updates status to IN_PROGRESS and persists after refresh
+- [ ] Start Service with correct code succeeds; incorrect code logs audit entry
+- [ ] Mark Done updates status to COMPLETED and removes from active queue
+
+### 8.4 Booking + Payment Checkpoints
+
+- [ ] Pay at Shop booking completes and appears in booking history
+- [ ] Wallet booking reduces wallet balance and confirms booking
+- [ ] Razorpay success callback verifies payment and updates status
+- [ ] Razorpay cancel shows a user-friendly message and leaves booking in failed state
+
 Overall status: PASS / FAIL
 
 Blocking issues:

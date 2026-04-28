@@ -23,7 +23,14 @@ export default function AuthCallbackPage() {
       }
 
       try {
-        let user = userStr ? JSON.parse(userStr) : null;
+        let user = null;
+        if (userStr) {
+          try {
+            user = JSON.parse(atob(userStr));
+          } catch (e) {
+            console.error('Failed to parse base64 user from URL, fetching me fallback');
+          }
+        }
 
         if (!user) {
           const me = await fetch(`${API_URL}/users/me`, {

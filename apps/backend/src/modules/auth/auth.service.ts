@@ -203,6 +203,10 @@ export class AuthService {
     const isProduction = (process.env.NODE_ENV || '').toLowerCase() === 'production';
     const accessToken = this.configService.get<string>('WHATSAPP_ACCESS_TOKEN');
     const phoneNumberId = this.configService.get<string>('WHATSAPP_PHONE_NUMBER_ID');
+    const templateName =
+      this.configService.get<string>('WHATSAPP_TEMPLATE_NAME') || 'otp_verification';
+    const templateLanguage =
+      this.configService.get<string>('WHATSAPP_TEMPLATE_LANGUAGE') || 'en';
 
     if (!accessToken || !phoneNumberId) {
       if (!isProduction) {
@@ -225,15 +229,15 @@ export class AuthService {
           : cleaned;
 
     try {
-      await axios.post(
+      const response = await axios.post(
         `https://graph.facebook.com/v20.0/${phoneNumberId}/messages`,
         {
           messaging_product: 'whatsapp',
           to: e164,
           type: 'template',
           template: {
-            name: 'otp_verification',
-            language: { code: 'en_US' },
+            name: templateName,
+            language: { code: templateLanguage },
             components: [
               {
                 type: 'body',
@@ -249,10 +253,13 @@ export class AuthService {
           },
         },
       );
-      this.logger.log(`WhatsApp OTP sent to ${phone}`);
+      this.logger.log(
+        `WhatsApp OTP sent to ${phone} (status ${response.status})`,
+      );
     } catch (error: any) {
+      const status = error?.response?.status;
       this.logger.error(
-        `[sendWhatsAppOtp] WhatsApp API failed for ${phone}: ${JSON.stringify(error?.response?.data || error?.message)}`,
+        `[sendWhatsAppOtp] WhatsApp API failed for ${phone} (${status || 'unknown'}): ${JSON.stringify(error?.response?.data || error?.message)}`,
       );
       throw new InternalServerErrorException('Unable to send OTP right now. Please try again.');
     }

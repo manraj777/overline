@@ -8,6 +8,7 @@ import { RedisService } from '../src/common/redis/redis.service';
 import { FREE_CASH_CONFIG } from '../src/modules/wallet/wallet.service';
 import { Decimal } from '@prisma/client/runtime/library';
 import { PaymentType, ServiceStatus, CancellationReason, BookingStatus } from '@prisma/client';
+import { AuthService } from '../src/modules/auth/auth.service';
 
 // Mock ConfigService for testing
 const mockConfigService = {
@@ -20,6 +21,46 @@ const mockConfigService = {
       TWILIO_PHONE_NUMBER: '+1234567890',
     };
     return config[key] ?? defaultValue;
+  }),
+};
+
+const redisStore = new Map<string, { value: string; expiresAt: number }>();
+const rateLimitStore = new Map<string, { count: number; expiresAt: number }>();
+
+const redisMock = {
+  set: jest.fn((key: string, value: string, ttlSeconds = 0) => {
+    const expiresAt = ttlSeconds > 0 ? Date.now() + ttlSeconds * 1000 : Number.POSITIVE_INFINITY;
+    redisStore.set(key, { value, expiresAt });
+  }),
+  get: jest.fn((key: string) => {
+    const entry = redisStore.get(key);
+    if (!entry) return null;
+    if (entry.expiresAt <= Date.now()) {
+      redisStore.delete(key);
+      return null;
+    }
+    return entry.value;
+  }),
+  ttl: jest.fn((key: string) => {
+    const entry = redisStore.get(key);
+    if (!entry) return -2;
+    const remainingMs = entry.expiresAt - Date.now();
+    if (remainingMs <= 0) {
+      redisStore.delete(key);
+      return -2;
+    }
+    return Math.ceil(remainingMs / 1000);
+  }),
+  increment: jest.fn((key: string, ttlSeconds = 0) => {
+    const now = Date.now();
+    const entry = rateLimitStore.get(key);
+    if (!entry || entry.expiresAt <= now) {
+      const expiresAt = ttlSeconds > 0 ? now + ttlSeconds * 1000 : Number.POSITIVE_INFINITY;
+      rateLimitStore.set(key, { count: 1, expiresAt });
+      return 1;
+    }
+    entry.count += 1;
+    return entry.count;
   }),
 };
 
@@ -46,7 +87,8 @@ describe('Overline Features - Integration Tests', () => {
         WalletService,
         OtpService,
         PrismaService,
-        RedisService,
+        { provide: RedisService, useValue: redisMock },
+        { provide: AuthService, useValue: {} },
         { provide: ConfigService, useValue: mockConfigService },
       ],
     }).compile();
@@ -200,7 +242,9 @@ describe('Overline Features - Integration Tests', () => {
     let testPhone: string;
 
     beforeEach(() => {
-      testPhone = `+919876543${String(Math.random()).slice(2, 4)}`;
+      redisStore.clear();
+      rateLimitStore.clear();
+      testPhone = `+919876543${String(Math.random()).slice(2, 5)}`;
     });
 
     afterEach(async () => {
@@ -230,18 +274,19 @@ describe('Overline Features - Integration Tests', () => {
     });
 
     it('should verify valid OTP', async () => {
-      await otpService.sendOtp(testPhone, 'LOGIN');
-
-      // Get the OTP from database
-      const otpRecord = await prismaService.otpVerification.findFirst({
-        where: { phone: testPhone },
-        orderBy: { createdAt: 'desc' },
+      const otp = '123456';
+      const otpHash = (otpService as any).hashOtp(otp) as string;
+      await prismaService.otpVerification.create({
+        data: {
+          phone: testPhone,
+          otp: otpHash,
+          purpose: 'LOGIN',
+          expiresAt: new Date(Date.now() + 5 * 60 * 1000),
+        },
       });
 
-      if (otpRecord) {
-        const result = await otpService.verifyOtp(testPhone, otpRecord.otp, 'LOGIN');
-        expect(result.verified).toBe(true);
-      }
+      const result = await otpService.verifyOtp(testPhone, otp, 'LOGIN');
+      expect(result.verified).toBe(true);
     });
 
     it('should reject invalid OTP', async () => {
