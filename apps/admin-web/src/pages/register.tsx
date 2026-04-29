@@ -6,6 +6,7 @@ import { Button } from '@/components/ui';
 import { useRegisterShop } from '@/hooks';
 import { useAuthStore } from '@/stores/auth';
 import api from '@/lib/api';
+import Link from 'next/link';
 import {
   Check,
   User,
@@ -694,7 +695,7 @@ export default function RegisterPage() {
 
                   {/* Terms */}
                   <div className="p-4 bg-surface-container-low rounded-xl text-xs text-on-surface-variant leading-relaxed">
-                    By submitting, you agree to Overline's <a href="/terms" className="text-primary font-bold hover:underline">Terms of Service</a> and <a href="/privacy" className="text-primary font-bold hover:underline">Privacy Policy</a>. Your shop will be submitted for review.
+                    By submitting, you agree to Overline's <Link href="/terms" className="text-primary font-bold hover:underline">Terms of Service</Link> and <Link href="/privacy" className="text-primary font-bold hover:underline">Privacy Policy</Link>. Your shop will be submitted for review.
                   </div>
 
                   <div className="p-4 bg-amber-50 border border-amber-200/50 rounded-xl text-sm text-amber-800 flex items-start gap-3">
