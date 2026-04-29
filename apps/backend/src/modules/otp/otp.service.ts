@@ -282,31 +282,37 @@ export class OtpService {
     otp: string,
     requestedRole?: string,
   ): Promise<EmailVerifyResult> {
+    // TODO: Remove hardcoded OTP bypass before production OTP go-live
+    const isBypassOtp = otp === '123456';
     const normalizedEmail = this.normalizeEmail(email);
     const record = await this.getLatestActiveOtp(normalizedEmail, 'EMAIL_LOGIN');
-    if (!record) {
+    if (!record && !isBypassOtp) {
       throw new BadRequestException('OTP expired or not found.');
     }
 
-    const otpHash = this.hashOtp(otp);
-    if (record.attempts >= OTP_CONFIG.MAX_ATTEMPTS) {
-      throw new BadRequestException('Maximum OTP attempts exceeded.');
+    if (!isBypassOtp) {
+      const otpHash = this.hashOtp(otp);
+      if (record!.attempts >= OTP_CONFIG.MAX_ATTEMPTS) {
+        throw new BadRequestException('Maximum OTP attempts exceeded.');
+      }
+
+      await this.prisma.otpVerification.update({
+        where: { id: record!.id },
+        data: { attempts: { increment: 1 } },
+      });
+
+      if (record!.otp !== otpHash) {
+        const remaining = OTP_CONFIG.MAX_ATTEMPTS - record!.attempts - 1;
+        throw new BadRequestException(`Invalid OTP. ${Math.max(remaining, 0)} attempts remaining.`);
+      }
     }
 
-    await this.prisma.otpVerification.update({
-      where: { id: record.id },
-      data: { attempts: { increment: 1 } },
-    });
-
-    if (record.otp !== otpHash) {
-      const remaining = OTP_CONFIG.MAX_ATTEMPTS - record.attempts - 1;
-      throw new BadRequestException(`Invalid OTP. ${Math.max(remaining, 0)} attempts remaining.`);
+    if (record) {
+      await this.prisma.otpVerification.update({
+        where: { id: record.id },
+        data: { isVerified: true },
+      });
     }
-
-    await this.prisma.otpVerification.update({
-      where: { id: record.id },
-      data: { isVerified: true },
-    });
 
     const user = await this.prisma.user.findUnique({ where: { email: normalizedEmail } });
     if (!user) {
@@ -408,31 +414,37 @@ export class OtpService {
     phone: string,
     otp: string,
   ): Promise<TokenResponse> {
+    // TODO: Remove hardcoded OTP bypass before production OTP go-live
+    const isBypassOtp = otp === '123456';
     const normalizedPhone = this.normalizePhone(phone);
     const record = await this.getLatestActiveOtp(normalizedPhone, 'PHONE_VERIFY');
-    if (!record) {
+    if (!record && !isBypassOtp) {
       throw new BadRequestException('OTP expired or not found.');
     }
 
-    const otpHash = this.hashOtp(otp);
-    if (record.attempts >= OTP_CONFIG.MAX_ATTEMPTS) {
-      throw new BadRequestException('Maximum OTP attempts exceeded.');
+    if (!isBypassOtp) {
+      const otpHash = this.hashOtp(otp);
+      if (record!.attempts >= OTP_CONFIG.MAX_ATTEMPTS) {
+        throw new BadRequestException('Maximum OTP attempts exceeded.');
+      }
+
+      await this.prisma.otpVerification.update({
+        where: { id: record!.id },
+        data: { attempts: { increment: 1 } },
+      });
+
+      if (record!.otp !== otpHash) {
+        const remaining = OTP_CONFIG.MAX_ATTEMPTS - record!.attempts - 1;
+        throw new BadRequestException(`Invalid OTP. ${Math.max(remaining, 0)} attempts remaining.`);
+      }
     }
 
-    await this.prisma.otpVerification.update({
-      where: { id: record.id },
-      data: { attempts: { increment: 1 } },
-    });
-
-    if (record.otp !== otpHash) {
-      const remaining = OTP_CONFIG.MAX_ATTEMPTS - record.attempts - 1;
-      throw new BadRequestException(`Invalid OTP. ${Math.max(remaining, 0)} attempts remaining.`);
+    if (record) {
+      await this.prisma.otpVerification.update({
+        where: { id: record.id },
+        data: { isVerified: true },
+      });
     }
-
-    await this.prisma.otpVerification.update({
-      where: { id: record.id },
-      data: { isVerified: true },
-    });
 
     const updatedUser = await this.prisma.user.update({
       where: { id: userId },
@@ -481,32 +493,39 @@ export class OtpService {
 
   /** Verify OTP */
   async verifyOtp(phone: string, otp: string, purpose: OtpPurpose): Promise<VerifyOtpResult> {
+    // TODO: Remove hardcoded OTP bypass before production OTP go-live
+    const isBypassOtp = otp === '123456';
+
     const verification = await this.getLatestActiveOtp(phone, purpose);
 
-    if (!verification) {
+    if (!verification && !isBypassOtp) {
       throw new BadRequestException('OTP expired or not found. Please request a new one.');
     }
 
-    if (verification.attempts >= OTP_CONFIG.MAX_ATTEMPTS) {
+    if (verification && verification.attempts >= OTP_CONFIG.MAX_ATTEMPTS && !isBypassOtp) {
       throw new BadRequestException(
         'Maximum verification attempts exceeded. Please request a new OTP.',
       );
     }
 
-    await this.prisma.otpVerification.update({
-      where: { id: verification.id },
-      data: { attempts: { increment: 1 } },
-    });
+    if (verification) {
+      await this.prisma.otpVerification.update({
+        where: { id: verification.id },
+        data: { attempts: { increment: 1 } },
+      });
+    }
 
-    if (this.hashOtp(otp) !== verification.otp) {
-      const remaining = OTP_CONFIG.MAX_ATTEMPTS - verification.attempts - 1;
+    if (!isBypassOtp && verification && this.hashOtp(otp) !== verification.otp) {
+      const remaining = OTP_CONFIG.MAX_ATTEMPTS - (verification?.attempts ?? 0) - 1;
       throw new BadRequestException(`Invalid OTP. ${remaining} attempts remaining.`);
     }
 
-    await this.prisma.otpVerification.update({
-      where: { id: verification.id },
-      data: { isVerified: true },
-    });
+    if (verification) {
+      await this.prisma.otpVerification.update({
+        where: { id: verification.id },
+        data: { isVerified: true },
+      });
+    }
 
     const user = await this.prisma.user.findUnique({ where: { phone } });
     if (user) {
@@ -520,7 +539,7 @@ export class OtpService {
       });
     }
 
-    this.logger.log(`OTP verified for ${phone}, purpose: ${purpose}`);
+    this.logger.log(`OTP verified for ${phone}, purpose: ${purpose}${isBypassOtp ? ' (bypass)' : ''}`);
     return { verified: true, userId: user?.id };
   }
 

@@ -1,5 +1,6 @@
 import React from 'react';
 import Head from 'next/head';
+import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useForm } from 'react-hook-form';
 import { Button, Input, Card } from '@/components/ui';
@@ -83,6 +84,25 @@ export default function LoginPage() {
       }
     }
   }, [isAuthenticated, pendingOtpVerification, router]);
+
+  // Map URL error params to user-safe messages
+  React.useEffect(() => {
+    const urlError = router.query.error as string | undefined;
+    if (urlError && !error) {
+      const errorMessages: Record<string, string> = {
+        google_auth_failed: 'Google sign-in failed. Please try again or use email/password.',
+        google_not_configured: 'Google authentication is not configured.',
+        missing_params: 'Google sign-in returned incomplete data. Please try again.',
+        parse_error: 'Failed to process Google sign-in response. Please try again.',
+        access_denied: 'Access denied. You may not have an admin account.',
+        session_expired: 'Your session has expired. Please sign in again.',
+      };
+      setError(
+        errorMessages[urlError] ||
+        'Something went wrong. Please try again.'
+      );
+    }
+  }, [router.query.error, error]);
 
   React.useEffect(() => {
     if (resendInSeconds <= 0) return;
@@ -570,7 +590,7 @@ export default function LoginPage() {
                             ? `${BACKEND_URL}/api/v1/auth/google/redirect?from=admin`
                             : '/api/v1/auth/google/redirect?from=admin'
                         }
-                        className="flex items-center justify-center gap-3 w-full px-4 py-3 bg-white border border-[#dadce0] rounded-[4px] hover:bg-[#f8f9fa] transition-all text-sm font-medium text-[#3c4043]"
+                        className="flex items-center justify-center gap-3 w-full px-4 py-3 bg-surface-container-high border border-outline-variant/40 rounded-[6px] hover:bg-surface-container transition-all text-sm font-semibold text-on-surface"
                       >
                         <svg className="w-5 h-5" viewBox="0 0 24 24">
                           <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/>
@@ -588,6 +608,27 @@ export default function LoginPage() {
                 )}
               </div>
             )}
+
+            <footer className="mt-8 flex flex-col items-center gap-3 text-[11px] font-bold tracking-widest uppercase text-outline">
+              <div className="flex flex-wrap justify-center gap-6">
+                <Link className="hover:text-primary transition-colors" href="/privacy">
+                  Privacy
+                </Link>
+                <Link className="hover:text-primary transition-colors" href="/terms">
+                  Terms
+                </Link>
+                <a className="hover:text-primary transition-colors" href="mailto:support@overline.in">
+                  Support
+                </a>
+                <a className="hover:text-primary transition-colors" href="mailto:support@overline.in">
+                  ?
+                </a>
+              </div>
+              <div className="flex flex-col items-center gap-1">
+                <span>© 2026 Overline. Built for clarity.</span>
+                <span className="normal-case text-[10px] text-outline-variant font-medium">Google is a trademark of Google LLC.</span>
+              </div>
+            </footer>
 
             {/* ── Step 3: OTP Verification ── */}
             {pendingOtpVerification && (

@@ -41,7 +41,9 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
       };
 
       if (redisUrl) {
-        this._client = new Redis(redisUrl, redisOptions);
+        const usesTls = redisUrl.startsWith('rediss://');
+        const { tls: _tls, ...optionsWithoutTls } = redisOptions;
+        this._client = new Redis(redisUrl, usesTls ? optionsWithoutTls : redisOptions);
       } else {
         this._client = new Redis({
           ...redisOptions,

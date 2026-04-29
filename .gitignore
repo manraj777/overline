@@ -55,3 +55,5 @@ apps/mobile-admin/android/app/google-services.json
 apps/mobile-user/android/app/google-services.json
 .env*.local
 .venv
+# Added by code-review-graph
+.code-review-graph/

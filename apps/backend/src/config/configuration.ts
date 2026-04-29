@@ -31,19 +31,8 @@ const resolveDatabaseUrl = (): string | undefined => {
 const normalizeRedisUrl = (redisUrl?: string): string | undefined => {
   if (!redisUrl) return undefined;
 
-  try {
-    const parsed = new URL(redisUrl);
-
-    // Some providers reject AUTH with username "default" and expect password-only auth.
-    if (parsed.protocol.startsWith('redis') && parsed.username === 'default') {
-      parsed.username = '';
-      return parsed.toString();
-    }
-
-    return redisUrl;
-  } catch {
-    return redisUrl;
-  }
+  // Upstash requires the "default" username, so keep the URL as-is.
+  return redisUrl;
 };
 
 const isProduction = process.env.NODE_ENV === 'production';
@@ -162,6 +151,7 @@ export default () => ({
       process.env.USER_WEB_URL ||
       process.env.USER_FRONTEND_URL ||
       process.env.FRONTEND_USER_URL ||
+      process.env.FRONTEND_URL ||
       defaultUserFrontendUrl,
     admin:
       process.env.ADMIN_WEB_URL ||

@@ -9,6 +9,7 @@ export {
   useSendOtp,
   useVerifyOtp,
   useFirebasePhoneLogin,
+  useResetPassword,
 } from './useAuth';
 export {
   useShops,

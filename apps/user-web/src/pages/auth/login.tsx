@@ -52,11 +52,19 @@ export default function LoginPage() {
 
   React.useEffect(() => {
     if (error) {
-      if (error === 'google_auth_failed') {
-        setLocalError('Google sign-in failed. Please try again or use email/password.');
-      } else if (error === 'google_not_configured') {
-        setLocalError('Google authentication is not configured. Please try email/password.');
-      }
+      const errorMessages: Record<string, string> = {
+        google_auth_failed: 'Google sign-in failed. Please try again or use email/password.',
+        google_not_configured: 'Google authentication is not configured. Please try email/password.',
+        invalid_token: 'Your session expired. Please sign in again.',
+        access_denied: 'Access denied. Please check your credentials and try again.',
+        account_deactivated: 'This account has been deactivated. Contact support for help.',
+        internal_server_error: 'Something went wrong on our end. Please try again in a moment.',
+        session_expired: 'Your session has expired. Please sign in again.',
+      };
+      setLocalError(
+        errorMessages[error as string] ||
+        'Something went wrong. Please try again or use a different sign-in method.'
+      );
     }
   }, [error]);
 
@@ -74,7 +82,9 @@ export default function LoginPage() {
     setIsGoogleLoading(true);
     setLocalError(null);
     try {
-      const redirectUri = BACKEND_URL ? `${BACKEND_URL}/api/v1/auth/google` : '/api/v1/auth/google';
+      const redirectUri = BACKEND_URL
+        ? `${BACKEND_URL}/api/v1/auth/google?from=user`
+        : '/api/v1/auth/google?from=user';
       window.location.href = redirectUri;
     } catch (err: any) {
       setLocalError('Google sign-in failed. Please try again.');
@@ -199,9 +209,9 @@ export default function LoginPage() {
               </div>
 
               {/* Error Alert */}
-              {(localError || error) && (
+              {localError && (
                 <Alert variant="error" className="mb-6">
-                  {localError || error}
+                  {localError}
                 </Alert>
               )}
 
@@ -212,7 +222,7 @@ export default function LoginPage() {
                   onClick={() => setAuthMode('email')}
                   className={`rounded-lg px-3 py-2.5 text-sm font-bold transition-all ${
                     authMode === 'email'
-                      ? 'bg-white dark:bg-gray-700 text-on-surface shadow-sm'
+                      ? 'bg-surface-container-high text-on-surface shadow-sm border border-outline-variant/30'
                       : 'text-on-surface-variant hover:text-on-surface'
                   }`}
                 >
@@ -223,7 +233,7 @@ export default function LoginPage() {
                   onClick={() => setAuthMode('phone')}
                   className={`rounded-lg px-3 py-2.5 text-sm font-bold transition-all ${
                     authMode === 'phone'
-                      ? 'bg-white dark:bg-gray-700 text-on-surface shadow-sm'
+                      ? 'bg-surface-container-high text-on-surface shadow-sm border border-outline-variant/30'
                       : 'text-on-surface-variant hover:text-on-surface'
                   }`}
                 >
@@ -411,7 +421,7 @@ export default function LoginPage() {
                 type="button"
                 onClick={handleGoogleLogin}
                 disabled={isGoogleLoading}
-                className="w-full h-14 flex items-center justify-center gap-3 rounded-[4px] bg-white border border-[#dadce0] font-medium text-[#3c4043] hover:bg-[#f8f9fa] transition-colors active:scale-[0.97] duration-200"
+                className="w-full h-14 flex items-center justify-center gap-3 rounded-[6px] bg-surface-container-high border border-outline-variant/40 font-semibold text-on-surface hover:bg-surface-container transition-colors active:scale-[0.97] duration-200"
               >
                 <svg className="w-5 h-5" viewBox="0 0 24 24">
                   <path
@@ -452,13 +462,25 @@ export default function LoginPage() {
 
           {/* Footer */}
           <footer className="w-full py-8 px-12 flex flex-col items-center gap-4 text-[11px] font-bold tracking-widest uppercase text-outline">
-            <div className="flex gap-8">
-              <a className="hover:text-primary transition-colors" href="#">Privacy</a>
-              <a className="hover:text-primary transition-colors" href="#">Terms</a>
-              <a className="hover:text-primary transition-colors" href="#">Support</a>
+            <div className="flex flex-wrap justify-center gap-6">
+              <Link className="hover:text-primary transition-colors" href="/auth/forgot-password">
+                Forgot Password
+              </Link>
+              <Link className="hover:text-primary transition-colors" href="/privacy">
+                Privacy
+              </Link>
+              <Link className="hover:text-primary transition-colors" href="/terms">
+                Terms
+              </Link>
+              <a className="hover:text-primary transition-colors" href="mailto:support@overline.in">
+                Support
+              </a>
+              <a className="hover:text-primary transition-colors" href="mailto:support@overline.in">
+                ?
+              </a>
             </div>
             <div className="flex flex-col items-center gap-1">
-              <span>© {new Date().getFullYear()} Overline. Built for clarity.</span>
+              <span>© 2026 Overline. Built for clarity.</span>
               <span className="normal-case text-[10px] text-outline-variant font-medium">Google is a trademark of Google LLC.</span>
             </div>
           </footer>
@@ -467,7 +489,7 @@ export default function LoginPage() {
 
       {/* Floating Help Button */}
       <div className="fixed bottom-8 right-8 z-50">
-        <button className="w-12 h-12 flex items-center justify-center bg-surface-container-lowest text-primary rounded-full shadow-lg shadow-primary/10 active:scale-95 hover:bg-primary hover:text-white transition-all">
+        <button className="w-12 h-12 flex items-center justify-center bg-surface-container-high text-primary rounded-full shadow-lg shadow-primary/10 active:scale-95 hover:bg-primary hover:text-white transition-all">
           <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round">
             <circle cx="12" cy="12" r="10" />
             <path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3" />
