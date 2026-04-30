@@ -1,0 +1,53 @@
+# Caddyfile for Overline backend on EC2
+# ---------------------------------------
+# Caddy will:
+#   1. Auto-provision a free Let's Encrypt TLS certificate.
+#   2. Auto-renew it.
+#   3. Reverse-proxy HTTPS traffic on :443 to the NestJS backend on :3001.
+#
+# Prerequisites:
+#   - A domain (e.g. api.overline.in) with an A record pointing to this EC2 instance's public IP.
+#   - EC2 Security Group inbound rules: allow 80/tcp and 443/tcp from 0.0.0.0/0.
+#   - Caddy installed on the EC2 host (see deploy/README.md).
+#
+# Replace `api.overline.in` below with the actual domain you point at this server.
+
+api.overline.in {
+    # Reverse proxy to the NestJS app started by PM2 (overline-backend).
+    reverse_proxy 127.0.0.1:3001 {
+        # Forward the original host + scheme so NestJS / Passport build correct
+        # OAuth callback URLs and cookies.
+        header_up Host {host}
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+
+    # Reasonable security headers. Adjust CSP later if you serve assets here.
+    header {
+        # HSTS: tell browsers to always use HTTPS for this domain.
+        Strict-Transport-Security "max-age=31536000; includeSubDomains"
+        X-Content-Type-Options "nosniff"
+        Referrer-Policy "strict-origin-when-cross-origin"
+        # Caddy emits its own Server header; hide implementation details.
+        -Server
+    }
+
+    # Slightly larger upload cap for image uploads going through the API.
+    request_body {
+        max_size 25MB
+    }
+
+    # Compress responses where it helps.
+    encode zstd gzip
+
+    # Structured access logs (rotated automatically by Caddy).
+    log {
+        output file /var/log/caddy/api.overline.in.access.log {
+            roll_size 50mb
+            roll_keep 5
+            roll_keep_for 720h
+        }
+        format json
+    }
+}
