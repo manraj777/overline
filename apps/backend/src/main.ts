@@ -79,7 +79,7 @@ async function bootstrap() {
     res.setHeader('Pragma', 'no-cache');
     res.setHeader('Expires', '0');
     res.setHeader('Surrogate-Control', 'no-store');
-    
+
     // Explicitly handle preflight OPTIONS checks to immediately return 204
     if (req.method === 'OPTIONS') {
       if (!origin || isAllowed) {
@@ -103,6 +103,11 @@ async function bootstrap() {
 
   // Serve local uploads when filesystem storage is enabled
   app.use('/public', express.static(path.join(process.cwd(), 'public')));
+
+  // Root health check endpoint (bypasses global prefix)
+  app.getHttpAdapter().get('/', (req, res) => {
+    res.json({ status: 'ok', message: 'Welcome to Overline API', timestamp: new Date().toISOString() });
+  });
 
   // Global prefix
   app.setGlobalPrefix('api');
@@ -154,8 +159,13 @@ async function bootstrap() {
     .addTag('payments', 'Payment processing')
     .build();
 
-  const document = SwaggerModule.createDocument(app, config);
-  SwaggerModule.setup('docs', app, document);
+  // Only expose Swagger outside production, or when explicitly enabled via env.
+  const swaggerEnabled =
+    process.env.SWAGGER_ENABLED === 'true' || process.env.NODE_ENV !== 'production';
+  if (swaggerEnabled) {
+    const document = SwaggerModule.createDocument(app, config);
+    SwaggerModule.setup('docs', app, document);
+  }
 
   const port = process.env.PORT || 3001;
   await app.listen(port, '0.0.0.0');

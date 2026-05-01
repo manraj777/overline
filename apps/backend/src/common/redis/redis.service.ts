@@ -43,10 +43,11 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
       if (redisUrl) {
         const usesTls = redisUrl.startsWith('rediss://');
         const { tls: _tls, ...optionsWithoutTls } = redisOptions;
-        this._client = new Redis(redisUrl, usesTls ? optionsWithoutTls : redisOptions);
+        this._client = new Redis(redisUrl, usesTls ? redisOptions : optionsWithoutTls);
       } else {
+        const { tls: _tls, ...optionsWithoutTls } = redisOptions;
         this._client = new Redis({
-          ...redisOptions,
+          ...optionsWithoutTls,
           host: this.configService.get('redis.host') || 'localhost',
           port: this.configService.get('redis.port') || 6379,
           password: this.configService.get('redis.password') || undefined,
@@ -99,6 +100,15 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
 
   isReady(): boolean {
     return this.isConnected && this._client !== null;
+  }
+
+  async ping(): Promise<string | null> {
+    if (!this.client) return null;
+    try {
+      return await this.client.ping();
+    } catch {
+      return null;
+    }
   }
 
   // ============================================================================

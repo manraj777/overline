@@ -268,61 +268,85 @@ export class AuthService {
   async sendPhoneOtp(
     phone: string,
   ): Promise<{ message: string; expiresInSeconds: number; retryAfterSeconds?: number }> {
-    const normalizedPhone = this.normalizePhone(phone);
-    const rateLimitKey = `otp:rate:${normalizedPhone}`;
-    const otpRequestCount = await this.redis.increment(rateLimitKey, 3600);
-
-    // Only enforce rate limit if Redis is actually working (non-zero count means connected)
-    if (otpRequestCount > 3) {
-      const ttl = await this.redis.ttl(rateLimitKey);
-      throw new BadRequestException(
-        `Too many OTP requests. Try again in ${Math.max(ttl, 1)} seconds.`,
-      );
-    }
-
-    const otp = Math.floor(100000 + Math.random() * 900000).toString();
-
-    // Store OTP in Redis (will silently no-op if Redis is down — 123456 bypass covers this)
-    await this.redis.set(`otp:${normalizedPhone}`, otp, 300);
-
-    // Attempt WhatsApp delivery — gracefully handle failure
     try {
-      await this.sendWhatsAppOtp(normalizedPhone, otp);
-    } catch (err: any) {
-      this.logger.warn(`[sendPhoneOtp] WhatsApp delivery failed for ${normalizedPhone}: ${err?.message}`);
-      // Don't throw — user can still use bypass OTP 123456
-    }
+      const isRedisReady = await this.redis.ping();
+      if (!isRedisReady || isRedisReady !== 'PONG') {
+        throw new InternalServerErrorException('OTP service temporarily unavailable');
+      }
 
-    return {
-      message: `OTP sent successfully to ${phone}`,
-      expiresInSeconds: 300,
-      retryAfterSeconds: 60,
-    };
+      const normalizedPhone = this.normalizePhone(phone);
+      const rateLimitKey = `otp:rate:${normalizedPhone}`;
+      const otpRequestCount = await this.redis.increment(rateLimitKey, 3600);
+
+      // Only enforce rate limit if Redis is actually working (non-zero count means connected)
+      if (otpRequestCount > 3) {
+        const ttl = await this.redis.ttl(rateLimitKey);
+        throw new BadRequestException(
+          `Too many OTP requests. Try again in ${Math.max(ttl, 1)} seconds.`,
+        );
+      }
+
+      const otp = Math.floor(100000 + Math.random() * 900000).toString();
+
+      // Store OTP in Redis (will silently no-op if Redis is down — 123456 bypass covers this)
+      await this.redis.set(`otp:${normalizedPhone}`, otp, 300);
+
+      // Attempt WhatsApp delivery — gracefully handle failure
+      try {
+        await this.sendWhatsAppOtp(normalizedPhone, otp);
+      } catch (err: any) {
+        this.logger.warn(`[sendPhoneOtp] WhatsApp delivery failed for ${normalizedPhone}: ${err?.message}`);
+        // Don't throw — user can still use bypass OTP 123456
+      }
+
+      return {
+        message: `OTP sent successfully to ${phone}`,
+        expiresInSeconds: 300,
+        retryAfterSeconds: 60,
+      };
+    } catch (error: any) {
+      this.logger.error(`Failed to send OTP: ${error.message}`);
+      if (error instanceof BadRequestException || error instanceof InternalServerErrorException) throw error;
+      throw new InternalServerErrorException('Failed to send OTP');
+    }
   }
 
   async verifyPhoneOtp(phone: string, otp: string, requestedRole?: string): Promise<TokenResponse> {
-    // TODO: Remove hardcoded OTP bypass before production OTP go-live
-    const isBypassOtp = otp === '123456';
-    const normalizedPhone = this.normalizePhone(phone);
-
-    if (!isBypassOtp) {
-      const storedOtp = await this.redis.get(`otp:${normalizedPhone}`);
-      if (!storedOtp) {
-        throw new BadRequestException('OTP expired. Please request a new code.');
+    try {
+      const isRedisReady = await this.redis.ping();
+      if (!isRedisReady || isRedisReady !== 'PONG') {
+        throw new InternalServerErrorException('OTP service temporarily unavailable');
       }
 
-      if (storedOtp !== otp) {
-        throw new BadRequestException('Invalid OTP');
+      // OTP bypass (dev/testing only). Must be explicitly enabled via
+      // OTP_BYPASS_ENABLED=true, which should NEVER be set in production.
+      const bypassEnabled = process.env.OTP_BYPASS_ENABLED === 'true';
+      const isBypassOtp = bypassEnabled && otp === '123456';
+      const normalizedPhone = this.normalizePhone(phone);
+
+      if (!isBypassOtp) {
+        const storedOtp = await this.redis.get(`otp:${normalizedPhone}`);
+        if (!storedOtp) {
+          throw new BadRequestException('OTP expired. Please request a new code.');
+        }
+
+        if (storedOtp !== otp) {
+          throw new BadRequestException('Invalid OTP');
+        }
+
+        await this.redis.del(`otp:${normalizedPhone}`);
+      } else {
+        this.logger.warn(`[verifyPhoneOtp] Bypass OTP used for ${normalizedPhone}`);
+        // Clean up any existing OTP key
+        await this.redis.del(`otp:${normalizedPhone}`);
       }
 
-      await this.redis.del(`otp:${normalizedPhone}`);
-    } else {
-      this.logger.warn(`[verifyPhoneOtp] Bypass OTP used for ${normalizedPhone}`);
-      // Clean up any existing OTP key
-      await this.redis.del(`otp:${normalizedPhone}`);
+      return await this.loginWithVerifiedPhone(normalizedPhone, requestedRole);
+    } catch (error: any) {
+      this.logger.error(`OTP verification failed: ${error.message}`);
+      if (error instanceof BadRequestException || error instanceof InternalServerErrorException) throw error;
+      throw new InternalServerErrorException('Verification failed');
     }
-
-    return this.loginWithVerifiedPhone(normalizedPhone, requestedRole);
   }
 
   async getAssignedStaffShops(phone: string): Promise<{ phone: string; shops: StaffShopSummary[] }> {

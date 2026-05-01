@@ -42,8 +42,8 @@ command -v git  >/dev/null || fail "git not found in PATH"
 log "Fetching origin/$BRANCH"
 git fetch --prune origin "$BRANCH"
 
-if [[ -n "$(git status --porcelain)" ]]; then
-  fail "Working tree is dirty. Commit/stash changes on EC2 before deploying."
+if [[ -n "$(git status --porcelain --untracked-files=no)" ]]; then
+  fail "Working tree has modified tracked files. Commit/stash on EC2 before deploying."
 fi
 
 git checkout "$BRANCH"
