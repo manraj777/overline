@@ -81,10 +81,6 @@ export default () => ({
   },
 
   payments: {
-    stripe: {
-      secretKey: process.env.STRIPE_SECRET_KEY,
-      webhookSecret: process.env.STRIPE_WEBHOOK_SECRET,
-    },
     fees: {
       platformFeePercent: parseFloat(process.env.PLATFORM_FEE_PERCENT || '2'),
     },
@@ -119,14 +115,6 @@ export default () => ({
   },
 
   domains: DOMAIN_CONFIG,
-
-  authkey: {
-    baseUrl: process.env.AUTHKEY_BASE_URL || 'https://console.authkey.io',
-    apiKey: process.env.AUTHKEY_API_KEY,
-    smsSid: process.env.AUTHKEY_SMS_SID,
-    waWid: process.env.AUTHKEY_WA_WID,
-    emailTemplate: process.env.AUTHKEY_EMAIL_TEMPLATE,
-  },
 
   firebase: {
     projectId: process.env.FIREBASE_PROJECT_ID,

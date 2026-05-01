@@ -23,19 +23,10 @@ interface WalletPaymentResponse {
   message: string;
 }
 
-interface StripeFallbackResponse {
-  method: 'STRIPE';
-  paymentIntentId: string;
-  clientSecret: string;
-  amount: number;
-  currency: string;
-}
-
 export type CreatePaymentOrderResponse =
   | RazorpayOrderResponse
   | PayAtShopResponse
-  | WalletPaymentResponse
-  | StripeFallbackResponse;
+  | WalletPaymentResponse;
 
 interface VerifyRazorpayPayload {
   razorpay_order_id: string;

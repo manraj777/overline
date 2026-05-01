@@ -1,11 +1,9 @@
-import { Controller, Post, Get, Body, Param, Headers, UseGuards, Req } from '@nestjs/common';
+import { Controller, Post, Get, Body, Param, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiParam } from '@nestjs/swagger';
 import { PaymentsService, PaymentOrderMethod } from './payments.service';
 import { CreatePaymentDto } from './dto/create-payment.dto';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
-import { Public } from '../auth/decorators/public.decorator';
-import { Request } from 'express';
 import { IsString, IsOptional, IsEnum } from 'class-validator';
 import { ApiProperty, ApiPropertyOptional } from '@nestjs/swagger';
 
@@ -37,7 +35,7 @@ export class PaymentsController {
   @Post('create-order')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth('JWT-auth')
-  @ApiOperation({ summary: 'Create payment order (Razorpay/Stripe/Wallet/PayAtShop)' })
+  @ApiOperation({ summary: 'Create payment order (Razorpay/Wallet/PayAtShop)' })
   async createOrder(@Body() dto: CreateOrderDto, @CurrentUser('id') userId: string) {
     return this.paymentsService.createOrder(dto, userId);
   }
@@ -45,7 +43,7 @@ export class PaymentsController {
   @Post('create-intent')
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth('JWT-auth')
-  @ApiOperation({ summary: 'Create a Stripe PaymentIntent (legacy alias)' })
+  @ApiOperation({ summary: 'Create payment order (legacy alias for mobile clients)' })
   async createPaymentIntent(@Body() dto: CreatePaymentDto, @CurrentUser('id') userId: string) {
     return this.paymentsService.createPaymentIntent(dto, userId);
   }
@@ -65,14 +63,6 @@ export class PaymentsController {
   @ApiParam({ name: 'id', description: 'Payment ID' })
   async getPayment(@Param('id') id: string, @CurrentUser('id') userId: string) {
     return this.paymentsService.getPayment(id, userId);
-  }
-
-  @Post('webhook')
-  @Public()
-  @ApiOperation({ summary: 'Stripe webhook endpoint' })
-  async stripeWebhook(@Req() req: Request, @Headers('stripe-signature') signature: string) {
-    const payload = (req as any).rawBody || req.body;
-    return this.paymentsService.handleStripeWebhook(payload, signature);
   }
 
   @Post(':id/refund')

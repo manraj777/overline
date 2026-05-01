@@ -24,10 +24,7 @@ async function bootstrap() {
     }
   }
 
-  const app = await NestFactory.create(AppModule, {
-    // Preserve raw body for Stripe webhook signature verification
-    rawBody: true,
-  });
+  const app = await NestFactory.create(AppModule);
 
   const expressApp = app.getHttpAdapter().getInstance();
   expressApp.set('trust proxy', 1);
@@ -97,9 +94,6 @@ async function bootstrap() {
 
     next();
   });
-
-  // Raw body middleware for Stripe webhooks
-  app.use('/api/v1/payments/webhook', express.raw({ type: 'application/json' }));
 
   // Serve local uploads when filesystem storage is enabled
   app.use('/public', express.static(path.join(process.cwd(), 'public')));

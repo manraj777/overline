@@ -48,9 +48,6 @@ const mockConfigService = {
     const config: Record<string, any> = {
       OTP_EXPIRY_MINUTES: 5,
       OTP_LENGTH: 6,
-      TWILIO_ACCOUNT_SID: 'test',
-      TWILIO_AUTH_TOKEN: 'test',
-      TWILIO_PHONE_NUMBER: '+1234567890',
     };
     return config[key] ?? defaultValue;
   }),

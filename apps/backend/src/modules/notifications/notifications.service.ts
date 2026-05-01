@@ -3,7 +3,6 @@ import { ConfigService } from '@nestjs/config';
 import { PrismaService } from '@/common/prisma/prisma.service';
 import { NotificationChannel, NotificationType, NotificationStatus } from '@prisma/client';
 import * as sgMail from '@sendgrid/mail';
-import { Twilio } from 'twilio';
 
 export interface NotificationPayload {
   userId?: string;
@@ -23,7 +22,6 @@ import { EventsGateway } from './events.gateway';
 @Injectable()
 export class NotificationsService {
   private readonly logger = new Logger(NotificationsService.name);
-  private twilioClient: Twilio | null = null;
   private sendgridEnabled = false;
 
   constructor(
@@ -31,14 +29,6 @@ export class NotificationsService {
     private configService: ConfigService,
     private eventsGateway: EventsGateway,
   ) {
-    // Initialize Twilio
-    const twilioSid = this.configService.get<string>('TWILIO_ACCOUNT_SID');
-    const twilioToken = this.configService.get<string>('TWILIO_AUTH_TOKEN');
-    if (twilioSid && twilioToken) {
-      this.twilioClient = new Twilio(twilioSid, twilioToken);
-      this.logger.log('Twilio SMS enabled');
-    }
-
     // Initialize SendGrid
     const sendgridKey = this.configService.get<string>('SENDGRID_API_KEY');
     if (sendgridKey) {
@@ -172,27 +162,12 @@ export class NotificationsService {
   }
 
   /**
-   * Send SMS via Twilio
+   * Send SMS — currently a no-op log. WhatsApp via Meta API is the live OTP
+   * channel (see auth.service.sendWhatsAppOtp). Wire a real SMS provider here
+   * if/when needed.
    */
   private async sendSms(to: string, body: string): Promise<void> {
-    if (!this.twilioClient) {
-      this.logger.log(`[SMS Mock] To: ${to}, Message: ${body}`);
-      return;
-    }
-
-    const fromPhone = this.configService.get<string>('TWILIO_PHONE_NUMBER');
-
-    try {
-      await this.twilioClient.messages.create({
-        body,
-        to,
-        from: fromPhone,
-      });
-      this.logger.log(`SMS sent to ${to}`);
-    } catch (error) {
-      this.logger.error('Twilio error:', error);
-      throw error;
-    }
+    this.logger.log(`[SMS Mock] To: ${to}, Message: ${body}`);
   }
 
   /**

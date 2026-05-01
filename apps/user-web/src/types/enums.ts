@@ -64,7 +64,6 @@ export enum PaymentStatus {
 }
 
 export enum PaymentProvider {
-  STRIPE = 'STRIPE',
   RAZORPAY = 'RAZORPAY',
   CASH = 'CASH',
 }

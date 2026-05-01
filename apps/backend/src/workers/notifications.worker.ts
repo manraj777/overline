@@ -51,8 +51,8 @@ export class NotificationsWorker {
   @Process('send-sms')
   async handleSendSms(job: Job<SendSmsJob>) {
     this.logger.log(`Processing SMS job #${job.id} to ${job.data.phone}`);
-    // Twilio integration placeholder — will use real Twilio when API keys are set
-    this.logger.log(`SMS to ${job.data.phone}: ${job.data.message}`);
+    // No SMS provider configured. WhatsApp via Meta API handles OTPs in auth.service.
+    this.logger.log(`[SMS Mock] To: ${job.data.phone}: ${job.data.message}`);
   }
 
   @Process('send-push')
