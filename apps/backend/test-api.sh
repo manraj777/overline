@@ -6,7 +6,7 @@
 echo "🧪 Overline API Integration Tests"
 echo "=================================="
 
-API_URL="http://localhost:3000"
+API_URL="https://api.overline.in"
 ADMIN_TOKEN=""
 USER_TOKEN=""
 SHOP_ID=""

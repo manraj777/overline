@@ -4,7 +4,7 @@
   "private": true,
   "packageManager": "pnpm@9.15.4",
   "engines": {
-    "node": "20.x"
+    "node": "22.x"
   },
   "description": "Multi-tenant appointment & queue management system for clinics, salons, and walk-in businesses",
   "scripts": {
@@ -32,7 +32,7 @@
     "security:setup-hooks": "bash scripts/setup-git-hooks.sh"
   },
   "devDependencies": {
-    "@types/node": "^20.10.0",
+    "@types/node": "^22.10.0",
     "prettier": "^3.1.0",
     "typescript": "5.3.3"
   }

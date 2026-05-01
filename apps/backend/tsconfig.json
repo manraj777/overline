@@ -24,6 +24,7 @@
       "@common/*": ["./src/common/*"],
       "@config/*": ["./src/config/*"]
     },
+    "esModuleInterop": true,
     "types": ["node", "jest"]
   },
   "include": ["src/**/*", "test/**/*"],

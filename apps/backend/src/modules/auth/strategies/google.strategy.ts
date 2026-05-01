@@ -6,7 +6,7 @@ import { ConfigService } from '@nestjs/config';
 @Injectable()
 export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
   constructor(private configService: ConfigService) {
-    const backendUrl = configService.get<string>('backendUrl') || 'http://localhost:3001';
+    const backendUrl = configService.get<string>('backendUrl') || 'https://api.overline.in';
     const clientID = configService.get<string>('google.clientId');
     const clientSecret = configService.get<string>('google.clientSecret');
     const callbackURL =

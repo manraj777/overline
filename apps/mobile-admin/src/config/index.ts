@@ -1,7 +1,7 @@
 import { Platform } from 'react-native';
 
 const DEV_HOST = (Platform.OS === 'android' ? '10.0.2.2' : 'localhost');
-const PROD_URL = 'https://overlinebackend-production.up.railway.app';
+const PROD_URL = 'https://api.overline.in';
 
 export const Config = {
   API_URL: __DEV__ ? `http://${DEV_HOST}:3001` : PROD_URL,

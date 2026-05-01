@@ -18,14 +18,14 @@ const isDev = __DEV__;
 const DEV_HOST =
   process.env.DEV_HOST ||
   (Platform.OS === 'android' ? '10.0.2.2' : 'localhost');
-const PROD_URL = 'https://overlinebackend-production.up.railway.app';
+const PROD_URL = 'https://api.overline.in';
 
 const API_BASE = __DEV__
   ? `http://${DEV_HOST}:3001/api/v1`
   : `${PROD_URL}/api/v1`;
 const WS_BASE = __DEV__
   ? `ws://${DEV_HOST}:3001`
-  : PROD_URL.replace('https://', 'wss://');
+  : PROD_URL.replace('http://', 'ws://').replace('https://', 'wss://');
 
 // Configuration object
 export const Config = {
