@@ -13,14 +13,19 @@ export class GoogleStrategy extends PassportStrategy(Strategy, 'google') {
       configService.get<string>('google.callbackUrl') ||
       `${backendUrl}/api/v1/auth/google/callback`;
 
-    console.log('[GoogleStrategy] clientID:', clientID?.substring(0, 20) + '...');
-    console.log(
-      '[GoogleStrategy] clientSecret set:',
-      !!clientSecret,
-      'length:',
-      clientSecret?.length,
-    );
-    console.log('[GoogleStrategy] callbackURL:', callbackURL);
+    // Fatal diagnostics — catch misconfiguration at startup, not at first login
+    if (!clientID || !clientSecret) {
+      console.error('[GoogleStrategy] ❌ FATAL: Google OAuth credentials are missing!');
+      console.error('[GoogleStrategy]   GOOGLE_CLIENT_ID set:', !!clientID);
+      console.error('[GoogleStrategy]   GOOGLE_CLIENT_SECRET set:', !!clientSecret);
+      console.error('[GoogleStrategy]   Google login will NOT work until these are provided.');
+    }
+
+    console.log('[GoogleStrategy] Initializing with:');
+    console.log('[GoogleStrategy]   clientID:', clientID ? clientID.substring(0, 20) + '...' : 'MISSING');
+    console.log('[GoogleStrategy]   clientSecret:', clientSecret ? `set (${clientSecret.length} chars)` : 'MISSING');
+    console.log('[GoogleStrategy]   callbackURL:', callbackURL);
+    console.log('[GoogleStrategy]   backendUrl:', backendUrl);
 
     super({
       clientID: clientID || '',

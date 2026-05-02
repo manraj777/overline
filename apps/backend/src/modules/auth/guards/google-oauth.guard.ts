@@ -34,15 +34,33 @@ export class GoogleOAuthGuard extends AuthGuard('google') {
     };
   }
 
-  handleRequest(err: any, user: any, info: any) {
+  handleRequest(err: any, user: any, info: any, context: any) {
     if (err) {
-      this.logger.error(`Google OAuth error: ${err.message}`, err.stack);
+      this.logger.error(
+        `[OAuth Guard] Google OAuth error: ${err.message}`,
+        err.stack,
+      );
+      // Attach error to request so the controller can read it
+      try {
+        const request = context?.switchToHttp?.()?.getRequest?.();
+        if (request) {
+          request._googleOAuthError = err.message || 'unknown';
+        }
+      } catch {}
       return null;
     }
     if (!user) {
+      const reason = info?.message || (typeof info === 'string' ? info : 'unknown');
       this.logger.warn(
-        `[OAuth Guard] no user returned | info=${JSON.stringify(info)} | message=${info?.message || 'unknown'}`,
+        `[OAuth Guard] no user returned | info=${JSON.stringify(info)} | message=${reason}`,
       );
+      // Attach info to request for better error reporting
+      try {
+        const request = context?.switchToHttp?.()?.getRequest?.();
+        if (request) {
+          request._googleOAuthError = reason;
+        }
+      } catch {}
       return null;
     }
     this.logger.log(`Google OAuth: user authenticated - ${user.email}`);

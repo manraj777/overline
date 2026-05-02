@@ -211,12 +211,6 @@ export class OtpService {
                 type: 'body',
                 parameters: [{ type: 'text', text: otp }],
               },
-              {
-                type: 'button',
-                sub_type: 'url',
-                index: '0',
-                parameters: [{ type: 'text', text: otp }],
-              },
             ],
           },
         },

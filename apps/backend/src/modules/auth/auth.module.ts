@@ -48,7 +48,7 @@ const resolveJwtSecret = (rawSecret?: string): string | Buffer => {
 @Module({
   imports: [
     PrismaModule,
-    PassportModule.register({ defaultStrategy: 'jwt' }),
+    PassportModule.register({ defaultStrategy: 'jwt', session: false }),
     JwtModule.registerAsync({
       inject: [ConfigService],
       useFactory: (configService: ConfigService) => ({

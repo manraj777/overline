@@ -136,6 +136,30 @@ export class AuthController {
     return this.authService.googleLogin(dto);
   }
 
+  @Get('google/debug')
+  @ApiOperation({ summary: 'Debug: show Google OAuth config (no secrets)' })
+  googleDebug() {
+    const clientId = this.configService.get<string>('google.clientId');
+    const callbackUrl = this.configService.get<string>('google.callbackUrl');
+    const backendUrl = this.configService.get<string>('backendUrl');
+    return {
+      ok: true,
+      google: {
+        clientIdPrefix: clientId ? clientId.substring(0, 20) + '...' : 'MISSING',
+        clientSecretSet: !!this.configService.get<string>('google.clientSecret'),
+        callbackUrl: callbackUrl || `${backendUrl}/api/v1/auth/google/callback`,
+      },
+      backend: {
+        backendUrl,
+        nodeEnv: process.env.NODE_ENV,
+      },
+      frontends: {
+        user: this.configService.get<string>('frontendUrls.user'),
+        admin: this.configService.get<string>('frontendUrls.admin'),
+      },
+    };
+  }
+
   @Get('google/redirect')
   @UseGuards(GoogleOAuthGuard)
   @ApiOperation({ summary: 'Redirect to Google for OAuth login' })
@@ -171,10 +195,16 @@ export class AuthController {
     const loginPath = isAdmin ? '/login' : '/auth/login';
 
     if (error || !req.user) {
+      const guardError = req._googleOAuthError || '';
+      const reason = error || guardError || 'req.user missing';
       this.logger.warn(
-        `[OAuth Callback] rejected before token exchange | state=${normalizedState} | reason=${error || 'req.user missing'}`,
+        `[OAuth Callback] rejected before token exchange | state=${normalizedState} | reason=${reason}`,
       );
-      return res.redirect(`${frontendUrl}${loginPath}?error=google_auth_failed`);
+      const errorParams = new URLSearchParams({
+        error: 'google_auth_failed',
+        details: reason,
+      });
+      return res.redirect(`${frontendUrl}${loginPath}?${errorParams.toString()}`);
     }
 
     let tokens: TokenResponse;
