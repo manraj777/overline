@@ -1,9 +1,9 @@
 import React from 'react';
-import Head from 'next/head';
 import { motion } from 'framer-motion';
 import { Calendar, Clock, ArrowRight, BookOpen, Tag } from 'lucide-react';
 import { Button } from '@/components/ui';
 import Link from 'next/link';
+import { SeoHead } from '@/components/seo/SeoHead';
 
 const BlogPage = () => {
   const posts = [
@@ -38,10 +38,31 @@ const BlogPage = () => {
 
   return (
     <div className="min-h-screen bg-surface">
-      <Head>
-        <title>Blog | Overline Lifestyle & Platform</title>
-        <meta name="description" content="Insights, trends, and platform updates from the Overline team." />
-      </Head>
+      <SeoHead
+        title="The Overline Journal — Grooming, Wellness & Booking Trends"
+        description="Stories, guides, and platform updates from the Overline team. Grooming tips, wellness trends, and how we build a better booking experience for India."
+        canonical="/blog"
+        ogType="website"
+        jsonLd={{
+          '@context': 'https://schema.org',
+          '@type': 'Blog',
+          name: 'The Overline Journal',
+          url: 'https://overline.in/blog',
+          publisher: {
+            '@type': 'Organization',
+            name: 'Overline',
+            logo: { '@type': 'ImageObject', url: 'https://overline.in/overline-logo.png' },
+          },
+          blogPost: posts.map((p) => ({
+            '@type': 'BlogPosting',
+            headline: p.title,
+            description: p.excerpt,
+            datePublished: p.date,
+            image: p.image,
+            author: { '@type': 'Organization', name: 'Overline' },
+          })),
+        }}
+      />
 
       {/* Hero Header */}
       <section className="pt-32 pb-20 px-6 lg:px-8 relative overflow-hidden">

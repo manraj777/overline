@@ -71,7 +71,7 @@ export default function ProfilePage() {
     if (user) {
       reset({
         name: user.name,
-        email: user.email,
+        email: user.email || '',
         dateOfBirth: user.dateOfBirth ? format(new Date(user.dateOfBirth), 'yyyy-MM-dd') : '',
         gender: user.gender || '',
       });

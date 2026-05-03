@@ -53,7 +53,7 @@ export function useNearbyShops(lat: number, lng: number, radius = 10) {
   });
 }
 
-export function useShop(slug: string) {
+export function useShop(slug: string, initialData?: ShopWithDetails) {
   return useQuery<ShopWithDetails>({
     queryKey: ['shops', slug],
     queryFn: async () => {
@@ -61,7 +61,9 @@ export function useShop(slug: string) {
       return data;
     },
     enabled: !!slug,
-    staleTime: 1000 * 60 * 2, refetchInterval: 1000 * 30,
+    staleTime: 1000 * 60 * 2,
+    refetchInterval: 1000 * 30,
+    initialData,
   });
 }
 

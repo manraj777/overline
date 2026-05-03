@@ -1,5 +1,4 @@
 import React from 'react';
-import Head from 'next/head';
 import { useRouter } from 'next/router';
 import { Search, MapPin, SlidersHorizontal, X, Navigation, Sparkles } from 'lucide-react';
 import { Input, Button, Card, Loading, LocationPicker } from '@/components/ui';
@@ -7,6 +6,15 @@ import { ShopCard } from '@/components/shop';
 import { ShopMap } from '@/components/map';
 import { useShops } from '@/hooks';
 import { cn } from '@/lib/utils';
+import { SeoHead, jsonLd } from '@/components/seo/SeoHead';
+
+const TYPE_LABELS: Record<string, string> = {
+  SALON: 'Salons',
+  BARBER: 'Barbershops',
+  SPA: 'Spas',
+  CLINIC: 'Clinics',
+  GYM: 'Gyms',
+};
 
 export default function ExplorePage() {
   const router = useRouter();
@@ -126,10 +134,15 @@ export default function ExplorePage() {
 
   return (
     <>
-      <Head>
-        <title>Explore — Overline</title>
-        <meta name="description" content="Discover premium shops, salons, clinics, and wellness centers near you." />
-      </Head>
+      <SeoHead
+        title={`Explore ${selectedType ? TYPE_LABELS[selectedType] || 'Shops' : 'Salons, Spas, Clinics & Gyms'}${selectedCity ? ` in ${selectedCity}` : ''}`}
+        description={`Discover verified ${selectedType ? (TYPE_LABELS[selectedType] || 'shops').toLowerCase() : 'salons, spas, clinics and gyms'}${selectedCity ? ` in ${selectedCity}` : ' near you'}. Real-time availability, transparent pricing, live queue status — book in seconds on Overline.`}
+        canonical="/explore"
+        jsonLd={jsonLd.breadcrumbs([
+          { name: 'Home', url: '/' },
+          { name: 'Explore', url: '/explore' },
+        ])}
+      />
 
       <div className="flex flex-col md:flex-row min-h-screen overflow-hidden">
         {/* ── Sidebar Filters ── */}

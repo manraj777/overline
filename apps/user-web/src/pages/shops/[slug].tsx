@@ -1,5 +1,5 @@
 import React from 'react';
-import Head from 'next/head';
+import type { GetServerSideProps } from 'next';
 import { useRouter } from 'next/router';
 import {
   ArrowLeft, MapPin, Clock, Star, Phone, Share2,
@@ -13,8 +13,15 @@ import { ReviewList } from '@/components/reviews';
 import { useShop, useShopQueueStats, useShopRatingStats } from '@/hooks';
 import { useBookingStore } from '@/stores/booking';
 import { format } from 'date-fns';
+import { SeoHead, jsonLd } from '@/components/seo/SeoHead';
+import type { ShopWithDetails } from '@/types';
 
 type BookingStep = 'services' | 'staff' | 'datetime' | 'confirm';
+
+interface ShopPageProps {
+  initialShop: ShopWithDetails | null;
+  slug: string;
+}
 
 const getStepLabels = (type?: string): Record<BookingStep, string> => ({
   services: type === 'CLINIC' ? 'Consultation Type' : type === 'SALON' ? 'Grooming Services' : 'Select Services',
@@ -23,15 +30,15 @@ const getStepLabels = (type?: string): Record<BookingStep, string> => ({
   confirm: 'Confirm Details',
 });
 
-export default function ShopDetailPage() {
+export default function ShopDetailPage({ initialShop, slug: ssrSlug }: ShopPageProps) {
   const router = useRouter();
-  const { slug } = router.query;
+  const slug = (router.query.slug as string) || ssrSlug;
 
   const [step] = React.useState<BookingStep>('services');
   const [galleryOpen, setGalleryOpen] = React.useState(false);
   const [galleryIndex, setGalleryIndex] = React.useState(0);
 
-  const { data: shop, isLoading: loadingShop, refetch: refetchShop } = useShop(slug as string);
+  const { data: shop, isLoading: loadingShop, refetch: refetchShop } = useShop(slug, initialShop || undefined);
   const { data: queueStats, refetch: refetchQueue } = useShopQueueStats(shop?.id || '');
   const { data: ratingStats, refetch: refetchRating } = useShopRatingStats(shop?.id || '');
 
@@ -238,12 +245,71 @@ export default function ShopDetailPage() {
   const stepLabels = getStepLabels(shop.tenant?.type);
   const stepIndex = steps.indexOf(step);
 
+  const shopForSeo = shop || initialShop;
+  const aggregateServices = shopForSeo?.services || [];
+  const shopPrices = aggregateServices.map((s) => s.price).filter((p): p is number => typeof p === 'number' && !isNaN(p));
+  const priceRange = shopPrices.length
+    ? `\u20B9${Math.min(...shopPrices)} - \u20B9${Math.max(...shopPrices)}`
+    : undefined;
+  const googleRating =
+    typeof shopForSeo?.googleRating === 'number'
+      ? shopForSeo.googleRating
+      : shopForSeo?.googleRating
+      ? parseFloat(String(shopForSeo.googleRating))
+      : undefined;
+  const seoTitle = shopForSeo
+    ? `${shopForSeo.name} \u2014 Book Online${shopForSeo.city ? ` in ${shopForSeo.city}` : ''}`
+    : 'Shop';
+  const seoDescription = shopForSeo
+    ? (shopForSeo.description?.slice(0, 158) ||
+        `Book appointments online at ${shopForSeo.name}${shopForSeo.city ? `, ${shopForSeo.city}` : ''}. Skip the queue with real-time availability on Overline.`)
+    : 'Book an appointment on Overline.';
+  const seoCanonical = shopForSeo ? `/shops/${shopForSeo.slug || slug}` : `/shops/${slug}`;
+  const seoImage = shopForSeo?.coverUrl || shopForSeo?.photoUrls?.[0] || undefined;
+
+  const seoJsonLd = shopForSeo
+    ? [
+        jsonLd.localBusiness({
+          id: shopForSeo.id,
+          slug: shopForSeo.slug,
+          name: shopForSeo.name,
+          description: shopForSeo.description,
+          address: shopForSeo.address,
+          city: shopForSeo.city,
+          state: shopForSeo.state,
+          postalCode: shopForSeo.postalCode,
+          country: shopForSeo.country,
+          latitude: shopForSeo.latitude,
+          longitude: shopForSeo.longitude,
+          phone: shopForSeo.phone,
+          email: shopForSeo.email,
+          coverImage: shopForSeo.coverUrl,
+          photos: shopForSeo.photoUrls,
+          priceRange,
+          shopType: shopForSeo.tenant?.type,
+          rating: googleRating,
+          reviewCount: shopForSeo.googleReviewsCount,
+          workingHours: shopForSeo.workingHours as any,
+          services: aggregateServices.map((s) => ({ id: s.id, name: s.name, price: s.price })),
+        }),
+        jsonLd.breadcrumbs([
+          { name: 'Home', url: '/' },
+          { name: 'Explore', url: '/explore' },
+          { name: shopForSeo.name, url: `/shops/${shopForSeo.slug || slug}` },
+        ]),
+      ]
+    : undefined;
+
   return (
     <>
-      <Head>
-        <title>{shop.name} — Overline</title>
-        <meta name="description" content={shop.description || `Book an appointment at ${shop.name}`} />
-      </Head>
+      <SeoHead
+        title={seoTitle}
+        description={seoDescription}
+        canonical={seoCanonical}
+        ogImage={seoImage}
+        ogType="business.business"
+        jsonLd={seoJsonLd}
+      />
 
       {/* Photo Gallery Lightbox */}
       {galleryOpen && allPhotos.length > 0 && (
@@ -721,3 +787,40 @@ export default function ShopDetailPage() {
     </>
   );
 }
+
+export const getServerSideProps: GetServerSideProps<ShopPageProps> = async ({ params, res }) => {
+  const slug = (params?.slug as string) || '';
+  if (!slug) return { notFound: true };
+
+  const backendUrl = (
+    process.env.NEXT_PUBLIC_BACKEND_URL ||
+    process.env.BACKEND_URL ||
+    process.env.NEXT_PUBLIC_API_URL?.replace(/\/api\/v1\/?$/, '').replace(/\/api\/?$/, '') ||
+    'https://api.overline.in'
+  ).replace(/\/$/, '');
+
+  try {
+    const ac = new AbortController();
+    const timeout = setTimeout(() => ac.abort(), 6000);
+    const response = await fetch(`${backendUrl}/api/v1/shops/${encodeURIComponent(slug)}`, {
+      signal: ac.signal,
+      headers: { accept: 'application/json' },
+    });
+    clearTimeout(timeout);
+
+    if (response.status === 404) return { notFound: true };
+    if (!response.ok) {
+      // Fall back to client-side fetch; don't 500 the page.
+      return { props: { initialShop: null, slug } };
+    }
+
+    const initialShop = (await response.json()) as ShopWithDetails;
+
+    // Cache at the CDN for 60s, allow stale-while-revalidate for 5m.
+    res.setHeader('Cache-Control', 'public, s-maxage=60, stale-while-revalidate=300');
+
+    return { props: { initialShop, slug } };
+  } catch {
+    return { props: { initialShop: null, slug } };
+  }
+};

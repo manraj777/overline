@@ -1,5 +1,4 @@
 import React from 'react';
-import Head from 'next/head';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useForm } from 'react-hook-form';
@@ -9,6 +8,7 @@ import { useLogin, useSendOtp, useVerifyOtp } from '@/hooks';
 import { useAuthStore } from '@/stores/auth';
 
 import { buildAuthUrl } from '@/lib/backend-url';
+import { SeoHead } from '@/components/seo/SeoHead';
 
 interface LoginForm {
   email: string;
@@ -145,10 +145,12 @@ export default function LoginPage() {
 
   return (
     <>
-      <Head>
-        <title>Sign In — Overline</title>
-        <meta name="description" content="Sign in to Overline to manage your bookings and discover premium services near you." />
-      </Head>
+      <SeoHead
+        title="Sign In"
+        description="Sign in to Overline to manage your bookings and discover premium services near you."
+        canonical="/auth/login"
+        noindex
+      />
 
       <div className="min-h-screen flex overflow-hidden bg-surface">
         {/* ── Left: Visual Hero ── */}

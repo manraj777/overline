@@ -1,5 +1,4 @@
 import React from 'react';
-import Head from 'next/head';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import {
@@ -15,6 +14,7 @@ import {
   RefreshCw,
 } from 'lucide-react';
 import { Button } from '@/components/ui';
+import { SeoHead } from '@/components/seo/SeoHead';
 
 const LAST_UPDATED = 'April 30, 2026';
 const EFFECTIVE_DATE = 'May 1, 2026';
@@ -363,13 +363,11 @@ const sections: Array<{
 const TermsOfService = () => {
   return (
     <div className="min-h-screen bg-surface">
-      <Head>
-        <title>Terms of Service | Overline</title>
-        <meta
-          name="description"
-          content="The rules that govern how you and Overline use the booking platform, payments, wallet, reviews, and partner tools."
-        />
-      </Head>
+      <SeoHead
+        title="Terms of Service"
+        description="The rules that govern how you and Overline use the booking platform, payments, wallet, reviews, and partner tools."
+        canonical="/terms"
+      />
 
       {/* Hero */}
       <section className="pt-24 pb-16 px-6 lg:px-8 bg-inverse-surface text-inverse-on-surface rounded-b-4xl md:rounded-b-5xl relative overflow-hidden">

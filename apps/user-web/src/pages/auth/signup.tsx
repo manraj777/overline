@@ -1,5 +1,4 @@
 import React from 'react';
-import Head from 'next/head';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useForm } from 'react-hook-form';
@@ -8,6 +7,7 @@ import { Button, Alert } from '@/components/ui';
 import { useSignup } from '@/hooks';
 import { useAuthStore } from '@/stores/auth';
 import { buildAuthUrl } from '@/lib/backend-url';
+import { SeoHead } from '@/components/seo/SeoHead';
 
 interface SignupForm {
   name: string;
@@ -63,10 +63,12 @@ export default function SignupPage() {
 
   return (
     <>
-      <Head>
-        <title>Create Account — Overline</title>
-        <meta name="description" content="Join Overline to discover and book premium services near you." />
-      </Head>
+      <SeoHead
+        title="Create Account"
+        description="Join Overline to discover and book premium services near you."
+        canonical="/auth/signup"
+        noindex
+      />
 
       <div className="min-h-screen flex overflow-hidden bg-surface">
         {/* ── Left: Visual Hero ── */}

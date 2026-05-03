@@ -1,5 +1,4 @@
 import React from 'react';
-import Head from 'next/head';
 import Link from 'next/link';
 import { motion } from 'framer-motion';
 import {
@@ -16,6 +15,7 @@ import {
   Server,
 } from 'lucide-react';
 import { Button } from '@/components/ui';
+import { SeoHead } from '@/components/seo/SeoHead';
 
 const LAST_UPDATED = 'April 30, 2026';
 const EFFECTIVE_DATE = 'May 1, 2026';
@@ -338,13 +338,11 @@ const sections: Array<{
 const PrivacyPolicy = () => {
   return (
     <div className="min-h-screen bg-surface">
-      <Head>
-        <title>Privacy Policy | Overline</title>
-        <meta
-          name="description"
-          content="How Overline collects, uses, and protects your data when you book salons, spas, clinics, and gyms."
-        />
-      </Head>
+      <SeoHead
+        title="Privacy Policy"
+        description="How Overline collects, uses, and protects your data when you book salons, spas, clinics, and gyms. DPDP 2023 compliant."
+        canonical="/privacy"
+      />
 
       {/* Hero */}
       <section className="pt-24 pb-16 px-6 lg:px-8 bg-inverse-surface text-inverse-on-surface rounded-b-4xl md:rounded-b-5xl relative overflow-hidden">

@@ -1,5 +1,4 @@
 import React from 'react';
-import Head from 'next/head';
 import Link from 'next/link';
 import { motion, useScroll, useSpring } from 'framer-motion';
 import {
@@ -11,6 +10,35 @@ import { ShopCard, ShopMap } from '@/components/shop';
 import { useShops, useLocation, useAiRecommendations } from '@/hooks';
 import { ElectricCard } from '@/components/ElectricCard';
 import { Globe } from '@/components/Globe';
+import { SeoHead, jsonLd } from '@/components/seo/SeoHead';
+
+const HOME_FAQ = [
+  {
+    question: 'What is Overline?',
+    answer:
+      'Overline is a premium appointment booking platform that lets you reserve time slots at verified salons, barbershops, spas, clinics, and fitness studios \u2014 with real-time availability, live queue tracking, and pay-at-shop, wallet, or online (Razorpay) payment options.',
+  },
+  {
+    question: 'Does Overline charge anything to book an appointment?',
+    answer:
+      'Browsing and booking on Overline is free for customers. A small platform convenience fee may apply when you pay online; it is always shown at checkout before you confirm.',
+  },
+  {
+    question: 'Can I cancel or reschedule my booking?',
+    answer:
+      'Yes. You can cancel or reschedule any upcoming booking from the My Bookings page. Cancellation windows depend on each shop\u2019s policy and are clearly shown at checkout.',
+  },
+  {
+    question: 'How do I skip the queue?',
+    answer:
+      'When you book a time slot on Overline, the shop allocates your spot in advance so you walk in and get served right on time \u2014 no waiting. For walk-in queues, our live queue tracker shows the estimated wait before you leave home.',
+  },
+  {
+    question: 'Which cities does Overline serve?',
+    answer:
+      'Overline is live in select Indian cities and expanding quickly. Type your city in the Explore page to see verified shops near you.',
+  },
+];
 
 export default function HomePage() {
   const [searchQuery, setSearchQuery] = React.useState('');
@@ -53,10 +81,15 @@ export default function HomePage() {
 
   return (
     <>
-      <Head>
-        <title>Overline — Premium Booking</title>
-        <meta name="description" content="Find your next premium experience. Don't waste your time in line." />
-      </Head>
+      <SeoHead
+        title="Book Salons, Spas & Clinics Online — Skip the Queue"
+        noSuffix={false}
+        description="Overline is India’s premium booking platform for salons, barbershops, spas, clinics, and gyms. Live availability, real-time queue, Razorpay or pay-at-shop — reserve your slot in seconds."
+        keywords="book salon online, barber appointment, spa booking, skip the queue, clinic appointment, salon near me, Overline, online booking India"
+        canonical="/"
+        ogType="website"
+        jsonLd={jsonLd.faqPage(HOME_FAQ)}
+      />
 
       <motion.div
         className="fixed top-0 left-0 right-0 h-1 bg-primary origin-left z-[100]"
