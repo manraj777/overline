@@ -10,6 +10,7 @@ import {
   useQueueMarkDone,
   useQueueRemove,
   useQueueSocket,
+  useUpdateBookingStatus,
 } from '@/hooks';
 import { useAuthStore } from '@/stores/auth';
 import { ConfirmModal, useToast } from '@/components/ui';
@@ -20,7 +21,9 @@ export type AdminQueueStatus =
   | 'in_progress'
   | 'done'
   | 'cancelled'
-  | 'no_show';
+  | 'no_show'
+  | 'pending'
+  | 'pending_approval';
 
 export interface AdminQueueItem {
   id: string;
@@ -41,6 +44,8 @@ const STATUS_LABELS: Record<AdminQueueStatus, string> = {
   done: 'Completed',
   cancelled: 'Cancelled',
   no_show: 'No Show',
+  pending: 'Pending',
+  pending_approval: 'Pending Approval',
 };
 
 const STATUS_CHIP_STYLES: Record<AdminQueueStatus, string> = {
@@ -50,6 +55,8 @@ const STATUS_CHIP_STYLES: Record<AdminQueueStatus, string> = {
   done: 'bg-emerald-400/20 text-emerald-200',
   cancelled: 'bg-rose-400/20 text-rose-200',
   no_show: 'bg-fuchsia-400/20 text-fuchsia-200',
+  pending: 'bg-orange-400/20 text-orange-200',
+  pending_approval: 'bg-orange-500/20 text-orange-200',
 };
 
 function mapStatus(status: string): AdminQueueStatus {
@@ -58,6 +65,8 @@ function mapStatus(status: string): AdminQueueStatus {
   if (status === 'CONFIRMED') return 'approaching';
   if (status === 'NO_SHOW') return 'no_show';
   if (status === 'CANCELLED') return 'cancelled';
+  if (status === 'PENDING') return 'pending';
+  if (status === 'PENDING_APPROVAL') return 'pending_approval';
   return 'waiting';
 }
 
@@ -86,6 +95,7 @@ export default function QueueBoard() {
   const startServiceMutation = useQueueStartService();
   const markDoneMutation = useQueueMarkDone();
   const removeMutation = useQueueRemove();
+  const updateStatusMutation = useUpdateBookingStatus();
 
   useQueueSocket({
     shopId: shopId || undefined,
@@ -113,7 +123,7 @@ export default function QueueBoard() {
     }));
   }, [queueData]);
 
-  const waitingCount = useMemo(() => queue.filter((entry) => entry.status === 'waiting').length, [queue]);
+  const waitingCount = useMemo(() => queue.filter((entry) => ['waiting', 'approaching', 'pending', 'pending_approval'].includes(entry.status)).length, [queue]);
 
   const callNext = async () => {
     try {
@@ -171,6 +181,26 @@ export default function QueueBoard() {
     }
   };
 
+  const approveBooking = async (bookingId: string) => {
+    try {
+      await updateStatusMutation.mutateAsync({ bookingId, status: 'CONFIRMED' });
+      addToast({ type: 'success', title: 'Booking Approved', message: 'Customer has been moved to the confirmed queue.' });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to approve booking.';
+      addToast({ type: 'error', title: 'Approval failed', message });
+    }
+  };
+
+  const rejectBooking = async (bookingId: string) => {
+    try {
+      await updateStatusMutation.mutateAsync({ bookingId, status: 'CANCELLED' });
+      addToast({ type: 'success', title: 'Booking Rejected', message: 'Customer booking was cancelled.' });
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to reject booking.';
+      addToast({ type: 'error', title: 'Rejection failed', message });
+    }
+  };
+
   const openRemoveModal = (id: string) => {
     setRemoveModalBookingId(id);
   };
@@ -195,7 +225,8 @@ export default function QueueBoard() {
     checkInMutation.isPending ||
     startServiceMutation.isPending ||
     markDoneMutation.isPending ||
-    removeMutation.isPending;
+    removeMutation.isPending ||
+    updateStatusMutation.isPending;
 
   return (
     <section className="rounded-3xl border border-white/10 bg-[#101725] p-5">
@@ -261,38 +292,61 @@ export default function QueueBoard() {
               </span>
             </div>
             <div className="mt-3 flex flex-wrap gap-2">
-              <button
-                type="button"
-                className="rounded-full border border-white/20 px-3 py-1 text-xs text-white"
-                onClick={() => checkIn(entry.id)}
-                disabled={isMutating}
-              >
-                Check In
-              </button>
-              <button
-                type="button"
-                className="rounded-full border border-white/20 px-3 py-1 text-xs text-white"
-                onClick={() => openStartService(entry.id)}
-                disabled={isMutating}
-              >
-                Verify Token & Start
-              </button>
-              <button
-                type="button"
-                className="rounded-full border border-white/20 px-3 py-1 text-xs text-white"
-                onClick={() => markDone(entry.id)}
-                disabled={isMutating}
-              >
-                Mark Service Done
-              </button>
-              <button
-                type="button"
-                className="rounded-full border border-red-400/40 px-3 py-1 text-xs text-red-200"
-                onClick={() => openRemoveModal(entry.id)}
-                disabled={isMutating}
-              >
-                Remove From Queue
-              </button>
+              {(entry.status === 'pending' || entry.status === 'pending_approval') ? (
+                <>
+                  <button
+                    type="button"
+                    className="rounded-full border border-orange-400/40 px-3 py-1 text-xs text-orange-200"
+                    onClick={() => approveBooking(entry.id)}
+                    disabled={isMutating}
+                  >
+                    Approve
+                  </button>
+                  <button
+                    type="button"
+                    className="rounded-full border border-red-400/40 px-3 py-1 text-xs text-red-200"
+                    onClick={() => rejectBooking(entry.id)}
+                    disabled={isMutating}
+                  >
+                    Reject
+                  </button>
+                </>
+              ) : (
+                <>
+                  <button
+                    type="button"
+                    className="rounded-full border border-white/20 px-3 py-1 text-xs text-white"
+                    onClick={() => checkIn(entry.id)}
+                    disabled={isMutating}
+                  >
+                    Check In
+                  </button>
+                  <button
+                    type="button"
+                    className="rounded-full border border-white/20 px-3 py-1 text-xs text-white"
+                    onClick={() => openStartService(entry.id)}
+                    disabled={isMutating}
+                  >
+                    Verify Token & Start
+                  </button>
+                  <button
+                    type="button"
+                    className="rounded-full border border-white/20 px-3 py-1 text-xs text-white"
+                    onClick={() => markDone(entry.id)}
+                    disabled={isMutating}
+                  >
+                    Mark Service Done
+                  </button>
+                  <button
+                    type="button"
+                    className="rounded-full border border-red-400/40 px-3 py-1 text-xs text-red-200"
+                    onClick={() => openRemoveModal(entry.id)}
+                    disabled={isMutating}
+                  >
+                    Remove From Queue
+                  </button>
+                </>
+              )}
             </div>
           </article>
           ))}

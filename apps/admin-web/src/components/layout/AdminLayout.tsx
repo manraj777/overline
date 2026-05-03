@@ -49,6 +49,21 @@ interface NavigationSection {
   items: NavigationItem[];
 }
 
+const playBeep = () => {
+  try {
+    const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.connect(gain);
+    gain.connect(ctx.destination);
+    osc.type = 'sine';
+    osc.frequency.setValueAtTime(880, ctx.currentTime);
+    gain.gain.setValueAtTime(0.1, ctx.currentTime);
+    osc.start();
+    osc.stop(ctx.currentTime + 0.1);
+  } catch (e) {}
+};
+
 const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
   const router = useRouter();
   const { user, isAuthenticated, shopId, pendingOtpVerification } = useAuthStore();
@@ -88,9 +103,13 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
             setPendingBookings((prev) => {
               const existingIds = new Set(prev.map((p) => p.id));
               const toAdd = newBookings.filter((b: any) => !existingIds.has(b.id));
+              if (toAdd.length > 0) {
+                playBeep();
+              }
               return [...prev, ...toAdd];
             });
           } else {
+            playBeep();
             addToast({ type: 'info', title: 'New Booking', message: 'A new appointment has been added to the queue.', duration: 5000 });
           }
           queryClient.invalidateQueries({ queryKey: ['notifications'] });
@@ -104,6 +123,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
         if (update?.status === 'PENDING' && update?.id) {
           setPendingBookings((prev) => {
             if (prev.some((p) => p.id === update.id)) return prev;
+            playBeep();
             return [...prev, update];
           });
         }
@@ -259,7 +279,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
         className={cn(
           'fixed inset-y-0 left-0 z-50 transform transition-all duration-300 lg:translate-x-0',
           sidebarCollapsed ? 'w-[84px]' : 'w-[260px]',
-          'bg-inverse-surface',
+          'bg-sidebar',
           sidebarOpen ? 'translate-x-0' : '-translate-x-full'
         )}
       >

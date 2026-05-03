@@ -566,6 +566,16 @@ export default function BookingDetailPage() {
                     Cancel Booking
                   </Button>
                 )}
+                {(booking.status === BookingStatus.PENDING || booking.status === BookingStatus.PENDING_APPROVAL) && booking.shop?.phone && (
+                  <Button
+                    variant="outline"
+                    className="w-full text-indigo-600 border-indigo-200 bg-indigo-50 hover:bg-indigo-100"
+                    onClick={() => window.location.href = `tel:${booking.shop?.phone}`}
+                  >
+                    <Phone className="w-4 h-4 mr-2" />
+                    Call Shop to Adjust Time
+                  </Button>
+                )}
                 <Button
                   variant="ghost"
                   className="w-full"
