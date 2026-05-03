@@ -212,13 +212,13 @@ export default function LoginPage() {
               )}
 
               {/* Auth Mode Toggle */}
-              <div className="mb-6 grid grid-cols-2 rounded-xl bg-surface-container-high dark:bg-gray-800 p-1">
+              <div className="mb-6 grid grid-cols-2 rounded-xl bg-surface-container-high p-1">
                 <button
                   type="button"
                   onClick={() => setAuthMode('email')}
                   className={`rounded-lg px-3 py-2.5 text-sm font-bold transition-all ${
                     authMode === 'email'
-                      ? 'bg-surface dark:bg-surface-container-highest text-on-surface shadow-sm border border-outline-variant/30'
+                      ? 'bg-surface-container-lowest text-on-surface shadow-sm border border-outline-variant/40'
                       : 'text-on-surface-variant hover:text-on-surface'
                   }`}
                 >
@@ -229,7 +229,7 @@ export default function LoginPage() {
                   onClick={() => setAuthMode('phone')}
                   className={`rounded-lg px-3 py-2.5 text-sm font-bold transition-all ${
                     authMode === 'phone'
-                      ? 'bg-surface dark:bg-surface-container-highest text-on-surface shadow-sm border border-outline-variant/30'
+                      ? 'bg-surface-container-lowest text-on-surface shadow-sm border border-outline-variant/40'
                       : 'text-on-surface-variant hover:text-on-surface'
                   }`}
                 >

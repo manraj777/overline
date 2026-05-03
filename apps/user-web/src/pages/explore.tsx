@@ -147,7 +147,7 @@ export default function ExplorePage() {
       <div className="flex flex-col md:flex-row min-h-screen overflow-hidden">
         {/* ── Sidebar Filters ── */}
         <aside className={cn(
-          'w-full md:w-80 lg:w-[320px] shrink-0 bg-surface dark:bg-gray-950 border-r border-outline-variant/10 overflow-y-auto no-scrollbar transition-all',
+          'w-full md:w-80 lg:w-[320px] shrink-0 bg-surface-container-lowest border-r border-outline-variant/40 overflow-y-auto no-scrollbar transition-all',
           showFilters ? 'block' : 'hidden md:block'
         )}>
           <div className="p-6 space-y-8">
@@ -317,7 +317,7 @@ export default function ExplorePage() {
                     className={cn(
                       'px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2',
                       viewMode === 'list'
-                        ? 'bg-surface-container-lowest dark:bg-surface-container-highest shadow-sm text-primary'
+                        ? 'bg-surface-container-lowest shadow-sm text-primary'
                         : 'text-on-surface-variant hover:bg-surface-container-high'
                     )}
                   >
@@ -328,7 +328,7 @@ export default function ExplorePage() {
                     className={cn(
                       'px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2',
                       viewMode === 'map'
-                        ? 'bg-surface-container-lowest dark:bg-surface-container-highest shadow-sm text-primary'
+                        ? 'bg-surface-container-lowest shadow-sm text-primary'
                         : 'text-on-surface-variant hover:bg-surface-container-high'
                     )}
                   >
@@ -461,7 +461,7 @@ export default function ExplorePage() {
               <div className="h-full relative">
                 <ShopMap shops={shops?.data || []} userLocation={location} />
                 {/* Floating Controls */}
-                <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex gap-2 bg-surface/90 dark:bg-surface-container/90 backdrop-blur-xl p-2 rounded-2xl shadow-glass-strong border border-outline-variant/10">
+                <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex gap-2 bg-surface-container-lowest/90 backdrop-blur-xl p-2 rounded-2xl shadow-glass-strong border border-outline-variant/40">
                   <button className="p-2 bg-surface-container-low rounded-xl text-on-surface hover:bg-surface-container-high border border-outline-variant/10 transition-colors">
                     <span className="text-lg">+</span>
                   </button>
