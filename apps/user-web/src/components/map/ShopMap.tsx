@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useCallback } from 'react';
 import { MapContainer, TileLayer, Marker, Popup, useMap } from 'react-leaflet';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
@@ -30,6 +30,35 @@ const MapUpdater = ({ center }: { center: [number, number] }) => {
     return null;
 };
 
+// Component to fix Leaflet container size issues (common with dynamic/lazy-loaded maps)
+const MapResizer = () => {
+    const map = useMap();
+    useEffect(() => {
+        // Invalidate size after mount and after a short delay (for CSS transitions)
+        const timer1 = setTimeout(() => map.invalidateSize(), 100);
+        const timer2 = setTimeout(() => map.invalidateSize(), 500);
+
+        // Also listen for window resize
+        const handleResize = () => map.invalidateSize();
+        window.addEventListener('resize', handleResize);
+
+        // Observer for container visibility changes
+        const observer = new ResizeObserver(() => {
+            map.invalidateSize();
+        });
+        const container = map.getContainer();
+        if (container) observer.observe(container);
+
+        return () => {
+            clearTimeout(timer1);
+            clearTimeout(timer2);
+            window.removeEventListener('resize', handleResize);
+            observer.disconnect();
+        };
+    }, [map]);
+    return null;
+};
+
 export const ShopMap: React.FC<ShopMapProps> = ({ shops, userLocation, onShopSelect }) => {
     const router = useRouter();
     const [mounted, setMounted] = useState(false);
@@ -45,23 +74,31 @@ export const ShopMap: React.FC<ShopMapProps> = ({ shops, userLocation, onShopSel
         });
     }, []);
 
-    if (!mounted) return <div className="h-full w-full bg-gray-100 animate-pulse rounded-lg flex items-center justify-center">Loading Map...</div>;
+    if (!mounted) return (
+        <div className="h-full w-full min-h-[300px] bg-surface-container animate-pulse rounded-lg flex items-center justify-center">
+            <span className="text-on-surface-variant text-sm">Loading Map...</span>
+        </div>
+    );
 
     const defaultCenter: [number, number] = userLocation
         ? [userLocation.lat, userLocation.lng]
         : [28.6139, 77.2090]; // Default to Delhi
 
     return (
-        <div className="h-full w-full rounded-lg overflow-hidden border">
+        <div className="h-full w-full min-h-[300px] rounded-lg overflow-hidden border border-outline-variant/10">
             <MapContainer
                 center={defaultCenter}
                 zoom={12}
-                style={{ height: '100%', width: '100%' }}
+                style={{ height: '100%', width: '100%', minHeight: '300px' }}
+                scrollWheelZoom={true}
             >
                 <TileLayer
                     attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
                     url="https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png"
                 />
+
+                {/* Auto-fix map size on container changes */}
+                <MapResizer />
 
                 {userLocation && (
                     <Marker position={[userLocation.lat, userLocation.lng]} icon={createCustomIcon(true)}>

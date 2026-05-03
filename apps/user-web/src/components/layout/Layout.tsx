@@ -79,7 +79,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
           {/* Left: Logo & Nav */}
           <div className="flex items-center gap-8">
             <Link href="/" className="flex items-center gap-2 group">
-            <span className="text-xl font-bold tracking-widest text-white">OVERLINE</span>            </Link>
+            <span className="text-xl font-bold tracking-widest text-on-surface">OVERLINE</span>            </Link>
                       
             {/* Desktop Navigation */}
             <nav className="hidden md:flex items-center gap-1">
@@ -147,7 +147,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                     >
                       <div className="p-4 border-b border-outline-variant/10">
                         <p className="font-bold text-sm text-on-surface">{user.name}</p>
-                        <p className="text-xs text-on-surface-variant mt-0.5">{user.email}</p>
+                        <p className="text-xs text-on-surface-variant mt-0.5">{user.email || user.phone || ''}</p>
                       </div>
                       <Link
                         href="/profile"

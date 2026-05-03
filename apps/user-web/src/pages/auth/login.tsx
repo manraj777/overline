@@ -216,7 +216,7 @@ export default function LoginPage() {
                   onClick={() => setAuthMode('email')}
                   className={`rounded-lg px-3 py-2.5 text-sm font-bold transition-all ${
                     authMode === 'email'
-                      ? 'bg-surface-container-high text-on-surface shadow-sm border border-outline-variant/30'
+                      ? 'bg-surface dark:bg-surface-container-highest text-on-surface shadow-sm border border-outline-variant/30'
                       : 'text-on-surface-variant hover:text-on-surface'
                   }`}
                 >
@@ -227,7 +227,7 @@ export default function LoginPage() {
                   onClick={() => setAuthMode('phone')}
                   className={`rounded-lg px-3 py-2.5 text-sm font-bold transition-all ${
                     authMode === 'phone'
-                      ? 'bg-surface-container-high text-on-surface shadow-sm border border-outline-variant/30'
+                      ? 'bg-surface dark:bg-surface-container-highest text-on-surface shadow-sm border border-outline-variant/30'
                       : 'text-on-surface-variant hover:text-on-surface'
                   }`}
                 >

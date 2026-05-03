@@ -304,7 +304,7 @@ export default function ExplorePage() {
                     className={cn(
                       'px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2',
                       viewMode === 'list'
-                        ? 'bg-white shadow-sm text-primary'
+                        ? 'bg-surface-container-lowest dark:bg-surface-container-highest shadow-sm text-primary'
                         : 'text-on-surface-variant hover:bg-surface-container-high'
                     )}
                   >
@@ -315,7 +315,7 @@ export default function ExplorePage() {
                     className={cn(
                       'px-4 py-2 rounded-lg text-xs font-bold transition-all flex items-center gap-2',
                       viewMode === 'map'
-                        ? 'bg-white shadow-sm text-primary'
+                        ? 'bg-surface-container-lowest dark:bg-surface-container-highest shadow-sm text-primary'
                         : 'text-on-surface-variant hover:bg-surface-container-high'
                     )}
                   >
@@ -448,7 +448,7 @@ export default function ExplorePage() {
               <div className="h-full relative">
                 <ShopMap shops={shops?.data || []} userLocation={location} />
                 {/* Floating Controls */}
-                <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex gap-2 bg-white/90 backdrop-blur-xl p-2 rounded-2xl shadow-glass-strong border border-outline-variant/10">
+                <div className="absolute bottom-8 left-1/2 -translate-x-1/2 flex gap-2 bg-surface/90 dark:bg-surface-container/90 backdrop-blur-xl p-2 rounded-2xl shadow-glass-strong border border-outline-variant/10">
                   <button className="p-2 bg-surface-container-low rounded-xl text-on-surface hover:bg-surface-container-high border border-outline-variant/10 transition-colors">
                     <span className="text-lg">+</span>
                   </button>

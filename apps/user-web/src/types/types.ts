@@ -6,7 +6,7 @@ import { UserRole, TenantType, BookingStatus, BookingSource, PaymentStatus, DayO
 
 export interface User {
   id: string;
-  email: string;
+  email: string | null;
   name: string;
   phone?: string;
   avatarUrl?: string;

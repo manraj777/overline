@@ -179,7 +179,7 @@ export default function ProfilePage() {
                     </div>
                     <div className="pb-1">
                       <h1 className="text-2xl font-black tracking-tight text-on-surface">{user?.name}</h1>
-                      <p className="text-sm text-on-surface-variant font-medium">{user?.email}</p>
+                      <p className="text-sm text-on-surface-variant font-medium">{user?.email || (user?.phone ? 'No email added' : '')}</p>
                       {user?.phone && (
                         <p className="text-xs text-outline mt-0.5 flex items-center gap-1">
                           <Phone className="w-3 h-3" />
@@ -252,16 +252,36 @@ export default function ProfilePage() {
 
                   <div className="space-y-2">
                     <label className="label-m3">Email</label>
-                    <div className="relative">
-                      <input
-                        type="email"
-                        className="input-m3 text-outline cursor-not-allowed opacity-60"
-                        {...register('email')}
-                        disabled
-                      />
-                      <Lock className="w-4 h-4 absolute right-4 top-1/2 -translate-y-1/2 text-outline-variant" />
-                    </div>
-                    <p className="text-[11px] text-outline px-1">Email cannot be changed</p>
+                    {user?.email ? (
+                      <>
+                        <div className="relative">
+                          <input
+                            type="email"
+                            className="input-m3 text-outline cursor-not-allowed opacity-60"
+                            {...register('email')}
+                            disabled
+                          />
+                          <Lock className="w-4 h-4 absolute right-4 top-1/2 -translate-y-1/2 text-outline-variant" />
+                        </div>
+                        <p className="text-[11px] text-outline px-1">Email cannot be changed</p>
+                      </>
+                    ) : (
+                      <>
+                        <input
+                          type="email"
+                          placeholder="your@email.com"
+                          className="input-m3"
+                          {...register('email', {
+                            pattern: {
+                              value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
+                              message: 'Invalid email address',
+                            },
+                          })}
+                        />
+                        {errors.email && <p className="text-error text-xs font-medium">{errors.email.message}</p>}
+                        <p className="text-[11px] text-primary px-1 font-medium">Add your email to receive booking confirmations</p>
+                      </>
+                    )}
                   </div>
 
                   <div className="space-y-2">
@@ -319,7 +339,7 @@ export default function ProfilePage() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                   {[
                     { label: 'Name', value: user?.name },
-                    { label: 'Email', value: user?.email },
+                    { label: 'Email', value: user?.email || 'Not added yet', action: !user?.email ? () => setIsEditing(true) : undefined },
                     { label: 'Phone', value: user?.phone || '—', locked: !!user?.phone },
                     { label: 'Date of Birth', value: user?.dateOfBirth ? format(new Date(user.dateOfBirth), 'dd MMM yyyy') : '—' },
                     { label: 'Gender', value: user?.gender ? user.gender.charAt(0).toUpperCase() + user.gender.slice(1) : '—' },

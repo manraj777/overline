@@ -55,7 +55,7 @@ const DayOfWeek = {
 
 export interface JwtPayload {
   sub: string;
-  email: string;
+  email: string | null;
   role: UserRole;
   tenantId?: string;
   shopId?: string;
@@ -69,7 +69,7 @@ export interface TokenResponse {
   expiresIn: number;
   user: {
     id: string;
-    email: string;
+    email: string | null;
     name: string;
     phone?: string | null;
     role: UserRole;
@@ -690,14 +690,11 @@ export class AuthService {
       }
 
       if (requestedRole === 'OWNER') {
-        const emailPrefix = normalizedPhone.replace(/\D/g, '');
-        const generatedEmail = `${emailPrefix}.${Date.now()}@phone.overline.app`;
         return tx.user.create({
           data: {
             phone: normalizedPhone,
             isPhoneVerified: true,
             name: `User ${normalizedPhone.slice(-4)}`,
-            email: generatedEmail,
             role: UserRole.OWNER,
             authProvider: 'phone',
             lastLoginAt: new Date(),
@@ -711,14 +708,11 @@ export class AuthService {
         );
       }
 
-      const emailPrefix = normalizedPhone.replace(/\D/g, '');
-      const generatedEmail = `${emailPrefix}.${Date.now()}@phone.overline.app`;
       return tx.user.create({
         data: {
           phone: normalizedPhone,
           isPhoneVerified: true,
           name: `User ${normalizedPhone.slice(-4)}`,
-          email: generatedEmail,
           role: UserRole.USER,
           authProvider: 'phone',
           lastLoginAt: new Date(),
@@ -783,8 +777,6 @@ export class AuthService {
         });
       }
 
-      const emailPrefix = normalizedPhone.replace(/\D/g, '');
-      const generatedEmail = `${emailPrefix}.${Date.now()}@phone.overline.app`;
       const name = decodedToken.name?.trim() || `User ${normalizedPhone.slice(-4)}`;
       const roleToAssign = requestedRole === 'OWNER' ? UserRole.OWNER : UserRole.USER;
 
@@ -793,7 +785,6 @@ export class AuthService {
           phone: normalizedPhone,
           isPhoneVerified: true,
           name,
-          email: generatedEmail,
           role: roleToAssign,
           authProvider: 'firebase',
           lastLoginAt: new Date(),
@@ -1762,7 +1753,7 @@ export class AuthService {
 
     const payload: JwtPayload = {
       sub: user.id,
-      email: user.email,
+      email: user.email || null,
       role: effectiveRole,
       tenantId: user.tenantId || undefined,
       shopId: primaryShopId,
@@ -1803,7 +1794,7 @@ export class AuthService {
       expiresIn,
       user: {
         id: user.id,
-        email: user.email,
+        email: user.email || null,
         name: user.name,
         phone: user.phone || null,
         role: effectiveRole,
