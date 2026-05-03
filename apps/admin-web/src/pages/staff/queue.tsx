@@ -25,7 +25,7 @@ export default function StaffQueuePage() {
 	const nextUp = useMemo(
 		() =>
 			bookings
-				.filter((booking) => [BookingStatus.CONFIRMED, BookingStatus.PENDING, BookingStatus.PENDING_APPROVAL].includes(booking.status))
+				.filter((booking) => booking.status === BookingStatus.CONFIRMED)
 				.sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime())
 				.slice(0, 3),
 		[bookings],
@@ -144,59 +144,26 @@ export default function StaffQueuePage() {
 											</Badge>
 										</div>
 										<div className="mt-3 flex flex-wrap gap-2">
-											{(item.status === BookingStatus.PENDING || item.status === BookingStatus.PENDING_APPROVAL) ? (
-												<>
-													<Button
-														size="sm"
-														variant="outline"
-														onClick={() =>
-															updateStatus.mutate({
-																bookingId: item.id,
-																status: BookingStatus.CONFIRMED,
-															})
-														}
-														isLoading={updateStatus.isPending}
-													>
-														Approve
-													</Button>
-													<Button
-														size="sm"
-														variant="outline"
-														onClick={() =>
-															updateStatus.mutate({
-																bookingId: item.id,
-																status: BookingStatus.CANCELLED,
-															})
-														}
-														isLoading={updateStatus.isPending}
-													>
-														Reject
-													</Button>
-												</>
-											) : (
-												<>
-													<Button
-														size="sm"
-														variant="outline"
-														onClick={() => setCallAheadState((prev) => ({ ...prev, [item.id]: 'confirmed' }))}
-													>
-														Call
-													</Button>
-													<Button
-														size="sm"
-														variant="outline"
-														onClick={() =>
-															updateStatus.mutate({
-																bookingId: item.id,
-																status: BookingStatus.NO_SHOW,
-															})
-														}
-														isLoading={updateStatus.isPending}
-													>
-														Mark as no-show
-													</Button>
-												</>
-											)}
+											<Button
+												size="sm"
+												variant="outline"
+												onClick={() => setCallAheadState((prev) => ({ ...prev, [item.id]: 'confirmed' }))}
+											>
+												Call
+											</Button>
+											<Button
+												size="sm"
+												variant="outline"
+												onClick={() =>
+													updateStatus.mutate({
+														bookingId: item.id,
+														status: BookingStatus.NO_SHOW,
+													})
+												}
+												isLoading={updateStatus.isPending}
+											>
+												Mark as no-show
+											</Button>
 										</div>
 									</div>
 								);

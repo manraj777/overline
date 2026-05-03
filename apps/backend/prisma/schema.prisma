@@ -638,6 +638,10 @@ model Booking {
   approvedAt      DateTime?     @map("approved_at")
   rejectionReason String?       @map("rejection_reason")
 
+  // Counter-offer / Reschedule Proposal
+  proposedStartTime DateTime? @map("proposed_start_time")
+  proposedEndTime   DateTime? @map("proposed_end_time")
+  
   // Walk-in customer info (when userId is null)
   customerName  String? @map("customer_name")
   customerPhone String? @map("customer_phone")

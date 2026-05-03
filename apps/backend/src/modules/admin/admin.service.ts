@@ -369,6 +369,8 @@ export class AdminService {
     status: BookingStatus,
     tenantId: string,
     adminNotes?: string,
+    proposedStartTime?: string,
+    proposedEndTime?: string,
   ) {
     const booking = await this.prisma.booking.findUnique({
       where: { id: bookingId },
@@ -387,6 +389,14 @@ export class AdminService {
 
     if (adminNotes) {
       updateData.adminNotes = adminNotes;
+    }
+
+    if (proposedStartTime) {
+      updateData.proposedStartTime = new Date(proposedStartTime);
+    }
+    
+    if (proposedEndTime) {
+      updateData.proposedEndTime = new Date(proposedEndTime);
     }
 
     switch (status) {

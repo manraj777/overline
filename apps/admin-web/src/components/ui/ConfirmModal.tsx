@@ -25,13 +25,15 @@ export function ConfirmModal({
 
   return (
     <div className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-4">
-      <div className="w-full max-w-sm rounded-2xl border border-white/10 bg-[#101725] p-5">
-        <h3 className="text-lg font-semibold text-white">{title}</h3>
-        <p className="mt-2 text-sm text-white/70">{description}</p>
+      <div className="w-full max-w-sm card-m3 p-5">
+        <h3 className="text-lg font-semibold text-on-surface">{title}</h3>
+        {description && (
+          <p className="mt-2 text-sm text-on-surface-variant">{description}</p>
+        )}
         <div className="mt-5 flex justify-end gap-2">
           <button
             type="button"
-            className="rounded-full border border-white/20 px-4 py-1.5 text-xs text-white"
+            className="btn-outline px-4 py-1.5 text-xs"
             onClick={onCancel}
             disabled={isConfirming}
           >

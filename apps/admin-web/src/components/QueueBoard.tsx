@@ -10,7 +10,6 @@ import {
   useQueueMarkDone,
   useQueueRemove,
   useQueueSocket,
-  useUpdateBookingStatus,
 } from '@/hooks';
 import { useAuthStore } from '@/stores/auth';
 import { ConfirmModal, useToast } from '@/components/ui';
@@ -21,9 +20,7 @@ export type AdminQueueStatus =
   | 'in_progress'
   | 'done'
   | 'cancelled'
-  | 'no_show'
-  | 'pending'
-  | 'pending_approval';
+  | 'no_show';
 
 export interface AdminQueueItem {
   id: string;
@@ -44,8 +41,6 @@ const STATUS_LABELS: Record<AdminQueueStatus, string> = {
   done: 'Completed',
   cancelled: 'Cancelled',
   no_show: 'No Show',
-  pending: 'Pending',
-  pending_approval: 'Pending Approval',
 };
 
 const STATUS_CHIP_STYLES: Record<AdminQueueStatus, string> = {
@@ -55,8 +50,6 @@ const STATUS_CHIP_STYLES: Record<AdminQueueStatus, string> = {
   done: 'bg-emerald-400/20 text-emerald-200',
   cancelled: 'bg-rose-400/20 text-rose-200',
   no_show: 'bg-fuchsia-400/20 text-fuchsia-200',
-  pending: 'bg-orange-400/20 text-orange-200',
-  pending_approval: 'bg-orange-500/20 text-orange-200',
 };
 
 function mapStatus(status: string): AdminQueueStatus {
@@ -65,8 +58,6 @@ function mapStatus(status: string): AdminQueueStatus {
   if (status === 'CONFIRMED') return 'approaching';
   if (status === 'NO_SHOW') return 'no_show';
   if (status === 'CANCELLED') return 'cancelled';
-  if (status === 'PENDING') return 'pending';
-  if (status === 'PENDING_APPROVAL') return 'pending_approval';
   return 'waiting';
 }
 
@@ -95,7 +86,6 @@ export default function QueueBoard() {
   const startServiceMutation = useQueueStartService();
   const markDoneMutation = useQueueMarkDone();
   const removeMutation = useQueueRemove();
-  const updateStatusMutation = useUpdateBookingStatus();
 
   useQueueSocket({
     shopId: shopId || undefined,
@@ -123,7 +113,7 @@ export default function QueueBoard() {
     }));
   }, [queueData]);
 
-  const waitingCount = useMemo(() => queue.filter((entry) => ['waiting', 'approaching', 'pending', 'pending_approval'].includes(entry.status)).length, [queue]);
+  const waitingCount = useMemo(() => queue.filter((entry) => entry.status === 'waiting').length, [queue]);
 
   const callNext = async () => {
     try {
@@ -181,26 +171,6 @@ export default function QueueBoard() {
     }
   };
 
-  const approveBooking = async (bookingId: string) => {
-    try {
-      await updateStatusMutation.mutateAsync({ bookingId, status: 'CONFIRMED' });
-      addToast({ type: 'success', title: 'Booking Approved', message: 'Customer has been moved to the confirmed queue.' });
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Failed to approve booking.';
-      addToast({ type: 'error', title: 'Approval failed', message });
-    }
-  };
-
-  const rejectBooking = async (bookingId: string) => {
-    try {
-      await updateStatusMutation.mutateAsync({ bookingId, status: 'CANCELLED' });
-      addToast({ type: 'success', title: 'Booking Rejected', message: 'Customer booking was cancelled.' });
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Failed to reject booking.';
-      addToast({ type: 'error', title: 'Rejection failed', message });
-    }
-  };
-
   const openRemoveModal = (id: string) => {
     setRemoveModalBookingId(id);
   };
@@ -225,21 +195,20 @@ export default function QueueBoard() {
     checkInMutation.isPending ||
     startServiceMutation.isPending ||
     markDoneMutation.isPending ||
-    removeMutation.isPending ||
-    updateStatusMutation.isPending;
+    removeMutation.isPending;
 
   return (
-    <section className="rounded-3xl border border-white/10 bg-[#101725] p-5">
+    <section className="card-m3 p-5">
       <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-xl font-semibold text-white">Queue Board</h2>
-        <div className="flex items-center gap-2 text-sm text-white/70">
+        <h2 className="text-xl font-semibold text-on-surface">Queue Board</h2>
+        <div className="flex items-center gap-2 text-sm text-on-surface-variant">
           <span>Avg service min</span>
           <input
             type="number"
             value={averageServiceMinutes}
             min={5}
             onChange={(event) => setAverageServiceMinutes(Number(event.target.value) || 5)}
-            className="w-16 rounded-lg border border-white/20 bg-[#0b111d] px-2 py-1 text-white"
+            className="w-16 input-m3 px-2 py-1"
           />
           <button
             type="button"
@@ -252,12 +221,12 @@ export default function QueueBoard() {
         </div>
       </div>
 
-      <p className="mb-3 text-sm text-white/60">Current queue length: {waitingCount}</p>
+      <p className="mb-3 text-sm text-on-surface-variant">Current queue length: {waitingCount}</p>
 
       {isLoading ? (
         <div className="space-y-3">
           {Array.from({ length: 3 }).map((_, index) => (
-            <div key={index} className="rounded-2xl border border-white/10 bg-white/5 p-4">
+            <div key={index} className="card-m3-flat p-4">
               <div className="h-4 w-2/3 rounded bg-white/10" />
               <div className="mt-2 h-3 w-1/2 rounded bg-white/10" />
               <div className="mt-4 flex gap-2">
@@ -269,19 +238,19 @@ export default function QueueBoard() {
           ))}
         </div>
       ) : queue.length === 0 ? (
-        <div className="rounded-2xl border border-dashed border-white/20 bg-white/5 p-6 text-center text-sm text-white/70">
+        <div className="card-m3-flat border-dashed p-6 text-center text-sm text-on-surface-variant">
           Queue is empty right now. New joins will appear here in realtime.
         </div>
       ) : (
         <div className="space-y-3">
           {queue.map((entry) => (
-          <article key={entry.id} className="rounded-2xl border border-white/10 bg-white/5 p-4">
+          <article key={entry.id} className="card-m3-flat p-4">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <div>
-                <p className="font-semibold text-white">
-                  #{entry.position} {entry.customerName} <span className="text-white/60">({mask(entry.phone)})</span>
+                <p className="font-semibold text-on-surface">
+                  #{entry.position} {entry.customerName} <span className="text-on-surface-variant">({mask(entry.phone)})</span>
                 </p>
-                <p className="mt-1 text-sm text-white/70">
+                <p className="mt-1 text-sm text-on-surface-variant">
                   {entry.service} • Token {entry.tokenCode} • Joined {entry.joinedAt} • ETA {averageServiceMinutes * entry.position}m
                 </p>
               </div>
@@ -292,61 +261,38 @@ export default function QueueBoard() {
               </span>
             </div>
             <div className="mt-3 flex flex-wrap gap-2">
-              {(entry.status === 'pending' || entry.status === 'pending_approval') ? (
-                <>
-                  <button
-                    type="button"
-                    className="rounded-full border border-orange-400/40 px-3 py-1 text-xs text-orange-200"
-                    onClick={() => approveBooking(entry.id)}
-                    disabled={isMutating}
-                  >
-                    Approve
-                  </button>
-                  <button
-                    type="button"
-                    className="rounded-full border border-red-400/40 px-3 py-1 text-xs text-red-200"
-                    onClick={() => rejectBooking(entry.id)}
-                    disabled={isMutating}
-                  >
-                    Reject
-                  </button>
-                </>
-              ) : (
-                <>
-                  <button
-                    type="button"
-                    className="rounded-full border border-white/20 px-3 py-1 text-xs text-white"
-                    onClick={() => checkIn(entry.id)}
-                    disabled={isMutating}
-                  >
-                    Check In
-                  </button>
-                  <button
-                    type="button"
-                    className="rounded-full border border-white/20 px-3 py-1 text-xs text-white"
-                    onClick={() => openStartService(entry.id)}
-                    disabled={isMutating}
-                  >
-                    Verify Token & Start
-                  </button>
-                  <button
-                    type="button"
-                    className="rounded-full border border-white/20 px-3 py-1 text-xs text-white"
-                    onClick={() => markDone(entry.id)}
-                    disabled={isMutating}
-                  >
-                    Mark Service Done
-                  </button>
-                  <button
-                    type="button"
-                    className="rounded-full border border-red-400/40 px-3 py-1 text-xs text-red-200"
-                    onClick={() => openRemoveModal(entry.id)}
-                    disabled={isMutating}
-                  >
-                    Remove From Queue
-                  </button>
-                </>
-              )}
+              <button
+                type="button"
+                className="btn-outline px-3 py-1 text-xs"
+                onClick={() => checkIn(entry.id)}
+                disabled={isMutating}
+              >
+                Check In
+              </button>
+              <button
+                type="button"
+                className="btn-outline px-3 py-1 text-xs"
+                onClick={() => openStartService(entry.id)}
+                disabled={isMutating}
+              >
+                Verify Token & Start
+              </button>
+              <button
+                type="button"
+                className="btn-outline px-3 py-1 text-xs"
+                onClick={() => markDone(entry.id)}
+                disabled={isMutating}
+              >
+                Mark Service Done
+              </button>
+              <button
+                type="button"
+                className="btn-outline border-error text-error px-3 py-1 text-xs"
+                onClick={() => openRemoveModal(entry.id)}
+                disabled={isMutating}
+              >
+                Remove From Queue
+              </button>
             </div>
           </article>
           ))}
@@ -355,22 +301,22 @@ export default function QueueBoard() {
 
       {verificationModalBookingId ? (
         <div className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-4">
-          <div className="w-full max-w-sm rounded-2xl border border-white/10 bg-[#101725] p-5">
-            <h3 className="text-lg font-semibold text-white">Verify Token</h3>
-            <p className="mt-2 text-sm text-white/70">
+          <div className="w-full max-w-sm card-m3 p-5">
+            <h3 className="text-lg font-semibold text-on-surface">Verify Token</h3>
+            <p className="mt-2 text-sm text-on-surface-variant">
               Enter the customer verification code before starting service.
             </p>
             <input
               type="text"
               value={verificationCode}
               onChange={(event) => setVerificationCode(event.target.value)}
-              className="mt-4 h-10 w-full rounded-lg border border-white/20 bg-[#0b111d] px-3 text-white"
+              className="mt-4 input-m3"
               placeholder="Enter 4-digit code"
             />
             <div className="mt-4 flex justify-end gap-2">
               <button
                 type="button"
-                className="rounded-full border border-white/20 px-4 py-1.5 text-xs text-white"
+                className="btn-outline px-4 py-1.5 text-xs"
                 onClick={() => {
                   setVerificationModalBookingId(null);
                   setVerificationCode('');

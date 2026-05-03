@@ -20,10 +20,10 @@
   --surface-container-high: #e4e4e7;
   --surface-container-highest: #d4d4d8;
   /* Light-mode text bumped ~20% darker for legibility on dense data screens. */
-  --on-surface: #09090b;          /* zinc-950 */
-  --on-surface-variant: #3f3f46;  /* zinc-700 */
-  --outline: #71717a;             /* zinc-500 */
-  --outline-variant: #d4d4d8;     /* zinc-300 */
+  --on-surface: #f4f4f5;          /* light gray for dark mode */
+  --on-surface-variant: #a1a1aa;  /* lighter variant */
+  --outline: #52525b;             /* darker outline */
+  --outline-variant: #3f3f46;     /* subtle dark */
   --error: #dc2626;
   --error-container: #fee2e2;
 
@@ -170,7 +170,15 @@ body {
   /* Badge */
   .badge-m3 {
     @apply text-[10px] font-black tracking-widest uppercase px-2.5 py-0.5 rounded-lg;
-  }
+  } 
+/* Badge status utilities */
+.badge-pending { @apply badge-m3 bg-amber-200 text-amber-900; }
+.badge-pending-approval { @apply badge-m3 bg-orange-200 text-orange-900; }
+.badge-confirmed { @apply badge-m3 bg-primary-200 text-primary-900; }
+.badge-in-progress { @apply badge-m3 bg-primary-300 text-primary-950; }
+.badge-completed { @apply badge-m3 bg-green-200 text-green-900; }
+.badge-cancelled { @apply badge-m3 bg-red-200 text-red-900; }
+.badge-waitlisted { @apply badge-m3 bg-gray-200 text-gray-900; }
 
   /* Sidebar Active */
   .sidebar-link-active {
@@ -226,3 +234,15 @@ body {
 /* Hide scrollbar for horizontal scroll containers */
 .no-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
 .no-scrollbar::-webkit-scrollbar { display: none; }
+
+@layer utilities {
+  /* Override Tailwind gray/white utilities to use design tokens for proper contrast */
+  .text-gray-900 { color: var(--on-surface); }
+  .text-gray-800 { color: var(--on-surface-variant); }
+  .text-gray-700 { color: var(--outline); }
+  .bg-white { background: var(--surface); }
+  .bg-gray-50 { background: var(--surface-container-low); }
+  .bg-gray-100 { background: var(--surface-container); }
+  .border-gray-200 { border-color: var(--outline-variant); }
+  .border-gray-300 { border-color: var(--outline); }
+}

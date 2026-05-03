@@ -18,15 +18,15 @@ const STATUS_OPTIONS: Array<BookingStatus | 'ALL'> = [
 ];
 
 const STATUS_BADGE: Record<string, string> = {
-	COMPLETED: 'bg-tertiary-fixed text-tertiary',
-	CANCELLED: 'bg-error-container text-error',
-	NO_SHOW: 'bg-error-container text-error',
-	PENDING: 'bg-amber-100 text-amber-700',
-	PENDING_APPROVAL: 'bg-amber-100 text-amber-700',
-	CONFIRMED: 'bg-primary-fixed text-primary',
-	IN_PROGRESS: 'bg-secondary-fixed text-secondary',
-	IN_SERVICE: 'bg-secondary-fixed text-secondary',
-	WAITLISTED: 'bg-surface-container-high text-outline',
+	COMPLETED: 'badge-completed',
+	CANCELLED: 'badge-cancelled',
+	NO_SHOW: 'badge-cancelled',
+	PENDING: 'badge-pending',
+	PENDING_APPROVAL: 'badge-pending-approval',
+	CONFIRMED: 'badge-confirmed',
+	IN_PROGRESS: 'badge-in-progress',
+	IN_SERVICE: 'badge-in-progress',
+	WAITLISTED: 'badge-waitlisted',
 };
 
 export default function StaffBookingsPage() {

@@ -144,7 +144,14 @@ export class AdminController {
     @Body() dto: UpdateBookingStatusDto,
     @CurrentUser('tenantId') tenantId: string,
   ) {
-    return this.adminService.updateBookingStatus(bookingId, dto.status, tenantId, dto.adminNotes);
+    return this.adminService.updateBookingStatus(
+      bookingId,
+      dto.status,
+      tenantId,
+      dto.adminNotes,
+      dto.proposedStartTime,
+      dto.proposedEndTime
+    );
   }
 
   @Post('shops/:shopId/walk-in')

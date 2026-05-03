@@ -11,4 +11,14 @@ export class UpdateBookingStatusDto {
   @IsOptional()
   @IsString()
   adminNotes?: string;
+
+  @ApiPropertyOptional({ description: 'Proposed Start Time for Reschedule' })
+  @IsOptional()
+  @IsString()
+  proposedStartTime?: string;
+
+  @ApiPropertyOptional({ description: 'Proposed End Time for Reschedule' })
+  @IsOptional()
+  @IsString()
+  proposedEndTime?: string;
 }
