@@ -1,9 +1,12 @@
 import React, { forwardRef } from 'react';
 import { cn } from '@/lib/utils';
 
+type ButtonVariant = 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger' | 'tonal';
+type ButtonSize = 'sm' | 'md' | 'lg' | 'xl';
+
 interface ButtonProps extends React.ButtonHTMLAttributes<HTMLButtonElement> {
-  variant?: 'primary' | 'secondary' | 'outline' | 'ghost' | 'danger';
-  size?: 'sm' | 'md' | 'lg';
+  variant?: ButtonVariant;
+  size?: ButtonSize;
   isLoading?: boolean;
   loading?: boolean;
   fullWidth?: boolean;
@@ -29,23 +32,34 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
     ref
   ) => {
     const baseStyles =
-      'inline-flex items-center justify-center font-medium transition-all duration-200 rounded-lg focus:outline-none focus:ring-2 focus:ring-offset-2 disabled:opacity-50 disabled:cursor-not-allowed';
+      'inline-flex items-center justify-center font-semibold tracking-tight transition-all duration-200 rounded-xl focus-visible:outline-none focus-visible:ring-4 focus-visible:ring-primary/25 disabled:opacity-50 disabled:cursor-not-allowed disabled:shadow-none active:scale-[0.97] select-none';
 
-    const variants = {
+    const variants: Record<ButtonVariant, string> = {
+      // Solid red gradient — headline CTA
       primary:
-        'bg-primary-600 text-white hover:bg-primary-700 focus:ring-primary-500 shadow-sm',
+        'bg-gradient-to-br from-primary-600 to-primary-800 text-white shadow-button hover:shadow-button-hover hover:brightness-110',
+      // Charcoal — secondary emphasis
       secondary:
-        'bg-gray-100 text-gray-900 hover:bg-gray-200 focus:ring-gray-500',
+        'bg-secondary text-white hover:bg-secondary-container shadow-sm hover:shadow-md',
+      // Outline red on transparent
       outline:
-        'border-2 border-primary-600 text-primary-600 hover:bg-primary-50 focus:ring-primary-500',
-      ghost: 'text-gray-600 hover:bg-gray-100 focus:ring-gray-500',
-      danger: 'bg-red-600 text-white hover:bg-red-700 focus:ring-red-500',
+        'border-2 border-primary text-primary bg-transparent hover:bg-primary hover:text-white',
+      // Ghost — no chrome, just text
+      ghost:
+        'bg-transparent text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface',
+      // Danger = strong red (alias of primary for destructive actions)
+      danger:
+        'bg-error text-white hover:bg-error-700 shadow-sm hover:shadow-md',
+      // Tonal — soft primary tint, M3 style
+      tonal:
+        'bg-primary-fixed text-primary-900 hover:bg-primary-fixed-dim',
     };
 
-    const sizes = {
-      sm: 'px-3 py-1.5 text-sm gap-1.5',
-      md: 'px-4 py-2 text-sm gap-2',
-      lg: 'px-6 py-3 text-base gap-2',
+    const sizes: Record<ButtonSize, string> = {
+      sm: 'h-9 px-3.5 text-xs gap-1.5',
+      md: 'h-10 px-4 text-sm gap-2',
+      lg: 'h-12 px-6 text-sm gap-2',
+      xl: 'h-14 px-8 text-base gap-2.5',
     };
 
     const resolvedLoading = isLoading || loading;
@@ -59,10 +73,11 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
       >
         {resolvedLoading ? (
           <svg
-            className="animate-spin h-4 w-4"
+            className="animate-spin h-4 w-4 flex-shrink-0"
             xmlns="http://www.w3.org/2000/svg"
             fill="none"
             viewBox="0 0 24 24"
+            aria-hidden="true"
           >
             <circle
               className="opacity-25"
@@ -79,10 +94,10 @@ const Button = forwardRef<HTMLButtonElement, ButtonProps>(
             />
           </svg>
         ) : (
-          leftIcon
+          leftIcon && <span className="flex-shrink-0">{leftIcon}</span>
         )}
         {children}
-        {rightIcon}
+        {rightIcon && <span className="flex-shrink-0">{rightIcon}</span>}
       </button>
     );
   }

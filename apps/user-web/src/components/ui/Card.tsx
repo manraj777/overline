@@ -1,33 +1,42 @@
 import React from 'react';
 import { cn } from '@/lib/utils';
 
+type CardVariant = 'default' | 'bordered' | 'elevated' | 'glass' | 'gradient';
+type CardPadding = 'none' | 'sm' | 'md' | 'lg' | 'xl';
+
 interface CardProps extends React.HTMLAttributes<HTMLDivElement> {
-  variant?: 'default' | 'bordered' | 'elevated';
-  padding?: 'none' | 'sm' | 'md' | 'lg';
+  variant?: CardVariant;
+  padding?: CardPadding;
+  interactive?: boolean;
 }
 
 const Card = React.forwardRef<HTMLDivElement, CardProps>(
-  ({ className, variant = 'default', padding = 'md', children, ...props }, ref) => {
-    const variants = {
-      default: 'bg-white',
-      bordered: 'bg-white border border-gray-200',
-      elevated: 'bg-white shadow-lg',
+  ({ className, variant = 'default', padding = 'md', interactive = false, children, ...props }, ref) => {
+    const variants: Record<CardVariant, string> = {
+      default: 'bg-surface-container shadow-card',
+      bordered: 'bg-surface-container-lowest border border-outline-variant/60',
+      elevated: 'bg-surface-container-lowest shadow-glass-strong',
+      glass: 'bg-surface-container-lowest/70 backdrop-blur-xl border border-white/40 dark:border-white/10 shadow-glass',
+      gradient:
+        'bg-gradient-to-br from-primary-50 via-surface-container-lowest to-primary-50 dark:from-primary-900/20 dark:via-surface-container dark:to-primary-900/10 border border-outline-variant/40',
     };
 
-    const paddings = {
+    const paddings: Record<CardPadding, string> = {
       none: '',
       sm: 'p-3',
-      md: 'p-4',
-      lg: 'p-6',
+      md: 'p-5',
+      lg: 'p-6 md:p-8',
+      xl: 'p-8 md:p-12',
     };
 
     return (
       <div
         ref={ref}
         className={cn(
-          'rounded-xl',
+          'rounded-3xl',
           variants[variant],
           paddings[padding],
+          interactive && 'transition-all duration-300 hover:shadow-card-hover hover:-translate-y-0.5 cursor-pointer',
           className
         )}
         {...props}
@@ -60,7 +69,7 @@ const CardTitle = React.forwardRef<HTMLHeadingElement, CardTitleProps>(
   ({ className, ...props }, ref) => (
     <h3
       ref={ref}
-      className={cn('text-lg font-semibold text-gray-900', className)}
+      className={cn('text-lg font-semibold tracking-tight text-on-surface', className)}
       {...props}
     />
   )
@@ -72,7 +81,7 @@ interface CardContentProps extends React.HTMLAttributes<HTMLDivElement> {}
 
 const CardContent = React.forwardRef<HTMLDivElement, CardContentProps>(
   ({ className, ...props }, ref) => (
-    <div ref={ref} className={cn('', className)} {...props} />
+    <div ref={ref} className={cn('text-on-surface-variant', className)} {...props} />
   )
 );
 

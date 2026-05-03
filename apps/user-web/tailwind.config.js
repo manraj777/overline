@@ -9,9 +9,24 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        /* ── Overline M3 Design System ── */
+        /* ────────────────────────────────────────────────────────── */
+        /* Overline M3 Design System                                   */
+        /* Surface/text/outline tokens bind to CSS vars in globals.css */
+        /* so Tailwind classes automatically respect light/dark mode.  */
+        /* ────────────────────────────────────────────────────────── */
         primary: {
           DEFAULT: '#d32f2f',
+          50: '#ffebee',
+          100: '#ffcdd2',
+          200: '#ef9a9a',
+          300: '#e57373',
+          400: '#ef5350',
+          500: '#f44336',
+          600: '#e53935',
+          700: '#d32f2f',
+          800: '#c62828',
+          900: '#b71c1c',
+          950: '#7f1010',
           container: '#b71c1c',
           fixed: '#ffcdd2',
           'fixed-dim': '#ef9a9a',
@@ -31,33 +46,53 @@ module.exports = {
         error: {
           DEFAULT: '#ef4444',
           container: '#7f1d1d',
+          50: '#fef2f2',
+          500: '#ef4444',
+          600: '#dc2626',
+          700: '#b91c1c',
         },
+        success: {
+          DEFAULT: '#16a34a',
+          50: '#f0fdf4',
+          500: '#22c55e',
+          600: '#16a34a',
+          700: '#15803d',
+        },
+        warning: {
+          DEFAULT: '#f59e0b',
+          50: '#fffbeb',
+          500: '#f59e0b',
+          600: '#d97706',
+        },
+        /* Semantic surface tokens → CSS vars (light/dark aware). */
         surface: {
-          DEFAULT: '#09090b',
-          dim: '#18181b',
-          bright: '#27272a',
-          variant: '#1f2937',
+          DEFAULT: 'var(--ovl-surface)',
           container: {
-            DEFAULT: '#18181b',
-            low: '#000000',
-            high: '#27272a',
-            highest: '#3f3f46',
-            lowest: '#09090b',
+            DEFAULT: 'var(--ovl-surface-container)',
+            low: 'var(--ovl-surface-container-low)',
+            high: 'var(--ovl-surface-container-high)',
+            highest: 'var(--ovl-surface-container-highest)',
+            lowest: 'var(--ovl-surface-container-lowest)',
           },
-          tint: '#d32f2f',
+          tint: 'var(--ovl-primary)',
         },
         outline: {
-          DEFAULT: '#52525b',
-          variant: '#3f3f46',
+          DEFAULT: 'var(--ovl-outline)',
+          variant: 'var(--ovl-outline-variant)',
+        },
+        'on-surface': {
+          DEFAULT: 'var(--ovl-on-surface)',
+          variant: 'var(--ovl-on-surface-variant)',
         },
         inverse: {
-          surface: '#f4f4f5',
-          'on-surface': '#09090b',
+          surface: 'var(--ovl-inverse-surface)',
+          'on-surface': 'var(--ovl-inverse-on-surface)',
           primary: '#ffcdd2',
         },
+        /* `on-` prefixed tokens kept for backward compat with existing JSX. */
         on: {
-          surface: '#f4f4f5',
-          'surface-variant': '#a1a1aa',
+          surface: 'var(--ovl-on-surface)',
+          'surface-variant': 'var(--ovl-on-surface-variant)',
           primary: '#ffffff',
           'primary-container': '#ffffff',
           secondary: '#ffffff',
@@ -66,23 +101,23 @@ module.exports = {
           'tertiary-container': '#ffffff',
           error: '#ffffff',
           'error-container': '#fca5a5',
-          background: '#f4f4f5',
+          background: 'var(--ovl-on-surface)',
         },
-        background: '#f8f9ff',
-        /* ── Legacy compatibility ── */
+        background: 'var(--ovl-bg)',
+        /* ── Legacy tokens kept for gradual migration ── */
         brand: {
-          100: '#e1e0ff',
-          300: '#c0c1ff',
-          500: '#4648d4',
-          700: '#2f2ebe',
-          900: '#07006c',
+          100: '#ffcdd2',
+          300: '#ef9a9a',
+          500: '#d32f2f',
+          700: '#b71c1c',
+          900: '#7f1010',
         },
         lexo: {
-          charcoal: '#0b1c30',
-          black: '#213145',
-          dark: '#0b1c30',
-          gray: '#767586',
-          light: '#f8f9ff',
+          charcoal: '#09090b',
+          black: '#18181b',
+          dark: '#09090b',
+          gray: '#52525b',
+          light: '#f4f4f5',
         },
       },
       fontFamily: {
@@ -97,13 +132,16 @@ module.exports = {
         '5xl': '2.5rem',
       },
       boxShadow: {
-        'glass': '0 4px 20px rgba(99, 102, 241, 0.08)',
-        'glass-strong': '0 8px 32px rgba(99, 102, 241, 0.15)',
-        'card': '0 4px 16px rgba(70, 72, 212, 0.06)',
-        'card-hover': '0 8px 32px rgba(70, 72, 212, 0.12)',
-        'button': '0 4px 16px rgba(70, 72, 212, 0.2)',
-        'button-hover': '0 6px 24px rgba(70, 72, 212, 0.3)',
-        'nav': '0 -4px 24px rgba(99, 102, 241, 0.12)',
+        /* Neutral, soft shadows — premium feel, low spread.           */
+        'glass': '0 4px 24px rgba(9, 9, 11, 0.06), 0 1px 2px rgba(9, 9, 11, 0.03)',
+        'glass-strong': '0 12px 48px rgba(9, 9, 11, 0.12), 0 2px 8px rgba(9, 9, 11, 0.04)',
+        'card': '0 1px 2px rgba(9, 9, 11, 0.04), 0 4px 16px rgba(9, 9, 11, 0.04)',
+        'card-hover': '0 8px 32px rgba(9, 9, 11, 0.08), 0 2px 8px rgba(9, 9, 11, 0.04)',
+        /* Red-tinted button glow to match primary.                    */
+        'button': '0 8px 24px -8px rgba(211, 47, 47, 0.4), 0 2px 4px -2px rgba(211, 47, 47, 0.25)',
+        'button-hover': '0 12px 32px -8px rgba(211, 47, 47, 0.55), 0 4px 8px -2px rgba(211, 47, 47, 0.3)',
+        'nav': '0 -8px 32px rgba(9, 9, 11, 0.08)',
+        'ring-primary': '0 0 0 4px rgba(211, 47, 47, 0.15)',
       },
       animation: {
         'fade-in': 'fadeIn 0.5s ease-out forwards',

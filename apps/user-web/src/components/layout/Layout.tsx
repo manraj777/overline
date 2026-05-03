@@ -70,16 +70,19 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       <header
         className={cn(
           'fixed top-0 w-full z-50 transition-all duration-500',
-          scrolled
-            ? 'bg-white/80 dark:bg-gray-950/80 backdrop-blur-xl shadow-glass'
-            : 'bg-transparent'
+          scrolled ? 'glass-header shadow-glass' : 'bg-transparent'
         )}
       >
-        <div className="flex justify-between items-center px-6 lg:px-8 h-16 max-w-[1440px] mx-auto w-full">
+        <div className="flex justify-between items-center px-4 sm:px-6 lg:px-8 h-16 max-w-[1440px] mx-auto w-full">
           {/* Left: Logo & Nav */}
           <div className="flex items-center gap-8">
-            <Link href="/" className="flex items-center gap-2 group">
-            <span className="text-xl font-bold tracking-widest text-on-surface">OVERLINE</span>            </Link>
+            <Link href="/" className="flex items-center gap-2.5 group" aria-label="Overline home">
+              <span className="relative flex items-center justify-center w-8 h-8 rounded-xl bg-gradient-to-br from-primary-600 to-primary-800 shadow-button">
+                <span className="absolute inset-0 rounded-xl ring-1 ring-inset ring-white/20" aria-hidden="true" />
+                <span className="block w-3.5 h-0.5 bg-white rounded-full" aria-hidden="true" />
+              </span>
+              <span className="text-lg font-black tracking-tight text-on-surface group-hover:text-primary transition-colors">Overline</span>
+            </Link>
                       
             {/* Desktop Navigation */}
             <nav className="hidden md:flex items-center gap-1">
@@ -108,7 +111,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             <button
               onClick={() => router.push('/profile/notifications')}
               aria-label="Open notifications"
-              className="p-2 text-on-surface-variant dark:text-gray-200 hover:text-primary rounded-full hover:bg-surface-container-low dark:hover:bg-gray-800 transition-all active:scale-90"
+              className="p-2 text-on-surface-variant hover:text-primary rounded-full hover:bg-surface-container-high transition-all active:scale-90"
             >
               <Bell className="w-5 h-5" />
             </button>
@@ -117,7 +120,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             <button
               onClick={() => router.push('/cart')}
               aria-label="Open cart"
-              className="relative p-2 text-on-surface-variant dark:text-gray-200 hover:text-primary rounded-full hover:bg-surface-container-low dark:hover:bg-gray-800 transition-all active:scale-90"
+              className="relative p-2 text-on-surface-variant hover:text-primary rounded-full hover:bg-surface-container-high transition-all active:scale-90"
             >
               <ShoppingCart className="w-5 h-5" />
               {selectedServicesCount > 0 && (
@@ -143,11 +146,11 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                       animate={{ opacity: 1, y: 0, scale: 1 }}
                       exit={{ opacity: 0, y: 8, scale: 0.95 }}
                       transition={{ duration: 0.15 }}
-                      className="absolute right-0 top-full mt-2 w-56 bg-surface-container-lowest rounded-2xl shadow-glass-strong border border-outline-variant/10 overflow-hidden z-50"
+                      className="absolute right-0 top-full mt-2 w-60 bg-surface-container-lowest rounded-2xl shadow-glass-strong border border-outline-variant/40 overflow-hidden z-50"
                     >
-                      <div className="p-4 border-b border-outline-variant/10">
-                        <p className="font-bold text-sm text-on-surface">{user.name}</p>
-                        <p className="text-xs text-on-surface-variant mt-0.5">{user.email || user.phone || ''}</p>
+                      <div className="p-4 border-b border-outline-variant/40 bg-gradient-to-br from-primary/5 to-transparent">
+                        <p className="font-bold text-sm text-on-surface truncate">{user.name}</p>
+                        <p className="text-xs text-on-surface-variant mt-0.5 truncate">{user.email || user.phone || ''}</p>
                       </div>
                       <Link
                         href="/profile"
@@ -171,14 +174,10 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             ) : (
               <div className="hidden md:flex items-center gap-2">
                 <Link href="/auth/login">
-                  <Button variant="ghost" className="rounded-xl font-semibold text-on-surface-variant hover:bg-surface-container-low text-sm">
-                    Login
-                  </Button>
+                  <Button variant="ghost" size="md">Login</Button>
                 </Link>
                 <Link href="/auth/signup">
-                  <Button className="rounded-xl bg-gradient-to-br from-primary to-primary-container text-white font-bold shadow-button hover:shadow-button-hover active:scale-[0.97] transition-all text-sm px-6">
-                    Sign Up
-                  </Button>
+                  <Button variant="primary" size="md">Sign Up</Button>
                 </Link>
               </div>
             )}
@@ -186,7 +185,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             {/* Mobile Menu Toggle */}
             <button
               onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="md:hidden p-2 rounded-full bg-surface-container-low text-on-surface hover:bg-surface-container-high transition-colors"
+              aria-label={mobileMenuOpen ? 'Close menu' : 'Open menu'}
+              className="md:hidden p-2 rounded-full bg-surface-container-high text-on-surface hover:bg-surface-container-highest transition-colors"
             >
               {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
             </button>
@@ -250,14 +250,10 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                   transition={{ delay: 0.4 }}
                 >
                   <Link href="/auth/signup" className="w-full">
-                    <Button className="w-full rounded-xl bg-gradient-to-br from-primary to-primary-container py-4 text-base font-bold shadow-button">
-                      Sign Up Free
-                    </Button>
+                    <Button variant="primary" size="xl" fullWidth>Sign Up Free</Button>
                   </Link>
                   <Link href="/auth/login" className="w-full">
-                    <Button variant="outline" className="w-full rounded-xl py-4 text-base border border-outline-variant/30 text-on-surface font-bold">
-                      Login
-                    </Button>
+                    <Button variant="outline" size="xl" fullWidth>Login</Button>
                   </Link>
                 </motion.div>
               )}
@@ -301,7 +297,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                 <div className="flex flex-col gap-3">
                   <Link href="/privacy" className="font-semibold hover:text-inverse-primary transition-colors">Privacy Policy</Link>
                   <Link href="/terms" className="font-semibold hover:text-inverse-primary transition-colors">Terms of Service</Link>
-                  <a href={process.env.NEXT_PUBLIC_ADMIN_URL || 'https://admin.overline.in'} target="_blank" rel="noreferrer" className="font-semibold hover:text-inverse-primary transition-colors text-inverse-on-surface/30">
+                  <a href="https://admin.overline.in" target="_blank" rel="noreferrer" className="font-semibold hover:text-inverse-primary transition-colors text-inverse-on-surface/30">
                     Partner Login
                   </a>
                 </div>
@@ -320,7 +316,7 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
       </footer>
 
       {/* Bottom Mobile Nav */}
-      <nav className="md:hidden fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 pb-6 pt-3 bg-white/90 dark:bg-gray-950/95 border-t border-gray-200 dark:border-gray-800 backdrop-blur-2xl shadow-nav rounded-t-3xl">
+      <nav className="md:hidden fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 pb-6 pt-3 glass-header border-t border-outline-variant/40 shadow-nav rounded-t-3xl">
         {navigation.map((item) => (
           <Link
             key={item.name}
@@ -328,8 +324,8 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
             className={cn(
               'flex flex-col items-center justify-center px-4 py-2 rounded-2xl transition-all active:scale-90 duration-150',
               isActive(item.href)
-                ? 'bg-primary-fixed/30 text-red-600 dark:text-red-400'
-                : 'text-gray-500 dark:text-gray-500 hover:text-primary dark:hover:text-gray-200'
+                ? 'bg-primary-fixed/40 text-primary dark:bg-primary-900/30 dark:text-primary-300'
+                : 'text-on-surface-variant hover:text-primary'
             )}
           >
             <item.icon className={cn('w-5 h-5 mb-0.5', isActive(item.href) && 'fill-primary/10')} />
