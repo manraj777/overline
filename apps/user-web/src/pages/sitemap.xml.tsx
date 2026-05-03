@@ -17,6 +17,26 @@ interface UrlEntry {
   priority?: number;
 }
 
+/**
+ * Filter out test / incomplete shops from public listings.
+ * Keeps the sitemap clean and prevents Google from indexing placeholder pages.
+ */
+function isShopPubliclyListable(shop: {
+  name?: string;
+  slug?: string;
+  address?: string;
+  city?: string;
+  phone?: string;
+  isActive?: boolean;
+}): boolean {
+  if (shop.isActive === false) return false;
+  if (!shop.name || shop.name.trim().length < 3) return false;
+  if (!shop.slug) return false;
+  if (!shop.address || !shop.city) return false;
+  if (!shop.phone || shop.phone.replace(/\D/g, '').length < 10) return false;
+  return true;
+}
+
 const STATIC_ROUTES: UrlEntry[] = [
   { loc: '/', changefreq: 'daily', priority: 1.0 },
   { loc: '/explore', changefreq: 'hourly', priority: 0.9 },
@@ -62,7 +82,16 @@ async function fetchShops(): Promise<UrlEntry[]> {
       );
       if (!res.ok) break;
       const body = (await res.json()) as {
-        data?: Array<{ slug?: string; id: string; updatedAt?: string }>;
+        data?: Array<{
+          slug?: string;
+          id: string;
+          name?: string;
+          address?: string;
+          city?: string;
+          phone?: string;
+          isActive?: boolean;
+          updatedAt?: string;
+        }>;
         total?: number;
       };
       const rows = body?.data || [];
@@ -70,6 +99,8 @@ async function fetchShops(): Promise<UrlEntry[]> {
       for (const s of rows) {
         const slug = s.slug || s.id;
         if (!slug) continue;
+        // Filter out test / incomplete shops
+        if (!isShopPubliclyListable(s)) continue;
         entries.push({
           loc: `/shops/${slug}`,
           lastmod: s.updatedAt ? new Date(s.updatedAt).toISOString() : undefined,

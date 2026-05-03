@@ -426,7 +426,7 @@ export default function ShopDetailPage({ initialShop, slug: ssrSlug }: ShopPageP
 
       <div className="min-h-screen bg-surface pb-32 overflow-hidden">
         {/* ── Sticky Progress Bar ── */}
-        <div className="bg-white/70 backdrop-blur-xl border-b border-outline-variant/10 sticky top-16 z-30">
+        <div className="bg-surface-container-lowest/70 dark:bg-surface/70 backdrop-blur-xl border-b border-outline-variant/10 sticky top-16 z-30">
           <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between h-14">
             <button
               onClick={handlePrevStep}

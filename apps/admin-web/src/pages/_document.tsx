@@ -7,7 +7,7 @@ export default function Document() {
         <meta name="description" content="Overline Admin - Manage your appointments and shop" />
         <link rel="icon" href="/favicon.ico" />
       </Head>
-      <body className="bg-gray-50">
+      <body className="bg-surface">
         <Main />
         <NextScript />
       </body>

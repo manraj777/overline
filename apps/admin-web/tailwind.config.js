@@ -9,65 +9,92 @@ module.exports = {
   theme: {
     extend: {
       colors: {
-        /* ── M3 Admin Design System ── */
+        /* ─────────────────────────────────────────────────────── */
+        /* Overline Admin — Premium M3 Design System              */
+        /* Crimson primary aligned with user-web. Surface tokens   */
+        /* bind to CSS vars (auto light/dark).                     */
+        /* ─────────────────────────────────────────────────────── */
         primary: {
-          DEFAULT: '#4648d4',
-          container: '#6063ee',
-          fixed: '#e0e0ff',
-          50: '#eef0ff',
-          100: '#dfe2ff',
-          200: '#c7caff',
-          300: '#a3a5ff',
-          400: '#7c7dfc',
-          500: '#4648d4',
-          600: '#4648d4',
-          700: '#3537b8',
-          800: '#2c2e95',
-          900: '#272976',
-          950: '#181945',
+          DEFAULT: '#d32f2f',
+          50: '#ffebee',
+          100: '#ffcdd2',
+          200: '#ef9a9a',
+          300: '#e57373',
+          400: '#ef5350',
+          500: '#f44336',
+          600: '#e53935',
+          700: '#d32f2f',
+          800: '#c62828',
+          900: '#b71c1c',
+          950: '#7f1010',
+          container: '#b71c1c',
+          fixed: '#ffcdd2',
+          'fixed-dim': '#ef9a9a',
         },
         secondary: {
-          DEFAULT: '#6b38d4',
-          container: '#8455ef',
-          fixed: '#f0e6ff',
+          DEFAULT: '#27272a',
+          container: '#18181b',
+          fixed: '#e4e4e7',
         },
         tertiary: {
-          DEFAULT: '#006c49',
-          container: '#00a870',
-          fixed: '#d4fce6',
+          DEFAULT: '#15803d',
+          container: '#166534',
+          fixed: '#dcfce7',
         },
         error: {
-          DEFAULT: '#ba1a1a',
-          container: '#ffdad6',
+          DEFAULT: '#dc2626',
+          container: '#fee2e2',
+          50: '#fef2f2',
+          500: '#ef4444',
+          600: '#dc2626',
+          700: '#b91c1c',
         },
+        success: {
+          DEFAULT: '#16a34a',
+          50: '#f0fdf4',
+          500: '#22c55e',
+          600: '#16a34a',
+          700: '#15803d',
+        },
+        warning: {
+          DEFAULT: '#f59e0b',
+          50: '#fffbeb',
+          500: '#f59e0b',
+          600: '#d97706',
+        },
+        /* Surface tokens → CSS vars (light/dark aware).            */
         surface: {
-          DEFAULT: '#f8f9ff',
-          container: '#e5eeff',
-          'container-low': '#eff2ff',
-          'container-high': '#d8dfff',
+          DEFAULT: 'var(--surface)',
+          container: {
+            DEFAULT: 'var(--surface-container)',
+            low: 'var(--surface-container-low)',
+            high: 'var(--surface-container-high)',
+            highest: 'var(--surface-container-highest)',
+            lowest: 'var(--surface-container-lowest)',
+          },
         },
         'on-surface': {
-          DEFAULT: '#0b1c30',
-          variant: '#3a4565',
+          DEFAULT: 'var(--on-surface)',
+          variant: 'var(--on-surface-variant)',
         },
         outline: {
-          DEFAULT: '#6b7a99',
-          variant: '#c0c9e0',
+          DEFAULT: 'var(--outline)',
+          variant: 'var(--outline-variant)',
         },
-        'inverse-surface': '#0b1c30',
-        'inverse-on-surface': '#edf1ff',
+        'inverse-surface': 'var(--inverse-surface)',
+        'inverse-on-surface': 'var(--inverse-on-surface)',
 
         /* Legacy aliases for gradual migration */
         admin: {
-          100: '#dce3ff',
-          300: '#a3a5ff',
-          500: '#4648d4',
-          700: '#3537b8',
-          900: '#181945',
+          100: '#ffcdd2',
+          300: '#ef9a9a',
+          500: '#d32f2f',
+          700: '#b71c1c',
+          900: '#7f1010',
         },
         sidebar: {
-          DEFAULT: '#181945',
-          hover: '#272976',
+          DEFAULT: '#09090b',
+          hover: '#18181b',
         },
       },
       fontFamily: {
@@ -78,10 +105,14 @@ module.exports = {
         '4xl': '2rem',
       },
       boxShadow: {
-        glass: '0 8px 32px rgba(70, 72, 212, 0.06), inset 0 0 0 1px rgba(255,255,255,0.08)',
-        'card-m3': '0 1px 3px rgba(11, 28, 48, 0.05), 0 4px 12px rgba(11, 28, 48, 0.03)',
-        'card-hover': '0 8px 28px rgba(11, 28, 48, 0.08), 0 2px 8px rgba(11, 28, 48, 0.04)',
-        button: '0 2px 12px rgba(70, 72, 212, 0.35)',
+        /* Neutral premium shadows. */
+        glass: '0 4px 24px rgba(9, 9, 11, 0.06), 0 1px 2px rgba(9, 9, 11, 0.03)',
+        'glass-strong': '0 12px 48px rgba(9, 9, 11, 0.12), 0 2px 8px rgba(9, 9, 11, 0.04)',
+        'card-m3': '0 1px 2px rgba(9, 9, 11, 0.04), 0 4px 16px rgba(9, 9, 11, 0.04)',
+        'card-hover': '0 8px 32px rgba(9, 9, 11, 0.08), 0 2px 8px rgba(9, 9, 11, 0.04)',
+        /* Red-tinted button glow (matches user-web). */
+        button: '0 8px 24px -8px rgba(211, 47, 47, 0.4), 0 2px 4px -2px rgba(211, 47, 47, 0.25)',
+        'button-hover': '0 12px 32px -8px rgba(211, 47, 47, 0.55), 0 4px 8px -2px rgba(211, 47, 47, 0.3)',
       },
       animation: {
         'fade-in': 'fade-in 0.3s ease-out',

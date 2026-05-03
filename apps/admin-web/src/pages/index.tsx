@@ -20,37 +20,38 @@ export default function Home() {
   if (!mounted || isAuthenticated) return null;
 
   return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
+    <div className="min-h-screen ovl-admin-bg flex flex-col">
       <Head>
         <title>Overline Admin - Salons & Queue Management</title>
         <meta name="description" content="Manage your salon, track queues, and view analytics securely with Overline Admin." />
       </Head>
-      <header className="bg-white shadow">
+      <header className="bg-surface-container-lowest/70 dark:bg-surface/70 backdrop-blur-xl border-b border-outline-variant/10">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-4 flex justify-between items-center">
-          <div className="font-bold text-xl text-gray-900">Overline Admin</div>
-          <Link href="/login" className="text-blue-600 hover:text-blue-800 font-medium">Log in</Link>
+          <div className="font-bold text-xl text-on-surface">Overline Admin</div>
+          <Link href="/login" className="text-primary hover:text-primary-800 font-medium">Log in</Link>
         </div>
       </header>
       <main className="flex-grow flex flex-col items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-md w-full space-y-8 bg-white p-8 rounded-lg shadow-sm border text-center">
-          <h1 className="text-3xl font-extrabold text-gray-900">Welcome to Overline</h1>
-          <p className="text-gray-600 text-lg">
+        <div className="max-w-md w-full space-y-8 card-m3 p-8 text-center">
+          <h1 className="text-3xl font-black tracking-tight text-on-surface">Welcome to Overline</h1>
+          <p className="text-on-surface-variant text-lg">
             Manage your bookings, staff, and customer queues seamlessly.
           </p>
           <div className="pt-6">
             <button
               onClick={() => router.push('/login')}
-              className="w-full flex justify-center py-3 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700"
+              className="btn-primary w-full py-3"
             >
               Get Started
             </button>
           </div>
         </div>
       </main>
-      <footer className="bg-white mt-auto">
-        <div className="max-w-7xl mx-auto py-4 px-4 sm:px-6 lg:px-8 flex justify-center space-x-6 text-sm text-gray-500">
-          <Link href="/privacy" className="hover:text-gray-900">Privacy Policy</Link>
-          <Link href="/terms" className="hover:text-gray-900">Terms of Service</Link>
+      <footer className="bg-surface-container-lowest mt-auto border-t border-outline-variant/10">
+        <div className="max-w-7xl mx-auto py-4 px-4 sm:px-6 lg:px-8 flex justify-center space-x-6 text-sm text-on-surface-variant">
+          <Link href="/privacy" className="hover:text-primary">Privacy Policy</Link>
+          <Link href="/terms" className="hover:text-primary">Terms of Service</Link>
+          <Link href="/support" className="hover:text-primary">Support</Link>
         </div>
       </footer>
     </div>

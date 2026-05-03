@@ -30,11 +30,11 @@
   --ovl-surface-container-highest: #d4d4d8;
   --ovl-surface-container-lowest: #ffffff;
 
-  /* Text (Dark on Light) */
-  --ovl-on-surface: #09090b;
-  --ovl-on-surface-variant: #52525b;
-  --ovl-outline: #a1a1aa;
-  --ovl-outline-variant: #e4e4e7;
+  /* Text (Dark on Light) — bumped ~20% darker for better legibility. */
+  --ovl-on-surface: #09090b;          /* zinc-950 */
+  --ovl-on-surface-variant: #3f3f46;  /* zinc-700 (was zinc-600) */
+  --ovl-outline: #71717a;             /* zinc-500 (was zinc-400) */
+  --ovl-outline-variant: #d4d4d8;     /* zinc-300 (was zinc-200) */
 
   /* Inverse Surface (dark footer/nav blocks against light bg). */
   --ovl-inverse-surface: #09090b;

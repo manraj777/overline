@@ -341,7 +341,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
       {/* ── Main Content ── */}
       <div className={cn('h-screen flex flex-col transition-all duration-300', sidebarCollapsed ? 'lg:pl-[84px]' : 'lg:pl-[260px]')}>
         {/* Top Header */}
-        <header className="sticky top-0 z-30 bg-white/70 backdrop-blur-xl border-b border-outline-variant/10">
+        <header className="sticky top-0 z-30 bg-surface-container-lowest/70 dark:bg-surface/70 backdrop-blur-xl border-b border-outline-variant/10">
           <div className="flex items-center justify-between h-16 px-4 sm:px-6">
             <button
               onClick={() => {

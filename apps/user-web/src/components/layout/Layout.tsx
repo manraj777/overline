@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
+import dynamic from 'next/dynamic';
 import { useRouter } from 'next/router';
 import { Home, Search, Calendar, User, Menu, X, LogOut, Bell, ShoppingCart } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -10,7 +11,11 @@ import { Avatar, Button } from '@/components/ui';
 import { ThemeToggle } from '@/components/ThemeToggle';
 import { useLogout } from '@/hooks/useAuth';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChatWidget } from '@/components/chat/ChatWidget';
+
+const ChatWidget = dynamic(
+  () => import('@/components/chat/ChatWidget').then(m => m.ChatWidget),
+  { ssr: false }
+);
 
 interface LayoutProps {
   children: React.ReactNode;

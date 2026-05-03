@@ -1,5 +1,6 @@
 import React from 'react';
 import Link from 'next/link';
+import dynamic from 'next/dynamic';
 import { motion, useScroll, useSpring } from 'framer-motion';
 import {
   Search, MapPin, Scissors, Stethoscope, ArrowRight,
@@ -9,8 +10,12 @@ import { cn } from '@/lib/utils';
 import { ShopCard, ShopMap } from '@/components/shop';
 import { useShops, useLocation, useAiRecommendations } from '@/hooks';
 import { ElectricCard } from '@/components/ElectricCard';
-import { Globe } from '@/components/Globe';
 import { SeoHead, jsonLd } from '@/components/seo/SeoHead';
+
+const Globe = dynamic(() => import('@/components/Globe').then(m => m.Globe), {
+  ssr: false,
+  loading: () => <div className="w-full h-full" />,
+});
 
 const HOME_FAQ = [
   {
@@ -135,7 +140,7 @@ export default function HomePage() {
                       <div className="flex flex-col flex-1">
                         <span className="text-[10px] font-bold uppercase tracking-wider text-outline">What are you looking for?</span>
                         <input
-                          className="bg-transparent border-none p-0 focus:ring-0 text-on-surface placeholder:text-outline-variant font-medium text-sm w-full"
+                          className="bg-transparent border-none p-0 focus:ring-0 focus:outline-none text-on-surface placeholder:text-outline font-medium text-sm w-full"
                           placeholder="Salons, clinics, spas..."
                           value={searchQuery}
                           onChange={(e) => setSearchQuery(e.target.value)}
@@ -150,7 +155,7 @@ export default function HomePage() {
                       <div className="flex flex-col flex-1">
                         <span className="text-[10px] font-bold uppercase tracking-wider text-outline">Location</span>
                         <input
-                          className="bg-transparent border-none p-0 focus:ring-0 text-on-surface font-medium text-sm w-full"
+                          className="bg-transparent border-none p-0 focus:ring-0 focus:outline-none text-on-surface placeholder:text-outline font-medium text-sm w-full"
                           value={locationQuery || location?.address || ''}
                           onChange={(e) => setLocationQuery(e.target.value)}
                           placeholder="Enter location..."
