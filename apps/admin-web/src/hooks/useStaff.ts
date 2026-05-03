@@ -199,7 +199,7 @@ export function useUpdateStaffOwnBookingStatus() {
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async ({ bookingId, ...payload }: { bookingId: string; status: BookingStatus; notes?: string }) => {
+    mutationFn: async ({ bookingId, ...payload }: { bookingId: string; status: BookingStatus; notes?: string; proposedStartTime?: string; proposedEndTime?: string }) => {
       const { data } = await api.patch(`/admin/staff/me/bookings/${bookingId}/status`, payload);
       return data;
     },

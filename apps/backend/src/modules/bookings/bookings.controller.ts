@@ -61,6 +61,10 @@ class ShareLocationDto {
   lng: number;
 }
 
+class RespondCounterOfferDto {
+  accept: boolean;
+}
+
 @ApiTags('bookings')
 @Controller('bookings')
 export class BookingsController {
@@ -251,5 +255,18 @@ export class BookingsController {
     @CurrentUser('id') userId: string,
   ) {
     return this.bookingsService.shareLocation(id, userId, dto.lat, dto.lng);
+  }
+
+  @Patch(':id/respond-counter-offer')
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({ summary: 'Respond to staff counter offer' })
+  @ApiParam({ name: 'id', description: 'Booking ID' })
+  async respondCounterOffer(
+    @Param('id') id: string,
+    @Body() dto: RespondCounterOfferDto,
+    @CurrentUser('id') userId: string,
+  ) {
+    return this.bookingsService.respondCounterOffer(id, dto.accept, userId);
   }
 }

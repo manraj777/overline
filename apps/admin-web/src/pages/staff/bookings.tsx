@@ -42,6 +42,31 @@ export default function StaffBookingsPage() {
 	const updateStatus = useUpdateStaffOwnBookingStatus();
 	const startService = useQueueStartService();
 
+	const [proposeModalBookingId, setProposeModalBookingId] = useState<string | null>(null);
+	const [proposedStart, setProposedStart] = useState('');
+	const [proposedEnd, setProposedEnd] = useState('');
+	const [proposedNotes, setProposedNotes] = useState('');
+
+	const handleProposeTime = async () => {
+		if (!proposeModalBookingId || !proposedStart || !proposedEnd) return;
+		try {
+			await updateStatus.mutateAsync({
+				bookingId: proposeModalBookingId,
+				status: BookingStatus.PENDING_APPROVAL,
+				proposedStartTime: new Date(proposedStart).toISOString(),
+				proposedEndTime: new Date(proposedEnd).toISOString(),
+				notes: proposedNotes || undefined,
+			});
+			addToast({ type: 'success', title: 'Proposal Sent', message: 'Counter-offer has been sent to the customer.' });
+			setProposeModalBookingId(null);
+			setProposedStart('');
+			setProposedEnd('');
+			setProposedNotes('');
+		} catch (error: any) {
+			addToast({ type: 'error', title: 'Failed', message: error?.response?.data?.message || 'Could not send proposal.' });
+		}
+	};
+
 	const handleStartWithCode = async (bookingId: string) => {
 		const enteredCode = window.prompt('Enter customer 4-digit verification code');
 		if (!enteredCode) return;
@@ -152,6 +177,15 @@ export default function StaffBookingsPage() {
 														Approve
 													</button>
 												)}
+												{booking.status === BookingStatus.PENDING && (
+													<button
+														onClick={() => setProposeModalBookingId(booking.id)}
+														disabled={updateStatus.isPending}
+														className="btn-outline px-3 py-1 text-[10px] disabled:opacity-50"
+													>
+														Propose Time
+													</button>
+												)}
 												{booking.status === BookingStatus.CONFIRMED && (
 													<button
 														onClick={() => handleStartWithCode(booking.id)}
@@ -179,6 +213,67 @@ export default function StaffBookingsPage() {
 					)}
 				</div>
 			</div>
+
+			{proposeModalBookingId && (
+				<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+					<div className="w-full max-w-sm card-m3 p-5">
+						<h3 className="text-lg font-semibold text-on-surface">Propose New Time</h3>
+						<p className="mt-2 text-sm text-on-surface-variant">
+							Select a new start and end time to propose to the customer.
+						</p>
+						<div className="mt-4 space-y-3">
+							<div>
+								<label className="text-xs text-on-surface-variant mb-1 block">Proposed Start Time</label>
+								<input
+									type="datetime-local"
+									value={proposedStart}
+									onChange={(e) => setProposedStart(e.target.value)}
+									className="input-m3 w-full"
+								/>
+							</div>
+							<div>
+								<label className="text-xs text-on-surface-variant mb-1 block">Proposed End Time</label>
+								<input
+									type="datetime-local"
+									value={proposedEnd}
+									onChange={(e) => setProposedEnd(e.target.value)}
+									className="input-m3 w-full"
+								/>
+							</div>
+							<div>
+								<label className="text-xs text-on-surface-variant mb-1 block">Notes for Customer</label>
+								<textarea
+									value={proposedNotes}
+									onChange={(e) => setProposedNotes(e.target.value)}
+									className="input-m3 w-full resize-none"
+									rows={2}
+									placeholder="Explain why you're proposing this time..."
+								/>
+							</div>
+						</div>
+						<div className="mt-6 flex justify-end gap-2">
+							<button
+								onClick={() => {
+									setProposeModalBookingId(null);
+									setProposedStart('');
+									setProposedEnd('');
+									setProposedNotes('');
+								}}
+								className="btn-outline px-4 py-1.5 text-xs"
+							>
+								Cancel
+							</button>
+							<button
+								onClick={handleProposeTime}
+								disabled={updateStatus.isPending || !proposedStart || !proposedEnd}
+								className="btn-primary px-4 py-1.5 text-xs disabled:opacity-50"
+							>
+								{updateStatus.isPending ? 'Sending...' : 'Send Proposal'}
+							</button>
+						</div>
+					</div>
+				</div>
+			)}
 		</>
 	);
 }

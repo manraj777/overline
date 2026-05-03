@@ -18,7 +18,7 @@ import {
 import { Button, Card, Badge, Alert, Loading } from '@/components/ui';
 import { PaymentForm, LiveBookingTracker } from '@/components/booking';
 import { ReviewForm } from '@/components/reviews';
-import { useBooking, useCancelBooking, useCreatePaymentIntent, useQueueSocket } from '@/hooks';
+import { useBooking, useCancelBooking, useCreatePaymentIntent, useQueueSocket, useRespondCounterOffer } from '@/hooks';
 import { formatDate, formatTime, formatPrice, formatDuration, getEndTime } from '@/lib/utils';
 import { removeQueueSession } from '@/lib/queue-session';
 import { BookingStatus } from '@/types';
@@ -38,6 +38,7 @@ export default function BookingDetailPage() {
 
   const { data: booking, isLoading, refetch } = useBooking(id as string);
   const cancelBooking = useCancelBooking();
+  const respondCounterOffer = useRespondCounterOffer();
   const createPaymentIntent = useCreatePaymentIntent();
 
   const [showCancelConfirm, setShowCancelConfirm] = React.useState(false);
@@ -110,6 +111,18 @@ export default function BookingDetailPage() {
       setShowCancelConfirm(false);
     } catch (err) {
       console.error('Failed to cancel booking:', err);
+    }
+  };
+
+  const handleRespondCounterOffer = async (accept: boolean) => {
+    if (!booking) return;
+    try {
+      await respondCounterOffer.mutateAsync({ bookingId: booking.id, accept });
+      if (!accept) {
+        removeQueueSession(booking.shopId);
+      }
+    } catch (err) {
+      console.error('Failed to respond to counter offer:', err);
     }
   };
 
@@ -230,6 +243,42 @@ export default function BookingDetailPage() {
           <Alert variant="success" title="Booking Confirmed!" className="mb-6">
             Your appointment has been booked successfully. You'll receive a
             confirmation notification shortly.
+          </Alert>
+        )}
+
+        {/* Counter Offer Notification */}
+        {booking.status === BookingStatus.PENDING_APPROVAL && booking.proposedStartTime && booking.proposedEndTime && (
+          <Alert variant="warning" title="Time Change Proposed" className="mb-6">
+            <p className="mb-3">
+              The shop has proposed a new time for your booking:
+              <br />
+              <span className="font-semibold text-amber-900">
+                {formatDate(booking.proposedStartTime)} at {formatTime(booking.proposedStartTime)} - {formatTime(booking.proposedEndTime)}
+              </span>
+            </p>
+            {booking.adminNotes && (
+              <p className="mb-3 text-sm italic text-amber-800 border-l-2 border-amber-300 pl-2">
+                " {booking.adminNotes} "
+              </p>
+            )}
+            <div className="flex gap-2 mt-4">
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={() => handleRespondCounterOffer(true)}
+                isLoading={respondCounterOffer.isPending}
+              >
+                Accept New Time
+              </Button>
+              <Button
+                variant="danger"
+                size="sm"
+                onClick={() => handleRespondCounterOffer(false)}
+                isLoading={respondCounterOffer.isPending}
+              >
+                Decline & Cancel
+              </Button>
+            </div>
           </Alert>
         )}
 

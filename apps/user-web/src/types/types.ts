@@ -174,6 +174,8 @@ export interface Booking {
   startedAt?: string;
   completedAt?: string;
   cancelledAt?: string;
+  proposedStartTime?: string;
+  proposedEndTime?: string;
   createdAt: string;
   updatedAt: string;
   services: BookingService[];

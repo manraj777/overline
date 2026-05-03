@@ -906,6 +906,84 @@ export class BookingsService {
     return updatedBooking;
   }
 
+  /**
+   * Respond to staff counter offer
+   */
+  async respondCounterOffer(bookingId: string, accept: boolean, userId: string) {
+    const booking = await this.prisma.booking.findUnique({
+      where: { id: bookingId },
+      include: { services: true },
+    });
+
+    if (!booking) {
+      throw new NotFoundException('Booking not found');
+    }
+
+    if (booking.userId !== userId) {
+      throw new ForbiddenException('Not authorized to respond to this booking');
+    }
+
+    if (booking.status !== BookingStatus.PENDING_APPROVAL) {
+      throw new BadRequestException('Booking is not waiting for a counter-offer response');
+    }
+
+    if (accept) {
+      if (!booking.proposedStartTime || !booking.proposedEndTime) {
+        throw new BadRequestException('No proposed time to accept');
+      }
+
+      // Check new slot availability
+      const isAvailable = await this.slotEngine.isSlotAvailable(
+        booking.shopId,
+        booking.proposedStartTime,
+        booking.proposedEndTime,
+        booking.staffId || undefined,
+        bookingId,
+      );
+
+      if (!isAvailable) {
+        throw new ConflictException('The proposed time slot is no longer available');
+      }
+
+      const updatedBooking = await this.prisma.booking.update({
+        where: { id: bookingId },
+        data: {
+          startTime: booking.proposedStartTime,
+          endTime: booking.proposedEndTime,
+          status: BookingStatus.CONFIRMED,
+          proposedStartTime: null,
+          proposedEndTime: null,
+        },
+      });
+
+      // Invalidate caches for both old and new dates
+      this.queueService.invalidateSlotCache(booking.shopId, booking.startTime).catch(console.error);
+      this.queueService.invalidateSlotCache(booking.shopId, updatedBooking.startTime).catch(console.error);
+      this.queueService.updateQueueStats(booking.shopId).catch(console.error);
+
+      const serviceIds = booking.services.map((service) => service.serviceId);
+      this.unmarkBookingSlots(booking.shopId, booking.startTime, serviceIds).catch(console.error);
+      this.markBookingSlots(
+        booking.id,
+        booking.shopId,
+        updatedBooking.startTime,
+        updatedBooking.endTime,
+        serviceIds,
+      ).catch(console.error);
+
+      // Emit real-time updates
+      this.queueGateway.emitQueueUpdate(booking.shopId).catch(console.error);
+      this.queueGateway.emitBookingUpdate(bookingId, {
+        status: BookingStatus.CONFIRMED,
+        updatedAt: new Date().toISOString(),
+      });
+
+      return updatedBooking;
+    } else {
+      return this.updateStatus(bookingId, BookingStatus.CANCELLED, userId);
+    }
+  }
+
   private validateStatusTransition(currentStatus: BookingStatus, newStatus: BookingStatus): void {
     const allowedTransitions: Record<BookingStatus, BookingStatus[]> = {
       [BookingStatus.PENDING]: [

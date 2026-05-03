@@ -2088,7 +2088,7 @@ export class AdminService {
     }
 
     const allowedTransitions: Record<BookingStatus, BookingStatus[]> = {
-      [BookingStatus.PENDING]: [BookingStatus.CONFIRMED, BookingStatus.CANCELLED],
+      [BookingStatus.PENDING]: [BookingStatus.CONFIRMED, BookingStatus.CANCELLED, BookingStatus.PENDING_APPROVAL],
       [BookingStatus.PENDING_APPROVAL]: [BookingStatus.CONFIRMED, BookingStatus.CANCELLED],
       [BookingStatus.WAITLISTED]: [BookingStatus.CONFIRMED, BookingStatus.CANCELLED],
       [BookingStatus.CONFIRMED]: [BookingStatus.IN_PROGRESS, BookingStatus.CANCELLED],
@@ -2112,6 +2112,8 @@ export class AdminService {
         ...(dto.notes ? { adminNotes: dto.notes } : {}),
         ...(dto.status === BookingStatus.IN_PROGRESS ? { startedAt: new Date() } : {}),
         ...(dto.status === BookingStatus.COMPLETED ? { completedAt: new Date() } : {}),
+        ...(dto.proposedStartTime ? { proposedStartTime: new Date(dto.proposedStartTime) } : {}),
+        ...(dto.proposedEndTime ? { proposedEndTime: new Date(dto.proposedEndTime) } : {}),
       },
     });
 

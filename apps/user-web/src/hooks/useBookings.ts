@@ -177,3 +177,25 @@ export function useRescheduleBooking() {
     },
   });
 }
+
+export function useRespondCounterOffer() {
+  const queryClient = useQueryClient();
+
+  return useMutation<
+    Booking,
+    Error,
+    { bookingId: string; accept: boolean }
+  >({
+    mutationFn: async ({ bookingId, accept }) => {
+      const { data } = await api.patch(`/bookings/${bookingId}/respond-counter-offer`, {
+        accept,
+      });
+      return data;
+    },
+    onSuccess: (booking) => {
+      queryClient.invalidateQueries({ queryKey: ['bookings'] });
+      queryClient.invalidateQueries({ queryKey: ['slots'] });
+      queryClient.setQueryData(['bookings', booking.id], booking);
+    },
+  });
+}

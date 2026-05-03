@@ -28,6 +28,7 @@ export {
   useCancelBooking,
   useRescheduleBooking,
   usePendingReviewBooking,
+  useRespondCounterOffer,
 } from './useBookings';
 export {
   useShopReviews,
