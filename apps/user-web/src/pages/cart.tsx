@@ -10,6 +10,7 @@ import { useBookingStore } from '@/stores/booking';
 import { useAuthStore } from '@/stores/auth';
 import { format } from 'date-fns';
 import { saveQueueSession } from '@/lib/queue-session';
+import api from '@/lib/api';
 
 export default function CartPage() {
   const router = useRouter();
