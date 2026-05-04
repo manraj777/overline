@@ -427,7 +427,7 @@ export default function StaffPage() {
                           const newStatus = e.target.checked;
                           try {
                             await updateStaff.mutateAsync({ staffId: member.id, isActive: newStatus });
-                            addToast({ type: 'success', title: \`Staff marked as \${newStatus ? 'Active' : 'Inactive'}\` });
+                            addToast({ type: 'success', title: `Staff marked as ${newStatus ? 'Active' : 'Inactive'}` });
                           } catch {
                             addToast({ type: 'error', title: 'Failed to update staff status' });
                           }

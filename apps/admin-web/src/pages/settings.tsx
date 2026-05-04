@@ -635,7 +635,7 @@ export default function SettingsPage() {
                             setShopForm(prev => ({ ...prev, isActive: newStatus }));
                             try {
                               await updateSettings.mutateAsync({ isActive: newStatus });
-                              addToast({ type: 'success', title: \`Shop marked as \${newStatus ? 'Open' : 'Closed'}\` });
+                              addToast({ type: 'success', title: `Shop marked as ${newStatus ? 'Open' : 'Closed'}` });
                             } catch {
                               setShopForm(prev => ({ ...prev, isActive: !newStatus }));
                               addToast({ type: 'error', title: 'Failed to update status' });
