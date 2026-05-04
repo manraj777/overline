@@ -22,6 +22,7 @@ import { useBooking, useCancelBooking, useCreatePaymentIntent, useQueueSocket, u
 import { formatDate, formatTime, formatPrice, formatDuration, getEndTime } from '@/lib/utils';
 import { removeQueueSession } from '@/lib/queue-session';
 import { BookingStatus } from '@/types';
+import { Timer } from 'lucide-react';
 
 interface RazorpayPaymentData {
   orderId: string;
@@ -30,6 +31,55 @@ interface RazorpayPaymentData {
   keyId: string;
   bookingNumber: string;
   shopName?: string;
+}
+
+/** Live count-up timer shown during active service */
+function ServiceTimer({ startedAt, totalDurationMinutes }: { startedAt: string; totalDurationMinutes: number }) {
+  const [elapsed, setElapsed] = React.useState(0);
+
+  React.useEffect(() => {
+    const start = new Date(startedAt).getTime();
+    const tick = () => setElapsed(Math.floor((Date.now() - start) / 1000));
+    tick();
+    const id = setInterval(tick, 1000);
+    return () => clearInterval(id);
+  }, [startedAt]);
+
+  const mins = Math.floor(elapsed / 60);
+  const secs = elapsed % 60;
+  const totalSecs = totalDurationMinutes * 60;
+  const progress = Math.min(elapsed / totalSecs, 1);
+  const isOvertime = elapsed > totalSecs;
+
+  return (
+    <Card variant="bordered" className={`border-2 ${isOvertime ? 'border-error/40 bg-error/5' : 'border-primary/20 bg-primary/5'}`}>
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="font-bold text-on-surface flex items-center gap-2">
+            <Timer className={`w-5 h-5 ${isOvertime ? 'text-error' : 'text-primary'}`} />
+            Service In Progress
+          </h3>
+          <p className="text-sm text-on-surface-variant mt-1">
+            {isOvertime
+              ? `Over by ${mins - totalDurationMinutes} min ${secs.toString().padStart(2, '0')}s`
+              : `Est. ${totalDurationMinutes} min total`}
+          </p>
+        </div>
+        <div className="text-center">
+          <div className={`text-3xl font-black tabular-nums tracking-tight ${isOvertime ? 'text-error' : 'text-primary'}`}>
+            {mins.toString().padStart(2, '0')}:{secs.toString().padStart(2, '0')}
+          </div>
+          {/* Progress bar */}
+          <div className="w-24 h-1.5 bg-surface-container-high rounded-full mt-2 overflow-hidden">
+            <div
+              className={`h-full rounded-full transition-all duration-1000 ${isOvertime ? 'bg-error' : 'bg-primary'}`}
+              style={{ width: `${progress * 100}%` }}
+            />
+          </div>
+        </div>
+      </div>
+    </Card>
+  );
 }
 
 export default function BookingDetailPage() {
@@ -46,6 +96,23 @@ export default function BookingDetailPage() {
   const [reviewSubmitted, setReviewSubmitted] = React.useState(false);
   const [showPayment, setShowPayment] = React.useState(false);
   const [paymentData, setPaymentData] = React.useState<RazorpayPaymentData | null>(null);
+
+  // Track previous status to play sound on change
+  const prevStatusRef = React.useRef<string | null>(null);
+
+  React.useEffect(() => {
+    if (booking?.status && prevStatusRef.current && prevStatusRef.current !== booking.status) {
+      // Play sound and vibrate on status change
+      try {
+        const audio = new Audio('/sounds/notification.mp3');
+        audio.play().catch(e => console.warn('Audio play failed:', e));
+      } catch (e) {}
+      if ('vibrate' in navigator) {
+        navigator.vibrate([200, 100, 200]);
+      }
+    }
+    prevStatusRef.current = booking?.status || null;
+  }, [booking?.status]);
 
   // Real-time booking status tracking
   const [queuePosition, setQueuePosition] = React.useState<number | null>(null);
@@ -240,10 +307,15 @@ export default function BookingDetailPage() {
 
         {/* Success Message */}
         {success === 'true' && (
-          <Alert variant="success" title="Booking Confirmed!" className="mb-6">
-            Your appointment has been booked successfully. You'll receive a
-            confirmation notification shortly.
-          </Alert>
+          (booking.status === BookingStatus.PENDING_APPROVAL || booking.status === BookingStatus.PENDING) ? (
+            <Alert variant="success" title="Booking Placed!" className="mb-6">
+              Your appointment request has been sent to {booking.shop?.name || 'the shop'}. You&apos;ll be notified the moment it is confirmed.
+            </Alert>
+          ) : (
+            <Alert variant="success" title="Booking Confirmed!" className="mb-6">
+              Your appointment has been confirmed. See you at the shop!
+            </Alert>
+          )
         )}
 
         {/* Counter Offer Notification */}
@@ -351,6 +423,11 @@ export default function BookingDetailPage() {
               )}
             </Card>
 
+            {/* Service Duration Live Timer */}
+            {['IN_PROGRESS', 'IN_SERVICE'].includes(booking.status) && booking.startedAt && (
+              <ServiceTimer startedAt={booking.startedAt} totalDurationMinutes={booking.totalDurationMinutes} />
+            )}
+
             {/* Live Queue Position */}
             {['PENDING', 'CONFIRMED'].includes(booking.status) &&
               (queuePosition || booking.queuePosition) && (
@@ -380,12 +457,13 @@ export default function BookingDetailPage() {
                 </Card>
               )}
 
-            {/* Live Tracking & Chat feature */}
-            {['PENDING', 'CONFIRMED'].includes(booking.status) && (
+            {/* Live Tracking & Chat — available pre-service-start only */}
+            {['PENDING', 'PENDING_APPROVAL', 'CONFIRMED'].includes(booking.status) && (
               <LiveBookingTracker
                 bookingId={booking.id}
                 shopId={booking.shopId}
                 startTime={booking.startTime}
+                status={booking.status}
               />
             )}
 
@@ -423,14 +501,16 @@ export default function BookingDetailPage() {
                 </div>
               </div>
 
-              <div className="mt-4 pt-4 border-t border-gray-100">
-                <Link
-                  href={`/shops/${booking.shop?.slug}`}
-                  className="text-primary-600 text-sm font-medium hover:text-primary-700"
-                >
-                  View Shop Profile →
-                </Link>
-              </div>
+              {booking.shop?.slug && (
+                <div className="mt-4 pt-4 border-t border-gray-100">
+                  <Link
+                    href={`/shops/${booking.shop.slug}`}
+                    className="text-primary-600 text-sm font-medium hover:text-primary-700"
+                  >
+                    View Shop Profile →
+                  </Link>
+                </div>
+              )}
             </Card>
 
             {/* Services */}
@@ -541,7 +621,7 @@ export default function BookingDetailPage() {
             )}
 
             {/* Leave a Review - only for completed bookings */}
-            {booking.status === BookingStatus.COMPLETED && !reviewSubmitted && (
+            {booking.status === BookingStatus.COMPLETED && !reviewSubmitted && !(booking as any).review && (
               <Card variant="bordered">
                 <div className="flex items-center gap-3 mb-4">
                   <div className="p-2 rounded-lg bg-amber-100">
@@ -570,9 +650,14 @@ export default function BookingDetailPage() {
               </Card>
             )}
 
-            {reviewSubmitted && (
+            {(reviewSubmitted || (booking as any).review) && (
               <Alert variant="success" className="mt-0">
-                Thank you for your review!
+                <p className="font-semibold">Thank you for your review!</p>
+                {(booking as any).review?.comment && (
+                  <p className="mt-2 text-sm italic text-success-800">
+                    "{(booking as any).review.comment}"
+                  </p>
+                )}
               </Alert>
             )}
           </div>
@@ -615,13 +700,15 @@ export default function BookingDetailPage() {
                     Cancel Booking
                   </Button>
                 )}
-                <Button
-                  variant="ghost"
-                  className="w-full"
-                  onClick={() => router.push(`/shops/${booking.shop?.slug}`)}
-                >
-                  Book Again
-                </Button>
+                {booking.shop?.slug && (
+                  <Button
+                    variant="ghost"
+                    className="w-full"
+                    onClick={() => router.push(`/shops/${booking.shop!.slug}`)}
+                  >
+                    Book Again
+                  </Button>
+                )}
               </div>
             </Card>
           </div>

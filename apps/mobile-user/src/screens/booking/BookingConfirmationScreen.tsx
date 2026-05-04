@@ -40,6 +40,7 @@ export default function BookingConfirmationScreen() {
   if (!booking) return null;
 
   const isStarted = booking.status === 'IN_SERVICE';
+  const isPending = booking.status === 'PENDING_APPROVAL' || booking.status === 'PENDING';
 
   return (
     <View style={styles.container}>
@@ -57,9 +58,15 @@ export default function BookingConfirmationScreen() {
           </View>
         </View>
 
-        <Text style={styles.title}>{isStarted ? 'Service Live!' : 'Booking Confirmed!'}</Text>
+        <Text style={styles.title}>
+          {isStarted ? 'Service Live!' : isPending ? 'Booking Placed!' : 'Booking Confirmed!'}
+        </Text>
         <Text style={styles.subtitle}>
-          {isStarted ? 'Your session has officially started' : 'Your appointment is all set'}
+          {isStarted 
+            ? 'Your session has officially started' 
+            : isPending 
+              ? 'Your booking request has been sent for approval.' 
+              : 'Your appointment is all set'}
         </Text>
 
         {/* Booking Card */}

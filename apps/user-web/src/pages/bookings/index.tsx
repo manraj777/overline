@@ -23,7 +23,7 @@ import {
   type ActiveQueueSession,
 } from '@/lib/queue-session';
 
-type FilterTab = 'upcoming' | 'past' | 'cancelled' | 'all';
+type FilterTab = 'upcoming' | 'pending' | 'confirmed' | 'past' | 'cancelled' | 'all';
 
 interface RecoveredQueueSession extends ActiveQueueSession {
   shopName: string;
@@ -133,6 +133,8 @@ export default function BookingsPage() {
 
   const tabs: { value: FilterTab; label: string }[] = [
     { value: 'upcoming', label: 'Upcoming' },
+    { value: 'pending', label: 'Pending' },
+    { value: 'confirmed', label: 'Confirmed' },
     { value: 'past', label: 'Past' },
     { value: 'cancelled', label: 'Cancelled' },
     { value: 'all', label: 'All' },

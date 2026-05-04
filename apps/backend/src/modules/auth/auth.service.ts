@@ -6,6 +6,7 @@ import {
   ForbiddenException,
   InternalServerErrorException,
   Logger,
+  OnModuleInit,
 } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
@@ -70,13 +71,9 @@ export interface TokenResponse {
   user: {
     id: string;
     email: string | null;
-    name: string;
-    phone?: string | null;
+    phone: string | null;
+    name: string | null;
     role: UserRole;
-    tenantId?: string;
-    shopId?: string;
-    shopIds?: string[];
-    staffProfileId?: string;
     isEmailVerified?: boolean;
     isPhoneVerified?: boolean;
     createdAt?: Date;
@@ -96,7 +93,7 @@ export interface StaffShopSummary {
 }
 
 @Injectable()
-export class AuthService {
+export class AuthService implements OnModuleInit {
   private readonly logger = new Logger(AuthService.name);
   private googleClient: OAuth2Client;
   
@@ -111,6 +108,14 @@ export class AuthService {
     private googlePlaces: GooglePlacesService,
   ) {
     this.googleClient = new OAuth2Client(this.configService.get<string>('google.clientId'));
+  }
+
+  onModuleInit() {
+    try {
+      this.initializeFirebaseAuth();
+    } catch (err) {
+      this.logger.warn('Failed to initialize Firebase Admin on startup: ' + (err as Error).message);
+    }
   }
     
   private hashOtp(otp: string): string {

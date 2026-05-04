@@ -3,6 +3,7 @@ import { PrismaModule } from '../../common/prisma/prisma.module';
 import { BookingsController } from './bookings.controller';
 import { BookingsService } from './bookings.service';
 import { NoShowCron } from './no-show.cron';
+import { PendingApprovalCron } from './pending-approval.cron';
 import { QueueModule } from '../queue/queue.module';
 import { NotificationsModule } from '../notifications/notifications.module';
 import { UsersModule } from '../users/users.module';
@@ -19,7 +20,7 @@ import { WalletModule } from '../wallet/wallet.module';
     WalletModule,
   ],
   controllers: [BookingsController],
-  providers: [BookingsService, NoShowCron],
+  providers: [BookingsService, NoShowCron, PendingApprovalCron],
   exports: [BookingsService],
 })
 export class BookingsModule {}

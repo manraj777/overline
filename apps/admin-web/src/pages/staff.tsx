@@ -418,8 +418,24 @@ export default function StaffPage() {
 
                 <div className="flex items-center justify-between mt-4 pt-4 border-t border-outline-variant/10">
                   <div className="flex items-center gap-2">
-                    <div className={cn('w-2 h-2 rounded-full', member.isActive ? 'bg-tertiary' : 'bg-outline-variant')} />
-                    <span className={cn('text-xs font-bold', member.isActive ? 'text-tertiary' : 'text-outline')}>
+                    <label className="relative inline-flex items-center cursor-pointer">
+                      <input 
+                        type="checkbox" 
+                        className="sr-only peer" 
+                        checked={member.isActive ?? true}
+                        onChange={async (e) => {
+                          const newStatus = e.target.checked;
+                          try {
+                            await updateStaff.mutateAsync({ staffId: member.id, isActive: newStatus });
+                            addToast({ type: 'success', title: \`Staff marked as \${newStatus ? 'Active' : 'Inactive'}\` });
+                          } catch {
+                            addToast({ type: 'error', title: 'Failed to update staff status' });
+                          }
+                        }}
+                      />
+                      <div className="w-9 h-5 bg-surface-container-high peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-4 after:w-4 after:transition-all peer-checked:bg-primary"></div>
+                    </label>
+                    <span className={cn('text-xs font-bold', member.isActive ? 'text-primary' : 'text-outline')}>
                       {member.isActive ? 'Active' : 'Inactive'}
                     </span>
                   </div>

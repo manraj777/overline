@@ -240,6 +240,8 @@ export class BookingsService {
       throw new NotFoundException('Shop not found');
     }
 
+    // Time-overlap booking constraint is checked below, after start/end times are computed.
+
     // Get services and calculate total duration and price
     const services = await this.prisma.service.findMany({
       where: {
@@ -291,11 +293,15 @@ export class BookingsService {
       }
     }
 
-    // A single user (by userId or phone) can only hold ONE active booking across the platform
+    // A single user (by userId or phone) cannot hold multiple active bookings that overlap in time
     const activeBookingConditions: any[] = [
       {
-        status: { in: [BookingStatus.PENDING, BookingStatus.CONFIRMED, BookingStatus.IN_PROGRESS] },
+        status: { in: [BookingStatus.PENDING, BookingStatus.PENDING_APPROVAL, BookingStatus.CONFIRMED, BookingStatus.IN_PROGRESS] },
       },
+      {
+        startTime: { lt: bookingEndTime },
+        endTime: { gt: bookingStartTime },
+      }
     ];
     if (userId) {
       activeBookingConditions.push({ userId });
@@ -303,7 +309,7 @@ export class BookingsService {
       activeBookingConditions.push({ customerPhone });
     }
 
-    if (activeBookingConditions.length > 1) {
+    if (userId || customerPhone) {
       const existingActiveBooking = await this.prisma.booking.findFirst({
         where: {
           AND: activeBookingConditions,
@@ -311,8 +317,8 @@ export class BookingsService {
       });
 
       if (existingActiveBooking) {
-        throw new ConflictException(
-          'You already have an active appointment. Please complete or cancel it before booking another.',
+        throw new BadRequestException(
+          'You already have an active booking during this time window.',
         );
       }
     }
@@ -591,6 +597,9 @@ export class BookingsService {
           },
         },
         payment: true,
+        review: {
+          select: { id: true, rating: true, comment: true },
+        },
       },
     });
 
@@ -638,7 +647,10 @@ export class BookingsService {
   }
 
   /**
-   * Get first completed booking with no review
+   * Get first completed booking with no review.
+   * Returns the booking object directly (or null) so frontend
+   * `usePendingReviewBooking()` can read booking.id / booking.shop.name
+   * without unwrapping.
    */
   async getPendingReviewBooking(userId: string) {
     const booking = await this.prisma.booking.findFirst({
@@ -652,7 +664,7 @@ export class BookingsService {
         shop: { select: { name: true } },
       },
     });
-    return booking ? { booking } : null;
+    return booking;
   }
 
   /**
@@ -666,32 +678,37 @@ export class BookingsService {
     const where: any = { userId };
 
     if (status) {
-      const now = new Date();
       if (status === 'upcoming') {
-        // Upcoming = future bookings that are not completed/cancelled
-        where.startTime = { gte: now };
+        // Upcoming = any booking in an active lifecycle state. Time-of-day is
+        // irrelevant — a booking that started but hasn't been
+        // completed/cancelled still belongs in "upcoming" so the user can
+        // take action on it. The past filter is strictly terminal states.
         where.status = {
-          in: [BookingStatus.PENDING, BookingStatus.PENDING_APPROVAL, BookingStatus.CONFIRMED],
+          in: [
+            BookingStatus.PENDING,
+            BookingStatus.PENDING_APPROVAL,
+            BookingStatus.CONFIRMED,
+            BookingStatus.IN_PROGRESS,
+          ],
         };
       } else if (status === 'past') {
-        // Past = completed, cancelled, no-show, or past start time
-        where.OR = [
-          {
-            status: {
-              in: [
-                BookingStatus.COMPLETED,
-                BookingStatus.CANCELLED,
-                BookingStatus.NO_SHOW,
-                BookingStatus.REJECTED,
-              ],
-            },
-          },
-          { startTime: { lt: now } },
-        ];
+        // Past = terminal lifecycle states only. A future-dated booking that
+        // is PENDING_APPROVAL must NOT appear here.
+        where.status = {
+          in: [BookingStatus.COMPLETED, BookingStatus.NO_SHOW],
+        };
       } else if (status === 'cancelled') {
         where.status = {
-          in: [BookingStatus.CANCELLED, BookingStatus.REJECTED, BookingStatus.NO_SHOW],
+          in: [BookingStatus.CANCELLED, BookingStatus.REJECTED],
         };
+      } else if (status === 'pending') {
+        where.status = {
+          in: [BookingStatus.PENDING, BookingStatus.PENDING_APPROVAL],
+        };
+      } else if (status === 'confirmed') {
+        where.status = BookingStatus.CONFIRMED;
+      } else if (status === 'in-progress' || status === 'in_progress') {
+        where.status = BookingStatus.IN_PROGRESS;
       } else if (Object.values(BookingStatus).includes(status as BookingStatus)) {
         where.status = status;
       }

@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { useAuthStore } from '@/stores/auth';
+import { usePushNotifications } from '@/hooks/usePushNotifications';
 
 const publicRoutes = ['/auth/login', '/auth/signup', '/auth/google/callback', '/auth/verify-phone'];
 // Only enforce phone verification for routes that actually need it (booking flows)
@@ -10,6 +11,8 @@ export const AuthGuard: React.FC<{ children: React.ReactNode }> = ({ children })
   const router = useRouter();
   const { isAuthenticated, user, isLoading } = useAuthStore();
   const [mounted, setMounted] = React.useState(false);
+  
+  usePushNotifications(isAuthenticated);
 
   React.useEffect(() => {
     setMounted(true);

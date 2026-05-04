@@ -31,6 +31,7 @@ export default function SettingsPage() {
     longitude: '' as string | number,
     googleMapLink: '',
     workingTime: '09:00 - 21:00',
+    isActive: true,
   });
 
   const [notificationSettings, setNotificationSettings] = React.useState<Record<string, boolean>>({
@@ -62,6 +63,7 @@ export default function SettingsPage() {
       longitude: shopData.longitude || '',
       googleMapLink: String(shopData.settings?.googleMapLink || ''),
       workingTime: String(shopData.settings?.workingTime || '09:00 - 21:00'),
+      isActive: shopData.isActive ?? true,
     });
 
     const savedNotifications = shopData.settings?.notifications || {};
@@ -265,6 +267,7 @@ export default function SettingsPage() {
           timing: shopForm.workingTime,
           workingTime: shopForm.workingTime,
         },
+        isActive: shopForm.isActive,
       });
       addToast({ type: 'success', title: 'Shop details saved' });
     } catch (error: any) {
@@ -612,9 +615,38 @@ export default function SettingsPage() {
             {activeTab === 'settings' && (
               <div className="card-m3 p-8">
                 <h2 className="text-lg font-bold text-on-surface mb-6">Settings</h2>
-                <p className="text-sm text-on-surface-variant mb-6">Notifications and preferences.</p>
+                <p className="text-sm text-on-surface-variant mb-6">Store status and preferences.</p>
 
                 <div className="space-y-8">
+                  <div>
+                    <h3 className="text-sm font-bold text-on-surface mb-3">Store Status</h3>
+                    <div className="p-4 rounded-xl border border-outline-variant/15 bg-surface-container-low flex items-center justify-between">
+                      <div>
+                        <p className="font-bold text-on-surface">Shop is currently {shopForm.isActive ? 'Open (Active)' : 'Closed (Inactive)'}</p>
+                        <p className="text-xs text-on-surface-variant mt-1">If closed, users cannot find or book your shop.</p>
+                      </div>
+                      <label className="relative inline-flex items-center cursor-pointer">
+                        <input 
+                          type="checkbox" 
+                          className="sr-only peer" 
+                          checked={shopForm.isActive}
+                          onChange={async (e) => {
+                            const newStatus = e.target.checked;
+                            setShopForm(prev => ({ ...prev, isActive: newStatus }));
+                            try {
+                              await updateSettings.mutateAsync({ isActive: newStatus });
+                              addToast({ type: 'success', title: \`Shop marked as \${newStatus ? 'Open' : 'Closed'}\` });
+                            } catch {
+                              setShopForm(prev => ({ ...prev, isActive: !newStatus }));
+                              addToast({ type: 'error', title: 'Failed to update status' });
+                            }
+                          }}
+                        />
+                        <div className="w-11 h-6 bg-surface-container-high peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+                      </label>
+                    </div>
+                  </div>
+
                   <div>
                     <h3 className="text-sm font-bold text-on-surface mb-3">Customer Notifications</h3>
                     <div className="space-y-3">

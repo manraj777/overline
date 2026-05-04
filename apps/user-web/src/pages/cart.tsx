@@ -5,7 +5,7 @@ import { useRouter } from 'next/router';
 import { ArrowLeft, Clock, MapPin, Trash2, UserPlus, Check } from 'lucide-react';
 import { Alert, Button } from '@/components/ui';
 import { DatePicker, SlotPicker } from '@/components/booking';
-import { useAvailableSlots, useCreateBooking, useShopQueueStats } from '@/hooks';
+import { useAvailableSlots, useCreateBooking, useShopQueueStats, useMyBookings } from '@/hooks';
 import { useBookingStore } from '@/stores/booking';
 import { useAuthStore } from '@/stores/auth';
 import { format } from 'date-fns';
@@ -44,10 +44,31 @@ export default function CartPage() {
     staffId: selectedStaff?.id,
     serviceIds: selectedServices.map((s) => s.id),
   });
+  
+  const { data: myBookingsData } = useMyBookings('all');
+  const hasActiveBooking = React.useMemo(() => {
+    if (!myBookingsData?.data || !selectedDate || !selectedSlot) return false;
+    
+    // Calculate new booking time window
+    const newStart = new Date(`${format(selectedDate, 'yyyy-MM-dd')}T${selectedSlot.startTime}`).getTime();
+    const newEnd = newStart + (getTotalDuration() * 60 * 1000);
+
+    return myBookingsData.data.some(b => {
+      if (!['PENDING', 'PENDING_APPROVAL', 'CONFIRMED', 'WAITLISTED', 'IN_PROGRESS', 'IN_SERVICE'].includes(b.status)) {
+        return false;
+      }
+      
+      const bStart = new Date(b.startTime).getTime();
+      const bEnd = new Date(b.endTime).getTime();
+      
+      // Check for overlap: New start is before old end AND old start is before new end
+      return newStart < bEnd && bStart < newEnd;
+    });
+  }, [myBookingsData, selectedDate, selectedSlot, getTotalDuration]);
 
   const createBooking = useCreateBooking();
 
-  const canBook = selectedServices.length > 0 && !!selectedDate && !!selectedSlot;
+  const canBook = selectedServices.length > 0 && !!selectedDate && !!selectedSlot && !hasActiveBooking;
 
   const handleConfirmBooking = async () => {
     // Double-submit guard
@@ -60,6 +81,11 @@ export default function CartPage() {
 
     if (!isAuthenticated) {
       router.push('/auth/login?redirect=/cart');
+      return;
+    }
+
+    if (hasActiveBooking) {
+      setError('You already have an active booking during this time window. Please select a different time or cancel your existing booking.');
       return;
     }
 
@@ -92,17 +118,85 @@ export default function CartPage() {
           : {}),
       });
 
-      if (booking?.id && booking?.bookingNumber) {
+      const totalAmount = selectedServices.reduce((sum, s) => sum + Number(s.price || 0), 0);
+
+      // If total > 0, try to create an online payment order
+      if (totalAmount > 0) {
+        try {
+          // Create Order via Backend
+          const orderResponse = await api.post('/payments/create-order', {
+            bookingId: booking.id,
+            method: 'ONLINE'
+          });
+          const order = orderResponse.data;
+
+          if (order.method === 'RAZORPAY' && order.keyId) {
+            const isLoaded = await loadRazorpay();
+            if (!isLoaded) {
+              throw new Error('Razorpay SDK failed to load. Are you online?');
+            }
+
+            const options = {
+              key: order.keyId,
+              amount: order.amount,
+              currency: order.currency,
+              name: order.shopName || shop.name,
+              description: 'Booking Payment',
+              order_id: order.orderId,
+              handler: async function (response: any) {
+                try {
+                  await api.post('/payments/verify', {
+                    razorpay_order_id: response.razorpay_order_id,
+                    razorpay_payment_id: response.razorpay_payment_id,
+                    razorpay_signature: response.razorpay_signature,
+                  });
+
+                  if (booking?.bookingNumber) {
+                    saveQueueSession({
+                      shopId: shop.id,
+                      bookingId: booking.id,
+                      tokenCode: booking.bookingNumber,
+                    });
+                  }
+                  router.push(`/bookings/${booking.id}?success=true`);
+                } catch (err: any) {
+                  setError('Payment verification failed. If money was deducted, it will be refunded.');
+                }
+              },
+              prefill: {
+                name: customerName || useAuthStore.getState().user?.name,
+                email: useAuthStore.getState().user?.email,
+                contact: customerPhone || useAuthStore.getState().user?.phone,
+              },
+              theme: {
+                color: '#09090b',
+              },
+            };
+
+            const paymentObject = new (window as any).Razorpay(options);
+            paymentObject.on('payment.failed', function (response: any) {
+              setError(response.error.description);
+            });
+            paymentObject.open();
+            return; // Exit here, let Razorpay handler do the routing
+          }
+        } catch (paymentErr: any) {
+          // If payment setup fails (e.g., no provider configured), we gracefully fallback to booking creation
+          console.warn('Online payment failed to initialize:', paymentErr);
+        }
+      }
+
+      // Fallback or zero-amount flow
+      if (booking?.bookingNumber) {
         saveQueueSession({
           shopId: shop.id,
           bookingId: booking.id,
           tokenCode: booking.bookingNumber,
         });
       }
-
       router.push(`/bookings/${booking.id}?success=true`);
     } catch (err: any) {
-      setError(err.response?.data?.message || 'Failed to create booking');
+      setError(err.response?.data?.message || err.message || 'Failed to create booking');
     } finally {
       submittingRef.current = false;
     }
@@ -281,10 +375,12 @@ export default function CartPage() {
                 <Button
                   onClick={handleConfirmBooking}
                   isLoading={createBooking.isPending}
-                  disabled={!canBook || createBooking.isPending}
+                  disabled={!canBook || createBooking.isPending || hasActiveBooking}
                   className="w-full btn-primary py-3 mt-6 font-black disabled:opacity-50 disabled:cursor-not-allowed"
                 >
-                  {createBooking.isPending ? 'Booking...' : 'Confirm & Book Now'}
+                  {hasActiveBooking 
+                    ? 'Active Booking Exists' 
+                    : createBooking.isPending ? 'Booking...' : 'Confirm & Book Now'}
                 </Button>
               )}
             </div>

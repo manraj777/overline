@@ -106,31 +106,32 @@ export function ReviewModal({ bookingId: propBookingId, shopName: propShopName, 
             transition={{ type: 'spring', damping: 25, stiffness: 300 }}
             className="fixed bottom-0 left-0 right-0 md:bottom-auto md:top-1/2 md:left-1/2 md:-translate-x-1/2 md:-translate-y-1/2 z-50 w-full md:max-w-md"
           >
-            <div className="bg-white rounded-t-3xl md:rounded-3xl shadow-2xl overflow-hidden">
+            <div className="bg-surface-container-lowest rounded-t-3xl md:rounded-3xl shadow-glass-strong border border-outline-variant/40 overflow-hidden">
               {/* Drag handle (mobile) */}
               <div className="md:hidden flex justify-center pt-3 pb-1">
-                <div className="w-10 h-1 bg-gray-300 rounded-full" />
+                <div className="w-10 h-1 bg-outline-variant rounded-full" />
               </div>
 
               {/* Close button */}
               <button
                 onClick={handleDismiss}
-                className="absolute top-4 right-4 p-1.5 rounded-full hover:bg-gray-100 transition-colors"
+                aria-label="Close review modal"
+                className="absolute top-4 right-4 p-1.5 rounded-full hover:bg-surface-container-high transition-colors"
               >
-                <X className="w-5 h-5 text-gray-400" />
+                <X className="w-5 h-5 text-on-surface-variant" />
               </button>
 
               <div className="px-6 pt-4 pb-8">
                 {/* Header */}
                 <div className="text-center mb-6">
-                  <div className="w-14 h-14 bg-amber-100 rounded-2xl flex items-center justify-center mx-auto mb-3">
-                    <Star className="w-7 h-7 text-amber-500" />
+                  <div className="w-14 h-14 bg-amber-100 dark:bg-amber-500/20 rounded-2xl flex items-center justify-center mx-auto mb-3">
+                    <Star className="w-7 h-7 text-amber-500 fill-amber-500" />
                   </div>
-                  <h2 className="text-xl font-bold text-gray-900 mb-1">
+                  <h2 className="text-xl font-bold text-on-surface mb-1">
                     How was your experience?
                   </h2>
-                  <p className="text-gray-500 text-sm">
-                    Rate your visit at <span className="font-medium text-gray-700">{targetShopName}</span>
+                  <p className="text-on-surface-variant text-sm">
+                    Rate your visit at <span className="font-semibold text-on-surface">{targetShopName}</span>
                   </p>
                 </div>
 
@@ -145,26 +146,28 @@ export function ReviewModal({ bookingId: propBookingId, shopName: propShopName, 
                   onChange={(e) => setComment(e.target.value)}
                   maxLength={500}
                   placeholder="Tell others about your visit... (optional)"
-                  className="w-full px-4 py-3 text-sm bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-indigo-200 focus:border-indigo-300 resize-none"
+                  className="w-full px-4 py-3 text-sm bg-surface-container-low text-on-surface placeholder:text-on-surface-variant/60 border border-outline-variant rounded-xl focus:outline-none focus:ring-4 focus:ring-primary/15 focus:border-primary transition-all resize-none"
                   rows={3}
                 />
-                <p className="text-xs text-gray-400 text-right mt-1">
+                <p className="text-xs text-on-surface-variant/70 text-right mt-1">
                   {comment.length}/500
                 </p>
 
                 {/* Actions */}
                 <div className="flex gap-3 mt-4">
                   <button
+                    type="button"
                     onClick={handleDismiss}
-                    className="flex-1 py-3 text-sm font-medium text-gray-500 hover:text-gray-700 transition-colors"
+                    className="flex-1 py-3 text-sm font-semibold text-on-surface-variant hover:text-on-surface transition-colors"
                   >
                     Skip for now
                   </button>
                   <Button
+                    type="button"
                     onClick={handleSubmit}
                     isLoading={createReview.isPending}
-                    disabled={rating === 0}
-                    className="flex-1 rounded-xl"
+                    disabled={rating === 0 || !targetBookingId}
+                    className="flex-1"
                   >
                     Submit Review
                   </Button>

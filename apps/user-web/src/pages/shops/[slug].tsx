@@ -790,7 +790,15 @@ export default function ShopDetailPage({ initialShop, slug: ssrSlug }: ShopPageP
 
 export const getServerSideProps: GetServerSideProps<ShopPageProps> = async ({ params, res }) => {
   const slug = (params?.slug as string) || '';
-  if (!slug) return { notFound: true };
+  // Reject obviously-bad slugs with a 301 to /explore instead of a 404 page.
+  // "undefined" leaks in when a buggy link is built from a shop object that
+  // lacks a slug; empty slugs come from /shops/ with a trailing slash.
+  const isBadSlug = !slug || slug.trim() === '' || slug === 'undefined' || slug === 'null';
+  if (isBadSlug) {
+    return {
+      redirect: { destination: '/explore', permanent: false },
+    };
+  }
 
   const backendUrl = (
     process.env.NEXT_PUBLIC_BACKEND_URL ||

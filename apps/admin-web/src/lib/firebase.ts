@@ -53,6 +53,20 @@ export function getFirebaseAuth(): Auth {
   return auth;
 }
 
+export async function getFirebaseMessaging() {
+  // @ts-ignore - app is defined at top level
+  const appInst = typeof app !== 'undefined' ? app : null;
+  if (!appInst) {
+    throw new Error('Firebase app is not configured.');
+  }
+  const { getMessaging, isSupported } = await import('firebase/messaging');
+  const supported = await isSupported();
+  if (!supported) {
+    return null;
+  }
+  return getMessaging(appInst);
+}
+
 export function getFirebaseDb(): Firestore {
   if (!db) {
     throw new Error('Firebase is not configured. Please set NEXT_PUBLIC_FIREBASE_* values.');

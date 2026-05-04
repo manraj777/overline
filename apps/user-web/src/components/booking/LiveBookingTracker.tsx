@@ -1,5 +1,5 @@
 import React, { useEffect, useState, useRef } from 'react';
-import { MapPin, MessageCircle, Send, Navigation } from 'lucide-react';
+import { MessageCircle, Send, Navigation } from 'lucide-react';
 import { Card, Button, Input } from '@/components/ui';
 import { useAuthStore } from '@/stores/auth';
 import api from '@/lib/api';
@@ -13,37 +13,42 @@ interface ChatMessage {
     createdAt: string;
 }
 
-export const LiveBookingTracker = ({ bookingId, shopId, startTime }: { bookingId: string; shopId: string; startTime: string }) => {
+interface LiveBookingTrackerProps {
+    bookingId: string;
+    shopId: string;
+    startTime: string;
+    /** Current booking status — controls which features are enabled */
+    status?: string;
+}
+
+export const LiveBookingTracker = ({ bookingId, shopId, startTime, status }: LiveBookingTrackerProps) => {
     const { user } = useAuthStore();
     const [messages, setMessages] = useState<ChatMessage[]>([]);
     const [chatInput, setChatInput] = useState('');
     const [socket, setSocket] = useState<Socket | null>(null);
     const [isSharingLocation, setIsSharingLocation] = useState(false);
     const [trackingError, setTrackingError] = useState('');
+    const messagesEndRef = useRef<HTMLDivElement>(null);
 
-    // Determine if we should start tracking
-    const [isActive, setIsActive] = useState(false);
+    // Chat is always active when this component renders (parent gates by status).
+    // Location sharing only activates for CONFIRMED bookings within 20 min of start.
+    const isConfirmed = status === 'CONFIRMED';
 
+    const shouldShareLocation = (() => {
+        if (!isConfirmed) return false;
+        const now = new Date();
+        const start = new Date(startTime);
+        const diffMins = (start.getTime() - now.getTime()) / 60000;
+        return diffMins <= 20;
+    })();
+
+    // Auto-scroll to bottom when new messages arrive
     useEffect(() => {
-        const checkActive = () => {
-            const now = new Date();
-            const start = new Date(startTime);
-            const diffMins = (start.getTime() - now.getTime()) / 60000;
-            // Active if within 20 mins to start, or already started (diff <= 20)
-            if (diffMins <= 20) {
-                setIsActive(true);
-            } else {
-                setIsActive(false);
-            }
-        };
-        checkActive();
-        const intv = setInterval(checkActive, 60000);
-        return () => clearInterval(intv);
-    }, [startTime]);
+        messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    }, [messages]);
 
+    // Socket connection + chat — always on
     useEffect(() => {
-        if (!isActive) return;
-
         const wsUrl = process.env.NEXT_PUBLIC_WS_URL || process.env.NEXT_PUBLIC_API_URL?.replace('/api/v1', '') || 'http://127.0.0.1:3001';
         const skt = io(`${wsUrl}/queue`);
         setSocket(skt);
@@ -56,22 +61,33 @@ export const LiveBookingTracker = ({ bookingId, shopId, startTime }: { bookingId
             setMessages((prev) => [...prev, msg]);
         });
 
-        api.get(`/queue/tracking/${bookingId}/messages`).then(({ data }) => setMessages(data || []));
+        // Load existing messages
+        api.get(`/queue/tracking/${bookingId}/messages`)
+            .then(({ data }) => setMessages(data || []))
+            .catch(() => { /* endpoint may not exist yet */ });
 
-        // Start geolocation watch
-        let watchId: number;
+        return () => {
+            skt.disconnect();
+        };
+    }, [bookingId]);
+
+    // Geolocation sharing — only for confirmed bookings near start time
+    useEffect(() => {
+        if (!shouldShareLocation || !socket) return;
+
+        let watchId: number | undefined;
         if ('geolocation' in navigator) {
             setIsSharingLocation(true);
             watchId = navigator.geolocation.watchPosition(
                 (pos) => {
-                    skt.emit('updateLocation', {
+                    socket.emit('updateLocation', {
                         bookingId,
                         lat: pos.coords.latitude,
                         lng: pos.coords.longitude,
                     });
                 },
-                (err) => {
-                    setTrackingError('Failed to get location. Please enable location permissions.');
+                () => {
+                    setTrackingError('Location access denied. Enable permissions to share your location.');
                     setIsSharingLocation(false);
                 },
                 { enableHighAccuracy: true, maximumAge: 10000 }
@@ -79,10 +95,10 @@ export const LiveBookingTracker = ({ bookingId, shopId, startTime }: { bookingId
         }
 
         return () => {
-            skt.disconnect();
-            if (watchId) navigator.geolocation.clearWatch(watchId);
+            if (watchId !== undefined) navigator.geolocation.clearWatch(watchId);
+            setIsSharingLocation(false);
         };
-    }, [isActive, bookingId]);
+    }, [shouldShareLocation, socket, bookingId]);
 
     const handleSendMessage = (e: React.FormEvent) => {
         e.preventDefault();
@@ -100,31 +116,32 @@ export const LiveBookingTracker = ({ bookingId, shopId, startTime }: { bookingId
                 content: chatInput,
             });
             setChatInput('');
+        }).catch(() => {
+            // Fallback: still show locally even if API fails
+            setMessages((prev) => [
+                ...prev,
+                {
+                    id: `local-${Date.now()}`,
+                    senderId: user.id,
+                    senderType: 'USER',
+                    content: chatInput,
+                    createdAt: new Date().toISOString(),
+                },
+            ]);
+            setChatInput('');
         });
     };
 
-    if (!isActive) {
-        return (
-            <Card variant="bordered" className="bg-gray-50 border-dashed">
-                <div className="text-center py-4">
-                    <Navigation className="w-8 h-8 text-gray-300 mx-auto mb-2" />
-                    <h3 className="font-medium text-gray-700">Live Journey Tracking</h3>
-                    <p className="text-sm text-gray-500">Live tracking and chat will be available 20 minutes before your appointment starts.</p>
-                </div>
-            </Card>
-        );
-    }
-
     return (
-        <Card variant="bordered" className="border-primary-200">
-            <div className="mb-4 flex items-center justify-between border-b pb-3">
+        <Card variant="bordered" className="border-primary/20">
+            <div className="mb-4 flex items-center justify-between border-b border-outline-variant/20 pb-3">
                 <div>
-                    <h3 className="font-semibold text-gray-900 flex items-center gap-2">
-                        <Navigation className="w-5 h-5 text-primary-500" />
+                    <h3 className="font-bold text-on-surface flex items-center gap-2">
+                        <Navigation className="w-5 h-5 text-primary" />
                         Live Journey & Chat
                     </h3>
                     {isSharingLocation ? (
-                        <p className="text-xs text-green-600 font-medium flex items-center gap-1 mt-1">
+                        <p className="text-xs text-green-600 dark:text-green-400 font-medium flex items-center gap-1 mt-1">
                             <span className="relative flex h-2 w-2">
                                 <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
                                 <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500" />
@@ -132,35 +149,44 @@ export const LiveBookingTracker = ({ bookingId, shopId, startTime }: { bookingId
                             Sharing your live location with the shop
                         </p>
                     ) : trackingError ? (
-                        <p className="text-xs text-red-500 mt-1">{trackingError}</p>
+                        <p className="text-xs text-error mt-1">{trackingError}</p>
+                    ) : isConfirmed ? (
+                        <p className="text-xs text-on-surface-variant mt-1">Location sharing activates 20 min before your appointment</p>
                     ) : (
-                        <p className="text-xs text-gray-500 mt-1">Waiting for location permission...</p>
+                        <p className="text-xs text-on-surface-variant mt-1">Chat with the shop while your booking is being confirmed</p>
                     )}
                 </div>
             </div>
 
-            <div className="flex flex-col h-64 bg-gray-50 rounded-lg border overflow-hidden">
+            <div className="flex flex-col h-64 bg-surface-container-low rounded-2xl border border-outline-variant/10 overflow-hidden">
                 <div className="flex-1 p-3 overflow-y-auto space-y-3 flex flex-col">
                     {messages.length === 0 ? (
                         <div className="flex-1 flex items-center justify-center text-center">
                             <div>
-                                <MessageCircle className="w-8 h-8 text-gray-300 mx-auto mb-2" />
-                                <p className="text-xs text-gray-400">If you are running late or have queries,<br />chat directly with the shop owner.</p>
+                                <MessageCircle className="w-8 h-8 text-outline mx-auto mb-2" />
+                                <p className="text-xs text-on-surface-variant">
+                                    If you are running late or have queries,<br />chat directly with the shop owner.
+                                </p>
                             </div>
                         </div>
                     ) : (
                         messages.map((msg) => (
                             <div key={msg.id} className={`flex ${msg.senderType === 'USER' ? 'justify-end' : 'justify-start'}`}>
-                                <div className={`p-2 rounded-lg text-sm max-w-[85%] ${msg.senderType === 'USER' ? 'bg-primary-500 text-white flex-row-reverse' : 'bg-white border text-gray-800'}`}>
+                                <div className={`p-2.5 rounded-2xl text-sm max-w-[85%] ${
+                                    msg.senderType === 'USER'
+                                        ? 'bg-primary text-white rounded-br-sm'
+                                        : 'bg-surface-container border border-outline-variant/10 text-on-surface rounded-bl-sm'
+                                }`}>
                                     {msg.content}
                                 </div>
                             </div>
                         ))
                     )}
+                    <div ref={messagesEndRef} />
                 </div>
-                <form onSubmit={handleSendMessage} className="p-2 bg-white border-t flex gap-2 w-full">
+                <form onSubmit={handleSendMessage} className="p-2 bg-surface border-t border-outline-variant/10 flex gap-2 w-full">
                     <Input
-                        className="flex-1 text-sm bg-gray-50 border-gray-200"
+                        className="flex-1 text-sm"
                         placeholder="Type a message..."
                         value={chatInput}
                         onChange={(e) => setChatInput(e.target.value)}

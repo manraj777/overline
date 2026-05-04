@@ -1,4 +1,5 @@
 import type { GetServerSideProps } from 'next';
+import { isShopPubliclyListable } from '@/lib/shop-listability';
 
 const SITE_URL = (process.env.NEXT_PUBLIC_SITE_URL || 'https://overline.in').replace(/\/$/, '');
 const BACKEND_URL = (
@@ -15,26 +16,6 @@ interface UrlEntry {
   lastmod?: string;
   changefreq?: Freq;
   priority?: number;
-}
-
-/**
- * Filter out test / incomplete shops from public listings.
- * Keeps the sitemap clean and prevents Google from indexing placeholder pages.
- */
-function isShopPubliclyListable(shop: {
-  name?: string;
-  slug?: string;
-  address?: string;
-  city?: string;
-  phone?: string;
-  isActive?: boolean;
-}): boolean {
-  if (shop.isActive === false) return false;
-  if (!shop.name || shop.name.trim().length < 3) return false;
-  if (!shop.slug) return false;
-  if (!shop.address || !shop.city) return false;
-  if (!shop.phone || shop.phone.replace(/\D/g, '').length < 10) return false;
-  return true;
 }
 
 const STATIC_ROUTES: UrlEntry[] = [
@@ -91,6 +72,10 @@ async function fetchShops(): Promise<UrlEntry[]> {
           phone?: string;
           isActive?: boolean;
           updatedAt?: string;
+          coverImageUrl?: string | null;
+          images?: Array<{ url?: string | null }> | null;
+          servicesCount?: number | null;
+          workingHours?: Array<any> | null;
         }>;
         total?: number;
       };

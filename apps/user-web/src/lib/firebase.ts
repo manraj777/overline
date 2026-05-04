@@ -62,6 +62,18 @@ export function getFirebaseAuth(): Auth {
   return auth;
 }
 
+export async function getFirebaseMessaging() {
+  if (!app) {
+    throw new Error('Firebase app is not configured.');
+  }
+  const { getMessaging, isSupported } = await import('firebase/messaging');
+  const supported = await isSupported();
+  if (!supported) {
+    return null;
+  }
+  return getMessaging(app);
+}
+
 export function normalizeIndianPhone(phone: string): string {
   const cleaned = phone.replace(/\D/g, '');
   if (cleaned.length === 10) {

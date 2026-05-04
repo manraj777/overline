@@ -29,8 +29,8 @@ export default function QueueTracker({ tokenCode, aheadCount, estimatedMinutes, 
   const progress = ((stepIndex + 1) / steps.length) * 100;
 
   return (
-    <section className="rounded-3xl border border-white/15 bg-[#101622]/90 p-6 shadow-2xl shadow-black/30">
-      <div className="mb-4 flex items-center justify-between text-sm text-white/70">
+    <section className="rounded-3xl border border-gray-200 dark:border-white/15 bg-white dark:bg-[#101622]/90 p-6 shadow-2xl shadow-black/30">
+      <div className="mb-4 flex items-center justify-between text-sm text-gray-500 dark:text-gray-900 dark:text-white/70">
         <span>Live Tracking</span>
         <span>{statusLabel(status)}</span>
       </div>
@@ -44,11 +44,11 @@ export default function QueueTracker({ tokenCode, aheadCount, estimatedMinutes, 
         />
       </div>
 
-      <div className="mb-6 grid grid-cols-2 gap-3 text-xs text-white/70 sm:grid-cols-4">
+      <div className="mb-6 grid grid-cols-2 gap-3 text-xs text-gray-500 dark:text-gray-900 dark:text-white/70 sm:grid-cols-4">
         {steps.map((step, index) => (
           <div
             key={step.label}
-            className={index <= stepIndex ? 'font-semibold text-[#f6bd60]' : 'text-white/50'}
+            className={index <= stepIndex ? 'font-semibold text-[#f6bd60]' : 'text-gray-900 dark:text-white/50'}
           >
             {step.label}
           </div>
@@ -61,11 +61,11 @@ export default function QueueTracker({ tokenCode, aheadCount, estimatedMinutes, 
         transition={{ repeat: Infinity, duration: 2.2 }}
         className="mb-5 rounded-2xl border border-[#f6bd60]/40 bg-[#1a2232] p-6 text-center"
       >
-        <div className="text-xs uppercase tracking-[0.2em] text-white/65">Your Token</div>
+        <div className="text-xs uppercase tracking-[0.2em] text-gray-900 dark:text-white/65">Your Token</div>
         <div className="mt-2 text-5xl font-black tracking-wider text-[#f6bd60]">{tokenCode}</div>
       </motion.div>
 
-      <div className="grid gap-2 text-sm text-white/80">
+      <div className="grid gap-2 text-sm text-gray-600 dark:text-gray-900 dark:text-white/80">
         <p>{aheadCount > 0 ? `${aheadCount} people ahead of you` : "You're next!"}</p>
         <p>Estimated time: {estimatedMinutes} minutes</p>
         <p>

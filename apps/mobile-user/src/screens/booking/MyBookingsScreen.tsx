@@ -16,7 +16,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useAuthStore } from '../../stores/authStore';
 
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
-type TabType = 'upcoming' | 'past';
+type TabType = 'upcoming' | 'pending' | 'confirmed' | 'past' | 'cancelled' | 'all';
 
 export default function MyBookingsScreen() {
   const navigation = useNavigation<NavigationProp>();
@@ -24,19 +24,13 @@ export default function MyBookingsScreen() {
   const [activeTab, setActiveTab] = useState<TabType>('upcoming');
 
   const { data: bookingsData, isLoading, refetch, isRefetching } = useQuery({
-    queryKey: ['myBookings'],
-    queryFn: () => bookingsApi.getMy().then(res => res.data),
+    queryKey: ['myBookings', activeTab],
+    queryFn: () => bookingsApi.getMy(activeTab === 'all' ? undefined : { status: activeTab }).then(res => res.data),
   });
 
   const bookings: Booking[] = Array.isArray(bookingsData) ? bookingsData : bookingsData?.data || [];
 
-  const upcomingBookings = bookings.filter(
-    (b: Booking) => !isPast(new Date(b.startTime)) && !['CANCELLED', 'COMPLETED', 'NO_SHOW'].includes(b.status),
-  );
-  const pastBookings = bookings.filter(
-    (b: Booking) => isPast(new Date(b.startTime)) || ['CANCELLED', 'COMPLETED', 'NO_SHOW'].includes(b.status),
-  );
-  const displayBookings = activeTab === 'upcoming' ? upcomingBookings : pastBookings;
+  const displayBookings = bookings;
 
   const renderBooking = ({ item }: { item: Booking }) => {
     const config = BookingStatusConfig[item.status] || { color: Colors.textTertiary, bg: Colors.surfaceLight, icon: '•' };
@@ -115,16 +109,18 @@ export default function MyBookingsScreen() {
 
       {/* Tabs */}
       <View style={styles.tabsContainer}>
-        {(['upcoming', 'past'] as TabType[]).map(tab => (
-          <TouchableOpacity
-            key={tab}
-            style={[styles.tab, activeTab === tab && styles.activeTab]}
-            onPress={() => setActiveTab(tab)}>
-            <Text style={[styles.tabText, activeTab === tab && styles.activeTabText]}>
-              {tab === 'upcoming' ? `Upcoming (${upcomingBookings.length})` : `Past (${pastBookings.length})`}
-            </Text>
-          </TouchableOpacity>
-        ))}
+        <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: 8, paddingRight: 32 }}>
+          {(['upcoming', 'pending', 'confirmed', 'past', 'cancelled', 'all'] as TabType[]).map(tab => (
+            <TouchableOpacity
+              key={tab}
+              style={[styles.tab, activeTab === tab && styles.activeTab]}
+              onPress={() => setActiveTab(tab)}>
+              <Text style={[styles.tabText, activeTab === tab && styles.activeTabText]}>
+                {tab.charAt(0).toUpperCase() + tab.slice(1)}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
       </View>
 
       <FlatList
@@ -156,7 +152,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row', paddingHorizontal: Spacing.xl, marginBottom: Spacing.lg, gap: Spacing.sm,
   },
   tab: {
-    flex: 1, paddingVertical: Spacing.md, alignItems: 'center',
+    paddingVertical: Spacing.md, paddingHorizontal: Spacing.xl, alignItems: 'center',
     borderRadius: BorderRadius.full, backgroundColor: Colors.surface,
     borderWidth: 1, borderColor: Colors.border,
   },

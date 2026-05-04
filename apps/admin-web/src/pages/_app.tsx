@@ -10,6 +10,7 @@ import { ToastProvider } from '@/components/ui';
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
 import api from '@/lib/api';
 import { useAuthStore } from '@/stores/auth';
+import { usePushNotifications } from '@/hooks/usePushNotifications';
 import { ThemeProvider } from 'next-themes';
 import {
   canAccessPath,
@@ -28,6 +29,8 @@ const inter = Inter({
 function AuthBootstrap() {
   const router = useRouter();
   const { accessToken, isAuthenticated, logout } = useAuthStore();
+  
+  usePushNotifications(isAuthenticated);
   const lastValidatedAtRef = React.useRef(0);
   const lastValidatedTokenRef = React.useRef<string | null>(null);
 

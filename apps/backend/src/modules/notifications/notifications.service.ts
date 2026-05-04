@@ -39,99 +39,147 @@ export class NotificationsService {
   }
 
   /**
-   * Send notification to user
+   * Send notification to user.
+   *
+   * Creates a SINGLE in-app notification row and dispatches every requested
+   * channel (email, sms, push) off that row. Previously a separate row was
+   * written per channel which caused 3–4x duplicate entries in the user's
+   * notifications list after a single booking.
    */
   async send(payload: NotificationPayload): Promise<void> {
     const { userId, bookingId, type, title, body, data, channels, email, phone } = payload;
 
-    // Create notification records for each channel (if userId exists)
-    if (userId) {
-      const notifications = await Promise.all(
-        channels.map((channel) =>
-          this.prisma.notification.create({
-            data: {
-              userId,
-              bookingId,
-              channel,
-              type,
-              title,
-              body,
-              data: data || {},
-              status: NotificationStatus.PENDING,
-            },
-          }),
-        ),
-      );
-
-      // Send through each channel
-      for (const notification of notifications) {
-        await this.sendThroughChannel(notification, email, phone);
-      }
-    } else {
-      // Guest booking - send directly without storing
+    if (!userId) {
+      // Guest booking — deliver through the transport channels directly
+      // without persisting a row (no user to attach it to).
       if (channels.includes(NotificationChannel.EMAIL) && email) {
         await this.sendEmail(email, title, body);
       }
       if (channels.includes(NotificationChannel.SMS) && phone) {
         await this.sendSms(phone, body);
       }
+      return;
     }
+
+    // Persist ONE representative row — prefer PUSH as the channel tag because
+    // it is the primary transport for the in-app notifications tray. Any of
+    // EMAIL / SMS / PUSH is acceptable; the row itself represents "the user
+    // was notified" regardless of transport.
+    const primaryChannel =
+      (channels.includes(NotificationChannel.PUSH) && NotificationChannel.PUSH) ||
+      (channels.includes(NotificationChannel.EMAIL) && NotificationChannel.EMAIL) ||
+      (channels.includes(NotificationChannel.SMS) && NotificationChannel.SMS) ||
+      NotificationChannel.PUSH;
+
+    const notification = await this.prisma.notification.create({
+      data: {
+        userId,
+        bookingId,
+        channel: primaryChannel,
+        type,
+        title,
+        body,
+        data: data || {},
+        status: NotificationStatus.PENDING,
+      },
+    });
+
+    // Fan out every requested transport from the single row.
+    const deliveryResults = await Promise.allSettled(
+      channels.map((channel) =>
+        this.deliverChannel(channel, notification, email, phone),
+      ),
+    );
+
+    // Mark as SENT if at least one transport succeeded, else FAILED.
+    const anySent = deliveryResults.some((r) => r.status === 'fulfilled');
+    await this.prisma.notification.update({
+      where: { id: notification.id },
+      data: {
+        status: anySent ? NotificationStatus.SENT : NotificationStatus.FAILED,
+        sentAt: anySent ? new Date() : undefined,
+      },
+    });
   }
 
   /**
-   * Send through specific channel
+   * Dispatch a single channel for a persisted notification. Does NOT write
+   * additional DB rows — status for the single representative row is
+   * managed by `send()` above.
    */
-  private async sendThroughChannel(
+  private async deliverChannel(
+    channel: NotificationChannel,
     notification: any,
     email?: string,
     phone?: string,
   ): Promise<void> {
-    try {
-      switch (notification.channel) {
-        case NotificationChannel.EMAIL:
-          const userEmail = email || (await this.getUserEmail(notification.userId));
-          if (userEmail) {
-            await this.sendEmail(userEmail, notification.title, notification.body);
-          }
-          break;
-
-        case NotificationChannel.SMS:
-          const userPhone = phone || (await this.getUserPhone(notification.userId));
-          if (userPhone) {
-            await this.sendSms(userPhone, notification.body);
-          }
-          break;
-
-        case NotificationChannel.PUSH:
-          // Use EventsGateway for real-time notification dispatch
-          if (notification.userId) {
-            this.eventsGateway.sendToUser(notification.userId, 'notification', {
-              id: notification.id,
-              title: notification.title,
-              body: notification.body,
-              type: notification.type,
-              data: notification.data,
-            });
-            this.logger.log(`Real-time PUSH (Socket.io) sent to User: ${notification.userId}`);
-          }
-          break;
+    switch (channel) {
+      case NotificationChannel.EMAIL: {
+        const userEmail = email || (await this.getUserEmail(notification.userId));
+        if (userEmail) {
+          await this.sendEmail(userEmail, notification.title, notification.body);
+        }
+        return;
       }
+      case NotificationChannel.SMS: {
+        const userPhone = phone || (await this.getUserPhone(notification.userId));
+        if (userPhone) {
+          await this.sendSms(userPhone, notification.body);
+        }
+        return;
+      }
+      case NotificationChannel.PUSH: {
+        if (notification.userId) {
+          // Send real-time notification via Socket.io
+          this.eventsGateway.sendToUser(notification.userId, 'notification', {
+            id: notification.id,
+            title: notification.title,
+            body: notification.body,
+            type: notification.type,
+            data: notification.data,
+          });
+          this.logger.log(`Real-time PUSH (Socket.io) sent to User: ${notification.userId}`);
 
-      // Mark as sent
-      await this.prisma.notification.update({
-        where: { id: notification.id },
-        data: {
-          status: NotificationStatus.SENT,
-          sentAt: new Date(),
-        },
-      });
-    } catch (error) {
-      this.logger.error(`Failed to send ${notification.channel} notification:`, error);
-      await this.prisma.notification.update({
-        where: { id: notification.id },
-        data: { status: NotificationStatus.FAILED },
-      });
+          // Send FCM Push Notification
+          try {
+            const fcmToken = await this.getUserFcmToken(notification.userId);
+            if (fcmToken) {
+              const admin = require('firebase-admin');
+              if (admin.apps.length > 0) {
+                await admin.messaging().send({
+                  token: fcmToken,
+                  notification: {
+                    title: notification.title,
+                    body: notification.body,
+                  },
+                  data: {
+                    type: notification.type,
+                    id: notification.id,
+                  },
+                });
+                this.logger.log(`FCM Push Notification sent to User: ${notification.userId}`);
+              } else {
+                this.logger.warn('FCM delivery skipped: Firebase Admin not initialized.');
+              }
+            }
+          } catch (error) {
+            this.logger.error(`Failed to send FCM to User: ${notification.userId}`, error);
+          }
+        }
+        return;
+      }
     }
+  }
+
+  /**
+   * Get user FCM token
+   */
+  private async getUserFcmToken(userId: string): Promise<string | null> {
+    const user = await this.prisma.user.findUnique({
+      where: { id: userId },
+      select: { fcmToken: true },
+    });
+    return user?.fcmToken || null;
   }
 
   /**
@@ -253,24 +301,52 @@ export class NotificationsService {
       minute: '2-digit',
     });
 
+    // Every new booking starts in PENDING_APPROVAL. Use "Placed" copy until
+    // the shop actually confirms it. Separate "Confirmed" copy is sent when
+    // status transitions to CONFIRMED.
+    const isPending =
+      booking.status === 'PENDING_APPROVAL' || booking.status === 'PENDING';
+    const title = isPending ? 'Booking Placed! 🎉' : 'Booking Confirmed! ✅';
+
+    // De-duplicate: Ensure we don't send the "Booking Placed!" or "Booking Confirmed!"
+    // notification multiple times for the same booking.
+    if (booking.userId) {
+      const existing = await this.prisma.notification.findFirst({
+        where: {
+          userId: booking.userId,
+          bookingId: booking.id,
+          title: title,
+        },
+      });
+      if (existing) {
+        console.log(`[NotificationsService] Skipping duplicate ${title} info for booking ${booking.id}`);
+        return;
+      }
+    }
+
+    const headline = isPending
+      ? `Your booking at ${booking.shop.name} has been placed and is waiting for shop approval.`
+      : `Your booking at ${booking.shop.name} is confirmed!`;
+
     const message =
-      `Your booking at ${booking.shop.name} is confirmed!\n\n` +
+      `${headline}\n\n` +
       `📅 Date: ${dateStr}\n` +
       `⏰ Time: ${timeStr}\n` +
       `📍 Address: ${booking.shop.address}\n` +
       `🔢 Booking #: ${booking.bookingNumber}\n\n` +
-      `See you soon!`;
+      (isPending ? "We'll notify you as soon as the shop confirms." : 'See you soon!');
 
     await this.send({
       userId: booking.userId || undefined,
       bookingId: booking.id,
       type: NotificationType.BOOKING_CONFIRMED,
-      title: 'Booking Confirmed! ✅',
+      title,
       body: message,
       data: {
         bookingNumber: booking.bookingNumber,
         shopName: booking.shop.name,
         startTime: booking.startTime.toISOString(),
+        status: booking.status,
       },
       channels: [NotificationChannel.EMAIL, NotificationChannel.SMS, NotificationChannel.PUSH],
       email: booking.customerEmail || undefined,

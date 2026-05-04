@@ -1,10 +1,29 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import Head from 'next/head';
 import { format } from 'date-fns';
 import { Loading, useToast } from '@/components/ui';
 import { useQueueStartService, useStaffOwnBookings, useUpdateStaffOwnBookingStatus } from '@/hooks';
 import { BookingStatus } from '@/types';
 import { formatPrice, formatTime, cn } from '@/lib/utils';
+
+/** Compact elapsed timer for the bookings table */
+function InlineTimer({ startedAt }: { startedAt: string }) {
+	const [elapsed, setElapsed] = useState(0);
+	useEffect(() => {
+		const start = new Date(startedAt).getTime();
+		const tick = () => setElapsed(Math.floor((Date.now() - start) / 1000));
+		tick();
+		const id = setInterval(tick, 1000);
+		return () => clearInterval(id);
+	}, [startedAt]);
+	const m = Math.floor(elapsed / 60);
+	const s = elapsed % 60;
+	return (
+		<span className="text-[10px] font-bold text-primary tabular-nums">
+			⏱ {m.toString().padStart(2, '0')}:{s.toString().padStart(2, '0')}
+		</span>
+	);
+}
 
 const STATUS_OPTIONS: Array<BookingStatus | 'ALL'> = [
 	'ALL',
@@ -157,8 +176,20 @@ export default function StaffBookingsPage() {
 							<tbody>
 								{bookings.map((booking) => (
 									<tr key={booking.id}>
-										<td><span className="font-bold">{formatTime(booking.startTime)}</span></td>
-										<td><span className="font-medium">{booking.user?.name || booking.customerName || 'Walk-in'}</span></td>
+										<td>
+											<span className="font-bold">{formatTime(booking.startTime)}</span>
+											{(booking.status === BookingStatus.IN_PROGRESS || booking.status === BookingStatus.IN_SERVICE) && booking.startedAt && (
+												<div className="mt-0.5"><InlineTimer startedAt={booking.startedAt} /></div>
+											)}
+										</td>
+										<td>
+											<span className="font-medium">{booking.user?.name || booking.customerName || 'Walk-in'}</span>
+											{booking.status === BookingStatus.CONFIRMED && (booking.user?.phone || booking.customerPhone) && (
+												<div className="text-[10px] text-on-surface-variant mt-0.5">
+													📞 {booking.user?.phone || booking.customerPhone}
+												</div>
+											)}
+										</td>
 										<td className="text-on-surface-variant">{booking.services?.[0]?.serviceName || 'Service'}</td>
 										<td><span className="font-bold">{formatPrice(Number(booking.totalAmount || 0))}</span></td>
 										<td>
@@ -168,6 +199,9 @@ export default function StaffBookingsPage() {
 										</td>
 										<td className="text-right">
 											<div className="flex justify-end gap-2">
+{['PENDING', 'PENDING_APPROVAL', 'CONFIRMED'].includes(booking.status) && booking.userId && (
+<button onClick={() => window.open(`/chat/${booking.userId}?booking=${booking.id}`, "_blank")} className="btn-outline px-3 py-1 text-[10px] text-primary border-primary">Chat</button>
+)}
 												{(booking.status === BookingStatus.PENDING || booking.status === BookingStatus.PENDING_APPROVAL) && (
 													<button
 														onClick={() => updateStatus.mutate({ bookingId: booking.id, status: BookingStatus.CONFIRMED })}
@@ -217,11 +251,15 @@ export default function StaffBookingsPage() {
 			{proposeModalBookingId && (
 				<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
 					<div className="w-full max-w-sm card-m3 p-5">
-						<h3 className="text-lg font-semibold text-on-surface">Propose New Time</h3>
+						<h3 className="text-lg font-semibold text-on-surface">Propose New Time / Fast Track</h3>
 						<p className="mt-2 text-sm text-on-surface-variant">
 							Select a new start and end time to propose to the customer.
 						</p>
 						<div className="mt-4 space-y-3">
+<div className="flex gap-2 mb-3">
+  <button type="button" onClick={() => { const now = new Date(); now.setMinutes(now.getMinutes() + 15); setProposedStart(now.toISOString().slice(0, 16)); now.setMinutes(now.getMinutes() + 30); setProposedEnd(now.toISOString().slice(0, 16)); setProposedNotes("Fast track available! We can take you in 15 mins."); }} className="btn-outline text-xs px-2 py-1 border-primary text-primary">In 15 Mins</button>
+  <button type="button" onClick={() => { const now = new Date(); now.setMinutes(now.getMinutes() + 30); setProposedStart(now.toISOString().slice(0, 16)); now.setMinutes(now.getMinutes() + 30); setProposedEnd(now.toISOString().slice(0, 16)); setProposedNotes("Immediate opening! We can take you in 30 mins."); }} className="btn-outline text-xs px-2 py-1 border-primary text-primary">In 30 Mins</button>
+</div>
 							<div>
 								<label className="text-xs text-on-surface-variant mb-1 block">Proposed Start Time</label>
 								<input

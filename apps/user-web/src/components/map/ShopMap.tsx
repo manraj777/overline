@@ -61,10 +61,8 @@ const MapResizer = () => {
 
 export const ShopMap: React.FC<ShopMapProps> = ({ shops, userLocation, onShopSelect }) => {
     const router = useRouter();
-    const [mounted, setMounted] = useState(false);
 
     useEffect(() => {
-        setMounted(true);
         // Fix leafjs default icon paths in Nextjs
         delete (L.Icon.Default.prototype as any)._getIconUrl;
         L.Icon.Default.mergeOptions({
@@ -73,12 +71,6 @@ export const ShopMap: React.FC<ShopMapProps> = ({ shops, userLocation, onShopSel
             shadowUrl: 'https://cdnjs.cloudflare.com/ajax/libs/leaflet/1.7.1/images/marker-shadow.png',
         });
     }, []);
-
-    if (!mounted) return (
-        <div className="h-full w-full min-h-[300px] bg-surface-container animate-pulse rounded-lg flex items-center justify-center">
-            <span className="text-on-surface-variant text-sm">Loading Map...</span>
-        </div>
-    );
 
     const defaultCenter: [number, number] = userLocation
         ? [userLocation.lat, userLocation.lng]
