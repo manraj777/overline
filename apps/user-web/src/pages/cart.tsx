@@ -47,6 +47,7 @@ export default function CartPage() {
   } = useBookingStore();
 
   const [error, setError] = React.useState<string | null>(null);
+  const [paymentMethod, setPaymentMethod] = React.useState<'ONLINE' | 'PAY_AT_SHOP'>('PAY_AT_SHOP');
   const submittingRef = React.useRef(false);
 
   const { data: queueStats } = useShopQueueStats(shop?.id || '');
@@ -132,13 +133,13 @@ export default function CartPage() {
 
       const totalAmount = selectedServices.reduce((sum, s) => sum + Number(s.price || 0), 0);
 
-      // If total > 0, try to create an online payment order
+      // If total > 0, create the payment order using the selected method
       if (totalAmount > 0) {
         try {
           // Create Order via Backend
           const orderResponse = await api.post('/payments/create-order', {
             bookingId: booking.id,
-            method: 'ONLINE'
+            method: paymentMethod
           });
           const order = orderResponse.data;
 
@@ -375,6 +376,33 @@ export default function CartPage() {
                   </div>
                 </div>
               </div>
+
+              {selectedServices.reduce((sum, s) => sum + Number(s.price || 0), 0) > 0 && (
+                <div className="mt-6">
+                  <h3 className="text-sm font-bold text-on-surface mb-3">Payment Method</h3>
+                  <div className="space-y-3">
+                    <label className={`flex items-center justify-between p-3 rounded-xl border cursor-pointer transition-colors ${paymentMethod === 'PAY_AT_SHOP' ? 'border-primary bg-primary/5' : 'border-outline-variant/20 bg-surface-container-low hover:bg-surface-container'}`}>
+                      <div className="flex items-center gap-3">
+                        <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${paymentMethod === 'PAY_AT_SHOP' ? 'border-primary' : 'border-outline-variant'}`}>
+                          {paymentMethod === 'PAY_AT_SHOP' && <div className="w-2 h-2 rounded-full bg-primary" />}
+                        </div>
+                        <span className="font-bold text-sm">Pay at Shop</span>
+                      </div>
+                      <span className="text-xs text-on-surface-variant font-medium bg-surface-container px-2 py-1 rounded-md">No extra fees</span>
+                    </label>
+
+                    <label className={`flex items-center justify-between p-3 rounded-xl border cursor-pointer transition-colors ${paymentMethod === 'ONLINE' ? 'border-primary bg-primary/5' : 'border-outline-variant/20 bg-surface-container-low hover:bg-surface-container'}`}>
+                      <div className="flex items-center gap-3">
+                        <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${paymentMethod === 'ONLINE' ? 'border-primary' : 'border-outline-variant'}`}>
+                          {paymentMethod === 'ONLINE' && <div className="w-2 h-2 rounded-full bg-primary" />}
+                        </div>
+                        <span className="font-bold text-sm">Prepay Online</span>
+                      </div>
+                      <span className="text-xs text-on-surface-variant font-medium bg-surface-container px-2 py-1 rounded-md">Via Razorpay</span>
+                    </label>
+                  </div>
+                </div>
+              )}
 
               {!isAuthenticated ? (
                 <button
