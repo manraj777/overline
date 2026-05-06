@@ -185,7 +185,7 @@ export class SlotEngineService {
       where: {
         shopId,
         startTime: { gte: dateStart, lte: dateEnd },
-        status: { in: ['PENDING', 'CONFIRMED', 'IN_PROGRESS'] },
+        status: { in: ['PENDING', 'PENDING_APPROVAL', 'CONFIRMED', 'IN_PROGRESS'] },
         ...(staffId ? { staffId } : {}),
       },
       select: {
@@ -354,7 +354,7 @@ export class SlotEngineService {
 
     const whereClause: any = {
       shopId,
-      status: { in: ['PENDING', 'CONFIRMED', 'IN_PROGRESS'] },
+      status: { in: ['PENDING', 'PENDING_APPROVAL', 'CONFIRMED', 'IN_PROGRESS'] },
       OR: [
         {
           AND: [{ startTime: { lte: startTime } }, { endTime: { gt: startTime } }],
@@ -455,8 +455,25 @@ export class SlotEngineService {
     }
 
     if (staffWorkingHour) {
-      const slotStartMinutes = startTime.getHours() * 60 + startTime.getMinutes();
-      const slotEndMinutes = endTime.getHours() * 60 + endTime.getMinutes();
+      // Use Intl.DateTimeFormat to get local hours/minutes in IST (shop's timezone)
+      // This prevents the server's UTC timezone from making valid slots appear unavailable.
+      const istTime = startTime.toLocaleTimeString('en-US', { 
+        timeZone: 'Asia/Kolkata', 
+        hour12: false,
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+      const [hStart, mStart] = istTime.split(':').map(Number);
+      const slotStartMinutes = hStart * 60 + mStart;
+
+      const istEndTime = endTime.toLocaleTimeString('en-US', { 
+        timeZone: 'Asia/Kolkata', 
+        hour12: false,
+        hour: '2-digit',
+        minute: '2-digit'
+      });
+      const [hEnd, mEnd] = istEndTime.split(':').map(Number);
+      const slotEndMinutes = hEnd * 60 + mEnd;
 
       const intervals = this.parseStaffIntervals(staffWorkingHour.intervals);
       if (intervals.length === 0) {

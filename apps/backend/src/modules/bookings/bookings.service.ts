@@ -213,6 +213,62 @@ export class BookingsService {
   /**
    * Create a new booking with fraud detection
    */
+  /**
+   * Calculate price breakdown for a booking
+   */
+  async calculatePrice(dto: Partial<CreateBookingDto>, userId?: string) {
+    const { shopId, serviceIds = [], offerCode } = dto;
+
+    const services = await this.prisma.service.findMany({
+      where: {
+        id: { in: serviceIds },
+        shopId,
+        isActive: true,
+      },
+    });
+
+    const subtotal = services.reduce((sum, s) => sum + Number(s.price), 0);
+    
+    // Taxes and Charges: 15% markup as requested by owner
+    const taxesAndCharges = Math.round(subtotal * 0.15);
+
+    // Apply offer code discount
+    let discount = 0;
+    if (offerCode) {
+      if (offerCode.toUpperCase() === 'OVERLINE10') {
+        discount = subtotal * 0.1;
+      } else if (offerCode.toUpperCase() === 'OVERLINE20') {
+        discount = subtotal * 0.2;
+      } else if (offerCode.toUpperCase() === 'WELCOME50') {
+        discount = 50;
+      }
+    }
+
+    const priceAfterDiscount = Math.max(0, subtotal - discount);
+
+    // Free Cash Application
+    let freeCashAvailable = 0;
+    if (userId) {
+      const wallet = await this.walletService.getWalletBalance(userId);
+      freeCashAvailable = wallet.freeCashBalance;
+    }
+
+    // We only use free cash up to the amount of taxes/charges, 
+    // ensuring the final price remains at least the shop price after coupon discount.
+    const freeCashUsed = Math.min(freeCashAvailable, taxesAndCharges);
+
+    const finalAmount = priceAfterDiscount + taxesAndCharges - freeCashUsed;
+
+    return {
+      subtotal,
+      taxesAndCharges,
+      discount,
+      freeCashUsed,
+      finalAmount,
+      currency: services[0]?.currency || 'INR',
+    };
+  }
+
   async create(
     dto: CreateBookingDto,
     userId?: string,
@@ -394,14 +450,16 @@ export class BookingsService {
       const bookingNumber = this.generateBookingNumber();
       const verificationCode = this.generateVerificationCode();
 
-      // Calculate free cash amount (25-30 rupees)
-      const freeCashAmount = this.walletService.calculateFreeCashAmount();
-
-      // Service amount is the actual amount owner set
-      const serviceAmount = totalAmount;
-
-      // Display amount includes free cash (what user sees initially)
-      const displayAmount = totalAmount + freeCashAmount;
+      // Calculate price breakdown using the new centralized logic
+      const priceBreakdown = await this.calculatePrice(dto, userId);
+      const { 
+        subtotal, 
+        taxesAndCharges, 
+        discount, 
+        freeCashUsed, 
+        finalAmount, 
+        currency 
+      } = priceBreakdown;
 
       // Determine payment type from DTO (default to PAY_LATER)
       const paymentType = dto.paymentType || PaymentType.PAY_LATER;
@@ -422,10 +480,10 @@ export class BookingsService {
           startTime: bookingStartTime,
           endTime: bookingEndTime,
           totalDurationMinutes: totalDuration,
-          totalAmount: displayAmount, // Total shown includes free cash
-          serviceAmount: new Decimal(serviceAmount),
-          freeCashAmount: new Decimal(freeCashAmount),
-          displayAmount: new Decimal(displayAmount),
+          totalAmount: new Decimal(finalAmount),
+          serviceAmount: new Decimal(subtotal), // Original shop price
+          freeCashAmount: new Decimal(freeCashUsed), // Amount deducted from charges
+          displayAmount: new Decimal(subtotal + taxesAndCharges), // What they see as "Subtotal + Taxes"
           paymentType,
           verificationCode,
           serviceStatus: ServiceStatus.AWAITING_CODE,
@@ -438,11 +496,11 @@ export class BookingsService {
           notes,
           queuePosition: queuePosition + 1,
           services: {
-            create: services.map((service) => ({
-              serviceId: service.id,
-              serviceName: service.name,
-              durationMinutes: service.durationMinutes,
-              price: service.price,
+            create: services.map((s) => ({
+              serviceId: s.id,
+              serviceName: s.name,
+              durationMinutes: s.durationMinutes,
+              price: s.price,
             })),
           },
         },
@@ -819,6 +877,20 @@ export class BookingsService {
           this.unmarkBookingSlots(booking.shopId, booking.startTime, serviceIds),
         )
         .catch(console.error);
+
+      // Refund 50% of free cash on cancellation if free cash was used
+      if (status === BookingStatus.CANCELLED && booking.freeCashAmount && Number(booking.freeCashAmount) > 0 && booking.userId) {
+        const refundAmount = Math.floor(Number(booking.freeCashAmount) * 0.5);
+        if (refundAmount > 0) {
+          this.walletService.returnFreeCash(
+            booking.userId,
+            refundAmount,
+            bookingId,
+            true,
+            `50% free cash refund after cancellation`
+          ).catch(console.error);
+        }
+      }
     }
 
     // Emit real-time updates
@@ -836,6 +908,28 @@ export class BookingsService {
     ];
     if (updatedBooking.userId && scoreTriggerStatuses.includes(status)) {
       this.trustScoreService.recalculateTrustScore(updatedBooking.userId).catch(console.error);
+    }
+
+    // Reward logic for confirmation and completion
+    if (updatedBooking.userId) {
+      if (status === BookingStatus.CONFIRMED) {
+        // Small reward for confirmation (e.g. 5-10 INR)
+        this.walletService.creditFreeCash(
+          updatedBooking.userId,
+          10,
+          bookingId,
+          `Bonus for booking confirmation`
+        ).catch(console.error);
+      } else if (status === BookingStatus.COMPLETED) {
+        // Main reward for completion
+        const rewardAmount = this.walletService.calculateFreeCashAmount();
+        this.walletService.creditFreeCash(
+          updatedBooking.userId,
+          rewardAmount,
+          bookingId,
+          `Free cash earned for completing booking`
+        ).catch(console.error);
+      }
     }
 
     return updatedBooking;

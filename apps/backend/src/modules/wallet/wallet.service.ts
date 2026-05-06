@@ -35,8 +35,19 @@ export class WalletService {
         data: {
           userId,
           balance: new Decimal(0),
-          freeCashBalance: new Decimal(0),
+          freeCashBalance: new Decimal(500), // Initial Welcome Bonus
           lockedAmount: new Decimal(0),
+          transactions: {
+            create: [
+              {
+                type: WalletTransactionType.FREE_CASH_CREDIT,
+                amount: new Decimal(500),
+                previousBalance: new Decimal(0),
+                newBalance: new Decimal(500),
+                description: 'Welcome Bonus Free Cash',
+              }
+            ]
+          }
         },
         include: {
           transactions: {

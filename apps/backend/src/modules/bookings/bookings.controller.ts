@@ -70,6 +70,13 @@ class RespondCounterOfferDto {
 export class BookingsController {
   constructor(private readonly bookingsService: BookingsService) {}
 
+  @Post('calculate-price')
+  @Public()
+  @ApiOperation({ summary: 'Calculate price breakdown for a potential booking' })
+  async calculatePrice(@Body() dto: Partial<CreateBookingDto>, @CurrentUser('id') userId?: string) {
+    return this.bookingsService.calculatePrice(dto, userId);
+  }
+
   @Post()
   @UseGuards(JwtAuthGuard)
   @ApiBearerAuth('JWT-auth')

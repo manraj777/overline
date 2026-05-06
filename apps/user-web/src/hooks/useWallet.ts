@@ -52,13 +52,14 @@ export function useWallet() {
   });
 }
 
-export function useWalletBalance() {
+export function useWalletBalance(enabled = true) {
   return useQuery<WalletBalance>({
     queryKey: ['wallet', 'balance'],
     queryFn: async () => {
       const { data } = await api.get('/wallet/balance');
       return data;
     },
+    enabled,
   });
 }
 

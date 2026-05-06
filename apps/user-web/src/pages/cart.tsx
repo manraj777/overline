@@ -2,8 +2,8 @@ import React from 'react';
 import Head from 'next/head';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
-import { ArrowLeft, Clock, MapPin, Trash2, UserPlus, Check } from 'lucide-react';
-import { Alert, Button } from '@/components/ui';
+import { ArrowLeft, Clock, MapPin, Trash2, UserPlus, Check, Tag, Ticket, Info, CheckCircle2, X } from 'lucide-react';
+import { Alert, Button, Input } from '@/components/ui';
 import { DatePicker, SlotPicker } from '@/components/booking';
 import { useAvailableSlots, useCreateBooking, useShopQueueStats, useMyBookings } from '@/hooks';
 import { useBookingStore } from '@/stores/booking';
@@ -11,6 +11,7 @@ import { useAuthStore } from '@/stores/auth';
 import { format } from 'date-fns';
 import { saveQueueSession } from '@/lib/queue-session';
 import api from '@/lib/api';
+import { useWalletBalance } from '@/hooks';
 
 export default function CartPage() {
   const router = useRouter();
@@ -51,6 +52,37 @@ export default function CartPage() {
   const submittingRef = React.useRef(false);
 
   const { data: queueStats } = useShopQueueStats(shop?.id || '');
+  const { data: wallet } = useWalletBalance(isAuthenticated);
+  const [couponCode, setCouponCode] = React.useState('');
+  const [appliedCoupon, setAppliedCoupon] = React.useState<string | null>(null);
+  const [priceBreakdown, setPriceBreakdown] = React.useState<any>(null);
+  const [isCalculatingPrice, setIsCalculatingPrice] = React.useState(false);
+
+  React.useEffect(() => {
+    if (!shop || selectedServices.length === 0) {
+      setPriceBreakdown(null);
+      return;
+    }
+
+    const fetchPrice = async () => {
+      setIsCalculatingPrice(true);
+      try {
+        const { data } = await api.post('/bookings/calculate-price', {
+          shopId: shop.id,
+          serviceIds: selectedServices.map(s => s.id),
+          offerCode: appliedCoupon || undefined,
+        });
+        setPriceBreakdown(data);
+      } catch (err) {
+        console.error('Failed to calculate price', err);
+      } finally {
+        setIsCalculatingPrice(false);
+      }
+    };
+
+    fetchPrice();
+  }, [shop, selectedServices, appliedCoupon, isAuthenticated]);
+
   const { data: slots, isLoading: loadingSlots } = useAvailableSlots({
     shopId: shop?.id || '',
     date: selectedDate ? format(selectedDate, 'yyyy-MM-dd') : '',
@@ -129,6 +161,7 @@ export default function CartPage() {
               customerPhone: customerPhone || undefined,
             }
           : {}),
+        offerCode: appliedCoupon || undefined,
       });
 
       const totalAmount = selectedServices.reduce((sum, s) => sum + Number(s.price || 0), 0);
@@ -361,18 +394,88 @@ export default function CartPage() {
                   <MapPin className="w-4 h-4" /> {shop.name}
                 </p>
                 <p className="text-on-surface-variant">{shop.address}, {shop.city}</p>
-                <div className="pt-3 border-t border-outline-variant/20">
-                  <div className="flex justify-between mb-2">
-                    <span className="text-on-surface-variant">Services ({selectedServices.length})</span>
-                    <span className="font-bold">₹{selectedServices.reduce((sum, s) => sum + Number(s.price || 0), 0)}</span>
+                
+                <div className="pt-4 border-t border-outline-variant/20">
+                  <div className="mb-4">
+                    <label className="text-[10px] font-bold text-on-surface-variant uppercase tracking-wider mb-1.5 block">
+                      Apply Coupon Code
+                    </label>
+                    <div className="flex gap-2">
+                      <div className="relative flex-1">
+                        <Ticket className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-on-surface-variant" />
+                        <input
+                          type="text"
+                          value={couponCode}
+                          onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                          placeholder="ENTER CODE"
+                          className="w-full bg-surface-container-low border border-outline-variant/30 rounded-lg pl-9 pr-3 py-2 text-sm font-bold focus:border-primary outline-none transition-colors"
+                        />
+                      </div>
+                      <button 
+                        onClick={() => {
+                          if (['OVERLINE10', 'OVERLINE20', 'WELCOME50'].includes(couponCode)) {
+                            setAppliedCoupon(couponCode);
+                            setError(null);
+                          } else {
+                            setError('Invalid coupon code');
+                          }
+                        }}
+                        className="bg-primary text-on-primary px-4 rounded-lg text-xs font-bold hover:bg-primary/90 transition-colors"
+                      >
+                        Apply
+                      </button>
+                    </div>
+                    {appliedCoupon && (
+                      <div className="mt-2 flex items-center gap-2 text-primary font-bold text-xs bg-primary/5 p-2 rounded-lg border border-primary/20">
+                        <CheckCircle2 className="w-3.5 h-3.5" />
+                        <span>Code {appliedCoupon} applied!</span>
+                        <button onClick={() => setAppliedCoupon(null)} className="ml-auto text-on-surface-variant hover:text-on-surface">
+                          <X className="w-3 h-3" />
+                        </button>
+                      </div>
+                    )}
                   </div>
-                  <div className="flex justify-between mb-2">
-                    <span className="text-on-surface-variant">Total duration</span>
-                    <span className="font-bold">{getTotalDuration()} min</span>
-                  </div>
-                  <div className="flex justify-between text-base pt-2 border-t border-outline-variant/20">
-                    <span className="font-black text-on-surface">Total</span>
-                    <span className="font-black text-primary">₹{selectedServices.reduce((sum, s) => sum + Number(s.price || 0), 0)}</span>
+
+                  <div className="space-y-2.5 pt-3 border-t border-outline-variant/10">
+                    <div className="flex justify-between items-center text-on-surface-variant">
+                      <span className="flex items-center gap-2">Services ({selectedServices.length})</span>
+                      <span className="font-bold">₹{priceBreakdown?.subtotal || selectedServices.reduce((sum, s) => sum + Number(s.price || 0), 0)}</span>
+                    </div>
+
+                    <div className="flex justify-between items-center text-on-surface-variant">
+                      <span className="flex items-center gap-2">
+                        Taxes & Other Charges
+                        <Info className="w-3 h-3 cursor-help" />
+                      </span>
+                      <span className="font-bold">₹{priceBreakdown?.taxesAndCharges || 0}</span>
+                    </div>
+
+                    {priceBreakdown?.freeCashUsed > 0 && (
+                      <div className="flex justify-between items-center text-primary bg-primary/5 px-2 py-1.5 rounded-md border border-primary/10">
+                        <span className="flex items-center gap-2 font-bold italic">
+                          <Tag className="w-3 h-3" />
+                          Free Cash Applied
+                        </span>
+                        <span className="font-black">-₹{priceBreakdown.freeCashUsed}</span>
+                      </div>
+                    )}
+
+                    {priceBreakdown?.discount > 0 && (
+                      <div className="flex justify-between items-center text-green-500 font-bold">
+                        <span>Coupon Discount</span>
+                        <span>-₹{priceBreakdown.discount}</span>
+                      </div>
+                    )}
+
+                    <div className="flex justify-between items-center pt-3 border-t border-outline-variant/30">
+                      <span className="font-black text-on-surface text-base">Grand Total</span>
+                      <div className="text-right">
+                        <span className="font-black text-primary text-xl">
+                          ₹{priceBreakdown?.finalAmount || selectedServices.reduce((sum, s) => sum + Number(s.price || 0), 0)}
+                        </span>
+                        <p className="text-[10px] text-on-surface-variant font-medium">Incl. all GST & handling</p>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
