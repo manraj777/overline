@@ -381,7 +381,10 @@ export default function CartPage() {
                 <div className="mt-6">
                   <h3 className="text-sm font-bold text-on-surface mb-3">Payment Method</h3>
                   <div className="space-y-3">
-                    <label className={`flex items-center justify-between p-3 rounded-xl border cursor-pointer transition-colors ${paymentMethod === 'PAY_AT_SHOP' ? 'border-primary bg-primary/5' : 'border-outline-variant/20 bg-surface-container-low hover:bg-surface-container'}`}>
+                    <label 
+                      onClick={() => setPaymentMethod('PAY_AT_SHOP')}
+                      className={`flex items-center justify-between p-3 rounded-xl border cursor-pointer transition-colors ${paymentMethod === 'PAY_AT_SHOP' ? 'border-primary bg-primary/5' : 'border-outline-variant/20 bg-surface-container-low hover:bg-surface-container'}`}
+                    >
                       <div className="flex items-center gap-3">
                         <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${paymentMethod === 'PAY_AT_SHOP' ? 'border-primary' : 'border-outline-variant'}`}>
                           {paymentMethod === 'PAY_AT_SHOP' && <div className="w-2 h-2 rounded-full bg-primary" />}
@@ -391,7 +394,10 @@ export default function CartPage() {
                       <span className="text-xs text-on-surface-variant font-medium bg-surface-container px-2 py-1 rounded-md">No extra fees</span>
                     </label>
 
-                    <label className={`flex items-center justify-between p-3 rounded-xl border cursor-pointer transition-colors ${paymentMethod === 'ONLINE' ? 'border-primary bg-primary/5' : 'border-outline-variant/20 bg-surface-container-low hover:bg-surface-container'}`}>
+                    <label 
+                      onClick={() => setPaymentMethod('ONLINE')}
+                      className={`flex items-center justify-between p-3 rounded-xl border cursor-pointer transition-colors ${paymentMethod === 'ONLINE' ? 'border-primary bg-primary/5' : 'border-outline-variant/20 bg-surface-container-low hover:bg-surface-container'}`}
+                    >
                       <div className="flex items-center gap-3">
                         <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${paymentMethod === 'ONLINE' ? 'border-primary' : 'border-outline-variant'}`}>
                           {paymentMethod === 'ONLINE' && <div className="w-2 h-2 rounded-full bg-primary" />}

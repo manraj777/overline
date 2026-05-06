@@ -351,17 +351,29 @@ export class PaymentsService {
     const booking = await this.prisma.booking.findUnique({
       where: { id: bookingId },
       include: {
-        staffProfile: {
-          include: {
-            user: {
-              select: { id: true, name: true, email: true, phone: true },
-            },
-          },
+        shop: {
+          select: { ownerId: true }
+        }
+      },
+    });
+
+    if (!booking) return;
+
+    // Find the Shop Owner's Staff Profile to receive the funds
+    const ownerProfile = await this.prisma.staffProfile.findFirst({
+      where: {
+        shopId: booking.shopId,
+        userId: booking.shop.ownerId,
+      },
+      include: {
+        user: {
+          select: { id: true, name: true, email: true, phone: true },
         },
       },
     });
 
-    if (!booking || !booking.staffProfileId) {
+    if (!ownerProfile) {
+      this.logger.warn(`No StaffProfile found for shop owner ${booking.shop.ownerId}. Skipping payout.`);
       return;
     }
 
@@ -378,7 +390,7 @@ export class PaymentsService {
       where: { bookingId: booking.id },
       create: {
         shopId: booking.shopId,
-        staffProfileId: booking.staffProfileId,
+        staffProfileId: ownerProfile.id,
         bookingId: booking.id,
         amount: grossPaise,
         platformFee: platformFeePaise,
@@ -386,6 +398,7 @@ export class PaymentsService {
         paymentMethod: PaymentMethod.RAZORPAY,
       },
       update: {
+        staffProfileId: ownerProfile.id,
         amount: grossPaise,
         platformFee: platformFeePaise,
         netAmount: netPaise,
@@ -409,7 +422,7 @@ export class PaymentsService {
       return;
     }
 
-    const fundAccountId = await this.ensureStaffFundAccount(booking.staffProfileId);
+    const fundAccountId = await this.ensureStaffFundAccount(ownerProfile.id);
     if (!fundAccountId) {
       return;
     }
