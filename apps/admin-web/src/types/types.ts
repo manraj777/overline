@@ -141,6 +141,7 @@ export interface StaffProfile {
   displayName?: string;
   avatar?: string;
   bio?: string;
+  isActive?: boolean;
   notificationSettings?: StaffNotificationSettings;
   user?: Pick<User, 'id' | 'name' | 'email' | 'phone'>;
 }

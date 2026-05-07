@@ -1,21 +1,14 @@
 import React from 'react';
 import Link from 'next/link';
-import dynamic from 'next/dynamic';
-import { motion, useScroll, useSpring } from 'framer-motion';
+import { motion } from 'framer-motion';
 import {
   Search, MapPin, Scissors, Stethoscope, ArrowRight,
-  Loader2, Dumbbell, Flower2, Calendar, Sparkles, Zap, ShieldCheck
+  Dumbbell, Flower2, Calendar, Sparkles, Zap, ShieldCheck
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { ShopCard, ShopMap } from '@/components/shop';
+import { ShopCard } from '@/components/shop';
 import { useShops, useLocation, useAiRecommendations } from '@/hooks';
-import { ElectricCard } from '@/components/ElectricCard';
 import { SeoHead, jsonLd } from '@/components/seo/SeoHead';
-
-const Globe = dynamic(() => import('@/components/Globe').then(m => m.Globe), {
-  ssr: false,
-  loading: () => <div className="w-full h-full" />,
-});
 
 const HOME_FAQ = [
   {
@@ -57,13 +50,6 @@ export default function HomePage() {
     radiusKm: 50,
   });
 
-  const { scrollYProgress } = useScroll();
-  const scaleX = useSpring(scrollYProgress, {
-    stiffness: 100,
-    damping: 30,
-    restDelta: 0.001
-  });
-
   const categories = [
     { name: 'Salon', icon: Scissors, href: '/explore?type=SALON' },
     { name: 'Gym', icon: Dumbbell, href: '/explore?type=GYM' },
@@ -96,107 +82,98 @@ export default function HomePage() {
         jsonLd={jsonLd.faqPage(HOME_FAQ)}
       />
 
-      <motion.div
-        className="fixed top-0 left-0 right-0 h-1 bg-primary origin-left z-[100]"
-        style={{ scaleX }}
-      />
-
       {/* ═══════════════════════════════════════════════════════════ */}
-      {/* 1. Hero Search Section — Gradient Banner                   */}
+      {/* 1. Hero Search Section — Practo Clean Style                */}
       {/* ═══════════════════════════════════════════════════════════ */}
-      <section className="relative overflow-hidden pt-12 pb-16">
-        <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="relative rounded-4xl overflow-hidden bg-gradient-to-br from-primary to-secondary p-8 md:p-12 lg:p-16 text-white flex items-center">
-            <div className="relative z-10 max-w-3xl">
-              <motion.div
-                variants={containerVariants}
-                initial="hidden"
-                animate="show"
-              >
-                <motion.div variants={itemVariants} className="mb-5 inline-flex items-center gap-3 rounded-2xl bg-white/10 backdrop-blur-md px-4 py-2 border border-white/20">
-                  <span className="text-sm font-bold tracking-wide">Overline</span>
-                </motion.div>
+      <section className="relative pt-16 pb-12 overflow-hidden bg-surface-container-low/30 border-b border-outline-variant/10">
+        <div className="max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8 relative z-10 text-center">
+          <motion.div
+            variants={containerVariants}
+            initial="hidden"
+            animate="show"
+            className="max-w-4xl mx-auto"
+          >
+            <motion.h1
+              variants={itemVariants}
+              className="text-4xl sm:text-5xl lg:text-[56px] font-black tracking-tight text-on-surface mb-6 leading-[1.1]"
+            >
+              Find top experts and book
+              <br className="hidden sm:block" />
+              appointments instantly.
+            </motion.h1>
 
-                <motion.h1
-                  variants={itemVariants}
-                  className="text-4xl sm:text-5xl lg:text-6xl font-black tracking-tight mb-6 leading-tight"
-                >
-                  Find your next
-                  <br />
-                  premium experience.
-                </motion.h1>
+            <motion.p variants={itemVariants} className="text-on-surface-variant text-lg sm:text-xl font-medium mb-10">
+              Zero waiting in line. Verified professionals. Real-time availability.
+            </motion.p>
 
-                <motion.p variants={itemVariants} className="text-white/85 text-lg md:text-xl font-semibold mb-8">
-                  Don't waste your time in line.
-                  <br />
-                  Book instantly, track live queues, and skip the wait.
-                </motion.p>
-
-                {/* Search Bar */}
-                <motion.div variants={itemVariants}>
-                  <div className="flex flex-col md:flex-row gap-2 bg-surface-container-lowest p-2 rounded-2xl shadow-xl">
-                    <div className="flex-1 flex items-center px-4 py-3 bg-surface-container-low rounded-xl group focus-within:ring-2 ring-primary/20 transition-all">
-                      <Search className="w-5 h-5 text-primary mr-3 flex-shrink-0" />
-                      <div className="flex flex-col flex-1">
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-outline">What are you looking for?</span>
-                        <input
-                          className="bg-transparent border-none p-0 focus:ring-0 focus:outline-none text-on-surface placeholder:text-outline font-medium text-sm w-full"
-                          placeholder="Salons, clinics, spas..."
-                          value={searchQuery}
-                          onChange={(e) => setSearchQuery(e.target.value)}
-                        />
-                      </div>
-                    </div>
-
-                    <div className="hidden md:block w-px h-12 bg-outline-variant/20 mx-1 self-center" />
-
-                    <div className="flex items-center px-4 py-3 bg-surface-container-low rounded-xl group focus-within:ring-2 ring-primary/20 transition-all min-w-[200px]">
-                      <MapPin className="w-5 h-5 text-primary mr-3 flex-shrink-0" />
-                      <div className="flex flex-col flex-1">
-                        <span className="text-[10px] font-bold uppercase tracking-wider text-outline">Location</span>
-                        <input
-                          className="bg-transparent border-none p-0 focus:ring-0 focus:outline-none text-on-surface placeholder:text-outline font-medium text-sm w-full"
-                          value={locationQuery || location?.address || ''}
-                          onChange={(e) => setLocationQuery(e.target.value)}
-                          placeholder="Enter location..."
-                        />
-                      </div>
-                    </div>
-
-                    <Link href={
-                      location
-                        ? `/explore?q=${encodeURIComponent(searchQuery)}&lat=${location.lat}&lng=${location.lng}${locationQuery ? `&city=${encodeURIComponent(locationQuery)}` : ''}`
-                        : `/explore?q=${encodeURIComponent(searchQuery)}${locationQuery ? `&city=${encodeURIComponent(locationQuery)}` : ''}`
-                    }>
-                      <button className="w-full md:w-auto bg-gradient-to-br from-primary to-primary-container text-white px-10 py-4 rounded-xl font-bold active:scale-95 transition-all shadow-lg shadow-primary/20 text-sm">
-                        Explore
-                      </button>
-                    </Link>
+            {/* Prominent Search Bar (Practo style) */}
+            <motion.div variants={itemVariants} className="max-w-3xl mx-auto">
+              <div className="flex flex-col md:flex-row bg-surface rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.08)] border border-outline-variant/20 p-2 gap-2">
+                
+                {/* Location Input */}
+                <div className="flex items-center flex-1 px-4 py-3 bg-surface hover:bg-surface-container-low rounded-xl group transition-colors">
+                  <MapPin className="w-5 h-5 text-outline-variant mr-3 flex-shrink-0 group-focus-within:text-primary transition-colors" />
+                  <div className="flex flex-col flex-1 text-left">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-outline mb-0.5">Location</span>
+                    <input
+                      className="bg-transparent border-none p-0 focus:ring-0 focus:outline-none text-on-surface font-semibold text-sm w-full placeholder:text-outline/50 placeholder:font-medium"
+                      value={locationQuery || location?.address || ''}
+                      onChange={(e) => setLocationQuery(e.target.value)}
+                      placeholder="Your city or area..."
+                    />
                   </div>
-                </motion.div>
-              </motion.div>
-            </div>
-            <div className="hidden lg:block absolute right-0 top-0 h-full w-1/2 opacity-50 pointer-events-none">
-              <Globe />
-            </div>
-          </div>
+                </div>
+
+                <div className="hidden md:block w-px h-12 bg-outline-variant/30 self-center mx-1" />
+
+                {/* Search Query Input */}
+                <div className="flex flex-1 items-center px-4 py-3 bg-surface hover:bg-surface-container-low rounded-xl group transition-colors">
+                  <Search className="w-5 h-5 text-outline-variant mr-3 flex-shrink-0 group-focus-within:text-primary transition-colors" />
+                  <div className="flex flex-col flex-1 text-left">
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-outline mb-0.5">Search</span>
+                    <input
+                      className="bg-transparent border-none p-0 focus:ring-0 focus:outline-none text-on-surface font-semibold text-sm w-full placeholder:text-outline/50 placeholder:font-medium"
+                      placeholder="Salons, clinics, spas..."
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                    />
+                  </div>
+                </div>
+
+                {/* Submit Button */}
+                <Link href={
+                  location
+                    ? `/explore?q=${encodeURIComponent(searchQuery)}&lat=${location.lat}&lng=${location.lng}${locationQuery ? `&city=${encodeURIComponent(locationQuery)}` : ''}`
+                    : `/explore?q=${encodeURIComponent(searchQuery)}${locationQuery ? `&city=${encodeURIComponent(locationQuery)}` : ''}`
+                } className="w-full md:w-auto">
+                  <button className="w-full h-full min-h-[56px] bg-primary text-white px-8 rounded-xl font-bold hover:bg-primary/90 active:scale-95 transition-all text-sm md:text-base whitespace-nowrap">
+                    Search
+                  </button>
+                </Link>
+              </div>
+            </motion.div>
+          </motion.div>
         </div>
       </section>
 
       {/* ═══════════════════════════════════════════════════════════ */}
-      {/* 2. Category Icons Row                                      */}
+      {/* 2. Large Category Cards (Practo style)                     */}
       {/* ═══════════════════════════════════════════════════════════ */}
-      <section className="py-8">
-        <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-center gap-8 md:gap-16">
-            {categories.map((cat) => (
-              <Link key={cat.name} href={cat.href} className="flex flex-col items-center gap-3 group">
-                <div className="w-16 h-16 rounded-2xl bg-surface-container-low flex items-center justify-center group-active:scale-90 transition-transform shadow-sm group-hover:bg-primary-fixed/30">
-                  <cat.icon className="w-7 h-7 text-primary" />
+      <section className="py-12 bg-surface">
+        <div className="max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 md:gap-6">
+            {[
+              { name: 'Salons & Barbers', desc: 'Haircuts, styling & grooming', icon: Scissors, href: '/explore?type=SALON' },
+              { name: 'Clinics & Health', desc: 'Expert doctors & specialists', icon: Stethoscope, href: '/explore?type=CLINIC' },
+              { name: 'Gyms & Fitness', desc: 'Trainers & workout sessions', icon: Dumbbell, href: '/explore?type=GYM' },
+              { name: 'Spas & Wellness', desc: 'Massages & relaxation', icon: Flower2, href: '/explore?type=SPA' },
+            ].map((cat) => (
+              <Link key={cat.name} href={cat.href} className="group flex flex-col bg-surface-container-lowest border border-outline-variant/30 rounded-2xl p-5 sm:p-6 hover:shadow-lg hover:border-primary/20 transition-all cursor-pointer">
+                <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform">
+                  <cat.icon className="w-6 h-6 text-primary" />
                 </div>
-                <span className="text-[12px] font-bold tracking-wide uppercase text-on-surface-variant">
-                  {cat.name}
-                </span>
+                <h3 className="text-base sm:text-lg font-bold text-on-surface mb-1">{cat.name}</h3>
+                <p className="text-xs sm:text-sm text-on-surface-variant font-medium line-clamp-2">{cat.desc}</p>
               </Link>
             ))}
           </div>
@@ -211,20 +188,20 @@ export default function HomePage() {
       {/* ═══════════════════════════════════════════════════════════ */}
       {/* 4. Trending / Nearby Grid                                  */}
       {/* ═══════════════════════════════════════════════════════════ */}
-      <section className="py-16">
-        <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col md:flex-row md:items-end justify-between mb-10 gap-6">
+      <section className="py-16 bg-surface-container-low/20">
+        <div className="max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex flex-col md:flex-row md:items-end justify-between mb-8 gap-4">
             <div>
-              <span className="text-xs font-bold tracking-widest text-secondary uppercase mb-2 block">
-                Personalized for you
-              </span>
-              <h2 className="text-3xl md:text-4xl font-black tracking-tight text-on-surface">
-                {location ? 'Recommended Nearby' : 'Popular Shops'}
+              <h2 className="text-2xl md:text-3xl font-black tracking-tight text-on-surface mb-2">
+                {location ? 'Top places near you' : 'Popular in your city'}
               </h2>
+              <p className="text-on-surface-variant text-sm font-medium">
+                Book appointments at the highest rated spots.
+              </p>
             </div>
             <Link href="/explore">
-              <button className="text-sm font-bold text-primary flex items-center gap-1 hover:underline underline-offset-4">
-                View All <ArrowRight className="w-4 h-4" />
+              <button className="text-sm font-bold text-primary hover:underline underline-offset-4 px-4 py-2 bg-primary/5 rounded-lg transition-colors">
+                View All
               </button>
             </Link>
           </div>
@@ -266,113 +243,51 @@ export default function HomePage() {
       </section>
 
       {/* ═══════════════════════════════════════════════════════════ */}
-      {/* 5. Features Section                                        */}
+      {/* 5. Clean Features Section                                  */}
       {/* ═══════════════════════════════════════════════════════════ */}
-      <section className="py-20 bg-surface-container-low/50">
-        <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid md:grid-cols-2 gap-16 items-center">
-            <div>
-              <h2 className="text-4xl md:text-5xl font-black text-on-surface tracking-tight mb-8 leading-tight">
-                Built for those who value their time.
-              </h2>
-              <p className="text-xl text-on-surface-variant font-medium mb-12 leading-relaxed max-w-lg">
-                We've stripped away the noise. Just pure, seamless booking experiences that connect you to local experts instantly.
-              </p>
+      <section className="py-20 bg-surface border-t border-outline-variant/10">
+        <div className="max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8 text-center">
+          <h2 className="text-3xl md:text-4xl font-black text-on-surface tracking-tight mb-4">
+            Why choose Overline?
+          </h2>
+          <p className="text-on-surface-variant text-lg max-w-2xl mx-auto font-medium mb-16">
+            We ensure a seamless, high-quality experience from booking to service completion.
+          </p>
 
-              <div className="space-y-8">
-                {[
-                  {
-                    icon: Zap,
-                    title: 'Zero Wait',
-                    desc: 'Live queue tracking means you walk in right when it is your turn.',
-                    color: 'text-tertiary',
-                    bg: 'bg-tertiary-fixed/30',
-                  },
-                  {
-                    icon: ShieldCheck,
-                    title: 'Verified Partners',
-                    desc: 'We only onboard the most trusted local professionals.',
-                    color: 'text-primary',
-                    bg: 'bg-primary-fixed/30',
-                  },
-                  {
-                    icon: Calendar,
-                    title: 'Smart Scheduling',
-                    desc: 'AI-optimized time slots to maximize your precious hours.',
-                    color: 'text-secondary',
-                    bg: 'bg-secondary-fixed/30',
-                  },
-                ].map((feature, i) => (
-                  <div key={i} className="flex gap-5 group cursor-pointer">
-                    <div className={cn(
-                      'flex-shrink-0 w-14 h-14 rounded-2xl flex items-center justify-center transition-all duration-300',
-                      feature.bg,
-                      'group-hover:scale-110'
-                    )}>
-                      <feature.icon className={cn('w-6 h-6', feature.color)} />
-                    </div>
-                    <div>
-                      <h4 className="text-xl font-bold text-on-surface mb-1">{feature.title}</h4>
-                      <p className="text-on-surface-variant">{feature.desc}</p>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            </div>
-
-            {/* Visual Map Preview */}
-            <div className="relative h-[500px] w-full rounded-4xl overflow-hidden shadow-card-hover border border-outline-variant/10">
-              <ShopMap
-                shops={popularShops?.data || []}
-                userLocation={location || undefined}
-                className="w-full h-full"
-                zoom={12}
-              />
-              {!popularShops?.data && isLoading && (
-                <div className="absolute inset-0 flex items-center justify-center bg-surface/80 backdrop-blur-sm z-20">
-                  <Loader2 className="w-8 h-8 animate-spin text-primary" />
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* ═══════════════════════════════════════════════════════════ */}
-      {/* 6. Step-by-Step Guidance (Google Requirement)              */}
-      {/* ═══════════════════════════════════════════════════════════ */}
-      <section className="py-20">
-        <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
-            <h2 className="text-3xl md:text-5xl font-black text-on-surface tracking-tight mb-4">How Overline Works</h2>
-            <p className="text-on-surface-variant text-lg max-w-2xl mx-auto font-medium">
-              A seamless bridge between you and your next professional appointment.
-            </p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-12">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {[
-              { 
-                step: '01', 
-                title: 'Discover', 
-                desc: 'Browse verified premium salons, spas, and clinics near you or in any city.' 
+              {
+                icon: ShieldCheck,
+                title: 'Verified Partners',
+                desc: 'Every clinic, salon, and professional is thoroughly vetted for quality.',
+                color: 'text-primary',
+                bg: 'bg-primary/10',
               },
-              { 
-                step: '02', 
-                title: 'Book Instantly', 
-                desc: 'Select your service, choose an expert, and pick a time that fits your schedule.' 
+              {
+                icon: Zap,
+                title: 'Instant Booking',
+                desc: 'See live schedules and reserve your slot instantly. No phone calls needed.',
+                color: 'text-secondary',
+                bg: 'bg-secondary/10',
               },
-              { 
-                step: '03', 
-                title: 'Live Tracking', 
-                desc: 'Monitor your place in the live queue and walk in exactly when you are expected.' 
-              }
-            ].map((s) => (
-              <ElectricCard key={s.step} className="p-8 h-full rounded-[2.5rem]">
-                <span className="text-5xl font-black text-primary/10 absolute top-4 right-8">{s.step}</span>
-                <h3 className="text-2xl font-black text-on-surface mb-4 leading-tight relative">{s.title}</h3>
-                <p className="text-on-surface-variant leading-relaxed relative">{s.desc}</p>
-              </ElectricCard>
+              {
+                icon: Calendar,
+                title: 'Skip the Queue',
+                desc: 'Track your wait time live. Walk in exactly when it is your turn.',
+                color: 'text-tertiary',
+                bg: 'bg-tertiary/10',
+              },
+            ].map((feature, i) => (
+              <div key={i} className="flex flex-col items-center p-8 rounded-3xl bg-surface-container-lowest shadow-[0_2px_20px_rgb(0,0,0,0.04)] border border-outline-variant/20 hover:-translate-y-1 transition-transform">
+                <div className={cn(
+                  'w-16 h-16 rounded-2xl flex items-center justify-center mb-6',
+                  feature.bg
+                )}>
+                  <feature.icon className={cn('w-8 h-8', feature.color)} />
+                </div>
+                <h4 className="text-xl font-bold text-on-surface mb-3">{feature.title}</h4>
+                <p className="text-on-surface-variant font-medium leading-relaxed">{feature.desc}</p>
+              </div>
             ))}
           </div>
         </div>

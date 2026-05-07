@@ -77,6 +77,10 @@ export interface TokenResponse {
     isEmailVerified?: boolean;
     isPhoneVerified?: boolean;
     createdAt?: Date;
+    tenantId?: string | null;
+    shopId?: string | null;
+    shopIds?: string[];
+    staffProfileId?: string | null;
   };
 }
 
