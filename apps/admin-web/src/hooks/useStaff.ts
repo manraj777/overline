@@ -78,13 +78,14 @@ function mapToGenericUpdatePayload(payload: Omit<UpdateStaffOwnServicePayload, '
   };
 }
 
-export function useStaffMe() {
+export function useStaffMe(options?: { enabled?: boolean }) {
   return useQuery<StaffProfile>({
     queryKey: ['staff', 'me'],
     queryFn: async () => {
       const { data } = await api.get('/admin/staff/me');
       return data;
     },
+    ...options,
   });
 }
 

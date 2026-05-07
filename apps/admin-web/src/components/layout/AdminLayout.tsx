@@ -18,7 +18,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/stores/auth';
-import { useLogout, useUnreadNotificationsCount, useQueueSocket, useUpdateBookingStatus } from '@/hooks';
+import { useLogout, useUnreadNotificationsCount, useQueueSocket, useUpdateBookingStatus, useStaffMe, useUpdateStaffMe } from '@/hooks';
 import { useToast, BookingApprovalModal } from '@/components/ui';
 import { useQueryClient } from '@tanstack/react-query';
 import { UserRole } from '@/types';
@@ -73,6 +73,25 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
 
   const { data: unreadData } = useUnreadNotificationsCount();
   const unreadCount = unreadData?.count || 0;
+
+  const { data: staffProfile } = useStaffMe({
+    enabled: isAuthenticated && (isStaff || derivedRole === UserRole.OWNER),
+  });
+  const updateStaffMe = useUpdateStaffMe();
+
+  const handleToggleOnline = async () => {
+    if (!staffProfile) return;
+    try {
+      await updateStaffMe.mutateAsync({ isActive: !staffProfile.isActive });
+      addToast({
+        type: 'success',
+        title: staffProfile.isActive ? 'You are now offline' : 'You are now online',
+        message: staffProfile.isActive ? 'You will not receive new bookings.' : 'You are visible for new bookings.',
+      });
+    } catch (e) {
+      addToast({ type: 'error', title: 'Error', message: 'Could not update status' });
+    }
+  };
 
   useQueueSocket({
     shopId: shopId || undefined,
@@ -382,6 +401,31 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
             <div className="flex-1" />
 
             <div className="flex items-center gap-2">
+              {staffProfile && (
+                <div className="hidden sm:flex items-center gap-2 mr-2 border-r border-outline-variant/10 pr-3">
+                  <span className={cn("text-xs font-bold", staffProfile.isActive ? "text-primary" : "text-on-surface-variant")}>
+                    {staffProfile.isActive ? "Online" : "Offline"}
+                  </span>
+                  <button
+                    onClick={handleToggleOnline}
+                    disabled={updateStaffMe.isPending}
+                    className={cn(
+                      "relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-white/75",
+                      staffProfile.isActive ? 'bg-primary' : 'bg-surface-container-high'
+                    )}
+                  >
+                    <span className="sr-only">Toggle Online Status</span>
+                    <span
+                      aria-hidden="true"
+                      className={cn(
+                        "pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out",
+                        staffProfile.isActive ? 'translate-x-4' : 'translate-x-0'
+                      )}
+                    />
+                  </button>
+                </div>
+              )}
+
               <ThemeToggle />
 
               {/* Notifications */}

@@ -423,16 +423,10 @@ export class SlotEngineService {
   }
 
   private getDayOfWeek(date: Date): DayOfWeek {
-    const days: DayOfWeek[] = [
-      DayOfWeek.SUNDAY,
-      DayOfWeek.MONDAY,
-      DayOfWeek.TUESDAY,
-      DayOfWeek.WEDNESDAY,
-      DayOfWeek.THURSDAY,
-      DayOfWeek.FRIDAY,
-      DayOfWeek.SATURDAY,
-    ];
-    return days[date.getDay()];
+    // Get the weekday string in IST timezone (e.g. "Monday")
+    const formatter = new Intl.DateTimeFormat('en-US', { timeZone: 'Asia/Kolkata', weekday: 'long' });
+    const weekdayStr = formatter.format(date).toUpperCase() as keyof typeof DayOfWeek;
+    return DayOfWeek[weekdayStr];
   }
 
   private async isStaffAvailableDuringWindow(

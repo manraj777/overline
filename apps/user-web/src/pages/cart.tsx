@@ -438,37 +438,42 @@ export default function CartPage() {
 
                   <div className="space-y-2.5 pt-3 border-t border-outline-variant/10">
                     <div className="flex justify-between items-center text-on-surface-variant">
-                      <span className="flex items-center gap-2">Services ({selectedServices.length})</span>
+                      <span className="flex items-center gap-2">Service</span>
                       <span className="font-bold">₹{priceBreakdown?.subtotal || selectedServices.reduce((sum, s) => sum + Number(s.price || 0), 0)}</span>
                     </div>
 
                     <div className="flex justify-between items-center text-on-surface-variant">
                       <span className="flex items-center gap-2">
-                        Taxes & Other Charges
+                        Tax
                         <Info className="w-3 h-3 cursor-help" />
                       </span>
                       <span className="font-bold">₹{priceBreakdown?.taxesAndCharges || 0}</span>
                     </div>
 
+                    <div className="flex justify-between items-center text-on-surface font-bold border-t border-outline-variant/10 pt-2 mt-2">
+                      <span>Total</span>
+                      <span>₹{(priceBreakdown?.subtotal || selectedServices.reduce((sum, s) => sum + Number(s.price || 0), 0)) + (priceBreakdown?.taxesAndCharges || 0)}</span>
+                    </div>
+
                     {priceBreakdown?.freeCashUsed > 0 && (
-                      <div className="flex justify-between items-center text-primary bg-primary/5 px-2 py-1.5 rounded-md border border-primary/10">
+                      <div className="flex justify-between items-center text-primary bg-primary/5 px-2 py-1.5 rounded-md border border-primary/10 mt-2">
                         <span className="flex items-center gap-2 font-bold italic">
                           <Tag className="w-3 h-3" />
-                          Free Cash Applied
+                          Welcome Bonus Discount
                         </span>
                         <span className="font-black">-₹{priceBreakdown.freeCashUsed}</span>
                       </div>
                     )}
 
                     {priceBreakdown?.discount > 0 && (
-                      <div className="flex justify-between items-center text-green-500 font-bold">
+                      <div className="flex justify-between items-center text-green-500 font-bold mt-2">
                         <span>Coupon Discount</span>
                         <span>-₹{priceBreakdown.discount}</span>
                       </div>
                     )}
 
-                    <div className="flex justify-between items-center pt-3 border-t border-outline-variant/30">
-                      <span className="font-black text-on-surface text-base">Grand Total</span>
+                    <div className="flex justify-between items-center pt-3 border-t border-outline-variant/30 mt-2">
+                      <span className="font-black text-on-surface text-base">Final Pay</span>
                       <div className="text-right">
                         <span className="font-black text-primary text-xl">
                           ₹{priceBreakdown?.finalAmount || selectedServices.reduce((sum, s) => sum + Number(s.price || 0), 0)}
