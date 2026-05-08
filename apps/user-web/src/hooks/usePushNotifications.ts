@@ -1,5 +1,5 @@
 import { useEffect } from 'react';
-import { getFirebaseMessaging } from '@/lib/firebase';
+import { getFirebaseMessaging, hasFirebaseConfig } from '@/lib/firebase';
 import { getToken, onMessage } from 'firebase/messaging';
 import api from '@/lib/api';
 
@@ -9,6 +9,8 @@ export function usePushNotifications(isAuthenticated: boolean) {
 
     async function setupPush() {
       try {
+        // Skip push setup entirely if Firebase keys are not configured
+        if (!hasFirebaseConfig) return;
         if (!('serviceWorker' in navigator)) return;
 
         const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');

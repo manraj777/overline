@@ -297,16 +297,11 @@ export class AuthService implements OnModuleInit {
 
       const otp = Math.floor(100000 + Math.random() * 900000).toString();
 
-      // Store OTP in Redis (will silently no-op if Redis is down — 123456 bypass covers this)
+      // Store OTP in Redis with 5-minute TTL
       await this.redis.set(`otp:${normalizedPhone}`, otp, 300);
 
-      // Attempt WhatsApp delivery — gracefully handle failure
-      try {
-        await this.sendWhatsAppOtp(normalizedPhone, otp);
-      } catch (err: any) {
-        this.logger.warn(`[sendPhoneOtp] WhatsApp delivery failed for ${normalizedPhone}: ${err?.message}`);
-        // Don't throw — user can still use bypass OTP 123456
-      }
+      // Send OTP via WhatsApp Cloud API
+      await this.sendWhatsAppOtp(normalizedPhone, otp);
 
       return {
         message: `OTP sent successfully to ${phone}`,
@@ -327,28 +322,18 @@ export class AuthService implements OnModuleInit {
         throw new InternalServerErrorException('OTP service temporarily unavailable');
       }
 
-      // OTP bypass (dev/testing only). Must be explicitly enabled via
-      // OTP_BYPASS_ENABLED=true, which should NEVER be set in production.
-      const bypassEnabled = process.env.OTP_BYPASS_ENABLED === 'true';
-      const isBypassOtp = bypassEnabled && otp === '123456';
       const normalizedPhone = this.normalizePhone(phone);
 
-      if (!isBypassOtp) {
-        const storedOtp = await this.redis.get(`otp:${normalizedPhone}`);
-        if (!storedOtp) {
-          throw new BadRequestException('OTP expired. Please request a new code.');
-        }
-
-        if (storedOtp !== otp) {
-          throw new BadRequestException('Invalid OTP');
-        }
-
-        await this.redis.del(`otp:${normalizedPhone}`);
-      } else {
-        this.logger.warn(`[verifyPhoneOtp] Bypass OTP used for ${normalizedPhone}`);
-        // Clean up any existing OTP key
-        await this.redis.del(`otp:${normalizedPhone}`);
+      const storedOtp = await this.redis.get(`otp:${normalizedPhone}`);
+      if (!storedOtp) {
+        throw new BadRequestException('OTP expired. Please request a new code.');
       }
+
+      if (storedOtp !== otp) {
+        throw new BadRequestException('Invalid OTP');
+      }
+
+      await this.redis.del(`otp:${normalizedPhone}`);
 
       return await this.loginWithVerifiedPhone(normalizedPhone, requestedRole);
     } catch (error: any) {
