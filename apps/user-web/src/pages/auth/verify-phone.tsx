@@ -113,8 +113,8 @@ export default function VerifyPhonePage() {
             </h1>
             <p className="text-gray-500 mt-2 text-sm leading-relaxed">
               {isOtpSent
-                ? `We've sent a 6-digit code via SMS to ${phone}.`
-                : 'Phone verification is required for bookings and communication.'}
+                ? `We've sent a 6-digit code via WhatsApp to ${phone}.`
+                : 'Phone verification via WhatsApp is required for bookings and communication.'}
             </p>
           </div>
 

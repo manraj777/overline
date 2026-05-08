@@ -15,6 +15,7 @@ import {
   Clock3,
   Store,
   Search,
+  MessageSquare,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/stores/auth';
@@ -210,6 +211,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
         title: 'Admin',
         items: [
           { name: 'Shop Profile', href: '/owner/shop', icon: Store },
+          { name: 'WhatsApp', href: '/owner/whatsapp', icon: MessageSquare },
           { name: 'Notifications', href: '/owner/notifications', icon: Bell },
           { name: 'Settings', href: '/owner/settings', icon: Settings },
         ],
