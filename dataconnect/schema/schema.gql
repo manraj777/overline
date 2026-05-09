@@ -1,0 +1,4 @@
+type User @table {
+  id: String!
+  name: String!
+}

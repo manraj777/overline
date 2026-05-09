@@ -1,0 +1,6 @@
+query GetUsers @auth(level: PUBLIC) {
+  users {
+    id
+    name
+  }
+}

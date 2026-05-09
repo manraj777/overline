@@ -1,6 +1,7 @@
 import { Injectable, OnModuleInit, OnModuleDestroy, Logger } from '@nestjs/common';
 import { ConfigService } from '@nestjs/config';
-import Redis from 'ioredis';
+import IORedis from 'ioredis';
+import type { Redis } from 'ioredis';
 
 @Injectable()
 export class RedisService implements OnModuleInit, OnModuleDestroy {
@@ -43,10 +44,10 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
       if (redisUrl) {
         const usesTls = redisUrl.startsWith('rediss://');
         const { tls: _tls, ...optionsWithoutTls } = redisOptions;
-        this._client = new Redis(redisUrl, usesTls ? redisOptions : optionsWithoutTls);
+        this._client = new IORedis(redisUrl, usesTls ? redisOptions : optionsWithoutTls);
       } else {
         const { tls: _tls, ...optionsWithoutTls } = redisOptions;
-        this._client = new Redis({
+        this._client = new IORedis({
           ...optionsWithoutTls,
           host: this.configService.get('redis.host') || 'localhost',
           port: this.configService.get('redis.port') || 6379,
@@ -368,7 +369,7 @@ export class RedisService implements OnModuleInit, OnModuleDestroy {
   async zadd(key: string, score: number, member: string): Promise<number> {
     if (!this.client) return 0;
     try {
-      return await this.client.zadd(key, score, member);
+      return Number(await this.client.zadd(key, score, member));
     } catch {
       return 0;
     }

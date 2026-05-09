@@ -1,0 +1,21 @@
+specVersion: "v1"
+serviceId: "teak-serenity-488010-f3-service"
+location: "asia-southeast1"
+schemas:
+  - source: "./schema"
+    datasource:
+      postgresql:
+        database: "postgres"
+        # For production, Data Connect uses the Supabase PostgreSQL instance.
+        # The connection is configured via the Firebase Console under
+        # Data Connect > Settings > Database Connection.
+        #
+        # Connection string (Transaction Pooler - port 6543):
+        #   postgresql://postgres.myttnnumddwozzqnxnpz:PASSWORD@aws-1-ap-south-1.pooler.supabase.com:6543/postgres?pgbouncer=true
+        #
+        # Direct connection (for migrations - port 5432):
+        #   postgresql://postgres.myttnnumddwozzqnxnpz:PASSWORD@aws-1-ap-south-1.pooler.supabase.com:5432/postgres
+        cloudSql:
+          instanceId: "teak-serenity-488010-f3-instance"
+          # schemaValidation: "COMPATIBLE"
+connectorDirs: ["./example"]
