@@ -1,4 +1,4 @@
-import { Controller, Post, Body, HttpCode, HttpStatus } from '@nestjs/common';
+import { Controller, Post, Body, HttpCode, HttpStatus, Get, Query, Res } from '@nestjs/common';
 import { OtpService, OtpPurpose } from './otp.service';
 import { IsString, IsIn, IsNotEmpty, IsOptional, Matches } from 'class-validator';
 
@@ -159,5 +159,39 @@ export class OtpController {
   async loginWithOtp(@Body() dto: VerifyOtpDto): Promise<any> {
     const normalizedPhone = this.otpService.normalizePhone(dto.phone);
     return this.otpService.loginWithOtp(normalizedPhone, dto.otp, dto.requestedRole);
+  }
+
+  /**
+   * WhatsApp Webhook Verification (GET)
+   * Meta sends a GET request here to verify the endpoint URL.
+   */
+  @Get('webhook')
+  verifyWebhook(
+    @Query('hub.mode') mode: string,
+    @Query('hub.verify_token') token: string,
+    @Query('hub.challenge') challenge: string,
+    @Res() res: any,
+  ) {
+    // This token must match what you enter in the Meta Developer Console
+    const VERIFY_TOKEN = 'overline_whatsapp_webhook_secret_2026';
+
+    if (mode && token) {
+      if (mode === 'subscribe' && token === VERIFY_TOKEN) {
+        return res.status(HttpStatus.OK).send(challenge);
+      }
+    }
+    return res.status(HttpStatus.FORBIDDEN).send('Invalid verify token');
+  }
+
+  /**
+   * WhatsApp Webhook Events (POST)
+   * Meta sends message delivery status and incoming messages here.
+   */
+  @Post('webhook')
+  @HttpCode(HttpStatus.OK)
+  receiveWebhook(@Body() body: any) {
+    // You can process incoming messages or message delivery statuses here
+    // For now, we just accept them to satisfy Meta's requirement
+    return { status: 'received' };
   }
 }
