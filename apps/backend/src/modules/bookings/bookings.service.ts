@@ -476,86 +476,94 @@ export class BookingsService {
     // acceptable and the cron / queue gateway re-syncs positions.
     const queuePosition = await this.queueService.getNextQueuePosition(shopId);
 
-    // Check slot availability using transaction for consistency
-    const booking = await this.prisma.$transaction(
-      async (tx) => {
-        // Double-check availability within transaction (prevents two users
-        // grabbing the same slot in a race).
-        const isAvailable = await this.slotEngine.isSlotAvailable(
-          shopId,
-          bookingStartTime,
-          bookingEndTime,
-          staffId,
-        );
-
-        if (!isAvailable) {
-          throw new ConflictException('Selected time slot is no longer available');
-        }
-
-        // Create booking with new fields
-        const newBooking = await tx.booking.create({
-          data: {
-            bookingNumber,
-            userId,
-            shopId,
-            staffId,
-            startTime: bookingStartTime,
-            endTime: bookingEndTime,
-            totalDurationMinutes: totalDuration,
-            totalAmount: new Decimal(finalAmount),
-            serviceAmount: new Decimal(subtotal), // Original shop price
-            freeCashAmount: new Decimal(freeCashUsed), // Amount deducted from charges
-            displayAmount: new Decimal(subtotal + taxesAndCharges), // What they see as "Subtotal + Taxes"
-            paymentType,
-            verificationCode,
-            serviceStatus: ServiceStatus.AWAITING_CODE,
-            currency: bookingCurrency,
-            status,
-            source,
-            customerName: userId ? undefined : customerName,
-            customerPhone: userId ? undefined : customerPhone,
-            customerEmail: userId ? undefined : customerEmail,
-            notes,
-            queuePosition: queuePosition + 1,
-            services: {
-              create: services.map((s) => ({
-                serviceId: s.id,
-                serviceName: s.name,
-                durationMinutes: s.durationMinutes,
-                price: s.price,
-              })),
-            },
-          },
-          include: {
-            services: true,
-            shop: {
-              select: {
-                name: true,
-                address: true,
-                phone: true,
-              },
-            },
-            user: {
-              select: {
-                name: true,
-                email: true,
-                phone: true,
-              },
-            },
-          },
-        });
-
-        return newBooking;
-      },
-      {
-        // Generous timeout for cold Supabase pooler connections. The body
-        // is now intentionally tiny (one re-check + one insert), so this
-        // ceiling should never actually be reached in normal operation —
-        // but it removes the 5 s default footgun.
-        timeout: 30000,
-        maxWait: 10000,
-      },
+    // Check slot availability BEFORE creating the booking.
+    //
+    // Why this is outside any $transaction wrapper: production runs against
+    // Supabase PgBouncer with `connection_limit=1`. An interactive Prisma
+    // transaction reserves the single connection for itself; any nested
+    // query that uses `this.prisma` (rather than the `tx` client) starves
+    // waiting on a connection that will only free when the transaction
+    // ends — i.e. deadlock until the 10 s pool timeout fires:
+    //
+    //   "Timed out fetching a new connection from the connection pool.
+    //    (Current connection pool timeout: 10, connection limit: 1)"
+    //
+    // `slotEngine.isSlotAvailable` issues several non-tx queries
+    // (shop.findUnique, staff.findFirst, booking.count) and cannot easily
+    // be threaded through `tx`. Moving the check out of the transaction
+    // dodges the deadlock entirely.
+    //
+    // The remaining race window (two requests passing the check before
+    // either inserts) is bounded by the per-user "active booking overlap"
+    // check above and the connection_limit=1 serialization at the DB
+    // layer. A future hardening can add a unique partial index on
+    // (shopId, startTime, staffId) for IN-flight statuses if we need
+    // strict atomicity.
+    const isAvailable = await this.slotEngine.isSlotAvailable(
+      shopId,
+      bookingStartTime,
+      bookingEndTime,
+      staffId,
     );
+
+    if (!isAvailable) {
+      throw new ConflictException('Selected time slot is no longer available');
+    }
+
+    // Create booking. Prisma handles nested `services.create` as an
+    // atomic statement internally, so no $transaction wrapper is needed
+    // around a single create call.
+    const booking = await this.prisma.booking.create({
+      data: {
+        bookingNumber,
+        userId,
+        shopId,
+        staffId,
+        startTime: bookingStartTime,
+        endTime: bookingEndTime,
+        totalDurationMinutes: totalDuration,
+        totalAmount: new Decimal(finalAmount),
+        serviceAmount: new Decimal(subtotal), // Original shop price
+        freeCashAmount: new Decimal(freeCashUsed), // Amount deducted from charges
+        displayAmount: new Decimal(subtotal + taxesAndCharges), // What they see as "Subtotal + Taxes"
+        paymentType,
+        verificationCode,
+        serviceStatus: ServiceStatus.AWAITING_CODE,
+        currency: bookingCurrency,
+        status,
+        source,
+        customerName: userId ? undefined : customerName,
+        customerPhone: userId ? undefined : customerPhone,
+        customerEmail: userId ? undefined : customerEmail,
+        notes,
+        queuePosition: queuePosition + 1,
+        services: {
+          create: services.map((s) => ({
+            serviceId: s.id,
+            serviceName: s.name,
+            durationMinutes: s.durationMinutes,
+            price: s.price,
+          })),
+        },
+      },
+      include: {
+        services: true,
+        shop: {
+          select: {
+            name: true,
+            address: true,
+            phone: true,
+          },
+        },
+        user: {
+          select: {
+            name: true,
+            email: true,
+            phone: true,
+          },
+        },
+      },
+    });
 
     // Update queue stats asynchronously
     this.queueService.updateQueueStats(shopId).catch(console.error);
