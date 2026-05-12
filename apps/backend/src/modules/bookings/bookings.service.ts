@@ -735,36 +735,69 @@ export class BookingsService {
     const skip = (page - 1) * limit;
     const where: any = { userId };
 
+    const now = new Date();
+
     if (status) {
       if (status === 'upcoming') {
-        // Upcoming = any booking in an active lifecycle state. Time-of-day is
-        // irrelevant — a booking that started but hasn't been
-        // completed/cancelled still belongs in "upcoming" so the user can
-        // take action on it. The past filter is strictly terminal states.
-        where.status = {
-          in: [
-            BookingStatus.PENDING,
-            BookingStatus.PENDING_APPROVAL,
-            BookingStatus.CONFIRMED,
-            BookingStatus.IN_PROGRESS,
-          ],
-        };
+        // Upcoming = a booking the user can still act on right now.
+        // Rules:
+        //   * Anything IN_PROGRESS belongs here (active service).
+        //   * PENDING / PENDING_APPROVAL / CONFIRMED only belong here
+        //     while their slot has not yet ended. A 9-10am booking at
+        //     11am is no longer "upcoming" — it has either no-showed
+        //     or the cron will sweep it shortly. Either way, we must
+        //     not lie to the user.
+        where.OR = [
+          { status: BookingStatus.IN_PROGRESS },
+          {
+            status: {
+              in: [
+                BookingStatus.PENDING,
+                BookingStatus.PENDING_APPROVAL,
+                BookingStatus.CONFIRMED,
+              ],
+            },
+            endTime: { gt: now },
+          },
+        ];
       } else if (status === 'past') {
-        // Past = terminal lifecycle states only. A future-dated booking that
-        // is PENDING_APPROVAL must NOT appear here.
-        where.status = {
-          in: [BookingStatus.COMPLETED, BookingStatus.NO_SHOW],
-        };
+        // Past = anything terminal, OR a non-terminal booking whose slot
+        // has already ended without going IN_PROGRESS (the cron hasn't
+        // caught up yet, but it is past from the user's POV).
+        where.OR = [
+          {
+            status: {
+              in: [
+                BookingStatus.COMPLETED,
+                BookingStatus.NO_SHOW,
+                BookingStatus.REJECTED,
+              ],
+            },
+          },
+          {
+            status: {
+              in: [
+                BookingStatus.PENDING,
+                BookingStatus.PENDING_APPROVAL,
+                BookingStatus.CONFIRMED,
+              ],
+            },
+            endTime: { lte: now },
+          },
+        ];
       } else if (status === 'cancelled') {
         where.status = {
           in: [BookingStatus.CANCELLED, BookingStatus.REJECTED],
         };
       } else if (status === 'pending') {
+        // Pending tab only shows live, future-slot pendings.
         where.status = {
           in: [BookingStatus.PENDING, BookingStatus.PENDING_APPROVAL],
         };
+        where.endTime = { gt: now };
       } else if (status === 'confirmed') {
         where.status = BookingStatus.CONFIRMED;
+        where.endTime = { gt: now };
       } else if (status === 'in-progress' || status === 'in_progress') {
         where.status = BookingStatus.IN_PROGRESS;
       } else if (Object.values(BookingStatus).includes(status as BookingStatus)) {

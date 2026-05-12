@@ -29,6 +29,7 @@ export default function ExplorePage() {
   const [selectedRadiusKm, setSelectedRadiusKm] = React.useState<number | undefined>(radiusKm ? Number(radiusKm) : undefined);
   const [selectedMaxPrice, setSelectedMaxPrice] = React.useState<number | undefined>(maxPrice ? Number(maxPrice) : undefined);
   const [selectedMinRating, setSelectedMinRating] = React.useState<number | undefined>(minRating ? Number(minRating) : undefined);
+  const [aiRecommended, setAiRecommended] = React.useState<boolean>(router.query.ai === '1');
 
   const extractCityFromAddress = React.useCallback((address?: string) => {
     if (!address) return '';
@@ -111,6 +112,7 @@ export default function ExplorePage() {
         ...(selectedMinRating && { minRating: selectedMinRating }),
         ...(selectedMaxPrice && { maxPrice: selectedMaxPrice }),
         ...(location && location.address && { address: location.address }),
+        ...(aiRecommended && { ai: '1' }),
       },
     });
   };
@@ -123,6 +125,7 @@ export default function ExplorePage() {
     setSelectedMaxPrice(undefined);
     setSelectedMinRating(undefined);
     setLocation(undefined);
+    setAiRecommended(false);
     router.push('/explore');
   };
 
@@ -162,21 +165,40 @@ export default function ExplorePage() {
               </button>
             </div>
 
-            {/* AI Recommendation Toggle */}
-            <div className="p-4 bg-primary-fixed/20 rounded-2xl border border-primary-fixed">
+            {/* AI Recommendation Toggle — real local state so the switch
+                actually toggles. The recommendation engine itself is being
+                wired up to the shop list separately; this control already
+                exposes the right intent in the URL for sharing. */}
+            <button
+              type="button"
+              onClick={() => setAiRecommended((v) => !v)}
+              aria-pressed={aiRecommended}
+              className="w-full text-left p-4 bg-primary-fixed/20 rounded-2xl border border-primary-fixed hover:bg-primary-fixed/30 transition-colors"
+            >
               <div className="flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <Sparkles className="w-5 h-5 text-primary" />
                   <span className="text-sm font-bold text-on-surface">AI Recommends</span>
+                  <span className="text-[9px] font-black uppercase tracking-widest text-primary bg-primary/10 px-1.5 py-0.5 rounded-full">Beta</span>
                 </div>
-                <div className="w-10 h-5 bg-primary rounded-full relative cursor-pointer">
-                  <div className="absolute right-0.5 top-0.5 w-4 h-4 rounded-full bg-white shadow-sm" />
+                <div
+                  className={cn(
+                    'w-10 h-5 rounded-full relative transition-colors',
+                    aiRecommended ? 'bg-primary' : 'bg-outline-variant/50',
+                  )}
+                >
+                  <div
+                    className={cn(
+                      'absolute top-0.5 w-4 h-4 rounded-full bg-white shadow-sm transition-all',
+                      aiRecommended ? 'right-0.5' : 'left-0.5',
+                    )}
+                  />
                 </div>
               </div>
               <p className="text-[11px] text-on-surface-variant mt-2 leading-relaxed">
                 Personalized results based on your booking history.
               </p>
-            </div>
+            </button>
 
             {/* Categories */}
             <div className="space-y-3">

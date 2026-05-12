@@ -1,0 +1,38 @@
+[
+  {
+    "text": "Legal",
+    "ratio": 1,
+    "required": 4.5,
+    "fg": "rgb(255,205,210)",
+    "bg": "rgb(255,205,210)",
+    "fontSize": 12,
+    "tag": "span",
+    "classes": "text-xs font-bold uppercase tracking-widest",
+    "x": 313,
+    "y": 167
+  },
+  {
+    "text": "Export, correct, or delete your account from your profile.",
+    "ratio": 1.94,
+    "required": 4.5,
+    "fg": "rgb(161,161,170)",
+    "bg": "rgb(211,47,47)",
+    "fontSize": 16,
+    "tag": "p",
+    "classes": "text-on-surface-variant mt-1",
+    "x": 313,
+    "y": 6443
+  },
+  {
+    "text": "Read Terms",
+    "ratio": 1.94,
+    "required": 4.5,
+    "fg": "rgb(161,161,170)",
+    "bg": "rgb(211,47,47)",
+    "fontSize": 14,
+    "tag": "button",
+    "classes": "inline-flex items-center justify-center tracking-tight transition-all duration-200 focus-visible:outline-none focus-visi",
+    "x": 1002,
+    "y": 6419
+  }
+]

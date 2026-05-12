@@ -131,17 +131,22 @@ const BlogPage = () => {
 
       {/* Newsletter */}
       <section className="py-20 px-6 lg:px-8">
-         <div className="max-w-7xl mx-auto rounded-5xl bg-inverse-surface p-12 md:p-24 text-center relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-96 h-96 bg-primary/20 blur-[100px] rounded-full translate-x-1/2 -translate-y-1/2" />
-            <span className="text-primary-fixed font-black uppercase tracking-widest text-xs mb-6 block">Stay Ahead</span>
-            <h2 className="text-4xl md:text-6xl font-black text-white tracking-tighter mb-8 leading-tight">
+         {/* Stable dark CTA in both themes — bg-inverse-surface flipped to
+             white in dark mode and made the text invisible. Use literal
+             neutrals + a brand-tinted glow so the panel always reads as a
+             premium dark card. */}
+         <div className="max-w-7xl mx-auto rounded-5xl bg-neutral-950 p-12 md:p-24 text-center relative overflow-hidden ring-1 ring-white/10">
+            <div className="absolute top-0 right-0 w-96 h-96 bg-primary/30 blur-[100px] rounded-full translate-x-1/2 -translate-y-1/2 pointer-events-none" />
+            <div className="absolute bottom-0 left-0 w-96 h-96 bg-primary/10 blur-[120px] rounded-full -translate-x-1/2 translate-y-1/2 pointer-events-none" />
+            <span className="relative text-primary font-black uppercase tracking-widest text-xs mb-6 block">Stay Ahead</span>
+            <h2 className="relative text-4xl md:text-6xl font-black text-white tracking-tighter mb-8 leading-tight">
                Want the latest stories <br/> delivered to you?
             </h2>
-            <div className="max-w-md mx-auto flex flex-col sm:flex-row gap-3">
-               <input 
-                  type="email" 
-                  placeholder="Enter your email" 
-                  className="flex-1 bg-white/10 border border-white/10 rounded-2xl px-6 py-4 text-white placeholder:text-white/40 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all font-medium"
+            <div className="relative max-w-md mx-auto flex flex-col sm:flex-row gap-3">
+               <input
+                  type="email"
+                  placeholder="Enter your email"
+                  className="flex-1 bg-white/10 border border-white/20 rounded-2xl px-6 py-4 text-white placeholder:text-white/50 focus:outline-none focus:ring-2 focus:ring-primary/50 transition-all font-medium"
                />
                <Button className="rounded-2xl bg-white text-black font-black px-10 py-4 hover:bg-white/90 active:scale-95 transition-all">
                   JOIN US

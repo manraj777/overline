@@ -1,0 +1,26 @@
+[
+  {
+    "text": "Sign In",
+    "ratio": 1,
+    "required": 4.5,
+    "fg": "rgb(255,255,255)",
+    "bg": "rgb(255,255,255)",
+    "fontSize": 14,
+    "tag": "button",
+    "classes": "inline-flex items-center justify-center tracking-tight duration-200 focus-visible:outline-none focus-visible:ring-4 focu",
+    "x": 860,
+    "y": 428
+  },
+  {
+    "text": "Google is a trademark of Google LLC.",
+    "ratio": 1.48,
+    "required": 4.5,
+    "fg": "rgb(212,212,216)",
+    "bg": "rgb(255,255,255)",
+    "fontSize": 10,
+    "tag": "span",
+    "classes": "normal-case text-[10px] text-outline-variant font-medium",
+    "x": 971,
+    "y": 853
+  }
+]

@@ -1,0 +1,98 @@
+[
+  {
+    "text": "Home",
+    "ratio": 4.22,
+    "required": 4.5,
+    "fg": "rgb(211,47,47)",
+    "bg": "rgb(0,0,0)",
+    "fontSize": 14,
+    "tag": "a",
+    "classes": "px-4 py-2 text-sm transition-all duration-200 h-16 flex items-center text-primary font-bold border-b-2 border-primary",
+    "x": 180,
+    "y": 0
+  },
+  {
+    "text": "Location",
+    "ratio": 2.57,
+    "required": 4.5,
+    "fg": "rgb(82,82,91)",
+    "bg": "rgb(9,9,11)",
+    "fontSize": 10,
+    "tag": "span",
+    "classes": "text-[10px] font-bold uppercase tracking-wider text-outline mb-0.5",
+    "x": 393,
+    "y": 353
+  },
+  {
+    "text": "Search",
+    "ratio": 2.57,
+    "required": 4.5,
+    "fg": "rgb(82,82,91)",
+    "bg": "rgb(9,9,11)",
+    "fontSize": 10,
+    "tag": "span",
+    "classes": "text-[10px] font-bold uppercase tracking-wider text-outline mb-0.5",
+    "x": 717,
+    "y": 353
+  },
+  {
+    "text": "View All",
+    "ratio": 1,
+    "required": 4.5,
+    "fg": "rgb(211,47,47)",
+    "bg": "rgb(211,47,47)",
+    "fontSize": 14,
+    "tag": "button",
+    "classes": "text-sm font-bold text-primary hover:underline underline-offset-4 px-4 py-2 bg-primary/5 rounded-lg transition-colors",
+    "x": 1200,
+    "y": 1128
+  },
+  {
+    "text": "(",
+    "ratio": 2.29,
+    "required": 4.5,
+    "fg": "rgb(82,82,91)",
+    "bg": "rgb(24,24,27)",
+    "fontSize": 12,
+    "tag": "span",
+    "classes": "text-outline text-xs",
+    "x": 232,
+    "y": 1523
+  },
+  {
+    "text": "0",
+    "ratio": 2.29,
+    "required": 4.5,
+    "fg": "rgb(82,82,91)",
+    "bg": "rgb(24,24,27)",
+    "fontSize": 12,
+    "tag": "span",
+    "classes": "text-outline text-xs",
+    "x": 232,
+    "y": 1523
+  },
+  {
+    "text": ")",
+    "ratio": 2.29,
+    "required": 4.5,
+    "fg": "rgb(82,82,91)",
+    "bg": "rgb(24,24,27)",
+    "fontSize": 12,
+    "tag": "span",
+    "classes": "text-outline text-xs",
+    "x": 232,
+    "y": 1523
+  },
+  {
+    "text": "Home",
+    "ratio": 2.2,
+    "required": 4.5,
+    "fg": "rgb(229,115,115)",
+    "bg": "rgb(183,28,28)",
+    "fontSize": 11,
+    "tag": "span",
+    "classes": "text-[11px] font-semibold tracking-wide uppercase",
+    "x": 0,
+    "y": 0
+  }
+]

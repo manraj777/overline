@@ -19,6 +19,7 @@ import { Button, Card, Badge, Alert, Loading } from '@/components/ui';
 import { PaymentForm, LiveBookingTracker } from '@/components/booking';
 import { ReviewForm } from '@/components/reviews';
 import { useBooking, useCancelBooking, useCreatePaymentIntent, useQueueSocket, useRespondCounterOffer } from '@/hooks';
+import { useNotificationSound } from '@/hooks/useNotificationSound';
 import { formatDate, formatTime, formatPrice, formatDuration, getEndTime } from '@/lib/utils';
 import { removeQueueSession } from '@/lib/queue-session';
 import { BookingStatus } from '@/types';
@@ -97,22 +98,18 @@ export default function BookingDetailPage() {
   const [showPayment, setShowPayment] = React.useState(false);
   const [paymentData, setPaymentData] = React.useState<RazorpayPaymentData | null>(null);
 
-  // Track previous status to play sound on change
+  // Track previous status to chime when it transitions (e.g. shop
+  // approves while the user is staring at this page). The shared hook
+  // also handles the user's mute preference and vibration.
+  const { play: playChime } = useNotificationSound();
   const prevStatusRef = React.useRef<string | null>(null);
 
   React.useEffect(() => {
     if (booking?.status && prevStatusRef.current && prevStatusRef.current !== booking.status) {
-      // Play sound and vibrate on status change
-      try {
-        const audio = new Audio('/sounds/notification.mp3');
-        audio.play().catch(e => console.warn('Audio play failed:', e));
-      } catch (e) {}
-      if ('vibrate' in navigator) {
-        navigator.vibrate([200, 100, 200]);
-      }
+      playChime();
     }
     prevStatusRef.current = booking?.status || null;
-  }, [booking?.status]);
+  }, [booking?.status, playChime]);
 
   // Real-time booking status tracking
   const [queuePosition, setQueuePosition] = React.useState<number | null>(null);
@@ -200,10 +197,10 @@ export default function BookingDetailPage() {
   if (!booking) {
     return (
       <div className="container-app py-12 text-center">
-        <h1 className="text-2xl font-bold text-gray-900 mb-2">
+        <h1 className="text-2xl font-bold text-on-surface mb-2">
           Booking not found
         </h1>
-        <p className="text-gray-500 mb-4">
+        <p className="text-on-surface-variant mb-4">
           This booking doesn't exist or you don't have access to it.
         </p>
         <Button onClick={() => router.push('/bookings')}>View Bookings</Button>
@@ -227,48 +224,55 @@ export default function BookingDetailPage() {
     booking.status === BookingStatus.PENDING_APPROVAL ||
     booking.status === BookingStatus.CONFIRMED;
 
+  // Status palette: every entry uses semantic, dark-mode-safe tints so the
+  // detail page stays legible across themes without per-color overrides.
+  const STATUS_PENDING = 'text-warning-600 bg-warning-50 dark:text-amber-200 dark:bg-amber-950/40';
+  const STATUS_INFO = 'text-primary bg-primary/10 dark:text-primary-200 dark:bg-primary/20';
+  const STATUS_SUCCESS = 'text-success-700 bg-success-50 dark:text-green-300 dark:bg-green-950/40';
+  const STATUS_ERROR = 'text-error-600 bg-error-50 dark:text-red-300 dark:bg-error-container/40';
+
   const statusConfig: Record<
     BookingStatus,
     { icon: React.ReactNode; color: string; label: string }
   > = {
     [BookingStatus.PENDING]: {
       icon: <AlertCircle className="w-5 h-5" />,
-      color: 'text-amber-600 bg-amber-100',
+      color: STATUS_PENDING,
       label: 'Pending Confirmation',
     },
     [BookingStatus.PENDING_APPROVAL]: {
       icon: <AlertCircle className="w-5 h-5" />,
-      color: 'text-amber-600 bg-amber-100',
+      color: STATUS_PENDING,
       label: 'Pending Staff Approval',
     },
     [BookingStatus.CONFIRMED]: {
       icon: <CheckCircle className="w-5 h-5" />,
-      color: 'text-blue-600 bg-blue-100',
+      color: STATUS_INFO,
       label: 'Confirmed',
     },
     [BookingStatus.IN_PROGRESS]: {
       icon: <Clock className="w-5 h-5" />,
-      color: 'text-blue-600 bg-blue-100',
+      color: STATUS_INFO,
       label: 'In Progress',
     },
     [BookingStatus.COMPLETED]: {
       icon: <CheckCircle className="w-5 h-5" />,
-      color: 'text-green-600 bg-green-100',
+      color: STATUS_SUCCESS,
       label: 'Completed',
     },
     [BookingStatus.CANCELLED]: {
       icon: <XCircle className="w-5 h-5" />,
-      color: 'text-red-600 bg-red-100',
+      color: STATUS_ERROR,
       label: 'Cancelled',
     },
     [BookingStatus.NO_SHOW]: {
       icon: <XCircle className="w-5 h-5" />,
-      color: 'text-red-600 bg-red-100',
+      color: STATUS_ERROR,
       label: 'No Show',
     },
     [BookingStatus.REJECTED]: {
       icon: <XCircle className="w-5 h-5" />,
-      color: 'text-red-600 bg-red-100',
+      color: STATUS_ERROR,
       label: 'Rejected',
     },
   };
@@ -278,13 +282,13 @@ export default function BookingDetailPage() {
     booking.status === BookingStatus.REJECTED && booking.adminNotes?.toUpperCase().includes('FAKE_USER')
       ? {
           icon: <XCircle className="w-5 h-5" />,
-          color: 'text-red-600 bg-red-100',
+          color: STATUS_ERROR,
           label: 'Rejected as Fake User',
         }
       : booking.status === BookingStatus.REJECTED
         ? {
             icon: <XCircle className="w-5 h-5" />,
-            color: 'text-red-600 bg-red-100',
+            color: STATUS_ERROR,
             label: 'Disapproved',
           }
         : baseStatus;
@@ -299,7 +303,7 @@ export default function BookingDetailPage() {
         {/* Back Button */}
         <button
           onClick={() => router.push('/bookings')}
-          className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-6"
+          className="flex items-center gap-2 text-on-surface-variant hover:text-on-surface transition-colors mb-6"
         >
           <ArrowLeft className="w-5 h-5" />
           Back to Bookings
@@ -391,23 +395,23 @@ export default function BookingDetailPage() {
                   {status.icon}
                 </div>
                 <div>
-                  <h2 className="font-semibold text-gray-900">{status.label}</h2>
-                  <p className="text-sm text-gray-500">
+                  <h2 className="font-semibold text-on-surface">{status.label}</h2>
+                  <p className="text-sm text-on-surface-variant">
                     Booking #{booking.id.slice(0, 8).toUpperCase()}
                   </p>
                 </div>
               </div>
 
               {/* Date & Time */}
-              <div className="flex items-center gap-6 p-4 bg-gray-50 rounded-lg">
+              <div className="flex flex-wrap items-center gap-x-6 gap-y-2 p-4 bg-surface-container-low rounded-xl text-on-surface">
                 <div className="flex items-center gap-2">
-                  <Calendar className="w-5 h-5 text-gray-400" />
+                  <Calendar className="w-5 h-5 text-on-surface-variant" />
                   <span className="font-medium">
                     {formatDate(booking.startTime)}
                   </span>
                 </div>
                 <div className="flex items-center gap-2">
-                  <Clock className="w-5 h-5 text-gray-400" />
+                  <Clock className="w-5 h-5 text-on-surface-variant" />
                   <span className="font-medium">
                     {formatTime(booking.startTime)} - {formatTime(booking.endTime)}
                   </span>
@@ -415,10 +419,10 @@ export default function BookingDetailPage() {
               </div>
 
               {['PENDING', 'CONFIRMED', 'IN_PROGRESS'].includes(booking.status) && booking.verificationCode && (
-                <div className="mt-4 p-4 rounded-lg border border-indigo-100 bg-indigo-50">
-                  <p className="text-xs font-bold uppercase tracking-widest text-indigo-700 mb-1">Service Verification Code</p>
-                  <p className="text-2xl font-black tracking-[0.2em] text-indigo-900">{booking.verificationCode}</p>
-                  <p className="text-xs text-indigo-700 mt-2">Share this code with staff to start your service.</p>
+                <div className="mt-4 p-4 rounded-xl border border-primary/20 bg-primary/5 dark:bg-primary/10">
+                  <p className="text-xs font-bold uppercase tracking-widest text-primary mb-1">Service Verification Code</p>
+                  <p className="text-2xl font-black tracking-[0.2em] text-on-surface">{booking.verificationCode}</p>
+                  <p className="text-xs text-on-surface-variant mt-2">Share this code with staff to start your service.</p>
                 </div>
               )}
             </Card>
@@ -431,25 +435,25 @@ export default function BookingDetailPage() {
             {/* Live Queue Position */}
             {['PENDING', 'CONFIRMED'].includes(booking.status) &&
               (queuePosition || booking.queuePosition) && (
-                <Card variant="bordered" className="border-indigo-200 bg-indigo-50">
+                <Card variant="bordered" className="border-primary/30 bg-primary/5 dark:bg-primary/10">
                   <div className="flex items-center justify-between">
                     <div>
-                      <h3 className="font-semibold text-indigo-900">Your Queue Position</h3>
-                      <p className="text-sm text-indigo-600">
+                      <h3 className="font-semibold text-on-surface">Your Queue Position</h3>
+                      <p className="text-sm text-on-surface-variant">
                         {wsConnected ? 'Updating in real-time' : 'Based on booking time'}
                       </p>
                     </div>
                     <div className="text-center">
-                      <div className="text-3xl font-bold text-indigo-700">
+                      <div className="text-3xl font-bold text-primary">
                         #{queuePosition || booking.queuePosition}
                       </div>
                       {wsConnected && (
                         <div className="flex items-center gap-1 mt-1">
                           <span className="relative flex h-2 w-2">
-                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75" />
-                            <span className="relative inline-flex rounded-full h-2 w-2 bg-green-500" />
+                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-success/60 opacity-75" />
+                            <span className="relative inline-flex rounded-full h-2 w-2 bg-success" />
                           </span>
-                          <span className="text-xs text-green-600">Live</span>
+                          <span className="text-xs text-success-600 dark:text-green-400">Live</span>
                         </div>
                       )}
                     </div>
@@ -469,9 +473,9 @@ export default function BookingDetailPage() {
 
             {/* Shop Info */}
             <Card variant="bordered">
-              <h3 className="font-semibold text-gray-900 mb-4">Shop Details</h3>
+              <h3 className="font-semibold text-on-surface mb-4">Shop Details</h3>
               <div className="flex gap-4">
-                <div className="w-16 h-16 rounded-lg bg-gray-100 overflow-hidden flex-shrink-0">
+                <div className="w-16 h-16 rounded-xl bg-surface-container-high overflow-hidden flex-shrink-0">
                   {booking.shop?.logoUrl ? (
                     <img
                       src={booking.shop.logoUrl}
@@ -479,21 +483,21 @@ export default function BookingDetailPage() {
                       className="w-full h-full object-cover"
                     />
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center bg-primary-500 text-white font-bold text-xl">
+                    <div className="w-full h-full flex items-center justify-center bg-primary text-on-primary font-bold text-xl">
                       {booking.shop?.name?.charAt(0)}
                     </div>
                   )}
                 </div>
                 <div>
-                  <h4 className="font-medium text-gray-900">
+                  <h4 className="font-medium text-on-surface">
                     {booking.shop?.name}
                   </h4>
-                  <p className="text-sm text-gray-500 flex items-center mt-1">
+                  <p className="text-sm text-on-surface-variant flex items-center mt-1">
                     <MapPin className="w-4 h-4 mr-1" />
                     {booking.shop?.address}
                   </p>
                   {booking.shop?.phone && (
-                    <p className="text-sm text-gray-500 flex items-center mt-1">
+                    <p className="text-sm text-on-surface-variant flex items-center mt-1">
                       <Phone className="w-4 h-4 mr-1" />
                       {booking.shop.phone}
                     </p>
@@ -502,10 +506,10 @@ export default function BookingDetailPage() {
               </div>
 
               {booking.shop?.slug && (
-                <div className="mt-4 pt-4 border-t border-gray-100">
+                <div className="mt-4 pt-4 border-t border-outline-variant/30">
                   <Link
                     href={`/shops/${booking.shop.slug}`}
-                    className="text-primary-600 text-sm font-medium hover:text-primary-700"
+                    className="text-primary text-sm font-medium hover:text-primary-700 transition-colors"
                   >
                     View Shop Profile →
                   </Link>
@@ -515,7 +519,7 @@ export default function BookingDetailPage() {
 
             {/* Services */}
             <Card variant="bordered">
-              <h3 className="font-semibold text-gray-900 mb-4">Services</h3>
+              <h3 className="font-semibold text-on-surface mb-4">Services</h3>
               <div className="space-y-3">
                 {booking.services?.map((bs) => (
                   <div
@@ -523,14 +527,14 @@ export default function BookingDetailPage() {
                     className="flex items-center justify-between py-2"
                   >
                     <div>
-                      <p className="font-medium text-gray-900">
+                      <p className="font-medium text-on-surface">
                         {bs.serviceName}
                       </p>
-                      <p className="text-sm text-gray-500">
+                      <p className="text-sm text-on-surface-variant">
                         {formatDuration(bs.durationMinutes || 0)}
                       </p>
                     </div>
-                    <span className="font-medium text-gray-900">
+                    <span className="font-medium text-on-surface">
                       {formatPrice(bs.price)}
                     </span>
                   </div>
@@ -541,12 +545,12 @@ export default function BookingDetailPage() {
             {/* Staff */}
             {booking.staff && (
               <Card variant="bordered">
-                <h3 className="font-semibold text-gray-900 mb-4">
+                <h3 className="font-semibold text-on-surface mb-4">
                   Your Specialist
                 </h3>
                 <div className="flex items-center gap-3">
-                  <User className="w-5 h-5 text-gray-400" />
-                  <span className="text-gray-700">{booking.staff.name}</span>
+                  <User className="w-5 h-5 text-on-surface-variant" />
+                  <span className="text-on-surface">{booking.staff.name}</span>
                 </div>
               </Card>
             )}
@@ -554,8 +558,8 @@ export default function BookingDetailPage() {
             {/* Notes */}
             {booking.notes && (
               <Card variant="bordered">
-                <h3 className="font-semibold text-gray-900 mb-2">Notes</h3>
-                <p className="text-gray-600">{booking.notes}</p>
+                <h3 className="font-semibold text-on-surface mb-2">Notes</h3>
+                <p className="text-on-surface-variant">{booking.notes}</p>
               </Card>
             )}
 
@@ -565,12 +569,12 @@ export default function BookingDetailPage() {
               !booking.payment?.paidAt && (
                 <Card variant="bordered">
                   <div className="flex items-center gap-3 mb-4">
-                    <div className="p-2 rounded-lg bg-indigo-100">
-                      <CreditCard className="w-5 h-5 text-indigo-600" />
+                    <div className="p-2 rounded-xl bg-primary/10 dark:bg-primary/15">
+                      <CreditCard className="w-5 h-5 text-primary" />
                     </div>
                     <div>
-                      <h3 className="font-semibold text-gray-900">Pay Online</h3>
-                      <p className="text-sm text-gray-500">
+                      <h3 className="font-semibold text-on-surface">Pay Online</h3>
+                      <p className="text-sm text-on-surface-variant">
                         Secure payment via Razorpay
                       </p>
                     </div>
@@ -606,7 +610,7 @@ export default function BookingDetailPage() {
                     </Button>
                   )}
 
-                  <p className="text-xs text-center text-gray-400 mt-3">
+                  <p className="text-xs text-center text-on-surface-variant mt-3">
                     You can also pay at the counter when you arrive.
                   </p>
                 </Card>
@@ -624,12 +628,12 @@ export default function BookingDetailPage() {
             {booking.status === BookingStatus.COMPLETED && !reviewSubmitted && !(booking as any).review && (
               <Card variant="bordered">
                 <div className="flex items-center gap-3 mb-4">
-                  <div className="p-2 rounded-lg bg-amber-100">
-                    <Star className="w-5 h-5 text-amber-600" />
+                  <div className="p-2 rounded-xl bg-warning-50 dark:bg-amber-950/40">
+                    <Star className="w-5 h-5 text-warning-600 dark:text-amber-300" />
                   </div>
                   <div>
-                    <h3 className="font-semibold text-gray-900">Rate your experience</h3>
-                    <p className="text-sm text-gray-500">Help others by sharing your feedback</p>
+                    <h3 className="font-semibold text-on-surface">Rate your experience</h3>
+                    <p className="text-sm text-on-surface-variant">Help others by sharing your feedback</p>
                   </div>
                 </div>
 
@@ -654,7 +658,7 @@ export default function BookingDetailPage() {
               <Alert variant="success" className="mt-0">
                 <p className="font-semibold">Thank you for your review!</p>
                 {(booking as any).review?.comment && (
-                  <p className="mt-2 text-sm italic text-success-800">
+                  <p className="mt-2 text-sm italic text-success-700 dark:text-green-300">
                     "{(booking as any).review.comment}"
                   </p>
                 )}
@@ -665,26 +669,26 @@ export default function BookingDetailPage() {
           {/* Sidebar */}
           <div className="mt-6 lg:mt-0">
             <Card variant="bordered" className="sticky top-20">
-              <h3 className="font-semibold text-gray-900 mb-4">Summary</h3>
+              <h3 className="font-semibold text-on-surface mb-4">Summary</h3>
 
               <div className="space-y-3 mb-4">
                 <div className="flex justify-between text-sm">
-                  <span className="text-gray-500">Duration</span>
-                  <span className="text-gray-900">
+                  <span className="text-on-surface-variant">Duration</span>
+                  <span className="text-on-surface">
                     {formatDuration(totalDuration)}
                   </span>
                 </div>
                 <div className="flex justify-between text-sm">
-                  <span className="text-gray-500">Services</span>
-                  <span className="text-gray-900">
+                  <span className="text-on-surface-variant">Services</span>
+                  <span className="text-on-surface">
                     {booking.services?.length || 0}
                   </span>
                 </div>
               </div>
 
-              <div className="flex justify-between pt-4 border-t border-gray-100">
-                <span className="font-medium text-gray-900">Total</span>
-                <span className="text-xl font-bold text-gray-900">
+              <div className="flex justify-between pt-4 border-t border-outline-variant/30">
+                <span className="font-medium text-on-surface">Total</span>
+                <span className="text-xl font-bold text-on-surface">
                   {formatPrice(totalPrice)}
                 </span>
               </div>

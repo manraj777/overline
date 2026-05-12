@@ -1,0 +1,26 @@
+[
+  {
+    "text": "Sign Up",
+    "ratio": 1.05,
+    "required": 4.5,
+    "fg": "rgb(255,255,255)",
+    "bg": "rgb(248,249,250)",
+    "fontSize": 14,
+    "tag": "button",
+    "classes": "inline-flex items-center justify-center font-semibold tracking-tight transition-all duration-200 rounded-xl focus-visibl",
+    "x": 1326,
+    "y": 12
+  },
+  {
+    "text": "Agreement",
+    "ratio": 1,
+    "required": 4.5,
+    "fg": "rgb(226,232,240)",
+    "bg": "rgb(226,232,240)",
+    "fontSize": 12,
+    "tag": "span",
+    "classes": "text-xs font-bold uppercase tracking-widest",
+    "x": 313,
+    "y": 167
+  }
+]

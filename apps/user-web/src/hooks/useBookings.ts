@@ -85,6 +85,12 @@ export function useAvailableSlots(params: GetSlotsParams) {
 }
 
 export function useMyBookings(status?: string) {
+  // Tabs that show live, time-sensitive bookings poll faster so the user
+  // sees status changes (approval, start, completion) without manually
+  // refreshing. Past / cancelled / all rarely change, so they can stay
+  // on the default cache.
+  const isLiveTab = !status || ['upcoming', 'pending', 'confirmed', 'in-progress', 'in_progress'].includes(status);
+
   return useQuery<PaginatedResponse<Booking>>({
     queryKey: ['bookings', 'my', status],
     queryFn: async () => {
@@ -93,7 +99,10 @@ export function useMyBookings(status?: string) {
       });
       return data;
     },
-    staleTime: 1000 * 60 * 2,
+    staleTime: isLiveTab ? 1000 * 15 : 1000 * 60 * 2,
+    refetchInterval: isLiveTab ? 1000 * 30 : false,
+    refetchIntervalInBackground: false,
+    refetchOnWindowFocus: true,
   });
 }
 
@@ -105,6 +114,17 @@ export function useBooking(id: string) {
       return data;
     },
     enabled: !!id,
+    // Auto-refresh while the booking is still moving through its lifecycle.
+    // Stop polling once it lands in a terminal state to save resources.
+    refetchInterval: (query) => {
+      const status = (query.state.data as Booking | undefined)?.status;
+      if (!status) return 1000 * 20;
+      const terminal = ['COMPLETED', 'CANCELLED', 'NO_SHOW', 'REJECTED'];
+      if (terminal.includes(status)) return false;
+      return 1000 * 20;
+    },
+    refetchIntervalInBackground: false,
+    refetchOnWindowFocus: true,
   });
 }
 

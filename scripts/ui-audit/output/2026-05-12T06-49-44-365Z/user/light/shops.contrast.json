@@ -1,0 +1,62 @@
+[
+  {
+    "text": "Sign Up",
+    "ratio": 1.05,
+    "required": 4.5,
+    "fg": "rgb(255,255,255)",
+    "bg": "rgb(248,249,250)",
+    "fontSize": 14,
+    "tag": "button",
+    "classes": "inline-flex items-center justify-center font-semibold tracking-tight transition-all duration-200 rounded-xl focus-visibl",
+    "x": 1326,
+    "y": 12
+  },
+  {
+    "text": "Near me",
+    "ratio": 3.7,
+    "required": 4.5,
+    "fg": "rgb(229,57,53)",
+    "bg": "rgb(255,235,238)",
+    "fontSize": 14,
+    "tag": "span",
+    "classes": "",
+    "x": 225,
+    "y": 887
+  },
+  {
+    "text": "Search",
+    "ratio": 1,
+    "required": 4.5,
+    "fg": "rgb(255,255,255)",
+    "bg": "rgb(255,255,255)",
+    "fontSize": 14,
+    "tag": "button",
+    "classes": "btn-primary px-5 py-2.5 text-sm font-bold rounded-xl",
+    "x": 920,
+    "y": 168
+  },
+  {
+    "text": "Retry",
+    "ratio": 3.92,
+    "required": 4.5,
+    "fg": "rgb(211,47,47)",
+    "bg": "rgb(228,228,231)",
+    "fontSize": 16,
+    "tag": "button",
+    "classes": "btn-tonal px-6 py-2",
+    "x": 635,
+    "y": 359
+  },
+  {
+    "text": "Explore",
+    "ratio": 3.54,
+    "required": 4.5,
+    "fg": "rgb(211,47,47)",
+    "bg": "rgb(255,205,210)",
+    "fontSize": 11,
+    "tag": "span",
+    "classes": "text-[11px] font-semibold tracking-wide uppercase",
+    "x": 0,
+    "y": 0
+  }
+]

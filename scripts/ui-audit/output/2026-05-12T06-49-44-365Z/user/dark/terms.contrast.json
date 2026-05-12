@@ -1,0 +1,14 @@
+[
+  {
+    "text": "Agreement",
+    "ratio": 1,
+    "required": 4.5,
+    "fg": "rgb(226,232,240)",
+    "bg": "rgb(226,232,240)",
+    "fontSize": 12,
+    "tag": "span",
+    "classes": "text-xs font-bold uppercase tracking-widest",
+    "x": 313,
+    "y": 167
+  }
+]

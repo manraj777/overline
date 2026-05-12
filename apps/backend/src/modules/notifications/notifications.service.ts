@@ -153,8 +153,11 @@ export class NotificationsService {
                     body: notification.body,
                   },
                   data: {
-                    type: notification.type,
-                    id: notification.id,
+                    // FCM only allows string values on `data`. Coerce
+                    // explicitly so we never trip over null / number.
+                    type: String(notification.type || ''),
+                    id: String(notification.id || ''),
+                    bookingId: String(notification.bookingId || ''),
                   },
                 });
                 this.logger.log(`FCM Push Notification sent to User: ${notification.userId}`);

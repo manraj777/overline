@@ -1,4 +1,14 @@
 type User @table {
-  id: String!
-  name: String!
+  id: UUID! @default(expr: "uuidV4()")
+  phone: String!
+  name: String
+  createdAt: Timestamp! @default(expr: "request.time")
+}
+
+type Booking @table {
+  id: UUID! @default(expr: "uuidV4()")
+  userId: UUID!
+  serviceId: UUID!
+  scheduledAt: Timestamp!
+  status: String! @default(expr: "'pending'")
 }

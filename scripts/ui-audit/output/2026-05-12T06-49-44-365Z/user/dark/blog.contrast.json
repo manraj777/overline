@@ -1,0 +1,62 @@
+[
+  {
+    "text": "Overline Chronicles",
+    "ratio": 1,
+    "required": 4.5,
+    "fg": "rgb(211,47,47)",
+    "bg": "rgb(211,47,47)",
+    "fontSize": 12,
+    "tag": "span",
+    "classes": "text-xs font-bold uppercase tracking-widest text-primary",
+    "x": 121,
+    "y": 199
+  },
+  {
+    "text": "READ ARTICLE",
+    "ratio": 4,
+    "required": 4.5,
+    "fg": "rgb(211,47,47)",
+    "bg": "rgb(9,9,11)",
+    "fontSize": 14,
+    "tag": "button",
+    "classes": "justify-center tracking-tight duration-200 rounded-xl focus-visible:outline-none focus-visible:ring-4 focus-visible:ring",
+    "x": 80,
+    "y": 1237
+  },
+  {
+    "text": "Stay Ahead",
+    "ratio": 1.28,
+    "required": 4.5,
+    "fg": "rgb(255,205,210)",
+    "bg": "rgb(244,244,245)",
+    "fontSize": 12,
+    "tag": "span",
+    "classes": "text-primary-fixed font-black uppercase tracking-widest text-xs mb-6 block",
+    "x": 176,
+    "y": 1513
+  },
+  {
+    "text": "Want the latest stories",
+    "ratio": 1.1,
+    "required": 3,
+    "fg": "rgb(255,255,255)",
+    "bg": "rgb(244,244,245)",
+    "fontSize": 60,
+    "tag": "h2",
+    "classes": "text-4xl md:text-6xl font-black text-white tracking-tighter mb-8 leading-tight",
+    "x": 176,
+    "y": 1553
+  },
+  {
+    "text": "delivered to you?",
+    "ratio": 1.1,
+    "required": 3,
+    "fg": "rgb(255,255,255)",
+    "bg": "rgb(244,244,245)",
+    "fontSize": 60,
+    "tag": "h2",
+    "classes": "text-4xl md:text-6xl font-black text-white tracking-tighter mb-8 leading-tight",
+    "x": 176,
+    "y": 1553
+  }
+]

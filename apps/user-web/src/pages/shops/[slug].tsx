@@ -426,7 +426,10 @@ export default function ShopDetailPage({ initialShop, slug: ssrSlug }: ShopPageP
 
       <div className="min-h-screen bg-surface pb-32 overflow-hidden">
         {/* ── Sticky Progress Bar ── */}
-        <div className="bg-surface-container-lowest/70 dark:bg-surface/70 backdrop-blur-xl border-b border-outline-variant/10 sticky top-16 z-30">
+        {/* Fully opaque on purpose: the previous translucent variant let
+            the shop title underneath bleed through when the user scrolled
+            even slightly, producing the half-erased-headline look. */}
+        <div className="bg-surface-container-lowest dark:bg-surface border-b border-outline-variant/30 shadow-sm sticky top-16 z-30">
           <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between h-14">
             <button
               onClick={handlePrevStep}
@@ -559,7 +562,7 @@ export default function ShopDetailPage({ initialShop, slug: ssrSlug }: ShopPageP
                   )}
 
                   {/* Zomato-style Tabs */}
-                  <div className="mt-10 overflow-x-auto no-scrollbar border-b border-outline-variant/20 sticky top-[120px] z-20 bg-surface/95 backdrop-blur-md">
+                  <div className="mt-10 overflow-x-auto no-scrollbar border-b border-outline-variant/20 sticky top-[120px] z-20 bg-surface">
                     <div className="flex items-center gap-6 min-w-max px-2">
                       {tabs.map((tab) => (
                         <button
@@ -777,7 +780,7 @@ export default function ShopDetailPage({ initialShop, slug: ssrSlug }: ShopPageP
             <div className="hidden lg:block lg:col-span-5 xl:col-span-4 relative">
               <div className="sticky top-36 pt-2">
                 <div className="card-m3 overflow-hidden">
-                  <BookingSummary />
+                  <BookingSummary currentShop={shop} />
                 </div>
               </div>
             </div>

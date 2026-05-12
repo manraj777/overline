@@ -97,8 +97,8 @@ export default function App({ Component, pageProps }: AppProps) {
       <div className={`${inter.variable} font-sans`}>
         <QueryClientProvider client={queryClient}>
           <ErrorBoundary>
-            <AuthBootstrap />
             <ToastProvider>
+              <AuthBootstrap />
               <AdminLayout>
                 <Component {...pageProps} />
               </AdminLayout>
