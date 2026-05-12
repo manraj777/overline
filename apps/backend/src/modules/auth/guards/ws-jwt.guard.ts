@@ -1,6 +1,5 @@
 import { CanActivate, ExecutionContext, Injectable, Logger } from '@nestjs/common';
 import { JwtService } from '@nestjs/jwt';
-import { ConfigService } from '@nestjs/config';
 import { WsException } from '@nestjs/websockets';
 import { Socket } from 'socket.io';
 
@@ -8,10 +7,7 @@ import { Socket } from 'socket.io';
 export class WsJwtGuard implements CanActivate {
   private readonly logger = new Logger(WsJwtGuard.name);
 
-  constructor(
-    private jwtService: JwtService,
-    private configService: ConfigService,
-  ) {}
+  constructor(private jwtService: JwtService) {}
 
   async canActivate(context: ExecutionContext): Promise<boolean> {
     try {
@@ -23,9 +19,12 @@ export class WsJwtGuard implements CanActivate {
         throw new WsException('Unauthorized: Missing token');
       }
 
-      const payload = await this.jwtService.verifyAsync(token, {
-        secret: this.configService.get('JWT_SECRET'),
-      });
+      // IMPORTANT: do NOT pass `{ secret: ... }` here. The JwtModule was
+      // registered with `resolveJwtSecret()` which Base64-decodes JWT_SECRET
+      // into a Buffer. Overriding with the raw string would verify tokens
+      // against a different key than they were signed with, producing
+      // `invalid signature` for every otherwise-valid token.
+      const payload = await this.jwtService.verifyAsync(token);
 
       // Attach user to context for CurrentUser decorator
       client['user'] = payload;

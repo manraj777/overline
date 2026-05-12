@@ -432,99 +432,130 @@ export class BookingsService {
     }
     // --- END FRAUD DETECTION ---
 
+    // ────────────────────────────────────────────────────────────────────────
+    // Pre-transaction work
+    //
+    // Prisma interactive transactions default to a 5 s timeout that covers
+    // the *entire* callback, not just the final write. Anything slow inside
+    // the callback (extra queries, network calls, cold pooler connections)
+    // will cause the dreaded:
+    //   "Transaction already closed: A query cannot be executed on an
+    //    expired transaction. The timeout for this transaction was 5000 ms"
+    //
+    // Following Prisma's own guidance, we keep ONLY the consistency-critical
+    // pieces inside the transaction (the slot availability re-check and the
+    // booking insert itself) and move every read that doesn't need atomic
+    // isolation out here. The transaction is also given an explicit 30 s
+    // timeout as a safety net for slow networks / cold connections.
+    // ────────────────────────────────────────────────────────────────────────
+
+    // Generate booking-scoped identifiers up front (pure, in-memory).
+    const bookingNumber = this.generateBookingNumber();
+    const verificationCode = this.generateVerificationCode();
+
+    // Determine payment type from DTO (default to PAY_LATER)
+    const paymentType = dto.paymentType || PaymentType.PAY_LATER;
+
+    // Temporary approval-first flow: every new booking starts in pending approval.
+    const status = BookingStatus.PENDING_APPROVAL;
+
+    // Calculate price breakdown using the centralized logic. This issues
+    // its own DB reads (services + wallet); doing them outside the
+    // transaction means a slow pooler connection cannot expire it.
+    const priceBreakdown = await this.calculatePrice(dto, userId);
+    const {
+      subtotal,
+      taxesAndCharges,
+      discount: _discount, // not persisted directly; reflected via finalAmount
+      freeCashUsed,
+      finalAmount,
+      currency: bookingCurrency,
+    } = priceBreakdown;
+
+    // Queue position is an approximate counter; a tiny race here is
+    // acceptable and the cron / queue gateway re-syncs positions.
+    const queuePosition = await this.queueService.getNextQueuePosition(shopId);
+
     // Check slot availability using transaction for consistency
-    const booking = await this.prisma.$transaction(async (tx) => {
-      // Double-check availability within transaction
-      const isAvailable = await this.slotEngine.isSlotAvailable(
-        shopId,
-        bookingStartTime,
-        bookingEndTime,
-        staffId,
-      );
-
-      if (!isAvailable) {
-        throw new ConflictException('Selected time slot is no longer available');
-      }
-
-      // Generate booking number and verification code
-      const bookingNumber = this.generateBookingNumber();
-      const verificationCode = this.generateVerificationCode();
-
-      // Calculate price breakdown using the new centralized logic
-      const priceBreakdown = await this.calculatePrice(dto, userId);
-      const { 
-        subtotal, 
-        taxesAndCharges, 
-        discount, 
-        freeCashUsed, 
-        finalAmount, 
-        currency 
-      } = priceBreakdown;
-
-      // Determine payment type from DTO (default to PAY_LATER)
-      const paymentType = dto.paymentType || PaymentType.PAY_LATER;
-
-      // Temporary approval-first flow: every new booking starts in pending approval.
-      const status = BookingStatus.PENDING_APPROVAL;
-
-      // Get queue position
-      const queuePosition = await this.queueService.getNextQueuePosition(shopId);
-
-      // Create booking with new fields
-      const newBooking = await tx.booking.create({
-        data: {
-          bookingNumber,
-          userId,
+    const booking = await this.prisma.$transaction(
+      async (tx) => {
+        // Double-check availability within transaction (prevents two users
+        // grabbing the same slot in a race).
+        const isAvailable = await this.slotEngine.isSlotAvailable(
           shopId,
+          bookingStartTime,
+          bookingEndTime,
           staffId,
-          startTime: bookingStartTime,
-          endTime: bookingEndTime,
-          totalDurationMinutes: totalDuration,
-          totalAmount: new Decimal(finalAmount),
-          serviceAmount: new Decimal(subtotal), // Original shop price
-          freeCashAmount: new Decimal(freeCashUsed), // Amount deducted from charges
-          displayAmount: new Decimal(subtotal + taxesAndCharges), // What they see as "Subtotal + Taxes"
-          paymentType,
-          verificationCode,
-          serviceStatus: ServiceStatus.AWAITING_CODE,
-          currency,
-          status,
-          source,
-          customerName: userId ? undefined : customerName,
-          customerPhone: userId ? undefined : customerPhone,
-          customerEmail: userId ? undefined : customerEmail,
-          notes,
-          queuePosition: queuePosition + 1,
-          services: {
-            create: services.map((s) => ({
-              serviceId: s.id,
-              serviceName: s.name,
-              durationMinutes: s.durationMinutes,
-              price: s.price,
-            })),
-          },
-        },
-        include: {
-          services: true,
-          shop: {
-            select: {
-              name: true,
-              address: true,
-              phone: true,
-            },
-          },
-          user: {
-            select: {
-              name: true,
-              email: true,
-              phone: true,
-            },
-          },
-        },
-      });
+        );
 
-      return newBooking;
-    });
+        if (!isAvailable) {
+          throw new ConflictException('Selected time slot is no longer available');
+        }
+
+        // Create booking with new fields
+        const newBooking = await tx.booking.create({
+          data: {
+            bookingNumber,
+            userId,
+            shopId,
+            staffId,
+            startTime: bookingStartTime,
+            endTime: bookingEndTime,
+            totalDurationMinutes: totalDuration,
+            totalAmount: new Decimal(finalAmount),
+            serviceAmount: new Decimal(subtotal), // Original shop price
+            freeCashAmount: new Decimal(freeCashUsed), // Amount deducted from charges
+            displayAmount: new Decimal(subtotal + taxesAndCharges), // What they see as "Subtotal + Taxes"
+            paymentType,
+            verificationCode,
+            serviceStatus: ServiceStatus.AWAITING_CODE,
+            currency: bookingCurrency,
+            status,
+            source,
+            customerName: userId ? undefined : customerName,
+            customerPhone: userId ? undefined : customerPhone,
+            customerEmail: userId ? undefined : customerEmail,
+            notes,
+            queuePosition: queuePosition + 1,
+            services: {
+              create: services.map((s) => ({
+                serviceId: s.id,
+                serviceName: s.name,
+                durationMinutes: s.durationMinutes,
+                price: s.price,
+              })),
+            },
+          },
+          include: {
+            services: true,
+            shop: {
+              select: {
+                name: true,
+                address: true,
+                phone: true,
+              },
+            },
+            user: {
+              select: {
+                name: true,
+                email: true,
+                phone: true,
+              },
+            },
+          },
+        });
+
+        return newBooking;
+      },
+      {
+        // Generous timeout for cold Supabase pooler connections. The body
+        // is now intentionally tiny (one re-check + one insert), so this
+        // ceiling should never actually be reached in normal operation —
+        // but it removes the 5 s default footgun.
+        timeout: 30000,
+        maxWait: 10000,
+      },
+    );
 
     // Update queue stats asynchronously
     this.queueService.updateQueueStats(shopId).catch(console.error);
