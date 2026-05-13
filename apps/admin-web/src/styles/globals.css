@@ -19,11 +19,14 @@
   --surface-container-lowest: #ffffff;
   --surface-container-high: #e4e4e7;
   --surface-container-highest: #d4d4d8;
-  /* Light-mode text bumped ~20% darker for legibility on dense data screens. */
-  --on-surface: #f4f4f5;          /* light gray for dark mode */
-  --on-surface-variant: #a1a1aa;  /* lighter variant */
-  --outline: #52525b;             /* darker outline */
-  --outline-variant: #3f3f46;     /* subtle dark */
+  /* Light-mode text tokens — must be DARK so they're legible on the
+     near-white `--surface`. Previously these held dark-mode values
+     (near-white) which made every `text-on-surface` element render as
+     white-on-white (e.g. "Admin Portal" heading on the login page). */
+  --on-surface: #09090b;          /* near-black body text on white */
+  --on-surface-variant: #52525b;  /* zinc-600 — muted but readable */
+  --outline: #a1a1aa;             /* zinc-400 — visible borders/labels */
+  --outline-variant: #e4e4e7;     /* zinc-200 — subtle dividers */
   --error: #dc2626;
   --error-container: #fee2e2;
 
