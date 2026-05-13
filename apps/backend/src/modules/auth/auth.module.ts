@@ -21,8 +21,14 @@ import { OtpModule } from '../otp/otp.module';
  * Resolve JWT secret — accepts both raw strings and Base64-encoded values.
  * If the value is valid Base64 and decodes to ≥ 32 bytes, use the decoded buffer.
  * Otherwise treat the raw string as the secret (must be ≥ 32 chars).
+ *
+ * EXPORTED so every JwtModule registration in the app (auth, notifications,
+ * future websocket modules, etc.) uses the SAME secret-resolution logic.
+ * Tokens signed by one module MUST be verifiable by every other module —
+ * any drift between raw-string and decoded-Buffer handling produces
+ * `invalid signature` errors at runtime.
  */
-const resolveJwtSecret = (rawSecret?: string): string | Buffer => {
+export const resolveJwtSecret = (rawSecret?: string): string | Buffer => {
   const secret = rawSecret?.trim();
   if (!secret) {
     throw new Error('MISSING_JWT_SECRET: JWT_SECRET environment variable is required.');
