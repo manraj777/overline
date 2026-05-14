@@ -1,3 +1,22 @@
+# Overline Agent Instructions
+
+## Project Context
+- **Name**: Overline
+- **Type**: Multi-tenant appointment & queue management system
+- **Monorepo**: pnpm workspaces
+- **Apps**: `backend` (NestJS/Prisma), `user-web` (Next.js), `admin-web` (Next.js), `mobile-admin` (React Native/Expo), `mobile-user` (React Native/Expo)
+
+## Important Documentation Links
+- **Database Schema**: [DATABASE_SCHEMA.md](docs/DATABASE_SCHEMA.md)
+- **Deployment**: [DEPLOYMENT.md](docs/DEPLOYMENT.md), [DEPLOYMENT_CHECKLIST.md](docs/DEPLOYMENT_CHECKLIST.md)
+- **Authentication**: Google OAuth requires strict brand verification matching domain, logo, and sensitive scopes documentation. Check Google Search Console for domain ownership.
+- **Mobile Details**: [MOBILE_APP_GUIDE.md](docs/MOBILE_APP_GUIDE.md)
+
+## Development Commands
+- Run all apps: `pnpm dev`
+- Database: `pnpm db:generate`, `pnpm db:migrate`
+- Build APKs: `bash build-apks.sh release`
+
 <!-- code-review-graph MCP tools -->
 ## MCP Tools: code-review-graph
 
