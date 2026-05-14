@@ -382,7 +382,7 @@ export default function LoginPage() {
                     <span className="text-base font-bold text-on-surface block">Shop Owner</span>
                     <span className="text-xs text-on-surface-variant">Full access to manage your shop</span>
                   </div>
-                  <ArrowRight className="w-5 h-5 text-outline-variant group-hover:text-primary transition-colors" />
+                  <ArrowRight className="w-5 h-5 text-outline group-hover:text-primary transition-colors" />
                 </button>
 
                 <button
@@ -396,7 +396,7 @@ export default function LoginPage() {
                     <span className="text-base font-bold text-on-surface block">Staff Member</span>
                     <span className="text-xs text-on-surface-variant">View bookings & manage your queue</span>
                   </div>
-                  <ArrowRight className="w-5 h-5 text-outline-variant group-hover:text-secondary transition-colors" />
+                  <ArrowRight className="w-5 h-5 text-outline group-hover:text-secondary transition-colors" />
                 </button>
               </div>
             )}
@@ -619,7 +619,7 @@ export default function LoginPage() {
               </div>
               <div className="flex flex-col items-center gap-1">
                 <span>© 2026 Overline. Built for clarity.</span>
-                <span className="normal-case text-[10px] text-outline-variant font-medium">Google is a trademark of Google LLC.</span>
+                <span className="normal-case text-[10px] text-outline font-medium">Google is a trademark of Google LLC.</span>
               </div>
             </footer>
 
@@ -685,7 +685,7 @@ export default function LoginPage() {
                 Sign Up as New Owner
               </span>
             </p>
-            <p className="text-[10px] text-outline-variant font-medium mt-2">
+            <p className="text-[10px] text-outline font-medium mt-2">
               Google is a trademark of Google LLC.
             </p>
           </div>

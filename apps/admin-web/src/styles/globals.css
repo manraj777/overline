@@ -25,8 +25,8 @@
      white-on-white (e.g. "Admin Portal" heading on the login page). */
   --on-surface: #09090b;          /* near-black body text on white */
   --on-surface-variant: #52525b;  /* zinc-600 — muted but readable */
-  --outline: #a1a1aa;             /* zinc-400 — visible borders/labels */
-  --outline-variant: #e4e4e7;     /* zinc-200 — subtle dividers */
+  --outline: #71717a;             /* zinc-500 — visible borders/labels */
+  --outline-variant: #d4d4d8;     /* zinc-300 — subtle dividers */
   --error: #dc2626;
   --error-container: #fee2e2;
 
@@ -54,8 +54,8 @@
   --surface-container-highest: #3f3f46;
   --on-surface: #f4f4f5;
   --on-surface-variant: #a1a1aa;
-  --outline: #52525b;
-  --outline-variant: #3f3f46;
+  --outline: #71717a;
+  --outline-variant: #52525b;
   --error: #ef4444;
   --error-container: #7f1d1d;
 
@@ -115,7 +115,7 @@ body {
     focus:outline-none focus:ring-4 focus:ring-primary-100 focus:border-primary dark:focus:ring-primary-900/40;
   }
   .label-m3 {
-    @apply text-[11px] font-bold tracking-widest text-outline uppercase;
+    @apply text-[11px] font-bold tracking-widest text-on-surface-variant uppercase;
   }
 
   /* M3 Buttons */
