@@ -296,6 +296,36 @@ export default function HomePage() {
       {/* ═══════════════════════════════════════════════════════════ */}
       {/* 7. Data Transparency Section (Google Requirement)          */}
       {/* ═══════════════════════════════════════════════════════════ */}
+      <section className="py-16 bg-surface-container-lowest border-t border-outline-variant/10">
+        <div className="max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="card-m3 p-8 md:p-12 text-center bg-gradient-to-b from-transparent to-primary/5">
+            <ShieldCheck className="w-12 h-12 text-primary mx-auto mb-6" />
+            <h2 className="text-2xl md:text-3xl font-black text-on-surface tracking-tight mb-4">
+              Your Privacy and Data Security
+            </h2>
+            <p className="text-on-surface-variant text-base md:text-lg max-w-3xl mx-auto font-medium leading-relaxed mb-8">
+              At Overline, we take your privacy seriously. We only request the essential information needed to book your appointments, send confirmation receipts, and allow service providers to contact you regarding your queue status.
+            </p>
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-6 max-w-4xl mx-auto mb-8 text-left">
+              <div className="p-6 rounded-2xl bg-surface border border-outline-variant/20">
+                <h4 className="font-bold text-on-surface mb-2">Google Sign-In</h4>
+                <p className="text-sm text-on-surface-variant">We use Google to securely authenticate your account using your name and email. No passwords required.</p>
+              </div>
+              <div className="p-6 rounded-2xl bg-surface border border-outline-variant/20">
+                <h4 className="font-bold text-on-surface mb-2">Phone Number</h4>
+                <p className="text-sm text-on-surface-variant">Used solely to verify your identity to prevent spam bookings and to send you live queue updates.</p>
+              </div>
+              <div className="p-6 rounded-2xl bg-surface border border-outline-variant/20">
+                <h4 className="font-bold text-on-surface mb-2">No Data Selling</h4>
+                <p className="text-sm text-on-surface-variant">Your personal information is never sold to third parties. It is strictly shared with the specific shop you book at.</p>
+              </div>
+            </div>
+            <Link href="/privacy" className="text-primary font-bold hover:underline underline-offset-4">
+              Read our full Privacy Policy →
+            </Link>
+          </div>
+        </div>
+      </section>
 
     </>
   );

@@ -51,7 +51,7 @@ export default function Home() {
         <div className="max-w-7xl mx-auto py-4 px-4 sm:px-6 lg:px-8 flex justify-center space-x-6 text-sm text-on-surface-variant">
           <Link href="/privacy" className="hover:text-primary">Privacy Policy</Link>
           <Link href="/terms" className="hover:text-primary">Terms of Service</Link>
-          <Link href="/support" className="hover:text-primary">Support</Link>
+          <a href="mailto:support@overline.in" className="hover:text-primary">Support (support@overline.in)</a>
         </div>
       </footer>
     </div>
