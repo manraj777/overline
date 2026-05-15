@@ -57,19 +57,6 @@ export default function HomePage() {
     { name: 'Spa', icon: Flower2, href: '/explore?type=SPA' },
   ];
 
-  const containerVariants = {
-    hidden: { opacity: 0 },
-    show: {
-      opacity: 1,
-      transition: { staggerChildren: 0.12 },
-    },
-  };
-
-  const itemVariants = {
-    hidden: { opacity: 0, y: 24 },
-    show: { opacity: 1, y: 0, transition: { type: 'spring' as const, stiffness: 300, damping: 24 } },
-  };
-
   return (
     <>
       <SeoHead
@@ -87,27 +74,19 @@ export default function HomePage() {
       {/* ═══════════════════════════════════════════════════════════ */}
       <section className="relative pt-16 pb-12 overflow-hidden bg-surface-container-low/30 border-b border-outline-variant/10">
         <div className="max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8 relative z-10 text-center">
-          <motion.div
-            variants={containerVariants}
-            initial="hidden"
-            animate="show"
-            className="max-w-4xl mx-auto"
-          >
-            <motion.h1
-              variants={itemVariants}
-              className="text-4xl sm:text-5xl lg:text-[56px] font-black tracking-tight text-on-surface mb-6 leading-[1.1]"
-            >
+          <div className="max-w-4xl mx-auto">
+            <h1 className="text-4xl sm:text-5xl lg:text-[56px] font-black tracking-tight text-on-surface mb-6 leading-[1.1] animate-in fade-in slide-in-from-bottom-4 duration-700">
               Find top experts and book
               <br className="hidden sm:block" />
               appointments instantly.
-            </motion.h1>
+            </h1>
 
-            <motion.p variants={itemVariants} className="text-on-surface-variant text-lg sm:text-xl font-medium mb-10">
+            <p className="text-on-surface-variant text-lg sm:text-xl font-medium mb-10 animate-in fade-in slide-in-from-bottom-4 duration-700 delay-100 fill-mode-both">
               Zero waiting in line. Verified professionals. Real-time availability.
-            </motion.p>
+            </p>
 
             {/* Prominent Search Bar (Practo style) */}
-            <motion.div variants={itemVariants} className="max-w-3xl mx-auto">
+            <div className="max-w-3xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-700 delay-200 fill-mode-both">
               <div className="flex flex-col md:flex-row bg-surface rounded-2xl shadow-[0_8px_30px_rgb(0,0,0,0.08)] border border-outline-variant/20 p-2 gap-2">
                 
                 {/* Location Input */}
@@ -151,8 +130,8 @@ export default function HomePage() {
                   </button>
                 </Link>
               </div>
-            </motion.div>
-          </motion.div>
+            </div>
+          </div>
         </div>
       </section>
 
