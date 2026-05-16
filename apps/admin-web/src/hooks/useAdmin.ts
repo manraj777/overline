@@ -280,6 +280,48 @@ export function useCreateWalkIn() {
   });
 }
 
+export interface QueueProposeTimePayload {
+  bookingId: string;
+  proposedStartTime: string;
+  adminNotes?: string;
+}
+
+export function useQueueProposeTime() {
+  const queryClient = useQueryClient();
+  const { shopId, role } = useAuthStore();
+
+  return useMutation<Booking, Error, QueueProposeTimePayload>({
+    mutationFn: async (payload) => {
+      if (role === 'OWNER') {
+        const activeShopId = shopId || (await resolveActiveShopId());
+        const { data } = await api.post(
+          `/owner/shops/${activeShopId}/queue/${payload.bookingId}/propose-time`,
+          {
+            bookingId: payload.bookingId,
+            proposedStartTime: payload.proposedStartTime,
+            adminNotes: payload.adminNotes,
+          }
+        );
+        return data;
+      } else {
+        const activeShopId = shopId || (await resolveActiveShopId());
+        const { data } = await api.post(`/staff/me/queue/propose-time`, {
+          shopId: activeShopId,
+          bookingId: payload.bookingId,
+          proposedStartTime: payload.proposedStartTime,
+          adminNotes: payload.adminNotes,
+        });
+        return data;
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['admin', 'queue-tracking'] });
+      queryClient.invalidateQueries({ queryKey: ['admin', 'bookings'] });
+      queryClient.invalidateQueries({ queryKey: ['admin', 'dashboard'] });
+    },
+  });
+}
+
 export function useMarkComplete() {
   const queryClient = useQueryClient();
 

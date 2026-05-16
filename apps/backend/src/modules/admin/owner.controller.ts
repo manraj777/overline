@@ -53,6 +53,18 @@ class ShopScopedDto {
   shopId!: string;
 }
 
+class QueueProposeTimeDto extends ShopScopedDto {
+  @IsString()
+  bookingId!: string;
+
+  @IsString()
+  proposedStartTime!: string;
+
+  @IsOptional()
+  @IsString()
+  adminNotes?: string;
+}
+
 class SuspendStaffDto extends ShopScopedDto {
   @IsOptional()
   @IsString()
@@ -422,6 +434,26 @@ export class OwnerController {
         ...(dto.notes ? { adminNotes: dto.notes } : {}),
       },
     });
+  }
+
+  @Post('queue/:bookingId/propose-time')
+  @UseGuards(ShopOwnerGuard)
+  @ShopIdParam('shopId')
+  @ApiOperation({ summary: 'Propose a new time for a booking' })
+  async proposeQueueTime(
+    @Param('bookingId') bookingId: string,
+    @Body() dto: QueueProposeTimeDto,
+    @CurrentUser('id') ownerId: string,
+  ) {
+    if (bookingId !== dto.bookingId) {
+      throw new BadRequestException('Path bookingId does not match body bookingId');
+    }
+    return this.adminService.proposeNewTime(
+      dto.bookingId,
+      new Date(dto.proposedStartTime),
+      dto.adminNotes || 'Time change proposed by shop admin',
+      ownerId,
+    );
   }
 
   @Post('queue/call-ahead')

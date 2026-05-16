@@ -10,6 +10,7 @@ import {
   useQueueMarkDone,
   useQueueRemove,
   useQueueSocket,
+  useQueueProposeTime,
 } from '@/hooks';
 import { useAuthStore } from '@/stores/auth';
 import { ConfirmModal, useToast } from '@/components/ui';
@@ -79,6 +80,11 @@ export default function QueueBoard() {
   const [verificationModalBookingId, setVerificationModalBookingId] = useState<string | null>(null);
   const [verificationCode, setVerificationCode] = useState('');
   const [removeModalBookingId, setRemoveModalBookingId] = useState<string | null>(null);
+  
+  const [proposeTimeModalBookingId, setProposeTimeModalBookingId] = useState<string | null>(null);
+  const [proposedDate, setProposedDate] = useState('');
+  const [proposedTime, setProposedTime] = useState('');
+  const [proposeMessage, setProposeMessage] = useState('');
 
   const { data: queueData, isLoading } = useQueueTracking();
   const callNextMutation = useQueueCallNext();
@@ -86,6 +92,7 @@ export default function QueueBoard() {
   const startServiceMutation = useQueueStartService();
   const markDoneMutation = useQueueMarkDone();
   const removeMutation = useQueueRemove();
+  const proposeTimeMutation = useQueueProposeTime();
 
   useQueueSocket({
     shopId: shopId || undefined,
@@ -190,12 +197,45 @@ export default function QueueBoard() {
     }
   };
 
+  const openProposeTimeModal = (id: string) => {
+    setProposeTimeModalBookingId(id);
+    const date = new Date();
+    setProposedDate(date.toISOString().split('T')[0]);
+    setProposedTime(
+      `${String(date.getHours()).padStart(2, '0')}:${String(date.getMinutes()).padStart(2, '0')}`
+    );
+    setProposeMessage('We are currently busy, but we can see you at this new time. Please confirm.');
+  };
+
+  const submitProposeTime = async () => {
+    if (!proposeTimeModalBookingId) return;
+    try {
+      if (!proposedDate || !proposedTime) {
+        throw new Error('Please select both a date and time');
+      }
+      
+      const proposedDateTime = new Date(`${proposedDate}T${proposedTime}:00`);
+      
+      await proposeTimeMutation.mutateAsync({
+        bookingId: proposeTimeModalBookingId,
+        proposedStartTime: proposedDateTime.toISOString(),
+        adminNotes: proposeMessage,
+      });
+      addToast({ type: 'success', title: 'Time proposed', message: 'User has been sent a counter-offer.' });
+      setProposeTimeModalBookingId(null);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : 'Failed to propose new time.';
+      addToast({ type: 'error', title: 'Action failed', message });
+    }
+  };
+
   const isMutating =
     callNextMutation.isPending ||
     checkInMutation.isPending ||
     startServiceMutation.isPending ||
     markDoneMutation.isPending ||
-    removeMutation.isPending;
+    removeMutation.isPending ||
+    proposeTimeMutation.isPending;
 
   return (
     <section className="card-m3 p-5">
@@ -280,6 +320,14 @@ export default function QueueBoard() {
               <button
                 type="button"
                 className="btn-outline px-3 py-1 text-xs"
+                onClick={() => openProposeTimeModal(entry.id)}
+                disabled={isMutating || entry.status === 'done' || entry.status === 'cancelled' || entry.status === 'no_show'}
+              >
+                Propose New Time
+              </button>
+              <button
+                type="button"
+                className="btn-outline px-3 py-1 text-xs"
                 onClick={() => markDone(entry.id)}
                 disabled={isMutating}
               >
@@ -331,6 +379,66 @@ export default function QueueBoard() {
                 disabled={startServiceMutation.isPending}
               >
                 {startServiceMutation.isPending ? 'Starting...' : 'Verify & Start Service'}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {proposeTimeModalBookingId ? (
+        <div className="fixed inset-0 z-50 grid place-items-center bg-black/60 p-4">
+          <div className="w-full max-w-md card-m3 p-5">
+            <h3 className="text-lg font-semibold text-on-surface">Propose New Time</h3>
+            <p className="mt-2 text-sm text-on-surface-variant">
+              If the shop is busy, propose a better time to the customer. They must approve it to confirm.
+            </p>
+            
+            <div className="mt-4 grid grid-cols-2 gap-3">
+              <div>
+                <label className="text-xs font-medium text-on-surface-variant uppercase tracking-wider">Date</label>
+                <input
+                  type="date"
+                  value={proposedDate}
+                  onChange={(e) => setProposedDate(e.target.value)}
+                  className="mt-1 input-m3 w-full"
+                />
+              </div>
+              <div>
+                <label className="text-xs font-medium text-on-surface-variant uppercase tracking-wider">Time</label>
+                <input
+                  type="time"
+                  value={proposedTime}
+                  onChange={(e) => setProposedTime(e.target.value)}
+                  className="mt-1 input-m3 w-full"
+                />
+              </div>
+            </div>
+
+            <div className="mt-4">
+              <label className="text-xs font-medium text-on-surface-variant uppercase tracking-wider">Message to Customer</label>
+              <textarea
+                value={proposeMessage}
+                onChange={(e) => setProposeMessage(e.target.value)}
+                className="mt-1 input-m3 w-full min-h-[80px]"
+                placeholder="Explain why you are rescheduling..."
+              />
+            </div>
+
+            <div className="mt-5 flex justify-end gap-2">
+              <button
+                type="button"
+                className="btn-outline px-4 py-1.5 text-xs"
+                onClick={() => setProposeTimeModalBookingId(null)}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="rounded-full bg-primary px-4 py-1.5 text-xs font-semibold text-on-primary"
+                onClick={submitProposeTime}
+                disabled={proposeTimeMutation.isPending}
+              >
+                {proposeTimeMutation.isPending ? 'Sending...' : 'Send Counter Offer'}
               </button>
             </div>
           </div>

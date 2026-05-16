@@ -7,6 +7,7 @@ export {
   useQueueStartService,
   useQueueMarkDone,
   useQueueRemove,
+  useQueueProposeTime,
   useAdminBookings,
   useUpdateBookingStatus,
   useCreateWalkIn,

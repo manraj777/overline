@@ -2558,4 +2558,8 @@ export class AdminService {
     });
     return user;
   }
+
+  async proposeNewTime(bookingId: string, proposedStartTime: Date, adminNotes: string, staffId: string) {
+    return this.bookingsService.proposeNewTime(bookingId, proposedStartTime, adminNotes, staffId);
+  }
 }

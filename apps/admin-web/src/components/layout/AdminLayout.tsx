@@ -15,11 +15,11 @@ import {
   Clock3,
   Store,
   Search,
-  MessageSquare,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useAuthStore } from '@/stores/auth';
 import { useLogout, useUnreadNotificationsCount, useQueueSocket, useUpdateBookingStatus, useStaffMe, useUpdateStaffMe } from '@/hooks';
+import { useShopSettings, useUpdateShopSettings } from '@/hooks/useAdmin';
 import { useToast, BookingApprovalModal } from '@/components/ui';
 import { useQueryClient } from '@tanstack/react-query';
 import { UserRole } from '@/types';
@@ -80,13 +80,35 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
   });
   const updateStaffMe = useUpdateStaffMe();
 
+  // Shop Open/Close toggle (owners only)
+  const { data: shopSettings } = useShopSettings();
+  const updateShopSettings = useUpdateShopSettings();
+  const isShopOpen = shopSettings?.settings?.isOpen !== false; // Default to open
+
+  const handleToggleShopOpen = async () => {
+    try {
+      await updateShopSettings.mutateAsync({
+        settings: { isOpen: !isShopOpen },
+      });
+      addToast({
+        type: 'success',
+        title: isShopOpen ? 'Shop is now Closed' : 'Shop is now Open',
+        message: isShopOpen
+          ? 'Users will see your shop as closed. No new bookings accepted.'
+          : 'Users can now see your shop and book appointments.',
+      });
+    } catch (e) {
+      addToast({ type: 'error', title: 'Error', message: 'Could not update shop status' });
+    }
+  };
+
   const handleToggleOnline = async () => {
     if (!staffProfile) return;
     try {
       await updateStaffMe.mutateAsync({ isActive: !staffProfile.isActive });
       addToast({
         type: 'success',
-        title: staffProfile.isActive ? 'You are now offline' : 'You are now online',
+        title: staffProfile.isActive ? 'Marked as Absent' : 'Marked as Present',
         message: staffProfile.isActive ? 'You will not receive new bookings.' : 'You are visible for new bookings.',
       });
     } catch (e) {
@@ -211,7 +233,6 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
         title: 'Admin',
         items: [
           { name: 'Shop Profile', href: '/owner/shop', icon: Store },
-          { name: 'WhatsApp', href: '/owner/whatsapp', icon: MessageSquare },
           { name: 'Notifications', href: '/owner/notifications', icon: Bell },
           { name: 'Settings', href: '/owner/settings', icon: Settings },
         ],
@@ -403,25 +424,64 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
             <div className="flex-1" />
 
             <div className="flex items-center gap-2">
+              {/* Shop Open/Close Toggle (Owner only) */}
+              {isOwnerLike && shopSettings && (
+                <div className="hidden sm:flex items-center gap-2 mr-2 border-r border-outline-variant/10 pr-3">
+                  <div className="flex items-center gap-2">
+                    <Store className="w-4 h-4 text-on-surface-variant" />
+                    <span className={cn(
+                      "text-xs font-bold",
+                      isShopOpen ? "text-primary" : "text-error"
+                    )}>
+                      {isShopOpen ? 'Open' : 'Closed'}
+                    </span>
+                  </div>
+                  <button
+                    onClick={handleToggleShopOpen}
+                    disabled={updateShopSettings.isPending}
+                    className={cn(
+                      "relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-primary",
+                      isShopOpen ? 'bg-primary' : 'bg-error/40'
+                    )}
+                  >
+                    <span className="sr-only">Toggle Shop Open/Closed</span>
+                    <span
+                      aria-hidden="true"
+                      className={cn(
+                        "pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out",
+                        isShopOpen ? 'translate-x-5' : 'translate-x-0'
+                      )}
+                    />
+                  </button>
+                </div>
+              )}
+
+              {/* Staff Present/Absent Toggle */}
               {staffProfile && (
                 <div className="hidden sm:flex items-center gap-2 mr-2 border-r border-outline-variant/10 pr-3">
-                  <span className={cn("text-xs font-bold", staffProfile.isActive ? "text-primary" : "text-on-surface-variant")}>
-                    {staffProfile.isActive ? "Online" : "Offline"}
-                  </span>
+                  <div className="flex items-center gap-2">
+                    <Users className="w-4 h-4 text-on-surface-variant" />
+                    <span className={cn(
+                      "text-xs font-bold",
+                      staffProfile.isActive ? "text-primary" : "text-error"
+                    )}>
+                      {staffProfile.isActive ? 'Present' : 'Absent'}
+                    </span>
+                  </div>
                   <button
                     onClick={handleToggleOnline}
                     disabled={updateStaffMe.isPending}
                     className={cn(
-                      "relative inline-flex h-5 w-9 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-primary focus-visible:ring-white/75",
-                      staffProfile.isActive ? 'bg-primary' : 'bg-surface-container-high'
+                      "relative inline-flex h-6 w-11 shrink-0 cursor-pointer rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none focus-visible:ring-2 focus-visible:ring-primary",
+                      staffProfile.isActive ? 'bg-primary' : 'bg-error/40'
                     )}
                   >
-                    <span className="sr-only">Toggle Online Status</span>
+                    <span className="sr-only">Toggle Staff Present/Absent</span>
                     <span
                       aria-hidden="true"
                       className={cn(
-                        "pointer-events-none inline-block h-4 w-4 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out",
-                        staffProfile.isActive ? 'translate-x-4' : 'translate-x-0'
+                        "pointer-events-none inline-block h-5 w-5 transform rounded-full bg-white shadow-lg ring-0 transition duration-200 ease-in-out",
+                        staffProfile.isActive ? 'translate-x-5' : 'translate-x-0'
                       )}
                     />
                   </button>

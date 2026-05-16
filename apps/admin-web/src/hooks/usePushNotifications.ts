@@ -57,6 +57,16 @@ export function usePushNotifications(isAuthenticated: boolean) {
       return 'info';
     })();
 
+    if ((n.type || '').toUpperCase() === 'BOOKING_CREATED') {
+      import('@/stores/alert').then(({ useAlertStore }) => {
+        useAlertStore.getState().setNewBooking({
+          title: n.title || 'New Booking Request',
+          body: n.body || 'A new booking just arrived.',
+          bookingNumber: n.data?.bookingNumber,
+        });
+      });
+    }
+
     toast.addToast({
       type: variant,
       title: n.title || 'New activity',

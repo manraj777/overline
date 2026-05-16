@@ -33,7 +33,8 @@ const ServiceList: React.FC<ServiceListProps> = ({
             transition={{ delay: idx * 0.05 }}
             className={cn(
               'flex items-start gap-4 p-4 rounded-3xl border border-outline-variant/20 transition-colors shadow-sm relative overflow-hidden',
-              selected ? 'bg-primary/5 border-primary/40' : 'bg-surface hover:bg-surface-container-lowest'
+              selected ? 'bg-primary/5 border-primary/40' : 'bg-surface hover:bg-surface-container-lowest',
+              service.isActive === false && 'opacity-60 grayscale'
             )}
           >
             {/* Left: Photo */}
@@ -80,23 +81,29 @@ const ServiceList: React.FC<ServiceListProps> = ({
             
             {/* Right: Add Button overlaying the item context or placed inline */}
             <div className="absolute right-4 bottom-4 lg:relative lg:right-auto lg:bottom-auto lg:self-center lg:ml-4">
-              <button
-                onClick={(e) => {
-                  e.stopPropagation();
-                  onToggleService(service);
-                }}
-                className={cn(
-                  'px-6 py-2 rounded-xl text-sm font-black transition-all shadow-button active:scale-95 border-2',
-                  selected
-                    ? 'bg-primary-fixed text-primary border-primary-fixed hover:bg-primary-fixed-dim'
-                    : 'bg-white text-primary border-primary/20 hover:border-primary/50 text-primary hover:shadow-button-hover'
-                )}
-              >
-                {selected ? 'ADDED' : 'ADD'}
-                <div className="absolute top-0 right-0 -mr-2 -mt-2">
-                   {selected && <Check className="w-4 h-4 bg-primary text-white rounded-full p-[2px]" />}
+              {service.isActive === false ? (
+                <div className="px-4 py-2 rounded-xl text-xs font-bold bg-surface-container-high text-outline uppercase tracking-wider">
+                  Not Available
                 </div>
-              </button>
+              ) : (
+                <button
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    onToggleService(service);
+                  }}
+                  className={cn(
+                    'px-6 py-2 rounded-xl text-sm font-black transition-all shadow-button active:scale-95 border-2',
+                    selected
+                      ? 'bg-primary-fixed text-primary border-primary-fixed hover:bg-primary-fixed-dim'
+                      : 'bg-white text-primary border-primary/20 hover:border-primary/50 text-primary hover:shadow-button-hover'
+                  )}
+                >
+                  {selected ? 'ADDED' : 'ADD'}
+                  <div className="absolute top-0 right-0 -mr-2 -mt-2">
+                     {selected && <Check className="w-4 h-4 bg-primary text-white rounded-full p-[2px]" />}
+                  </div>
+                </button>
+              )}
             </div>
           </motion.div>
         );

@@ -314,8 +314,10 @@ export class ShopsService {
         },
       },
       services: {
-        where: { isActive: true },
-        orderBy: { sortOrder: 'asc' } as const,
+        orderBy: [
+          { isActive: 'desc' },
+          { sortOrder: 'asc' }
+        ] as const,
       },
       staff: {
         where: { isActive: true },
@@ -395,8 +397,10 @@ export class ShopsService {
       include: {
         tenant: true,
         services: {
-          where: { isActive: true },
-          orderBy: { sortOrder: 'asc' },
+          orderBy: [
+            { isActive: 'desc' },
+            { sortOrder: 'asc' }
+          ],
         },
         staff: {
           where: { isActive: true },

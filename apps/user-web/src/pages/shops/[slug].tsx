@@ -721,25 +721,29 @@ export default function ShopDetailPage({ initialShop, slug: ssrSlug }: ShopPageP
                                 {personServices.length > 0 ? (
                                   <div className="space-y-2">
                                     {personServices.map((service: any) => (
-                                      <div key={service.id} className="flex items-center justify-between p-3 rounded-xl bg-surface hover:bg-surface-container transition-colors border border-outline-variant/5">
+                                      <div key={service.id} className={`flex items-center justify-between p-3 rounded-xl bg-surface hover:bg-surface-container transition-colors border border-outline-variant/5 ${service.isActive === false ? 'opacity-50 grayscale' : ''}`}>
                                          <div className="flex flex-col">
                                             <span className="text-sm font-black text-on-surface">{service.name}</span>
                                             <span className="text-[10px] font-bold text-on-surface-variant flex items-center gap-1">
                                                <Clock className="w-3 h-3" /> {service.durationMinutes} min
                                             </span>
                                          </div>
-                                         <button 
-                                          onClick={() => {
-                                            if (isAbsent) return;
-                                            if (!selectedServices.some(s => s.id === service.id)) {
-                                              handleToggleService(service);
-                                            }
-                                          }}
-                                          disabled={isAbsent}
-                                          className="btn-tonal px-3 py-1.5 text-xs font-black rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
-                                         >
-                                             ADD
-                                         </button>
+                                         {service.isActive === false ? (
+                                           <span className="text-[10px] font-black text-on-surface-variant uppercase bg-surface-container px-2 py-1 rounded-md">N/A</span>
+                                         ) : (
+                                           <button 
+                                            onClick={() => {
+                                              if (isAbsent) return;
+                                              if (!selectedServices.some(s => s.id === service.id)) {
+                                                handleToggleService(service);
+                                              }
+                                            }}
+                                            disabled={isAbsent}
+                                            className="btn-tonal px-3 py-1.5 text-xs font-black rounded-lg disabled:opacity-50 disabled:cursor-not-allowed"
+                                           >
+                                               ADD
+                                           </button>
+                                         )}
                                       </div>
                                     ))}
                                   </div>

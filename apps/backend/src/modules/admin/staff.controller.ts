@@ -156,6 +156,21 @@ class QueueCallAheadDto {
   message?: string;
 }
 
+class QueueProposeTimeDto {
+  @IsString()
+  shopId!: string;
+
+  @IsString()
+  bookingId!: string;
+
+  @IsString()
+  proposedStartTime!: string;
+
+  @IsOptional()
+  @IsString()
+  adminNotes?: string;
+}
+
 class QueueOverrunDto {
   @IsString()
   shopId!: string;
@@ -445,6 +460,17 @@ export class StaffController {
   @ApiOperation({ summary: 'Ping next 3 / call-ahead' })
   async callAhead(@CurrentUser('id') userId: string, @Body() dto: QueueCallAheadDto) {
     return this.queueService.callAheadCustomer(dto.shopId, dto.bookingId, userId, dto.message);
+  }
+
+  @Post('me/queue/propose-time')
+  @ApiOperation({ summary: 'Propose a new time for a booking' })
+  async proposeQueueTime(@CurrentUser('id') userId: string, @Body() dto: QueueProposeTimeDto) {
+    return this.adminService.proposeNewTime(
+      dto.bookingId,
+      new Date(dto.proposedStartTime),
+      dto.adminNotes || 'Time change proposed by staff',
+      userId,
+    );
   }
 
   @Patch('me/queue/overrun')

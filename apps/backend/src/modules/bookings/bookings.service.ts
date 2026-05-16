@@ -536,7 +536,7 @@ export class BookingsService {
         customerPhone: userId ? undefined : customerPhone,
         customerEmail: userId ? undefined : customerEmail,
         notes,
-        queuePosition: queuePosition + 1,
+        queuePosition,
         services: {
           create: services.map((s) => ({
             serviceId: s.id,
@@ -1531,5 +1531,71 @@ export class BookingsService {
     }
 
     return { success: true, approved };
+  }
+
+  async proposeNewTime(bookingId: string, proposedStartTime: Date, adminNotes: string, staffId: string) {
+    const booking = await this.prisma.booking.findUnique({
+      where: { id: bookingId },
+    });
+
+    if (!booking) {
+      throw new NotFoundException('Booking not found');
+    }
+
+    if (
+      booking.status !== BookingStatus.PENDING &&
+      booking.status !== BookingStatus.PENDING_APPROVAL &&
+      booking.status !== BookingStatus.CONFIRMED &&
+      booking.status !== BookingStatus.WAITLISTED
+    ) {
+      throw new BadRequestException('Booking cannot be rescheduled in its current state');
+    }
+
+    const proposedEndTime = new Date(
+      proposedStartTime.getTime() + booking.totalDurationMinutes * 60 * 1000
+    );
+
+    const isAvailable = await this.slotEngine.isSlotAvailable(
+      booking.shopId,
+      proposedStartTime,
+      proposedEndTime,
+      booking.staffId || undefined,
+      bookingId,
+    );
+
+    if (!isAvailable) {
+      throw new ConflictException('The proposed time slot is no longer available');
+    }
+
+    const currentNotes = booking.adminNotes ? `${booking.adminNotes}\n` : '';
+    const note = `Reschedule proposed by staff: ${adminNotes}`;
+
+    const updatedBooking = await this.prisma.booking.update({
+      where: { id: bookingId },
+      data: {
+        status: BookingStatus.PENDING_APPROVAL,
+        proposedStartTime,
+        proposedEndTime,
+        adminNotes: currentNotes + note,
+      },
+    });
+
+    if (booking.userId) {
+      this.notificationsService.send({
+        userId: booking.userId,
+        bookingId: booking.id,
+        type: 'BOOKING_UPDATED' as any,
+        title: `Time Change Proposed`,
+        body: `The shop has proposed a new time for your booking. Please review and accept.`,
+        channels: ['PUSH' as any],
+      }).catch(console.error);
+    }
+
+    this.queueGateway.emitBookingUpdate(bookingId, {
+      status: BookingStatus.PENDING_APPROVAL,
+      updatedAt: new Date().toISOString(),
+    });
+
+    return updatedBooking;
   }
 }

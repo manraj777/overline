@@ -91,6 +91,8 @@ function AuthBootstrap() {
   return null;
 }
 
+import { NewBookingAlertModal } from '@/components/ui/NewBookingAlertModal';
+
 export default function App({ Component, pageProps }: AppProps) {
   return (
     <ThemeProvider attribute="class" defaultTheme="system" enableSystem>
@@ -102,6 +104,7 @@ export default function App({ Component, pageProps }: AppProps) {
               <AdminLayout>
                 <Component {...pageProps} />
               </AdminLayout>
+              <NewBookingAlertModal />
             </ToastProvider>
           </ErrorBoundary>
         </QueryClientProvider>
