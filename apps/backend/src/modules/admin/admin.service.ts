@@ -1236,7 +1236,10 @@ export class AdminService {
 
     const [payments, completedBookings] = await Promise.all([
       this.prisma.payment.findMany({
-        where,
+        where: {
+          booking: { shopId },
+          ...(range ? { createdAt: range } : {}),
+        },
         select: {
           id: true,
           amount: true,

@@ -52,6 +52,12 @@ export class RolesGuard implements CanActivate {
 
     const userRoles = this.getUserRoles(user);
     const requiredNormalized = requiredRoles.map((role) => this.normalizeRole(role));
+
+    // SUPER_ADMIN always has access
+    if (userRoles.includes('SUPER_ADMIN')) {
+      return true;
+    }
+
     let hasRole = requiredNormalized.some((role) => userRoles.includes(role));
 
     // Legacy compatibility: permit OWNER-required routes when this account

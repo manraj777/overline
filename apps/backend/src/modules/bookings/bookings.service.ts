@@ -1584,10 +1584,10 @@ export class BookingsService {
       this.notificationsService.send({
         userId: booking.userId,
         bookingId: booking.id,
-        type: 'BOOKING_UPDATED' as any,
+        type: NotificationType.QUEUE_UPDATE,
         title: `Time Change Proposed`,
         body: `The shop has proposed a new time for your booking. Please review and accept.`,
-        channels: ['PUSH' as any],
+        channels: [NotificationChannel.PUSH],
       }).catch(console.error);
     }
 

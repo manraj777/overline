@@ -89,7 +89,16 @@ export function usePushNotifications(isAuthenticated: boolean) {
       try {
         if (!('serviceWorker' in navigator)) return;
 
-        const registration = await navigator.serviceWorker.register('/firebase-messaging-sw.js');
+        const apiKey = process.env.NEXT_PUBLIC_FIREBASE_API_KEY || '';
+        const authDomain = process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN || '';
+        const projectId = process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID || '';
+        const storageBucket = process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || '';
+        const messagingSenderId = process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || '';
+        const appId = process.env.NEXT_PUBLIC_FIREBASE_APP_ID || '';
+
+        const swUrl = `/firebase-messaging-sw.js?apiKey=${encodeURIComponent(apiKey)}&authDomain=${encodeURIComponent(authDomain)}&projectId=${encodeURIComponent(projectId)}&storageBucket=${encodeURIComponent(storageBucket)}&messagingSenderId=${encodeURIComponent(messagingSenderId)}&appId=${encodeURIComponent(appId)}`;
+
+        const registration = await navigator.serviceWorker.register(swUrl);
         const messaging = await getFirebaseMessaging();
         if (!messaging || cancelled) {
           if (!messaging) console.warn('Push notifications not supported on this browser.');
@@ -100,10 +109,10 @@ export function usePushNotifications(isAuthenticated: boolean) {
           registration.active.postMessage({
             type: 'INIT_FIREBASE',
             config: {
-              apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
-              projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
-              messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-              appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+              apiKey,
+              projectId,
+              messagingSenderId,
+              appId,
             },
           });
         }
