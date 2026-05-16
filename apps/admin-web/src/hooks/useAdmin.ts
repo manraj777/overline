@@ -1,7 +1,7 @@
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import api from '@/lib/api';
 import { useAuthStore } from '@/stores/auth';
-import type { Booking, PaginatedResponse, Staff } from '@/types';
+import type { Booking, PaginatedResponse, Staff, UserRole } from '@/types';
 
 let activeShopIdPromise: Promise<string> | null = null;
 
@@ -288,15 +288,16 @@ export interface QueueProposeTimePayload {
 
 export function useQueueProposeTime() {
   const queryClient = useQueryClient();
-  const { shopId, role } = useAuthStore();
+  const { shopId, user } = useAuthStore();
 
   return useMutation<Booking, Error, QueueProposeTimePayload>({
     mutationFn: async (payload) => {
-      if (role === 'OWNER') {
+      if (user?.role === 'OWNER') {
         const activeShopId = shopId || (await resolveActiveShopId());
         const { data } = await api.post(
           `/owner/shops/${activeShopId}/queue/${payload.bookingId}/propose-time`,
           {
+            shopId: activeShopId,
             bookingId: payload.bookingId,
             proposedStartTime: payload.proposedStartTime,
             adminNotes: payload.adminNotes,
