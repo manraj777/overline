@@ -442,17 +442,9 @@ export default function CartPage() {
                       <span className="font-bold">₹{priceBreakdown?.subtotal || selectedServices.reduce((sum, s) => sum + Number(s.price || 0), 0)}</span>
                     </div>
 
-                    <div className="flex justify-between items-center text-on-surface-variant">
-                      <span className="flex items-center gap-2">
-                        Tax
-                        <Info className="w-3 h-3 cursor-help" />
-                      </span>
-                      <span className="font-bold">₹{priceBreakdown?.taxesAndCharges || 0}</span>
-                    </div>
-
                     <div className="flex justify-between items-center text-on-surface font-bold border-t border-outline-variant/10 pt-2 mt-2">
                       <span>Total</span>
-                      <span>₹{(priceBreakdown?.subtotal || selectedServices.reduce((sum, s) => sum + Number(s.price || 0), 0)) + (priceBreakdown?.taxesAndCharges || 0)}</span>
+                      <span>₹{(priceBreakdown?.subtotal || selectedServices.reduce((sum, s) => sum + Number(s.price || 0), 0))}</span>
                     </div>
 
                     {priceBreakdown?.freeCashUsed > 0 && (
@@ -502,18 +494,20 @@ export default function CartPage() {
                       <span className="text-xs text-on-surface-variant font-medium bg-surface-container px-2 py-1 rounded-md">No extra fees</span>
                     </label>
 
-                    <label 
-                      onClick={() => setPaymentMethod('ONLINE')}
-                      className={`flex items-center justify-between p-3 rounded-xl border cursor-pointer transition-colors ${paymentMethod === 'ONLINE' ? 'border-primary bg-primary/5' : 'border-outline-variant/20 bg-surface-container-low hover:bg-surface-container'}`}
+                    <div 
+                      className="flex items-center justify-between p-3 rounded-xl border border-outline-variant/20 bg-surface-container-low/50 opacity-60 cursor-not-allowed"
+                      title="Online payments are currently disabled and will be launching soon."
                     >
                       <div className="flex items-center gap-3">
-                        <div className={`w-4 h-4 rounded-full border-2 flex items-center justify-center ${paymentMethod === 'ONLINE' ? 'border-primary' : 'border-outline-variant'}`}>
-                          {paymentMethod === 'ONLINE' && <div className="w-2 h-2 rounded-full bg-primary" />}
+                        <div className="w-4 h-4 rounded-full border-2 border-outline-variant/40 flex items-center justify-center">
+                          {/* Disabled state */}
                         </div>
-                        <span className="font-bold text-sm">Prepay Online</span>
+                        <span className="font-bold text-sm text-on-surface-variant/70">Prepay Online</span>
                       </div>
-                      <span className="text-xs text-on-surface-variant font-medium bg-surface-container px-2 py-1 rounded-md">Via Razorpay</span>
-                    </label>
+                      <span className="text-[10px] text-primary font-bold bg-primary/10 px-2.5 py-1 rounded-md uppercase tracking-wider">
+                        Launching Soon
+                      </span>
+                    </div>
                   </div>
                 </div>
               )}

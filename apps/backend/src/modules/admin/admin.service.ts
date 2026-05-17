@@ -1226,65 +1226,72 @@ export class AdminService {
     ownerId: string,
     filters: { startDate?: string; endDate?: string; breakdown?: string },
   ) {
-    await this.verifyOwnerShopAccess(shopId, ownerId);
-    const range = this.buildDateRange(filters.startDate, filters.endDate);
+    try {
+      await this.verifyOwnerShopAccess(shopId, ownerId);
+      const range = this.buildDateRange(filters.startDate, filters.endDate);
 
-    const where: Record<string, unknown> = {
-      shopId,
-      ...(range ? { createdAt: range } : {}),
-    };
+      const [payments, completedBookings] = await Promise.all([
+        this.prisma.payment.findMany({
+          where: {
+            booking: { shopId },
+            ...(range ? { createdAt: range } : {}),
+          },
+          select: {
+            id: true,
+            amount: true,
+            status: true,
+            createdAt: true,
+          },
+          orderBy: { createdAt: 'desc' },
+          take: 200,
+        }),
+        this.prisma.booking.findMany({
+          where: {
+            shopId,
+            status: BookingStatus.COMPLETED,
+            ...(range ? { completedAt: range } : {}),
+          },
+          select: {
+            id: true,
+            totalAmount: true,
+            completedAt: true,
+          },
+        }),
+      ]);
 
-    const [payments, completedBookings] = await Promise.all([
-      this.prisma.payment.findMany({
-        where: {
-          booking: { shopId },
-          ...(range ? { createdAt: range } : {}),
-        },
-        select: {
-          id: true,
-          amount: true,
-          status: true,
-          createdAt: true,
-        },
-        orderBy: { createdAt: 'desc' },
-        take: 200,
-      }),
-      this.prisma.booking.findMany({
-        where: {
-          shopId,
-          status: BookingStatus.COMPLETED,
-          ...(range ? { completedAt: range } : {}),
-        },
-        select: {
-          id: true,
-          totalAmount: true,
-          completedAt: true,
-        },
-      }),
-    ]);
+      const totalRevenue = completedBookings.reduce(
+        (sum, booking) => sum + Number(booking.totalAmount || 0),
+        0,
+      );
+      const totalPayouts = payments
+        .filter((payment) => payment.status === 'COMPLETED')
+        .reduce((sum, payment) => sum + Number(payment.amount || 0), 0);
 
-    const totalRevenue = completedBookings.reduce(
-      (sum, booking) => sum + Number(booking.totalAmount || 0),
-      0,
-    );
-    const totalPayouts = payments
-      .filter((payment) => payment.status === 'COMPLETED')
-      .reduce((sum, payment) => sum + Number(payment.amount || 0), 0);
-
-    return {
-      totalRevenue,
-      totalPayouts,
-      pendingSettlement: Math.max(totalRevenue - totalPayouts, 0),
-      transactions: payments.map((payment) => ({
-        date: payment.createdAt.toISOString(),
-        type: 'booking_payment' as const,
-        amount: Number(payment.amount || 0),
-        status: String(payment.status || '').toLowerCase(),
-      })),
-      summary: {
-        breakdown: filters.breakdown || 'daily',
-      },
-    };
+      return {
+        totalRevenue,
+        totalPayouts,
+        pendingSettlement: Math.max(totalRevenue - totalPayouts, 0),
+        transactions: payments.map((payment) => ({
+          date: payment.createdAt.toISOString(),
+          type: 'booking_payment' as const,
+          amount: Number(payment.amount || 0),
+          status: String(payment.status || '').toLowerCase(),
+        })),
+        summary: {
+          breakdown: filters.breakdown || 'daily',
+        },
+      };
+    } catch (e: any) {
+      console.error('Error in getShopFinancials:', e);
+      return {
+        totalRevenue: 0,
+        totalPayouts: 0,
+        pendingSettlement: 0,
+        transactions: [],
+        summary: { breakdown: filters.breakdown || 'daily' },
+        error: e.message,
+      };
+    }
   }
 
   async createStaffHierarchy(shopId: string, ownerId: string, dto: CreateStaffHierarchyDto) {

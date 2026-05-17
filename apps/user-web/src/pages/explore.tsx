@@ -18,10 +18,11 @@ const TYPE_LABELS: Record<string, string> = {
 
 export default function ExplorePage() {
   const router = useRouter();
-  const { q, type, city, radiusKm, minRating, maxPrice } = router.query;
+  const { q, type, city, radiusKm, minRating, maxPrice, targetAudience } = router.query;
 
   const [searchQuery, setSearchQuery] = React.useState((q as string) || '');
   const [selectedType, setSelectedType] = React.useState<string | undefined>(type as string);
+  const [selectedTargetAudience, setSelectedTargetAudience] = React.useState<string | undefined>(targetAudience as string);
   const [selectedCity, setSelectedCity] = React.useState((city as string) || '');
   const [showFilters, setShowFilters] = React.useState(false);
   const [viewMode, setViewMode] = React.useState<'list' | 'map'>('list');
@@ -95,6 +96,7 @@ export default function ExplorePage() {
     radiusKm: selectedRadiusKm,
     minRating: selectedMinRating,
     maxPrice: selectedMaxPrice,
+    targetAudience: selectedTargetAudience as 'Mens' | 'Womens' | 'Unisex' | undefined,
     limit: 20,
     latitude: shouldApplyLocationFilter ? location?.lat : undefined,
     longitude: shouldApplyLocationFilter ? location?.lng : undefined,
@@ -107,6 +109,7 @@ export default function ExplorePage() {
       query: {
         ...(searchQuery && { q: searchQuery }),
         ...(selectedType && { type: selectedType }),
+        ...(selectedTargetAudience && { targetAudience: selectedTargetAudience }),
         ...(selectedCity && { city: selectedCity }),
         ...(selectedRadiusKm && { radiusKm: selectedRadiusKm }),
         ...(selectedMinRating && { minRating: selectedMinRating }),
@@ -120,6 +123,7 @@ export default function ExplorePage() {
   const clearFilters = () => {
     setSearchQuery('');
     setSelectedType(undefined);
+    setSelectedTargetAudience(undefined);
     setSelectedCity('');
     setSelectedRadiusKm(undefined);
     setSelectedMaxPrice(undefined);
@@ -216,6 +220,27 @@ export default function ExplorePage() {
                     )}
                   >
                     {option.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Target Audience */}
+            <div className="space-y-3">
+              <label className="label-m3">Audience</label>
+              <div className="grid grid-cols-3 gap-2">
+                {['Mens', 'Womens', 'Unisex'].map((aud) => (
+                  <button
+                    key={aud}
+                    onClick={() => setSelectedTargetAudience(selectedTargetAudience === aud ? undefined : aud)}
+                    className={cn(
+                      'flex items-center justify-center px-2.5 py-2 rounded-xl text-xs font-semibold transition-all active:scale-95',
+                      selectedTargetAudience === aud
+                        ? 'bg-primary text-white shadow-button'
+                        : 'bg-surface-container-low text-on-surface-variant hover:bg-surface-container-high border border-outline-variant/10'
+                    )}
+                  >
+                    {aud}
                   </button>
                 ))}
               </div>

@@ -37,12 +37,13 @@ if (firebaseConfig.apiKey && !firebase.apps.length) {
 
     self.registration.showNotification(title, {
       body,
-      icon: '/favicon.ico',
+      icon: '/overline-logo.png',
       badge: '/favicon.ico',
       tag,
       renotify: true,
-      requireInteraction: false,
+      requireInteraction: true,
       silent: false,
+      sound: '/sounds/notification.mp3',
       data: { url, ...data },
     });
   });

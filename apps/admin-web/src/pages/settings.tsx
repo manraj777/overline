@@ -31,6 +31,7 @@ export default function SettingsPage() {
     longitude: '' as string | number,
     googleMapLink: '',
     workingTime: '09:00 - 21:00',
+    targetAudience: 'Unisex',
     isActive: true,
   });
 
@@ -63,6 +64,7 @@ export default function SettingsPage() {
       longitude: shopData.longitude || '',
       googleMapLink: String(shopData.settings?.googleMapLink || ''),
       workingTime: String(shopData.settings?.workingTime || '09:00 - 21:00'),
+      targetAudience: String(shopData.settings?.targetAudience || 'Unisex'),
       isActive: shopData.isActive ?? true,
     });
 
@@ -261,6 +263,7 @@ export default function SettingsPage() {
           ...(shopData?.settings || {}),
           type: shopForm.shopType,
           shopType: shopForm.shopType,
+          targetAudience: shopForm.targetAudience,
           location: shopForm.location,
           googleLink: shopForm.googleMapLink,
           googleMapLink: shopForm.googleMapLink,
@@ -404,7 +407,7 @@ export default function SettingsPage() {
                 </div>
 
                 <form className="space-y-6" onSubmit={saveShopDetails}>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <Input
                       label="Name"
                       required
@@ -423,6 +426,22 @@ export default function SettingsPage() {
                         {SHOP_TYPES.map((type) => (
                           <option key={type} value={type}>
                             {type}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="space-y-2">
+                      <label className="label-m3">Target Audience</label>
+                      <select
+                        className="input-m3"
+                        required
+                        value={shopForm.targetAudience}
+                        onChange={(e) => setShopForm((prev) => ({ ...prev, targetAudience: e.target.value }))}
+                      >
+                        {['Mens', 'Womens', 'Unisex'].map((aud) => (
+                          <option key={aud} value={aud}>
+                            {aud}
                           </option>
                         ))}
                       </select>

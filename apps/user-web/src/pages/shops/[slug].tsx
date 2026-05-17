@@ -642,7 +642,15 @@ export default function ShopDetailPage({ initialShop, slug: ssrSlug }: ShopPageP
                        </div>
                        <div className="p-5 bg-surface-container-low rounded-2xl border border-outline-variant/10">
                           <h3 className="font-bold text-on-surface flex items-center gap-2 mb-3"><MapPin className="w-5 h-5 text-primary" /> Location</h3>
-                          <p className="text-on-surface-variant">{shop.address}</p>
+                          <p className="text-on-surface-variant mb-2">{shop.address}</p>
+                          <a 
+                            href={`https://www.google.com/maps/dir/?api=1&destination=${shop.latitude},${shop.longitude}`} 
+                            target="_blank" 
+                            rel="noopener noreferrer"
+                            className="text-primary font-bold hover:underline text-sm inline-flex items-center gap-1"
+                          >
+                            Get Directions
+                          </a>
                        </div>
                      </div>
                   </div>

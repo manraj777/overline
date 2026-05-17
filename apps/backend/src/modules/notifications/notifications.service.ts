@@ -152,6 +152,33 @@ export class NotificationsService {
                     title: notification.title,
                     body: notification.body,
                   },
+                  android: {
+                    priority: 'high',
+                    notification: {
+                      sound: 'default',
+                      channelId: 'overline_alerts',
+                    },
+                  },
+                  apns: {
+                    payload: {
+                      aps: {
+                        sound: 'default',
+                        badge: 1,
+                      },
+                    },
+                  },
+                  webpush: {
+                    headers: {
+                      Urgency: 'high',
+                    },
+                    notification: {
+                      requireInteraction: true,
+                      icon: '/overline-logo.png',
+                      badge: '/favicon.ico',
+                      sound: '/sounds/notification.mp3',
+                      tag: 'overline-admin-alert',
+                    },
+                  },
                   data: {
                     // FCM only allows string values on `data`. Coerce
                     // explicitly so we never trip over null / number.

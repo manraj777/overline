@@ -100,7 +100,7 @@ export class ShopsService {
   }
 
   async search(dto: SearchShopsDto) {
-    const { query, city, type, page = 1, limit = 20 } = dto;
+    const { query, city, type, targetAudience, page = 1, limit = 20 } = dto;
     const minRating = dto.minRating !== undefined ? Number(dto.minRating) : undefined;
     const maxPrice = dto.maxPrice !== undefined ? Number(dto.maxPrice) : undefined;
 
@@ -133,6 +133,50 @@ export class ShopsService {
     // Type filter (tenant type)
     if (type) {
       andFilters.push({ tenant: { type } });
+    }
+
+    // Target Audience filter
+    if (targetAudience) {
+      if (targetAudience === 'Mens') {
+        andFilters.push({
+          NOT: {
+            settings: {
+              path: ['targetAudience'],
+              equals: 'Womens',
+            },
+          },
+        });
+      } else if (targetAudience === 'Womens') {
+        andFilters.push({
+          NOT: {
+            settings: {
+              path: ['targetAudience'],
+              equals: 'Mens',
+            },
+          },
+        });
+      } else if (targetAudience === 'Unisex') {
+        andFilters.push({
+          AND: [
+            {
+              NOT: {
+                settings: {
+                  path: ['targetAudience'],
+                  equals: 'Mens',
+                },
+              },
+            },
+            {
+              NOT: {
+                settings: {
+                  path: ['targetAudience'],
+                  equals: 'Womens',
+                },
+              },
+            },
+          ],
+        });
+      }
     }
 
     if (minRating !== undefined) {

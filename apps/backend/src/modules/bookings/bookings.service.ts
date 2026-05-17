@@ -229,8 +229,8 @@ export class BookingsService {
 
     const subtotal = services.reduce((sum, s) => sum + Number(s.price), 0);
     
-    // Taxes and Charges: 15% markup as requested by owner
-    const taxesAndCharges = Math.round(subtotal * 0.15);
+    // Taxes and Charges: 0 (removed as per owner request, customers only pay item amount)
+    const taxesAndCharges = 0;
 
     // Apply offer code discount
     let discount = 0;

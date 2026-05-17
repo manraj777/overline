@@ -85,6 +85,7 @@ export function useStaffMe(options?: { enabled?: boolean }) {
       const { data } = await api.get('/admin/staff/me');
       return data;
     },
+    retry: false,
     ...options,
   });
 }

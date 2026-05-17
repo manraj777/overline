@@ -21,6 +21,17 @@ api.overline.in {
         header_up X-Real-IP {remote_host}
         header_up X-Forwarded-For {remote_host}
         header_up X-Forwarded-Proto {scheme}
+
+        # Flush immediately for WebSocket and SSE support
+        flush_interval -1
+
+        # Generous timeouts for file uploads via Cloudinary
+        transport http {
+            dial_timeout 30s
+            response_header_timeout 120s
+            read_timeout 120s
+            write_timeout 120s
+        }
     }
 
     # Reasonable security headers. Adjust CSP later if you serve assets here.

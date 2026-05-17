@@ -563,55 +563,30 @@ export default function BookingDetailPage() {
               </Card>
             )}
 
-            {/* Payment Section */}
+            {/* Payment Section - Disabled for now */}
             {(booking.status === BookingStatus.PENDING ||
               booking.status === BookingStatus.CONFIRMED) &&
               !booking.payment?.paidAt && (
                 <Card variant="bordered">
-                  <div className="flex items-center gap-3 mb-4">
-                    <div className="p-2 rounded-xl bg-primary/10 dark:bg-primary/15">
-                      <CreditCard className="w-5 h-5 text-primary" />
+                  <div className="flex items-center gap-3">
+                    <div className="p-2 rounded-xl bg-surface-container-high">
+                      <CreditCard className="w-5 h-5 text-on-surface-variant opacity-60" />
                     </div>
                     <div>
-                      <h3 className="font-semibold text-on-surface">Pay Online</h3>
+                      <h3 className="font-semibold text-on-surface flex items-center gap-2">
+                        Pay Online
+                        <span className="text-[9px] text-primary font-bold bg-primary/10 px-2 py-0.5 rounded uppercase tracking-wider">
+                          Launching Soon
+                        </span>
+                      </h3>
                       <p className="text-sm text-on-surface-variant">
-                        Secure payment via Razorpay
+                        Online prepayments will be launching soon.
                       </p>
                     </div>
                   </div>
 
-                  {paymentError && (
-                    <Alert variant="error" className="mb-4">
-                      {paymentError}
-                    </Alert>
-                  )}
-
-                  {showPayment && paymentData ? (
-                    <PaymentForm
-                      orderId={paymentData.orderId}
-                      keyId={paymentData.keyId}
-                      amount={paymentData.amount}
-                      currency={paymentData.currency}
-                      bookingNumber={paymentData.bookingNumber}
-                      shopName={paymentData.shopName}
-                      onSuccess={() => {
-                        setShowPayment(false);
-                        refetch();
-                      }}
-                    />
-                  ) : (
-                    <Button
-                      onClick={handlePayNow}
-                      isLoading={createPaymentIntent.isPending}
-                      className="w-full"
-                    >
-                      <CreditCard className="w-4 h-4 mr-2" />
-                      Pay {formatPrice(totalPrice)} Now
-                    </Button>
-                  )}
-
-                  <p className="text-xs text-center text-on-surface-variant mt-3">
-                    You can also pay at the counter when you arrive.
+                  <p className="text-xs text-on-surface-variant mt-4 text-center bg-surface-container-low p-3 rounded-lg border border-outline-variant/10 font-medium">
+                    Please pay at the counter when you arrive at the shop.
                   </p>
                 </Card>
               )}

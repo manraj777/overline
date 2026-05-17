@@ -76,7 +76,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
   const unreadCount = unreadData?.count || 0;
 
   const { data: staffProfile } = useStaffMe({
-    enabled: isAuthenticated && (isStaff || derivedRole === UserRole.OWNER),
+    enabled: isAuthenticated && isStaff,
   });
   const updateStaffMe = useUpdateStaffMe();
 

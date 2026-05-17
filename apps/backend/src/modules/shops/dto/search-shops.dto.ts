@@ -54,6 +54,11 @@ export class SearchShopsDto {
   @Min(0)
   maxPrice?: number;
 
+  @ApiPropertyOptional({ description: 'Filter by target audience (Mens, Womens, Unisex)' })
+  @IsOptional()
+  @IsString()
+  targetAudience?: string;
+
   @ApiPropertyOptional({ description: 'Page number', default: 1 })
   @IsOptional()
   @Type(() => Number)

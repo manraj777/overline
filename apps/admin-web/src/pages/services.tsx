@@ -23,9 +23,7 @@ export default function ServicesPage() {
     const fd = new FormData();
     fd.append('file', file);
     fd.append('folder', 'services');
-    const { data } = await api.post('/upload', fd, {
-      headers: { 'Content-Type': 'multipart/form-data' },
-    });
+    const { data } = await api.post('/upload', fd);
     return data.url;
   };
 

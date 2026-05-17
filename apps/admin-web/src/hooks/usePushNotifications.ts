@@ -96,6 +96,12 @@ export function usePushNotifications(isAuthenticated: boolean) {
         const messagingSenderId = process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || '';
         const appId = process.env.NEXT_PUBLIC_FIREBASE_APP_ID || '';
 
+        // Skip FCM setup entirely when Firebase keys are not configured
+        if (!apiKey || !projectId || !messagingSenderId) {
+          console.info('[Push] Firebase keys not configured — skipping FCM setup. Push via Socket.io only.');
+          return;
+        }
+
         const swUrl = `/firebase-messaging-sw.js?apiKey=${encodeURIComponent(apiKey)}&authDomain=${encodeURIComponent(authDomain)}&projectId=${encodeURIComponent(projectId)}&storageBucket=${encodeURIComponent(storageBucket)}&messagingSenderId=${encodeURIComponent(messagingSenderId)}&appId=${encodeURIComponent(appId)}`;
 
         const registration = await navigator.serviceWorker.register(swUrl);
