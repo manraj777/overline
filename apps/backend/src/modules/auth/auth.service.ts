@@ -31,6 +31,7 @@ import { ResetPasswordDto } from './dto/reset-password.dto';
 import * as crypto from 'crypto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { GoogleLoginDto } from './dto/google-login.dto';
+import { FacebookLoginDto } from './dto/facebook-login.dto';
 import { RegisterShopDto } from './dto/register-shop.dto';
 
 type UserRole = 'USER' | 'OWNER' | 'STAFF' | 'SUPER_ADMIN' | 'SUPERADMIN';
@@ -1323,6 +1324,125 @@ export class AuthService implements OnModuleInit {
 
     // Generate tokens
     return this.generateTokens(user);
+  }
+
+  async facebookLogin(dto: FacebookLoginDto): Promise<TokenResponse> {
+    let fbUserData;
+    try {
+      const response = await axios.get(
+        `https://graph.facebook.com/me?fields=id,name,email,picture.width(250).height(250)&access_token=${dto.accessToken}`
+      );
+      fbUserData = response.data;
+    } catch (error: any) {
+      console.error('[FacebookLogin] Error calling Facebook Graph API:', error?.response?.data || error?.message);
+      throw new UnauthorizedException(
+        `Invalid Facebook access token: ${error?.response?.data?.error?.message || error?.message || 'Verification failed'}`
+      );
+    }
+
+    if (!fbUserData || !fbUserData.id) {
+      throw new UnauthorizedException('Invalid Facebook token payload');
+    }
+
+    const facebookId = fbUserData.id;
+    const email = fbUserData.email || `${facebookId}@facebook.com`;
+    const name = fbUserData.name || email.split('@')[0];
+    const picture = fbUserData.picture?.data?.url || null;
+
+    const tokenResponse = await this.handleFacebookUser(
+      facebookId,
+      email,
+      name,
+      picture,
+      dto.requestedRole
+    );
+
+    if (dto.requestedRole) {
+      const userRole = tokenResponse.user.role;
+      const isRequestingAdminRole =
+        dto.requestedRole === 'OWNER' || dto.requestedRole === 'STAFF' || dto.requestedRole === 'SUPER_ADMIN';
+
+      if (isRequestingAdminRole && userRole === UserRole.USER) {
+        throw new ForbiddenException(
+          'Access denied. You do not have an Owner or Staff account. Please use the customer app.',
+        );
+      }
+
+      if (dto.requestedRole === 'OWNER' && userRole === UserRole.STAFF) {
+        throw new ForbiddenException(
+          'Access denied. This Facebook account is linked to Staff. Please use Staff login.',
+        );
+      }
+
+      if (dto.requestedRole === 'STAFF' && userRole === UserRole.OWNER) {
+        throw new ForbiddenException(
+          'Access denied. This Facebook account is linked to Owner. Please use Owner login.',
+        );
+      }
+    }
+
+    return tokenResponse;
+  }
+
+  async handleFacebookUser(
+    facebookId: string,
+    email: string,
+    name?: string,
+    picture?: string,
+    requestedRole?: string,
+  ): Promise<TokenResponse> {
+    try {
+      console.log('[handleFacebookUser] Processing:', { facebookId, email, name });
+
+      // Check if user already exists by facebookId or email
+      let user = await this.prisma.user.findFirst({
+        where: {
+          OR: [{ facebookId }, { email }],
+        },
+      });
+
+      if (user) {
+        console.log('[handleFacebookUser] Existing user found:', user.id);
+        if (!user.isActive) {
+          throw new UnauthorizedException('Account is deactivated');
+        }
+
+        const updateData: any = { lastLoginAt: new Date() };
+        if (!user.facebookId) {
+          updateData.facebookId = facebookId;
+          updateData.authProvider = user.hashedPassword ? 'local' : 'facebook';
+          updateData.avatarUrl = user.avatarUrl || picture;
+        }
+
+        if (requestedRole === 'OWNER' && user.role === UserRole.USER) {
+          updateData.role = UserRole.OWNER;
+        }
+
+        user = await this.prisma.user.update({
+          where: { id: user.id },
+          data: updateData,
+        });
+      } else {
+        console.log('[handleFacebookUser] Creating new user');
+        user = await this.prisma.user.create({
+          data: {
+            email,
+            name: name || email.split('@')[0],
+            facebookId,
+            authProvider: 'facebook',
+            avatarUrl: picture,
+            isEmailVerified: true,
+            role: requestedRole === 'OWNER' ? UserRole.OWNER : UserRole.USER,
+          },
+        });
+        console.log('[handleFacebookUser] New user created:', user.id);
+      }
+
+      return this.generateTokens(user);
+    } catch (error) {
+      console.error('[handleFacebookUser] Error:', error);
+      throw error;
+    }
   }
 
   async googleLogin(dto: GoogleLoginDto): Promise<TokenResponse> {

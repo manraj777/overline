@@ -20,6 +20,7 @@ import { LoginDto } from './dto/login.dto';
 import { RefreshTokenDto } from './dto/refresh-token.dto';
 import { ChangePasswordDto } from './dto/change-password.dto';
 import { GoogleLoginDto } from './dto/google-login.dto';
+import { FacebookLoginDto } from './dto/facebook-login.dto';
 import { RegisterShopDto } from './dto/register-shop.dto';
 import { SendOtpDto } from './dto/send-otp.dto';
 import { VerifyOtpDto } from './dto/verify-otp.dto';
@@ -125,6 +126,15 @@ export class AuthController {
   @ApiResponse({ status: 200, description: 'Password reset successful' })
   async resetPassword(@Body() dto: ResetPasswordDto): Promise<{ message: string }> {
     return this.authService.resetPassword(dto);
+  }
+
+  @Post('facebook')
+  @HttpCode(HttpStatus.OK)
+  @ApiOperation({ summary: 'Login or signup with Facebook (access token)' })
+  @ApiResponse({ status: 200, description: 'Facebook login successful' })
+  @ApiResponse({ status: 401, description: 'Invalid Facebook token' })
+  async facebookLogin(@Body() dto: FacebookLoginDto): Promise<TokenResponse> {
+    return this.authService.facebookLogin(dto);
   }
 
   @Post('google')

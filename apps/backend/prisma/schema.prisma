@@ -172,7 +172,8 @@ model User {
   dateOfBirth     DateTime? @map("date_of_birth") @db.Date
   gender          String? // "male" | "female" | "other" | "prefer_not_to_say"
   googleId        String?   @unique @map("google_id")
-  authProvider    String    @default("local") @map("auth_provider") // "local" | "google"
+  facebookId      String?   @unique @map("facebook_id")
+  authProvider    String    @default("local") @map("auth_provider") // "local" | "google" | "facebook"
   role            UserRole  @default(USER)
   isActive        Boolean   @default(true) @map("is_active")
   isEmailVerified Boolean   @default(false) @map("is_email_verified")
