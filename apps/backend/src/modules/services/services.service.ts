@@ -84,8 +84,14 @@ export class ServicesService {
 
   async findByShop(shopId: string) {
     return this.prisma.service.findMany({
-      where: { shopId, isActive: true },
-      orderBy: { sortOrder: 'asc' },
+      where: {
+        shopId,
+        NOT: { category: '__DELETED__' },
+      },
+      orderBy: [
+        { isActive: 'desc' },
+        { sortOrder: 'asc' },
+      ],
     });
   }
 
@@ -158,10 +164,10 @@ export class ServicesService {
       throw new ForbiddenException('Not authorized to manage this service');
     }
 
-    // Soft delete by marking inactive
+    // Soft delete by setting category to __DELETED__ and isActive to false
     const deleted = await this.prisma.service.update({
       where: { id: serviceId },
-      data: { isActive: false },
+      data: { category: '__DELETED__', isActive: false },
     });
 
     await this.redis.invalidateSlots(service.shopId);

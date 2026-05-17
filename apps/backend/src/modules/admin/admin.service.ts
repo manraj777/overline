@@ -938,6 +938,7 @@ export class AdminService {
       state: shop.state,
       postalCode: shop.postalCode,
       country: shop.country,
+      isActive: shop.isActive,
       latitude: shop.latitude ? Number(shop.latitude) : undefined,
       longitude: shop.longitude ? Number(shop.longitude) : undefined,
       logoUrl: shop.logoUrl,
@@ -1025,6 +1026,7 @@ export class AdminService {
       latitude?: number;
       longitude?: number;
       settings?: Record<string, any>;
+      isActive?: boolean;
     },
   ) {
     const shop = await this.verifyShopAccess(shopId, tenantId);
@@ -1055,6 +1057,7 @@ export class AdminService {
         ...(updateData.photoUrls !== undefined && { photoUrls: updateData.photoUrls }),
         ...(updateData.latitude !== undefined && { latitude: updateData.latitude }),
         ...(updateData.longitude !== undefined && { longitude: updateData.longitude }),
+        ...(updateData.isActive !== undefined && { isActive: updateData.isActive }),
         ...(mergedSettings !== undefined ? { settings: mergedSettings } : {}),
       },
     });

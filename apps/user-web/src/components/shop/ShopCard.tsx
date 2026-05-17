@@ -23,19 +23,49 @@ const ShopCard: React.FC<ShopCardProps> = ({ shop, queueInfo, userLocation }) =>
     travelTime = formatTravelTime(distanceKm);
   }
 
-  const heroImage = shop.coverUrl || shop.photoUrls?.[0] || shop.logoUrl;
+  const [currentPhotoIdx, setCurrentPhotoIdx] = React.useState(0);
+
+  const photos = React.useMemo(() => {
+    const list: string[] = [];
+    if (shop.coverUrl) list.push(shop.coverUrl);
+    if (shop.photoUrls && Array.isArray(shop.photoUrls)) {
+      shop.photoUrls.forEach((url) => {
+        if (url && url !== shop.coverUrl) list.push(url);
+      });
+    }
+    if (list.length === 0 && shop.logoUrl) list.push(shop.logoUrl);
+    return list;
+  }, [shop.coverUrl, shop.photoUrls, shop.logoUrl]);
+
+  React.useEffect(() => {
+    if (photos.length <= 1) return;
+    const interval = setInterval(() => {
+      setCurrentPhotoIdx((prev) => (prev + 1) % photos.length);
+    }, 3500);
+    return () => clearInterval(interval);
+  }, [photos.length]);
 
   return (
     <Link href={`/shops/${shop.slug}`}>
       <div className="card-m3 overflow-hidden cursor-pointer group h-full">
         {/* ── Image Header ── */}
         <div className="relative h-48 overflow-hidden bg-surface-container-high">
-          {heroImage ? (
-            <img
-              src={heroImage}
-              alt={shop.name}
-              className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500 ease-out"
-            />
+          {photos.length > 0 ? (
+            <div className="relative w-full h-full">
+              {photos.map((src, index) => (
+                <img
+                  key={src}
+                  src={src}
+                  alt={shop.name}
+                  style={{
+                    opacity: index === currentPhotoIdx ? 1 : 0,
+                    zIndex: index === currentPhotoIdx ? 1 : 0,
+                    transition: 'opacity 1000ms ease-in-out, transform 500ms ease-out',
+                  }}
+                  className="absolute inset-0 w-full h-full object-cover group-hover:scale-105 transform"
+                />
+              ))}
+            </div>
           ) : (
             <div className="w-full h-full flex items-center justify-center bg-gradient-to-br from-primary to-secondary">
               <span className="text-5xl text-white/60 font-black tracking-tighter">
@@ -45,10 +75,10 @@ const ShopCard: React.FC<ShopCardProps> = ({ shop, queueInfo, userLocation }) =>
           )}
 
           {/* Gradient overlay */}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/50 via-transparent to-transparent z-[2]" />
 
           {/* Top badges */}
-          <div className="absolute top-3 left-3 flex gap-2">
+          <div className="absolute top-3 left-3 flex gap-2 z-[3]">
             <span className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-widest backdrop-blur-md ${
               isOpen
                 ? 'bg-tertiary/90 text-white'
@@ -60,7 +90,7 @@ const ShopCard: React.FC<ShopCardProps> = ({ shop, queueInfo, userLocation }) =>
 
           {/* Distance badge */}
           {distanceKm !== undefined && (
-            <div className="absolute top-3 right-3">
+            <div className="absolute top-3 right-3 z-[3]">
               <div className="flex items-center gap-1 bg-white/90 backdrop-blur-md text-on-surface text-[11px] font-bold px-2.5 py-1 rounded-lg shadow-sm">
                 <Navigation className="w-3 h-3 text-primary" />
                 {distanceKm < 1 ? `${Math.round(distanceKm * 1000)}m` : `${distanceKm.toFixed(1)} km`}
@@ -69,8 +99,8 @@ const ShopCard: React.FC<ShopCardProps> = ({ shop, queueInfo, userLocation }) =>
           )}
 
           {/* Logo overlay */}
-          {shop.logoUrl && heroImage !== shop.logoUrl && (
-            <div className="absolute bottom-3 left-3">
+          {shop.logoUrl && photos[currentPhotoIdx] !== shop.logoUrl && (
+            <div className="absolute bottom-3 left-3 z-[3]">
               <img
                 src={shop.logoUrl}
                 alt=""
@@ -79,10 +109,17 @@ const ShopCard: React.FC<ShopCardProps> = ({ shop, queueInfo, userLocation }) =>
             </div>
           )}
 
-          {/* Photo count */}
-          {shop.photoUrls?.length > 1 && (
-            <div className="absolute bottom-3 right-3 bg-black/50 backdrop-blur-md text-white text-[10px] font-bold px-2.5 py-1 rounded-lg">
-              +{shop.photoUrls.length - 1} photos
+          {/* Slide Indicators */}
+          {photos.length > 1 && (
+            <div className="absolute bottom-3 right-3 flex gap-1 z-[3] bg-black/40 px-2 py-1 rounded-full backdrop-blur-md">
+              {photos.map((_, idx) => (
+                <div
+                  key={idx}
+                  className={`w-1.5 h-1.5 rounded-full transition-all duration-300 ${
+                    idx === currentPhotoIdx ? 'bg-white w-3.5' : 'bg-white/40'
+                  }`}
+                />
+              ))}
             </div>
           )}
         </div>

@@ -358,10 +358,13 @@ export class ShopsService {
         },
       },
       services: {
+        where: {
+          NOT: { category: '__DELETED__' },
+        },
         orderBy: [
-          { isActive: 'desc' },
-          { sortOrder: 'asc' }
-        ] as const,
+          { isActive: 'desc' as const },
+          { sortOrder: 'asc' as const },
+        ],
       },
       staff: {
         where: { isActive: true },
@@ -441,6 +444,9 @@ export class ShopsService {
       include: {
         tenant: true,
         services: {
+          where: {
+            NOT: { category: '__DELETED__' },
+          },
           orderBy: [
             { isActive: 'desc' },
             { sortOrder: 'asc' }
