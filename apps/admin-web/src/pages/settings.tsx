@@ -1,11 +1,11 @@
 import React from 'react';
 import Head from 'next/head';
-import { Bell, Camera, Save, Store } from 'lucide-react';
+import { Bell, Camera, Save, Store, Clock } from 'lucide-react';
 import { Input, Loading, useToast, ImageUpload } from '@/components/ui';
-import { useShopSettings, useUpdateShopSettings, useStaff } from '@/hooks';
+import { useShopSettings, useUpdateShopSettings, useStaff, useWorkingHours, useUpdateWorkingHours } from '@/hooks';
 import api from '@/lib/api';
 
-type SettingsTab = 'shop' | 'media' | 'settings';
+type SettingsTab = 'shop' | 'timing' | 'media' | 'settings';
 
 const SHOP_TYPES = ['Salon', 'Medical', 'Gym', 'Spa', 'Clinic', 'Other'];
 
@@ -16,6 +16,8 @@ export default function SettingsPage() {
   const { data: shopData, isLoading } = useShopSettings();
   const { data: staffData } = useStaff();
   const updateSettings = useUpdateShopSettings();
+  const { data: workingHoursData } = useWorkingHours();
+  const updateWorkingHours = useUpdateWorkingHours();
 
   const [shopForm, setShopForm] = React.useState({
     name: '',
@@ -351,6 +353,7 @@ export default function SettingsPage() {
 
   const tabs: Array<{ id: SettingsTab; label: string; icon: React.ComponentType<{ className?: string }> }> = [
     { id: 'shop', label: 'Shop Details', icon: Store },
+    { id: 'timing', label: 'Working Hours', icon: Clock },
     { id: 'media', label: 'Shop Media', icon: Camera },
     { id: 'settings', label: 'Settings', icon: Bell },
   ];
@@ -571,6 +574,81 @@ export default function SettingsPage() {
                     {updateSettings.isPending ? 'Saving...' : 'Save Shop Details'}
                   </button>
                 </form>
+              </div>
+            )}
+
+            {activeTab === 'timing' && (
+              <div className="card-m3 p-8">
+                <h2 className="text-lg font-bold text-on-surface mb-6">Working Hours</h2>
+                <p className="text-sm text-on-surface-variant mb-6">Set your daily opening and closing times.</p>
+                
+                <div className="space-y-4">
+                  {['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY'].map((day) => {
+                    const dayData = workingHoursData?.find((w: any) => w.dayOfWeek === day) || {
+                      openTime: '09:00',
+                      closeTime: '18:00',
+                      isClosed: false,
+                    };
+                    return (
+                      <div key={day} className="flex flex-col sm:flex-row sm:items-center gap-4 p-4 rounded-xl border border-outline-variant/15 bg-surface-container-low">
+                        <div className="w-32 font-bold text-on-surface">
+                          {day.charAt(0) + day.slice(1).toLowerCase()}
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <label className="relative inline-flex items-center cursor-pointer">
+                            <input 
+                              type="checkbox" 
+                              className="sr-only peer"
+                              checked={!dayData.isClosed}
+                              onChange={(e) => {
+                                updateWorkingHours.mutate({
+                                  dayOfWeek: day,
+                                  isClosed: !e.target.checked,
+                                  openTime: dayData.openTime,
+                                  closeTime: dayData.closeTime,
+                                });
+                              }}
+                            />
+                            <div className="w-11 h-6 bg-surface-container-high peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+                          </label>
+                          <span className="text-sm text-on-surface-variant">{!dayData.isClosed ? 'Open' : 'Closed'}</span>
+                        </div>
+                        
+                        {!dayData.isClosed && (
+                          <div className="flex flex-1 items-center gap-2 sm:ml-auto sm:justify-end">
+                            <input
+                              type="time"
+                              className="input-m3 w-32 !py-2"
+                              value={dayData.openTime}
+                              onChange={(e) => {
+                                updateWorkingHours.mutate({
+                                  dayOfWeek: day,
+                                  isClosed: false,
+                                  openTime: e.target.value,
+                                  closeTime: dayData.closeTime,
+                                });
+                              }}
+                            />
+                            <span className="text-on-surface-variant text-sm">to</span>
+                            <input
+                              type="time"
+                              className="input-m3 w-32 !py-2"
+                              value={dayData.closeTime}
+                              onChange={(e) => {
+                                updateWorkingHours.mutate({
+                                  dayOfWeek: day,
+                                  isClosed: false,
+                                  openTime: dayData.openTime,
+                                  closeTime: e.target.value,
+                                });
+                              }}
+                            />
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
               </div>
             )}
 
