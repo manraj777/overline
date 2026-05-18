@@ -62,6 +62,18 @@ export default function ShopDetailPage({ initialShop, slug: ssrSlug }: ShopPageP
   const [showCartConflictModal, setShowCartConflictModal] = React.useState(false);
   const [fastSearchOpen, setFastSearchOpen] = React.useState(false);
   const [fastSearchStaffId, setFastSearchStaffId] = React.useState<string | null>(null);
+  const [userLocation, setUserLocation] = React.useState<{ lat: number; lng: number } | undefined>(undefined);
+  const [currentHeroIndex, setCurrentHeroIndex] = React.useState(0);
+
+  React.useEffect(() => {
+    if (typeof window !== 'undefined' && 'geolocation' in navigator) {
+      navigator.geolocation.getCurrentPosition(
+        (pos) => setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude }),
+        (err) => console.warn('Geolocation error:', err),
+        { enableHighAccuracy: true, timeout: 5000 }
+      );
+    }
+  }, []);
 
   const isStaffAbsent = React.useCallback((person: any) => {
     if (!person) return false;
@@ -149,6 +161,17 @@ export default function ShopDetailPage({ initialShop, slug: ssrSlug }: ShopPageP
     if (shop.photoUrls?.length) photos.push(...shop.photoUrls);
     return photos;
   }, [shop]);
+
+  React.useEffect(() => {
+    // Only cycle if there is more than 1 photo
+    if (!allPhotos || allPhotos.length <= 1) return;
+    
+    const interval = setInterval(() => {
+      setCurrentHeroIndex((prev) => (prev + 1) % allPhotos.length);
+    }, 3500); // Cross-fade every 3.5 seconds
+    
+    return () => clearInterval(interval);
+  }, [allPhotos]);
 
   const servicesByCategory = React.useMemo(() => {
     const grouped = new Map<string, any[]>();
@@ -425,52 +448,20 @@ export default function ShopDetailPage({ initialShop, slug: ssrSlug }: ShopPageP
       )}
 
       <div className="min-h-screen bg-surface pb-32 overflow-hidden">
-        {/* ── Sticky Progress Bar ── */}
-        {/* Fully opaque on purpose: the previous translucent variant let
-            the shop title underneath bleed through when the user scrolled
-            even slightly, producing the half-erased-headline look. */}
-        <div className="bg-surface-container-lowest dark:bg-surface border-b border-outline-variant/30 shadow-sm sticky top-16 z-30">
-          <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between h-14">
-            <button
-              onClick={handlePrevStep}
-              className="flex items-center gap-2 text-on-surface-variant hover:text-primary font-semibold transition-colors text-sm"
-            >
-              <ArrowLeft className="w-4 h-4" />
-              <span className="hidden sm:inline">{step === 'services' ? 'Back' : 'Previous'}</span>
-            </button>
+        <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-6">
+          
+          <button
+            onClick={handlePrevStep}
+            className="flex items-center gap-2 text-on-surface-variant hover:text-primary font-semibold transition-colors text-sm w-fit mb-6"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            <span>Back</span>
+          </button>
 
-            {/* Step Indicators */}
-            <div className="flex items-center gap-1.5">
-              {steps.map((s, i) => (
-                <div key={s} className="flex items-center gap-1.5">
-                  <div className={`w-8 h-8 rounded-full flex items-center justify-center text-xs font-black transition-all duration-300 ${
-                    i <= stepIndex
-                      ? 'bg-primary text-white shadow-button scale-105'
-                      : 'bg-surface-container-high text-outline'
-                  }`}>
-                    {i < stepIndex ? <Check className="w-4 h-4" /> : i + 1}
-                  </div>
-                  {i < 3 && (
-                    <div className={`w-6 lg:w-10 h-0.5 rounded-full transition-colors ${
-                      i < stepIndex ? 'bg-primary' : 'bg-surface-container-high'
-                    }`} />
-                  )}
-                </div>
-              ))}
-            </div>
-
-            <span className="text-xs font-bold tracking-widest text-outline uppercase hidden sm:block">
-              {stepLabels[step]}
-            </span>
-          </div>
-        </div>
-
-        <div className="max-w-[1440px] mx-auto px-4 sm:px-6 lg:px-8 py-8">
           <div className="lg:grid lg:grid-cols-12 lg:gap-8 relative">
             {/* ── Main Content ── */}
             <div className="lg:col-span-7 xl:col-span-8">
-              {/* Hero Header — only on services step */}
-              {step === 'services' && (
+              {/* Hero Header */}
                 <div className="mb-10">
                   <h1 className="text-4xl md:text-5xl font-black tracking-tight text-on-surface mb-6 leading-tight">
                     {shop.name}
@@ -478,17 +469,26 @@ export default function ShopDetailPage({ initialShop, slug: ssrSlug }: ShopPageP
 
                   {/* Cover Image */}
                   <div
-                    className="relative h-64 md:h-80 w-full rounded-3xl overflow-hidden cursor-pointer group shadow-card-hover"
+                    className="relative h-64 md:h-80 w-full rounded-3xl overflow-hidden cursor-pointer group shadow-card-hover bg-surface-variant"
                     onClick={() => { if (allPhotos.length > 0) { setGalleryIndex(0); setGalleryOpen(true); } }}
                   >
-                    {heroImage ? (
-                      <img src={heroImage} alt={shop.name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-500" />
+                    {allPhotos.length > 0 ? (
+                      allPhotos.map((photo, idx) => (
+                        <img 
+                          key={photo + idx}
+                          src={photo} 
+                          alt={shop.name} 
+                          className={`absolute inset-0 w-full h-full object-cover transition-all duration-1000 ease-in-out ${
+                            idx === currentHeroIndex ? 'opacity-100 scale-105' : 'opacity-0 scale-100'
+                          }`} 
+                        />
+                      ))
                     ) : (
                       <div className="w-full h-full bg-gradient-to-br from-primary to-secondary flex items-center justify-center">
                         <span className="text-8xl text-white/20 font-black">{shop.name.charAt(0)}</span>
                       </div>
                     )}
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent" />
+                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent pointer-events-none" />
 
                     <div className="absolute bottom-5 left-5 right-5 flex justify-between items-end">
                       <div className="flex gap-2">
@@ -551,7 +551,7 @@ export default function ShopDetailPage({ initialShop, slug: ssrSlug }: ShopPageP
                     <div className="mt-8 h-64 w-full rounded-3xl overflow-hidden shadow-sm">
                       <ShopMap
                         shops={[shop as any]}
-                        userLocation={{ lat: Number(shop.latitude), lng: Number(shop.longitude) }}
+                        userLocation={userLocation}
                         zoom={15}
                       />
                     </div>

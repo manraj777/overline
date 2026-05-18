@@ -6,7 +6,7 @@ import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import type { Shop } from '@/types';
 
-const MAP_TILES = 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png';
+const MAP_TILES = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
 const MAP_ATTRIBUTION = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors';
 
 interface ShopMapProps {
@@ -172,7 +172,7 @@ export const ShopMapInner: React.FC<ShopMapProps> = ({
                                         </span>
                                     </div>
 
-                                    <div className="pb-1">
+                                    <div className="pb-1 space-y-2">
                                         <button
                                             onMouseDown={(e) => { e.stopPropagation(); router.push(`/shops/${shop.slug}`); }}
                                             onTouchStart={(e) => { e.stopPropagation(); router.push(`/shops/${shop.slug}`); }}
@@ -180,6 +180,15 @@ export const ShopMapInner: React.FC<ShopMapProps> = ({
                                         >
                                             View Details
                                         </button>
+                                        <a
+                                            href={`https://www.google.com/maps/dir/?api=1&destination=${shop.latitude},${shop.longitude}`}
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            className="w-full flex items-center justify-center bg-blue-50 text-blue-600 text-sm font-bold py-2.5 rounded-lg hover:bg-blue-100 active:scale-95 transition-all border border-blue-200 relative z-50 pointer-events-auto cursor-pointer"
+                                            onClick={(e) => e.stopPropagation()}
+                                        >
+                                            Get Directions
+                                        </a>
                                     </div>
                                 </div>
                             </Popup>
