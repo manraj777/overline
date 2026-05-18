@@ -462,6 +462,7 @@ export default function ShopDetailPage({ initialShop, slug: ssrSlug }: ShopPageP
             {/* ── Main Content ── */}
             <div className="lg:col-span-7 xl:col-span-8">
               {/* Hero Header */}
+              {step === 'services' && (
                 <div className="mb-10">
                   <h1 className="text-4xl md:text-5xl font-black tracking-tight text-on-surface mb-6 leading-tight">
                     {shop.name}
