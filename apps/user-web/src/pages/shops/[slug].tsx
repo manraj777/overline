@@ -94,7 +94,21 @@ export default function ShopDetailPage({ initialShop, slug: ssrSlug }: ShopPageP
 
   const todayStr = React.useMemo(() => format(new Date(), 'EEEE').toUpperCase(), []);
   const todayHours = React.useMemo(() => shop?.workingHours?.find((h: any) => h.dayOfWeek === todayStr), [shop, todayStr]);
-  const isShopClosedToday = !shop || !todayHours || todayHours.isClosed;
+
+  const isShopClosedToday = React.useMemo(() => {
+    if (!shop || !todayHours || todayHours.isClosed) return true;
+    
+    // Check if current time is within operating hours
+    const now = new Date();
+    const currentMinutes = now.getHours() * 60 + now.getMinutes();
+    
+    const [openH, openM] = (todayHours.openTime || '00:00').split(':').map(Number);
+    const [closeH, closeM] = (todayHours.closeTime || '23:59').split(':').map(Number);
+    const openMinutes = openH * 60 + openM;
+    const closeMinutes = closeH * 60 + closeM;
+    
+    return currentMinutes < openMinutes || currentMinutes >= closeMinutes;
+  }, [shop, todayHours]);
 
 
   const eligibleStaff = React.useMemo(() => {
@@ -493,7 +507,14 @@ export default function ShopDetailPage({ initialShop, slug: ssrSlug }: ShopPageP
 
                     <div className="absolute bottom-5 left-5 right-5 flex justify-between items-end">
                       <div className="flex gap-2">
-                        <span className={`px-3 py-1 rounded-lg text-white text-[10px] font-black uppercase tracking-widest ${isShopClosedToday ? 'bg-error' : 'bg-tertiary'}`}>{isShopClosedToday ? 'Closed' : 'Open'}</span>
+                        <span className={`px-3 py-1 rounded-lg text-white text-[10px] font-black uppercase tracking-widest ${isShopClosedToday ? 'bg-error' : 'bg-tertiary'}`}>
+                          {isShopClosedToday ? 'Closed' : 'Open'}
+                          {todayHours && !todayHours.isClosed && (
+                            <span className="ml-1 normal-case tracking-normal font-bold">
+                              {todayHours.openTime}–{todayHours.closeTime}
+                            </span>
+                          )}
+                        </span>
                         {ratingStats && (
                           <span className="flex items-center gap-1 px-3 py-1 rounded-lg bg-white/20 backdrop-blur-md text-white text-xs font-bold">
                             <Star className="w-3.5 h-3.5 text-amber-400 fill-amber-400" />
@@ -637,7 +658,7 @@ export default function ShopDetailPage({ initialShop, slug: ssrSlug }: ShopPageP
                             {isShopClosedToday ? (
                               <span className="text-error">Closed Today</span>
                             ) : (
-                              <span>Open • Closes at {todayHours.closeTime}</span>
+                              <span>Open • Closes at {todayHours?.closeTime}</span>
                             )}
                           </p>
                        </div>
