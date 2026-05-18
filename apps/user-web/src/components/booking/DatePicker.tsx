@@ -44,17 +44,17 @@ const DatePicker: React.FC<DatePickerProps> = ({
         <button
           onClick={handlePrev}
           disabled={startIndex === 0}
-          className="p-2 rounded-full hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="p-2 rounded-full hover:bg-surface-container-high disabled:opacity-50 disabled:cursor-not-allowed text-on-surface"
         >
           <ChevronLeft className="w-5 h-5" />
         </button>
-        <span className="font-medium text-gray-900">
+        <span className="font-medium text-on-surface">
           {format(visibleDates[0], 'MMMM yyyy')}
         </span>
         <button
           onClick={handleNext}
           disabled={startIndex >= dates.length - visibleDays}
-          className="p-2 rounded-full hover:bg-gray-100 disabled:opacity-50 disabled:cursor-not-allowed"
+          className="p-2 rounded-full hover:bg-surface-container-high disabled:opacity-50 disabled:cursor-not-allowed text-on-surface"
         >
           <ChevronRight className="w-5 h-5" />
         </button>
@@ -72,14 +72,14 @@ const DatePicker: React.FC<DatePickerProps> = ({
               className={cn(
                 'flex flex-col items-center py-3 rounded-xl transition-all',
                 isSelected
-                  ? 'bg-primary-500 text-white'
-                  : 'hover:bg-gray-100 text-gray-900'
+                  ? 'bg-primary text-on-primary'
+                  : 'hover:bg-surface-container-high text-on-surface'
               )}
             >
               <span
                 className={cn(
                   'text-xs mb-1',
-                  isSelected ? 'text-primary-100' : 'text-gray-500'
+                  isSelected ? 'text-on-primary/80' : 'text-on-surface-variant'
                 )}
               >
                 {formatDayLabel(date)}

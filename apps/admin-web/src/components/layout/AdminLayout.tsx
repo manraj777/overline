@@ -311,7 +311,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
         className={cn(
           'fixed inset-y-0 left-0 z-50 transform transition-all duration-300 lg:translate-x-0',
           sidebarCollapsed ? 'w-[84px]' : 'w-[260px]',
-          'bg-inverse-surface',
+          'bg-sidebar',
           sidebarOpen ? 'translate-x-0' : '-translate-x-full'
         )}
       >
