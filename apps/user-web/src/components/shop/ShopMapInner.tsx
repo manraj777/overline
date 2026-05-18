@@ -176,7 +176,7 @@ export const ShopMapInner: React.FC<ShopMapProps> = ({
                                         <button
                                             onMouseDown={(e) => { e.stopPropagation(); router.push(`/shops/${shop.slug}`); }}
                                             onTouchStart={(e) => { e.stopPropagation(); router.push(`/shops/${shop.slug}`); }}
-                                            className="w-full bg-red-600 text-white text-sm font-bold py-2.5 rounded-lg hover:bg-red-700 active:scale-95 transition-all shadow-md relative z-50 pointer-events-auto cursor-pointer"
+                                            className="w-full bg-primary text-white text-sm font-bold py-2.5 rounded-lg hover:bg-primary-700 active:scale-95 transition-all shadow-md relative z-50 pointer-events-auto cursor-pointer"
                                         >
                                             View Details
                                         </button>

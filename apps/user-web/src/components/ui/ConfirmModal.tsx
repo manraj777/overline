@@ -39,7 +39,7 @@ export function ConfirmModal({
           </button>
           <button
             type="button"
-            className="rounded-full bg-red-500 px-4 py-1.5 text-xs font-semibold"
+            className="rounded-full bg-primary px-4 py-1.5 text-xs font-semibold"
             onClick={onConfirm}
             disabled={isConfirming}
           >

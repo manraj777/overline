@@ -7,101 +7,109 @@
 /* ============================================================ */
 
 :root {
-  /* Primary Palette (Crimson Red) */
-  --ovl-primary: #d32f2f;
-  --ovl-primary-container: #b71c1c;
-  --ovl-primary-fixed: #ffcdd2;
+  /* Primary Palette (Deep Rose — premium, cool, eye-friendly) */
+  --ovl-primary: #BE185D;
+  --ovl-primary-container: #9D174D;
+  --ovl-primary-fixed: #FBD5E5;
   --ovl-on-primary: #ffffff;
   --ovl-on-primary-container: #ffffff;
+  --primary-rgb: 190, 24, 93;
 
-  /* Secondary Palette (Charcoal) */
-  --ovl-secondary: #27272a;
-  --ovl-secondary-container: #18181b;
+  /* Secondary Palette (Charcoal / Ink) */
+  --ovl-secondary: #1F2937;
+  --ovl-secondary-container: #111827;
 
-  /* Tertiary Palette */
-  --ovl-tertiary: #b91c1c;
-  --ovl-tertiary-container: #991b1b;
+  /* Tertiary Palette (Emerald — for success/open states) */
+  --ovl-tertiary: #059669;
+  --ovl-tertiary-container: #047857;
 
-  /* Surfaces (Light Mode) */
+  /* Surfaces (Light Mode — cool white) */
   --ovl-surface: #ffffff;
-  --ovl-surface-container: #f4f4f5;
-  --ovl-surface-container-low: #fafafa;
-  --ovl-surface-container-high: #e4e4e7;
-  --ovl-surface-container-highest: #d4d4d8;
+  --ovl-surface-container: #F9FAFB;
+  --ovl-surface-container-low: #ffffff;
+  --ovl-surface-container-high: #F3F4F6;
+  --ovl-surface-container-highest: #E5E7EB;
   --ovl-surface-container-lowest: #ffffff;
 
-  /* Text (Dark on Light) — bumped ~20% darker for better legibility. */
-  --ovl-on-surface: #09090b;          /* zinc-950 */
-  --ovl-on-surface-variant: #3f3f46;  /* zinc-700 (was zinc-600) */
-  --ovl-outline: #71717a;             /* zinc-500 (was zinc-400) */
-  --ovl-outline-variant: #d4d4d8;     /* zinc-300 (was zinc-200) */
+  /* Text (Dark on Light) */
+  --ovl-on-surface: #111827;
+  --ovl-on-surface-variant: #374151;
+  --ovl-outline: #6B7280;
+  --ovl-outline-variant: #D1D5DB;
 
-  /* Inverse Surface (dark footer/nav blocks against light bg). */
-  --ovl-inverse-surface: #09090b;
-  --ovl-inverse-on-surface: #f4f4f5;
+  /* Inverse Surface */
+  --ovl-inverse-surface: #111827;
+  --ovl-inverse-on-surface: #F9FAFB;
 
-  /* Background Glow */
-  --ovl-bg: #f8f9fa;
+  /* Error */
+  --ovl-error: #DC2626;
+
+  /* Background */
+  --ovl-bg: #F9FAFB;
   --ovl-bg-gradient: radial-gradient(
       ellipse 1200px 600px at 10% -10%,
-      rgba(211, 47, 47, 0.05),
+      rgba(190, 24, 93, 0.04),
       transparent 60%
     ),
     radial-gradient(
       ellipse 900px 500px at 100% 5%,
-      rgba(0, 0, 0, 0.02),
+      rgba(0, 0, 0, 0.015),
       transparent 55%
     ),
-    #f8f9fa;
+    #F9FAFB;
 }
 
 .dark {
-  /* Primary Palette (Crimson Red) */
-  --ovl-primary: #d32f2f;
-  --ovl-primary-container: #b71c1c;
-  --ovl-primary-fixed: #ffcdd2;
-  --ovl-on-primary: #ffffff;
+  /* Primary Palette (Deep Rose) */
+  --ovl-primary: #F472B6;
+  --ovl-primary-container: #BE185D;
+  --ovl-primary-fixed: #FBD5E5;
+  --ovl-on-primary: #111827;
   --ovl-on-primary-container: #ffffff;
+  --primary-rgb: 244, 114, 182;
 
-  /* Secondary Palette (Charcoal) */
-  --ovl-secondary: #27272a;
-  --ovl-secondary-container: #18181b;
+  /* Secondary Palette (Charcoal / Ink) */
+  --ovl-secondary: #E5E7EB;
+  --ovl-secondary-container: #1F2937;
 
-  /* Tertiary Palette */
-  --ovl-tertiary: #b91c1c;
-  --ovl-tertiary-container: #991b1b;
+  /* Tertiary Palette (Emerald) */
+  --ovl-tertiary: #34D399;
+  --ovl-tertiary-container: #059669;
 
-  /* Surfaces (Dark Mode Zinc) */
-  --ovl-surface: #09090b;
-  --ovl-surface-container: #18181b;
-  --ovl-surface-container-low: #000000;
-  --ovl-surface-container-high: #27272a;
-  --ovl-surface-container-highest: #3f3f46;
-  --ovl-surface-container-lowest: #09090b;
+  /* Surfaces (Dark Mode — deep ink) */
+  --ovl-surface: #0A0A0A;
+  --ovl-surface-container: #111827;
+  --ovl-surface-container-low: #050505;
+  --ovl-surface-container-high: #1F2937;
+  --ovl-surface-container-highest: #374151;
+  --ovl-surface-container-lowest: #0A0A0A;
 
   /* Text (Light on Dark) */
-  --ovl-on-surface: #f4f4f5;
-  --ovl-on-surface-variant: #a1a1aa;
-  --ovl-outline: #52525b;
-  --ovl-outline-variant: #3f3f46;
+  --ovl-on-surface: #F9FAFB;
+  --ovl-on-surface-variant: #9CA3AF;
+  --ovl-outline: #4B5563;
+  --ovl-outline-variant: #374151;
 
-  /* Inverse Surface (light block against dark bg). */
-  --ovl-inverse-surface: #f4f4f5;
-  --ovl-inverse-on-surface: #09090b;
+  /* Inverse Surface */
+  --ovl-inverse-surface: #F9FAFB;
+  --ovl-inverse-on-surface: #111827;
 
-  /* Background Glow */
-  --ovl-bg: #000000;
+  /* Error */
+  --ovl-error: #F87171;
+
+  /* Background */
+  --ovl-bg: #050505;
   --ovl-bg-gradient: radial-gradient(
       ellipse 1200px 600px at 10% -10%,
-      rgba(211, 47, 47, 0.15),
+      rgba(244, 114, 182, 0.08),
       transparent 60%
     ),
     radial-gradient(
       ellipse 900px 500px at 100% 5%,
-      rgba(255, 255, 255, 0.05),
+      rgba(255, 255, 255, 0.03),
       transparent 55%
     ),
-    #000000;
+    #050505;
 }
 
 /* ============================================================ */
