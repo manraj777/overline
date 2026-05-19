@@ -355,6 +355,19 @@ export class AuthController {
     return this.authService.firebasePhoneLogin(dto.idToken, dto.requestedRole);
   }
 
+  @Post('firebase/link-phone')
+  @HttpCode(HttpStatus.OK)
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('JWT-auth')
+  @ApiOperation({ summary: 'Link Firebase phone to current logged-in user' })
+  @ApiResponse({ status: 200, description: 'Firebase phone linked successfully' })
+  async linkFirebasePhone(
+    @CurrentUser('id') userId: string,
+    @Body() dto: FirebasePhoneLoginDto,
+  ): Promise<TokenResponse> {
+    return this.authService.linkFirebasePhone(userId, dto.idToken);
+  }
+
   @Post('refresh')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Refresh access token' })

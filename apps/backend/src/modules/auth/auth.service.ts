@@ -790,6 +790,56 @@ export class AuthService implements OnModuleInit {
     return this.generateTokens(user);
   }
 
+  async linkFirebasePhone(userId: string, idToken: string): Promise<TokenResponse> {
+    const token = idToken?.trim();
+    if (!token) {
+      throw new BadRequestException('Firebase ID token is required');
+    }
+
+    let decodedToken: admin.auth.DecodedIdToken;
+    try {
+      const firebaseAuth = this.initializeFirebaseAuth();
+      decodedToken = await firebaseAuth.verifyIdToken(token, true);
+    } catch (error: any) {
+      const code = error?.code as string | undefined;
+      if (code === 'auth/id-token-expired') {
+        throw new UnauthorizedException('Firebase token expired. Please retry phone verification.');
+      }
+      if (code === 'auth/argument-error' || code === 'auth/invalid-id-token') {
+        throw new UnauthorizedException('Invalid Firebase token. Please retry phone verification.');
+      }
+      this.logger.error(`[linkFirebasePhone] Failed to verify Firebase token: ${error?.message}`);
+      throw new UnauthorizedException('Unable to verify Firebase token.');
+    }
+
+    const normalizedPhone = this.normalizePhone(decodedToken.phone_number || '');
+    if (!normalizedPhone) {
+      throw new BadRequestException('Firebase token does not include a phone number');
+    }
+
+    const updatedUser = await this.prisma.$transaction(async (tx) => {
+      const existingWithPhone = await tx.user.findUnique({
+        where: { phone: normalizedPhone },
+      });
+
+      if (existingWithPhone && existingWithPhone.id !== userId) {
+        throw new BadRequestException('This phone number is already registered to another account.');
+      }
+
+      return tx.user.update({
+        where: { id: userId },
+        data: {
+          phone: normalizedPhone,
+          isPhoneVerified: true,
+          phoneVerifiedAt: new Date(),
+          phoneVerificationChannel: 'FIREBASE',
+        },
+      });
+    });
+
+    return this.generateTokens(updatedUser);
+  }
+
   async signup(dto: SignupDto, requestContext?: RequestContext): Promise<TokenResponse> {
     // --- FRAUD DETECTION FOR SIGNUP ---
     // For signup, only check extreme patterns (rapid signups, known bad IPs)

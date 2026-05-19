@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import {
   View,
   Text,
@@ -9,40 +9,54 @@ import {
   ActivityIndicator,
   Dimensions,
   Image,
+  TextInput,
+  KeyboardAvoidingView,
+  Platform,
 } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useQuery } from '@tanstack/react-query';
 import { format } from 'date-fns';
-import { bookingsApi, paymentsApi, shopsApi } from '../../api/client';
+import { bookingsApi, shopsApi } from '../../api/client';
 import { RootStackParamList } from '../../types';
-import { Colors, FontWeights, Shadows, BorderRadius, Spacing, FontSizes } from '../../theme';
+import { Colors, Shadows } from '../../theme';
 import {
-  CreditCard,
   Store,
   Wallet,
   ChevronLeft,
-  ArrowRight,
   ShieldCheck,
   Info,
   Calendar,
   Clock,
-  User,
+  UserPlus,
   Ticket,
   ChevronRight,
-  Sparkles,
   Zap,
   MapPin,
-  Lock
+  Lock,
+  CheckCircle2,
+  X,
+  Tag,
+  AlertTriangle,
 } from 'lucide-react-native';
 import { useAuthStore } from '../../stores/authStore';
-import { Config } from '../../config';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-const { width } = Dimensions.get('window');
+const { width: _SCREEN_WIDTH } = Dimensions.get('window');
+// Valid coupon codes — kept in sync with web cart and backend calculatePrice logic.
+const VALID_COUPONS = ['OVERLINE10', 'OVERLINE20', 'WELCOME50'];
 
 type RouteProps = RouteProp<RootStackParamList, 'BookingReview'>;
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
+
+interface PriceBreakdown {
+  subtotal: number;
+  taxesAndCharges: number;
+  discount: number;
+  freeCashUsed: number;
+  finalAmount: number;
+  currency: string;
+}
 
 export default function BookingReviewScreen() {
   const navigation = useNavigation<NavigationProp>();
@@ -53,9 +67,27 @@ export default function BookingReviewScreen() {
   const [paymentMethod, setPaymentMethod] = useState<'ONLINE' | 'WALLET' | 'PAY_AT_SHOP'>('PAY_AT_SHOP');
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // ── New "web-cart parity" state ─────────────────────────────────────────
+  const [couponInput, setCouponInput] = useState('');
+  const [appliedCoupon, setAppliedCoupon] = useState<string | null>(null);
+  const [priceBreakdown, setPriceBreakdown] = useState<PriceBreakdown | null>(null);
+  const [isCalculatingPrice, setIsCalculatingPrice] = useState(false);
+  const [bookingForOther, setBookingForOther] = useState(false);
+  const [guestName, setGuestName] = useState('');
+  const [guestPhone, setGuestPhone] = useState('');
+  const [notes, setNotes] = useState('');
+  const [couponError, setCouponError] = useState<string | null>(null);
+
   const { data: shop, isLoading: loadingShop } = useQuery({
     queryKey: ['shop', shopId],
     queryFn: () => shopsApi.getBySlug(shopId).then(res => res.data),
+  });
+
+  // Pull my active bookings to detect overlap with the new slot.
+  const { data: myBookingsResp } = useQuery({
+    queryKey: ['my-bookings', 'all'],
+    queryFn: () => bookingsApi.getMy().then(res => res.data),
+    enabled: !!user,
   });
 
   const selectedServiceItems = useMemo(
@@ -63,23 +95,133 @@ export default function BookingReviewScreen() {
     [shop?.services, selectedServices],
   );
 
-  const itemsTotal = selectedServiceItems.reduce((sum: number, s: any) => sum + Number(s.price), 0);
-  const platformFee = 9.00;
-  const grandTotal = itemsTotal + platformFee;
+  const totalDurationMinutes = useMemo(
+    () => selectedServiceItems.reduce((sum: number, s: any) => sum + Number(s.durationMinutes || 0), 0),
+    [selectedServiceItems],
+  );
+
+  // ── Active-booking overlap detection (mirrors web cart) ────────────────
+  const hasActiveBookingOverlap = useMemo(() => {
+    const list = (myBookingsResp as any)?.data;
+    if (!Array.isArray(list) || !selectedDate || !selectedTime || totalDurationMinutes === 0) {
+      return false;
+    }
+    const newStart = new Date(`${selectedDate}T${selectedTime}:00`).getTime();
+    const newEnd = newStart + totalDurationMinutes * 60 * 1000;
+
+    return list.some((b: any) => {
+      const active = ['PENDING', 'PENDING_APPROVAL', 'CONFIRMED', 'WAITLISTED', 'IN_PROGRESS', 'IN_SERVICE'];
+      if (!active.includes(b.status)) return false;
+      const bStart = new Date(b.startTime).getTime();
+      const bEnd = new Date(b.endTime).getTime();
+      return newStart < bEnd && bStart < newEnd;
+    });
+  }, [myBookingsResp, selectedDate, selectedTime, totalDurationMinutes]);
+
+  // ── Fetch server-side price breakdown whenever inputs change ───────────
+  useEffect(() => {
+    if (!shopId || selectedServices.length === 0) {
+      setPriceBreakdown(null);
+      return;
+    }
+    let cancelled = false;
+    setIsCalculatingPrice(true);
+    bookingsApi
+      .calculatePrice({
+        shopId,
+        serviceIds: selectedServices,
+        offerCode: appliedCoupon || undefined,
+      })
+      .then(res => {
+        if (!cancelled) setPriceBreakdown(res.data);
+      })
+      .catch(err => {
+        if (!cancelled) {
+          // Non-fatal — fall back to client-side total.
+          console.warn('calculatePrice failed', err?.response?.data || err?.message);
+        }
+      })
+      .finally(() => {
+        if (!cancelled) setIsCalculatingPrice(false);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [shopId, selectedServices, appliedCoupon]);
+
+  // ── Derived totals (server values when available, client fallback) ─────
+  const itemsTotal = selectedServiceItems.reduce(
+    (sum: number, s: any) => sum + Number(s.price),
+    0,
+  );
+  const subtotal = priceBreakdown?.subtotal ?? itemsTotal;
+  const taxes = priceBreakdown?.taxesAndCharges ?? 0;
+  const discount = priceBreakdown?.discount ?? 0;
+  const freeCashUsed = priceBreakdown?.freeCashUsed ?? 0;
+  const grandTotal = priceBreakdown?.finalAmount ?? itemsTotal;
+
+  const handleApplyCoupon = () => {
+    const code = couponInput.trim().toUpperCase();
+    if (!code) return;
+    if (!VALID_COUPONS.includes(code)) {
+      setCouponError('Invalid coupon code');
+      return;
+    }
+    setAppliedCoupon(code);
+    setCouponError(null);
+  };
+
+  const handleRemoveCoupon = () => {
+    setAppliedCoupon(null);
+    setCouponInput('');
+    setCouponError(null);
+  };
 
   const handleConfirm = async () => {
     if (!user?.isPhoneVerified) {
-      Alert.alert('Verification Needed', 'Please complete phone verification to confirm this booking.');
+      Alert.alert(
+        'Verification Needed',
+        'Please complete phone verification to confirm this booking.',
+      );
+      return;
+    }
+
+    if (hasActiveBookingOverlap) {
+      Alert.alert(
+        'Active Booking Exists',
+        'You already have an active booking during this time window. Please pick a different time or cancel the existing one.',
+      );
+      return;
+    }
+
+    if (bookingForOther && !guestName.trim()) {
+      Alert.alert('Guest Name Required', 'Please enter the guest name when booking for someone else.');
       return;
     }
 
     try {
       setIsSubmitting(true);
       const startTime = `${selectedDate}T${selectedTime}:00`;
-      const created = await bookingsApi.create({ shopId, serviceIds: selectedServices, startTime });
+      const created = await bookingsApi.create({
+        shopId,
+        serviceIds: selectedServices,
+        startTime,
+        staffId: selectedStaffId,
+        offerCode: appliedCoupon || undefined,
+        notes: notes.trim() || undefined,
+        ...(bookingForOther && guestName.trim()
+          ? {
+              customerName: guestName.trim(),
+              customerPhone: guestPhone.trim() || undefined,
+            }
+          : {}),
+      });
       navigation.replace('BookingConfirmation', { bookingId: created.data.id });
     } catch (e: any) {
-      Alert.alert('Booking Error', e.response?.data?.message || 'The slot might have been taken just now.');
+      Alert.alert(
+        'Booking Error',
+        e.response?.data?.message || 'The slot might have been taken just now.',
+      );
     } finally {
       setIsSubmitting(false);
     }
@@ -163,19 +305,74 @@ export default function BookingReviewScreen() {
             ))}
           </View>
 
+          {/* Booking-for-someone-else toggle */}
+          <View style={styles.card}>
+            <TouchableOpacity
+              style={styles.toggleRow}
+              onPress={() => setBookingForOther(v => !v)}
+              activeOpacity={0.7}
+            >
+              <View
+                style={[
+                  styles.checkbox,
+                  bookingForOther && styles.checkboxActive,
+                ]}
+              >
+                {bookingForOther && <CheckCircle2 size={14} color="#FFF" />}
+              </View>
+              <View style={styles.toggleIconBubble}>
+                <UserPlus size={16} color={Colors.primary} />
+              </View>
+              <Text style={styles.toggleLabel}>Booking for someone else?</Text>
+            </TouchableOpacity>
+
+            {bookingForOther && (
+              <View style={styles.guestInputs}>
+                <TextInput
+                  value={guestName}
+                  onChangeText={setGuestName}
+                  placeholder="Guest name"
+                  placeholderTextColor={Colors.textTertiary}
+                  style={styles.textInput}
+                />
+                <TextInput
+                  value={guestPhone}
+                  onChangeText={setGuestPhone}
+                  placeholder="Guest phone (optional)"
+                  placeholderTextColor={Colors.textTertiary}
+                  keyboardType="phone-pad"
+                  style={styles.textInput}
+                />
+              </View>
+            )}
+
+            <Text style={[styles.fieldLabel, { marginTop: bookingForOther ? 12 : 16 }]}>
+              SPECIAL REQUESTS
+            </Text>
+            <TextInput
+              value={notes}
+              onChangeText={setNotes}
+              placeholder="Anything we should know before you arrive?"
+              placeholderTextColor={Colors.textTertiary}
+              multiline
+              numberOfLines={3}
+              style={[styles.textInput, styles.textArea]}
+            />
+          </View>
+
           {/* Payment Method Selector */}
           <View style={styles.card}>
             <Text style={styles.cardTitle}>Payment Method</Text>
             <View style={styles.methodList}>
-              <TouchableOpacity 
-                style={[styles.methodBtn, paymentMethod === 'PAY_AT_SHOP' && styles.methodActive]} 
+              <TouchableOpacity
+                style={[styles.methodBtn, paymentMethod === 'PAY_AT_SHOP' && styles.methodActive]}
                 onPress={() => setPaymentMethod('PAY_AT_SHOP')}
               >
                 <Store size={18} color={paymentMethod === 'PAY_AT_SHOP' ? Colors.primary : Colors.textTertiary} />
                 <Text style={[styles.methodText, paymentMethod === 'PAY_AT_SHOP' && styles.methodTextActive]}>Pay at Shop</Text>
               </TouchableOpacity>
-              <TouchableOpacity 
-                style={[styles.methodBtn, paymentMethod === 'WALLET' && styles.methodActive]} 
+              <TouchableOpacity
+                style={[styles.methodBtn, paymentMethod === 'WALLET' && styles.methodActive]}
                 onPress={() => setPaymentMethod('WALLET')}
               >
                 <Wallet size={18} color={paymentMethod === 'WALLET' ? Colors.primary : Colors.textTertiary} />
@@ -184,23 +381,95 @@ export default function BookingReviewScreen() {
             </View>
           </View>
 
+          {/* Coupon Code */}
+          <View style={styles.card}>
+            <Text style={styles.fieldLabel}>APPLY COUPON CODE</Text>
+            {!appliedCoupon ? (
+              <>
+                <View style={styles.couponRow}>
+                  <View style={styles.couponInputWrap}>
+                    <Ticket size={14} color={Colors.textTertiary} style={styles.couponIcon} />
+                    <TextInput
+                      value={couponInput}
+                      onChangeText={t => setCouponInput(t.toUpperCase())}
+                      placeholder="ENTER CODE"
+                      placeholderTextColor={Colors.textTertiary}
+                      autoCapitalize="characters"
+                      style={styles.couponInput}
+                    />
+                  </View>
+                  <TouchableOpacity onPress={handleApplyCoupon} style={styles.couponBtn}>
+                    <Text style={styles.couponBtnText}>Apply</Text>
+                  </TouchableOpacity>
+                </View>
+                {couponError && (
+                  <View style={styles.couponErrorBox}>
+                    <AlertTriangle size={12} color="#DC2626" />
+                    <Text style={styles.couponErrorText}>{couponError}</Text>
+                  </View>
+                )}
+              </>
+            ) : (
+              <View style={styles.couponAppliedBox}>
+                <CheckCircle2 size={14} color={Colors.primary} />
+                <Text style={styles.couponAppliedText}>Code {appliedCoupon} applied!</Text>
+                <TouchableOpacity onPress={handleRemoveCoupon} style={{ marginLeft: 'auto' }}>
+                  <X size={14} color={Colors.textTertiary} />
+                </TouchableOpacity>
+              </View>
+            )}
+          </View>
+
+          {/* Overlap warning */}
+          {hasActiveBookingOverlap && (
+            <View style={styles.warningCard}>
+              <AlertTriangle size={16} color="#DC2626" />
+              <Text style={styles.warningText}>
+                You already have an active booking during this time window.
+              </Text>
+            </View>
+          )}
+
           {/* Bill Breakout */}
           <View style={styles.billCard}>
             <View style={styles.billHeader}>
               <Text style={styles.billHeaderTitle}>Payment Summary</Text>
-              <Lock size={14} color="#94A3B8" />
+              {isCalculatingPrice ? (
+                <ActivityIndicator size="small" color={Colors.textTertiary} />
+              ) : (
+                <Lock size={14} color="#94A3B8" />
+              )}
             </View>
             <View style={styles.billRow}>
-              <Text style={styles.billLabel}>Item Total</Text>
-              <Text style={styles.billValue}>₹{itemsTotal}</Text>
+              <Text style={styles.billLabel}>Subtotal</Text>
+              <Text style={styles.billValue}>₹{subtotal}</Text>
             </View>
-            <View style={styles.billRow}>
-              <View style={styles.infoRow}>
-                <Text style={styles.billLabel}>Platform Convenience</Text>
-                <Info size={10} color="#94A3B8" style={{ marginLeft: 4 }} />
+            {taxes > 0 && (
+              <View style={styles.billRow}>
+                <View style={styles.infoRow}>
+                  <Text style={styles.billLabel}>Taxes & Charges</Text>
+                  <Info size={10} color="#94A3B8" style={{ marginLeft: 4 }} />
+                </View>
+                <Text style={styles.billValue}>₹{taxes}</Text>
               </View>
-              <Text style={styles.billValue}>₹{platformFee}</Text>
-            </View>
+            )}
+            {freeCashUsed > 0 && (
+              <View style={styles.billRow}>
+                <View style={styles.infoRow}>
+                  <Tag size={11} color={Colors.primary} style={{ marginRight: 4 }} />
+                  <Text style={[styles.billLabel, { color: Colors.primary, fontStyle: 'italic' }]}>
+                    Welcome Bonus
+                  </Text>
+                </View>
+                <Text style={[styles.billValue, { color: Colors.primary }]}>−₹{freeCashUsed}</Text>
+              </View>
+            )}
+            {discount > 0 && (
+              <View style={styles.billRow}>
+                <Text style={[styles.billLabel, { color: '#10B981' }]}>Coupon Discount</Text>
+                <Text style={[styles.billValue, { color: '#10B981' }]}>−₹{discount}</Text>
+              </View>
+            )}
             <View style={styles.thickDivider} />
             <View style={styles.billRow}>
               <Text style={styles.grandLabel}>Amount Payable</Text>
@@ -211,7 +480,7 @@ export default function BookingReviewScreen() {
           <View style={styles.trustFooter}>
             <View style={styles.trustBadge}>
               <Zap size={12} color="#F59E0B" fill="#F59E0B" />
-              <Text style={styles.trustText}>FASTEST BOOKING GURANTEED</Text>
+              <Text style={styles.trustText}>FASTEST BOOKING GUARANTEED</Text>
             </View>
           </View>
 
@@ -219,26 +488,37 @@ export default function BookingReviewScreen() {
         </ScrollView>
 
         {/* Floating Check-Out Bar */}
-        <View style={styles.floatingBar}>
-          <View style={styles.priceMeta}>
-            <Text style={styles.metaPrice}>₹{grandTotal}</Text>
-            <Text style={styles.metaSub}>INCL. GST</Text>
+        <KeyboardAvoidingView
+          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          style={styles.floatingWrap}
+          pointerEvents="box-none"
+        >
+          <View style={styles.floatingBar}>
+            <View style={styles.priceMeta}>
+              <Text style={styles.metaPrice}>₹{grandTotal}</Text>
+              <Text style={styles.metaSub}>INCL. GST</Text>
+            </View>
+            <TouchableOpacity
+              style={[
+                styles.payBtn,
+                (isSubmitting || hasActiveBookingOverlap) && { opacity: 0.5 },
+              ]}
+              onPress={handleConfirm}
+              disabled={isSubmitting || hasActiveBookingOverlap}
+            >
+              {isSubmitting ? (
+                <ActivityIndicator color="#FFF" />
+              ) : (
+                <>
+                  <Text style={styles.payBtnText}>
+                    {hasActiveBookingOverlap ? 'BOOKING EXISTS' : 'CONFIRM BOOKING'}
+                  </Text>
+                  <ChevronRight size={20} color="#FFF" strokeWidth={3} />
+                </>
+              )}
+            </TouchableOpacity>
           </View>
-          <TouchableOpacity 
-            style={[styles.payBtn, isSubmitting && { opacity: 0.7 }]}
-            onPress={handleConfirm}
-            disabled={isSubmitting}
-          >
-            {isSubmitting ? (
-              <ActivityIndicator color="#FFF" />
-            ) : (
-              <>
-                <Text style={styles.payBtnText}>CONFIRM BOOKING</Text>
-                <ChevronRight size={20} color="#FFF" strokeWidth={3} />
-              </>
-            )}
-          </TouchableOpacity>
-        </View>
+        </KeyboardAvoidingView>
 
       </SafeAreaView>
     </View>
@@ -569,5 +849,157 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     color: '#FFF',
     letterSpacing: 1,
+  },
+
+  // ── Web-cart-parity additions ────────────────────────────────────────
+  floatingWrap: {
+    position: 'absolute',
+    bottom: 0,
+    left: 0,
+    right: 0,
+    paddingBottom: 24,
+  },
+  toggleRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 12,
+  },
+  checkbox: {
+    width: 22,
+    height: 22,
+    borderRadius: 6,
+    borderWidth: 2,
+    borderColor: '#CBD5E1',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: '#FFF',
+  },
+  checkboxActive: {
+    backgroundColor: Colors.primary,
+    borderColor: Colors.primary,
+  },
+  toggleIconBubble: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    backgroundColor: '#EFF6FF',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  toggleLabel: {
+    fontSize: 14,
+    fontWeight: '800',
+    color: '#0F172A',
+    flex: 1,
+  },
+  guestInputs: {
+    marginTop: 16,
+    gap: 10,
+  },
+  fieldLabel: {
+    fontSize: 10,
+    fontWeight: '900',
+    color: '#94A3B8',
+    letterSpacing: 1,
+    marginBottom: 8,
+  },
+  textInput: {
+    backgroundColor: '#F8FAFC',
+    borderRadius: 12,
+    paddingHorizontal: 14,
+    paddingVertical: 12,
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#0F172A',
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
+  },
+  textArea: {
+    minHeight: 90,
+    paddingTop: 12,
+    textAlignVertical: 'top',
+  },
+  couponRow: {
+    flexDirection: 'row',
+    gap: 8,
+  },
+  couponInputWrap: {
+    flex: 1,
+    position: 'relative',
+    justifyContent: 'center',
+  },
+  couponIcon: {
+    position: 'absolute',
+    left: 12,
+    zIndex: 1,
+  },
+  couponInput: {
+    backgroundColor: '#F8FAFC',
+    borderRadius: 12,
+    paddingLeft: 34,
+    paddingRight: 12,
+    paddingVertical: 12,
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#0F172A',
+    borderWidth: 1,
+    borderColor: '#F1F5F9',
+    letterSpacing: 0.5,
+  },
+  couponBtn: {
+    backgroundColor: Colors.primary,
+    paddingHorizontal: 18,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  couponBtnText: {
+    fontSize: 12,
+    fontWeight: '900',
+    color: '#FFF',
+    letterSpacing: 0.5,
+  },
+  couponErrorBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginTop: 8,
+  },
+  couponErrorText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#DC2626',
+  },
+  couponAppliedBox: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    backgroundColor: 'rgba(70, 72, 212, 0.06)',
+    borderWidth: 1,
+    borderColor: 'rgba(70, 72, 212, 0.2)',
+    borderRadius: 12,
+    padding: 12,
+  },
+  couponAppliedText: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: Colors.primary,
+  },
+  warningCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    backgroundColor: '#FEE2E2',
+    borderWidth: 1,
+    borderColor: '#FCA5A5',
+    borderRadius: 14,
+    padding: 14,
+    marginBottom: 16,
+  },
+  warningText: {
+    flex: 1,
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#991B1B',
   },
 });

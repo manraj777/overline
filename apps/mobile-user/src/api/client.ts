@@ -118,6 +118,8 @@ export const authApi = {
     api.post('/auth/refresh', { refreshToken }),
   changePassword: (data: { currentPassword: string; newPassword: string }) =>
     api.post('/auth/change-password', data),
+  resetPassword: (data: { identifier: string; otp: string; newPassword: string }) =>
+    api.post('/auth/reset-password', data),
 };
 
 // Shops API
@@ -169,8 +171,17 @@ export const queueApi = {
 
 // Bookings API
 export const bookingsApi = {
-  create: (data: { shopId: string; serviceIds: string[]; startTime: string }) =>
-    api.post('/bookings', data),
+  create: (data: {
+    shopId: string;
+    serviceIds: string[];
+    startTime: string;
+    staffId?: string;
+    customerName?: string;
+    customerPhone?: string;
+    customerEmail?: string;
+    notes?: string;
+    offerCode?: string;
+  }) => api.post('/bookings', data),
   createGuest: (data: {
     shopId: string;
     serviceIds: string[];
@@ -179,6 +190,13 @@ export const bookingsApi = {
     customerPhone: string;
     customerEmail?: string;
   }) => api.post('/bookings/guest', data),
+  // Server-side price breakdown — single source of truth.
+  // Returns: { subtotal, taxesAndCharges, discount, freeCashUsed, finalAmount, currency }
+  calculatePrice: (data: {
+    shopId: string;
+    serviceIds: string[];
+    offerCode?: string;
+  }) => api.post('/bookings/calculate-price', data),
   getMy: (params?: { status?: string; page?: number; limit?: number }) =>
     api.get('/bookings/my', { params }),
   getById: (id: string) => api.get(`/bookings/${id}`),

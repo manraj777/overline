@@ -4,7 +4,13 @@ import { useRouter } from 'next/router';
 import { useForm } from 'react-hook-form';
 import { Eye, EyeOff } from 'lucide-react';
 import { Button, Alert } from '@/components/ui';
-import { useLogin, useSendOtp, useVerifyOtp } from '@/hooks';
+import { useLogin, useSendOtp, useVerifyOtp, useFirebasePhoneLogin } from '@/hooks';
+import {
+  signInWithPhoneFirebase,
+  confirmPhoneOtp,
+  getFreshFirebaseIdToken,
+} from '@/lib/firebase';
+import type { ConfirmationResult } from 'firebase/auth';
 import { useAuthStore } from '@/stores/auth';
 import api from '@/lib/api';
 
@@ -23,6 +29,7 @@ export default function LoginPage() {
   const login = useLogin();
   const sendOtp = useSendOtp();
   const verifyOtp = useVerifyOtp();
+  const firebasePhoneLogin = useFirebasePhoneLogin();
 
   const [showPassword, setShowPassword] = React.useState(false);
   const [localError, setLocalError] = React.useState<string | null>(null);
@@ -34,6 +41,8 @@ export default function LoginPage() {
   const [otpSent, setOtpSent] = React.useState(false);
   const [resendCountdown, setResendCountdown] = React.useState(0);
   const [isSendingOtp, setIsSendingOtp] = React.useState(false);
+  const [sendMethod, setSendMethod] = React.useState<'SMS' | 'WHATSAPP' | null>(null);
+  const [firebaseConfirmation, setFirebaseConfirmation] = React.useState<ConfirmationResult | null>(null);
 
   const otpInputRefs = React.useRef<Array<HTMLInputElement | null>>([]);
 
@@ -168,11 +177,17 @@ export default function LoginPage() {
     return () => clearInterval(timer);
   }, [resendCountdown]);
 
-  const handleSendOtp = async () => {
+  const handleSendOtp = async (method: 'SMS' | 'WHATSAPP' = 'SMS') => {
     setLocalError(null);
     setIsSendingOtp(true);
     try {
-      await sendOtp.mutateAsync({ phone, purpose: 'LOGIN' });
+      setSendMethod(method);
+      if (method === 'SMS') {
+        const result = await signInWithPhoneFirebase(phone);
+        setFirebaseConfirmation(result);
+      } else {
+        await sendOtp.mutateAsync({ phone, purpose: 'LOGIN' });
+      }
       setOtpSent(true);
       setResendCountdown(60);
       setTimeout(() => otpInputRefs.current[0]?.focus(), 0);
@@ -209,7 +224,13 @@ export default function LoginPage() {
     }
 
     try {
-      await verifyOtp.mutateAsync({ phone, otp, purpose: 'LOGIN' });
+      if (sendMethod === 'SMS' && firebaseConfirmation) {
+        const userCredential = await confirmPhoneOtp(firebaseConfirmation, otp);
+        const idToken = await getFreshFirebaseIdToken(userCredential);
+        await firebasePhoneLogin.mutateAsync({ idToken });
+      } else {
+        await verifyOtp.mutateAsync({ phone, otp, purpose: 'LOGIN' });
+      }
       router.push((redirect as string) || '/');
     } catch (err: any) {
       setLocalError(err?.response?.data?.message || err?.message || 'OTP verification failed');
@@ -416,15 +437,30 @@ export default function LoginPage() {
                   </div>
 
                   {!otpSent ? (
-                    <Button
-                      type="button"
-                      onClick={handleSendOtp}
-                      isLoading={isSendingOtp}
-                      disabled={!phone}
-                      className="w-full h-14 bg-gradient-to-br from-primary to-primary-container text-white font-bold rounded-xl shadow-button hover:shadow-button-hover active:scale-[0.97] transition-all disabled:opacity-50"
-                    >
-                      Send OTP
-                    </Button>
+                    <div className="flex flex-col gap-3">
+                      <Button
+                        type="button"
+                        onClick={() => handleSendOtp('SMS')}
+                        isLoading={isSendingOtp && sendMethod === 'SMS'}
+                        disabled={!phone || isSendingOtp}
+                        className="w-full h-14 bg-gradient-to-br from-primary to-primary-container text-white font-bold rounded-xl shadow-button hover:shadow-button-hover active:scale-[0.97] transition-all disabled:opacity-50"
+                      >
+                        Send OTP via SMS
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="outline"
+                        onClick={() => handleSendOtp('WHATSAPP')}
+                        isLoading={isSendingOtp && sendMethod === 'WHATSAPP'}
+                        disabled={!phone || isSendingOtp}
+                        className="w-full h-14 flex items-center justify-center gap-2 rounded-xl transition-all"
+                      >
+                        <svg className="w-5 h-5 text-[#25D366]" viewBox="0 0 24 24" fill="currentColor">
+                          <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51a12.8 12.8 0 0 0-.57-.01c-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 0 1-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 0 1-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 0 1 2.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0 0 12.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 0 0 5.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 0 0-3.48-8.413Z" />
+                        </svg>
+                        Send OTP via WhatsApp
+                      </Button>
+                    </div>
                   ) : (
                     <>
                       <div className="grid grid-cols-6 gap-3">
@@ -463,7 +499,7 @@ export default function LoginPage() {
                         ) : (
                           <button
                             type="button"
-                            onClick={handleSendOtp}
+                            onClick={() => handleSendOtp(sendMethod || 'SMS')}
                             className="font-bold text-primary hover:underline underline-offset-4"
                           >
                             Resend OTP

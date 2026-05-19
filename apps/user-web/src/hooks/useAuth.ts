@@ -197,6 +197,23 @@ export function useFirebasePhoneLogin() {
   });
 }
 
+export function useFirebasePhoneLink() {
+  const queryClient = useQueryClient();
+  const { login } = useAuthStore();
+
+  return useMutation<AuthResponse, Error, FirebasePhoneLoginPayload>({
+    mutationFn: async ({ idToken }) => {
+      const { data } = await api.post('/auth/firebase/link-phone', { idToken });
+      return data;
+    },
+    onSuccess: (data) => {
+      login(data.user, data.accessToken, data.refreshToken);
+      queryClient.setQueryData(['user', 'me'], data.user);
+      void persistSession(data.accessToken, data.refreshToken);
+    },
+  });
+}
+
 export function useResetPassword() {
   return useMutation<{ message: string }, Error, any>({
     mutationFn: async (payload) => {
