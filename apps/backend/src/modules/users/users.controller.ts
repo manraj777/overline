@@ -1,4 +1,4 @@
-import { Controller, Get, Patch, Post, Param, Body, Query, UseGuards, BadRequestException } from '@nestjs/common';
+import { Controller, Get, Patch, Post, Param, Body, Query, UseGuards, BadRequestException, Ip } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth } from '@nestjs/swagger';
 import { UsersService } from './users.service';
 import { UpdateProfileDto } from './dto/update-profile.dto';
@@ -49,7 +49,7 @@ export class UsersController {
 
   @Post('me/otp/send')
   @ApiOperation({ summary: 'Send phone verification OTP to current user' })
-  async sendOtp(@CurrentUser('id') userId: string) {
+  async sendOtp(@CurrentUser('id') userId: string, @Ip() ip: string) {
     const user = await this.usersService.findById(userId);
     if (!user?.phone) {
       throw new BadRequestException('No phone number associated with this account. Please add a phone number first.');
@@ -57,6 +57,7 @@ export class UsersController {
     return this.otpService.sendPhoneVerificationOtp({
       userId,
       phone: user.phone,
+      ip,
     });
   }
 

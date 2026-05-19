@@ -19,9 +19,33 @@ export class WhatsappOtpService {
     return Math.floor(100000 + Math.random() * 900000).toString();
   }
 
-  async sendOtp(phone: string) {
+  async sendOtp(phone: string, ip?: string) {
+    if (ip) {
+      const ipKey = `wa_otp:ip_rate:${ip}`;
+      const count = await this.redis.increment(ipKey, 3600);
+      if (count > 10) {
+        throw new BadRequestException('Too many OTP requests from this network. Try again later.');
+      }
+    }
+
+    const rateKey = `wa_otp:rate:${phone}`;
+    const rateCount = await this.redis.increment(rateKey, 3600);
+    if (rateCount > 6) {
+      throw new BadRequestException('Too many OTP requests. Try again in an hour.');
+    }
+
+    const cooldownKey = `wa_otp:cooldown:${phone}`;
+    const inCooldown = await this.redis.get(cooldownKey);
+    if (inCooldown) {
+      const remaining = await this.redis.ttl(cooldownKey);
+      throw new BadRequestException(`Please wait ${Math.max(remaining, 1)} seconds before requesting another OTP.`);
+    }
+
     const otp = this.generateOtp();
     const ttl = Number(process.env.WHATSAPP_OTP_TTL_SECONDS || 300);
+
+    // Set cooldown
+    await this.redis.set(cooldownKey, 'active', 60);
 
     await this.redis.set(
       this.otpKey(phone),

@@ -277,11 +277,20 @@ export class AuthService implements OnModuleInit {
 
   async sendPhoneOtp(
     phone: string,
+    ip?: string,
   ): Promise<{ message: string; expiresInSeconds: number; retryAfterSeconds?: number }> {
     try {
       const isRedisReady = await this.redis.ping();
       if (!isRedisReady || isRedisReady !== 'PONG') {
         throw new InternalServerErrorException('OTP service temporarily unavailable');
+      }
+
+      if (ip) {
+        const ipKey = `otp:ip_rate_auth:${ip}`;
+        const ipCount = await this.redis.increment(ipKey, 3600);
+        if (ipCount > 10) {
+          throw new BadRequestException('Too many OTP requests from this network. Try again later.');
+        }
       }
 
       const normalizedPhone = this.normalizePhone(phone);

@@ -1,4 +1,4 @@
-import { Controller, Post, Body, HttpCode, HttpStatus, Get, Query, Res } from '@nestjs/common';
+import { Controller, Post, Body, HttpCode, HttpStatus, Get, Query, Res, Ip } from '@nestjs/common';
 import { OtpService, OtpPurpose } from './otp.service';
 import { IsString, IsIn, IsNotEmpty, IsOptional, Matches } from 'class-validator';
 
@@ -110,13 +110,14 @@ export class OtpController {
 
   @Post('phone/send')
   @HttpCode(HttpStatus.OK)
-  async sendPhoneVerificationOtp(@Body() dto: SendPhoneVerificationOtpDto): Promise<any> {
+  async sendPhoneVerificationOtp(@Body() dto: SendPhoneVerificationOtpDto, @Ip() ip: string): Promise<any> {
     const normalizedPhone = this.otpService.normalizePhone(dto.phone);
     return this.otpService.sendPhoneVerificationOtp({
       userId: dto.userId,
       phone: normalizedPhone,
       channel: dto.channel,
       name: dto.name,
+      ip,
     });
   }
 
@@ -132,9 +133,9 @@ export class OtpController {
    */
   @Post('send')
   @HttpCode(HttpStatus.OK)
-  async sendOtp(@Body() dto: SendOtpDto): Promise<any> {
+  async sendOtp(@Body() dto: SendOtpDto, @Ip() ip: string): Promise<any> {
     const normalizedPhone = this.otpService.normalizePhone(dto.phone);
-    return this.otpService.sendOtp(normalizedPhone, dto.purpose);
+    return this.otpService.sendOtp(normalizedPhone, dto.purpose, ip);
   }
 
   /**

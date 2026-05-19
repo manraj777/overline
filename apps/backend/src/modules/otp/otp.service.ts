@@ -22,6 +22,7 @@ export const OTP_CONFIG = {
   MAX_ATTEMPTS: 3,
   RESEND_COOLDOWN_SECONDS: 60,
   RATE_LIMIT_HOURLY: 6,
+  IP_RATE_LIMIT_HOURLY: 10,
 };
 
 export type OtpPurpose =
@@ -75,6 +76,17 @@ export class OtpService {
       const ttl = await this.redis.ttl(rateLimitKey);
       throw new BadRequestException(
         `Too many OTP requests. Try again in ${Math.max(ttl, 1)} seconds.`,
+      );
+    }
+  }
+
+  private async enforceIpRateLimit(ip: string): Promise<void> {
+    const rateLimitKey = `otp:ip_rate:${ip}`;
+    const count = await this.redis.increment(rateLimitKey, 3600);
+    if (count > OTP_CONFIG.IP_RATE_LIMIT_HOURLY) {
+      const ttl = await this.redis.ttl(rateLimitKey);
+      throw new BadRequestException(
+        `Too many OTP requests from this network. Try again later.`,
       );
     }
   }
@@ -353,8 +365,9 @@ export class OtpService {
     phone: string;
     channel?: 'WHATSAPP' | 'SMS';
     name?: string;
+    ip?: string;
   }): Promise<{ message: string; channel: 'WHATSAPP' | 'SMS'; expiresAt: Date }> {
-    const { userId, phone } = params;
+    const { userId, phone, ip } = params;
     const normalizedPhone = this.normalizePhone(phone);
 
     const user = await this.prisma.user.findUnique({ where: { id: userId } });
@@ -368,6 +381,10 @@ export class OtpService {
         channel: 'WHATSAPP',
         expiresAt: new Date(),
       };
+    }
+
+    if (ip) {
+      await this.enforceIpRateLimit(ip);
     }
 
     await this.enforceRateLimit(`otp:rate:phone:${userId}:${normalizedPhone}`);
@@ -459,9 +476,14 @@ export class OtpService {
   async sendOtp(
     phone: string,
     purpose: OtpPurpose,
+    ip?: string,
   ): Promise<{ message: string; expiresAt: Date }> {
     if (!this.isValidIndianPhone(phone)) {
       throw new BadRequestException('Invalid phone number format. Use +91XXXXXXXXXX');
+    }
+
+    if (ip) {
+      await this.enforceIpRateLimit(ip);
     }
 
     const cooldownKey = `otp:cooldown:${phone}`;

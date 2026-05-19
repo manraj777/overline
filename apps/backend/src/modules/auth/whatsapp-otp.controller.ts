@@ -1,4 +1,4 @@
-import { Body, Controller, Post } from '@nestjs/common';
+import { Body, Controller, Post, Ip } from '@nestjs/common';
 import { WhatsappOtpService } from './whatsapp-otp.service';
 import { ApiTags, ApiOperation } from '@nestjs/swagger';
 import { AuthService } from './auth.service';
@@ -13,10 +13,10 @@ export class WhatsappOtpController {
 
   @ApiOperation({ summary: 'Send OTP via WhatsApp' })
   @Post('send-otp')
-  sendOtp(@Body('phone') phone: string) {
+  sendOtp(@Body('phone') phone: string, @Ip() ip: string) {
     if (!phone) throw new Error('Phone is required');
     const normalizedPhone = phone.startsWith('+') ? phone.slice(1) : phone;
-    return this.whatsappOtpService.sendOtp(normalizedPhone);
+    return this.whatsappOtpService.sendOtp(normalizedPhone, ip);
   }
 
   @ApiOperation({ summary: 'Verify WhatsApp OTP' })

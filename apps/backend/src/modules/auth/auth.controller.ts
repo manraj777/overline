@@ -10,6 +10,7 @@ import {
   Req,
   Res,
   Query,
+  Ip,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiBearerAuth } from '@nestjs/swagger';
 import { ConfigService } from '@nestjs/config';
@@ -295,8 +296,8 @@ export class AuthController {
   @Post('send-otp')
   @HttpCode(HttpStatus.OK)
   @ApiOperation({ summary: 'Send OTP to phone for login/signup' })
-  async sendOtp(@Body() dto: SendOtpDto) {
-    return this.authService.sendPhoneOtp(dto.phone);
+  async sendOtp(@Body() dto: SendOtpDto, @Ip() ip: string) {
+    return this.authService.sendPhoneOtp(dto.phone, ip);
   }
 
   @Post('staff-login')
