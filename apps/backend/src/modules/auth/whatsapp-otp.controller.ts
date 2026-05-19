@@ -21,10 +21,10 @@ export class WhatsappOtpController {
 
   @ApiOperation({ summary: 'Verify WhatsApp OTP' })
   @Post('verify-otp')
-  async verifyOtp(@Body() body: { phone: string; otp: string }) {
+  async verifyOtp(@Body() body: { phone: string; otp: string; name?: string }) {
     if (!body.phone || !body.otp) throw new Error('Phone and OTP are required');
     const normalizedPhone = body.phone.startsWith('+') ? body.phone.slice(1) : body.phone;
     await this.whatsappOtpService.verifyOtp(normalizedPhone, body.otp);
-    return this.authService.loginWithVerifiedPhone(normalizedPhone);
+    return this.authService.loginWithVerifiedPhone(normalizedPhone, undefined, body.name);
   }
 }

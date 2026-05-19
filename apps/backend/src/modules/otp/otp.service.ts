@@ -282,15 +282,13 @@ export class OtpService {
     otp: string,
     requestedRole?: string,
   ): Promise<EmailVerifyResult> {
-    // TODO: Remove hardcoded OTP bypass before production OTP go-live
-    const isBypassOtp = otp === '123456';
     const normalizedEmail = this.normalizeEmail(email);
     const record = await this.getLatestActiveOtp(normalizedEmail, 'EMAIL_LOGIN');
-    if (!record && !isBypassOtp) {
+    if (!record) {
       throw new BadRequestException('OTP expired or not found.');
     }
 
-    if (!isBypassOtp) {
+    {
       const otpHash = this.hashOtp(otp);
       if (record!.attempts >= OTP_CONFIG.MAX_ATTEMPTS) {
         throw new BadRequestException('Maximum OTP attempts exceeded.');
@@ -414,15 +412,13 @@ export class OtpService {
     phone: string,
     otp: string,
   ): Promise<TokenResponse> {
-    // TODO: Remove hardcoded OTP bypass before production OTP go-live
-    const isBypassOtp = otp === '123456';
     const normalizedPhone = this.normalizePhone(phone);
     const record = await this.getLatestActiveOtp(normalizedPhone, 'PHONE_VERIFY');
-    if (!record && !isBypassOtp) {
+    if (!record) {
       throw new BadRequestException('OTP expired or not found.');
     }
 
-    if (!isBypassOtp) {
+    {
       const otpHash = this.hashOtp(otp);
       if (record!.attempts >= OTP_CONFIG.MAX_ATTEMPTS) {
         throw new BadRequestException('Maximum OTP attempts exceeded.');
@@ -493,16 +489,14 @@ export class OtpService {
 
   /** Verify OTP */
   async verifyOtp(phone: string, otp: string, purpose: OtpPurpose): Promise<VerifyOtpResult> {
-    // TODO: Remove hardcoded OTP bypass before production OTP go-live
-    const isBypassOtp = otp === '123456';
 
     const verification = await this.getLatestActiveOtp(phone, purpose);
 
-    if (!verification && !isBypassOtp) {
+    if (!verification) {
       throw new BadRequestException('OTP expired or not found. Please request a new one.');
     }
 
-    if (verification && verification.attempts >= OTP_CONFIG.MAX_ATTEMPTS && !isBypassOtp) {
+    if (verification.attempts >= OTP_CONFIG.MAX_ATTEMPTS) {
       throw new BadRequestException(
         'Maximum verification attempts exceeded. Please request a new OTP.',
       );
@@ -515,7 +509,7 @@ export class OtpService {
       });
     }
 
-    if (!isBypassOtp && verification && this.hashOtp(otp) !== verification.otp) {
+    if (this.hashOtp(otp) !== verification.otp) {
       const remaining = OTP_CONFIG.MAX_ATTEMPTS - (verification?.attempts ?? 0) - 1;
       throw new BadRequestException(`Invalid OTP. ${remaining} attempts remaining.`);
     }
@@ -539,7 +533,7 @@ export class OtpService {
       });
     }
 
-    this.logger.log(`OTP verified for ${phone}, purpose: ${purpose}${isBypassOtp ? ' (bypass)' : ''}`);
+    this.logger.log(`OTP verified for ${phone}, purpose: ${purpose}`);
     return { verified: true, userId: user?.id };
   }
 

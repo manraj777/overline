@@ -35,7 +35,7 @@ export default function LoginPage() {
   const [localError, setLocalError] = React.useState<string | null>(null);
   const [isGoogleLoading, setIsGoogleLoading] = React.useState(false);
   const [isFacebookLoading, setIsFacebookLoading] = React.useState(false);
-  const [authMode, setAuthMode] = React.useState<'email' | 'phone'>('email');
+  const [authMode, setAuthMode] = React.useState<'phone' | 'emailOtp' | 'password'>('phone');
   const [phone, setPhone] = React.useState('');
   const [otpDigits, setOtpDigits] = React.useState(['', '', '', '', '', '']);
   const [otpSent, setOtpSent] = React.useState(false);
@@ -43,8 +43,16 @@ export default function LoginPage() {
   const [isSendingOtp, setIsSendingOtp] = React.useState(false);
   const [sendMethod, setSendMethod] = React.useState<'SMS' | 'WHATSAPP' | null>(null);
   const [firebaseConfirmation, setFirebaseConfirmation] = React.useState<ConfirmationResult | null>(null);
+  const [isNewUser, setIsNewUser] = React.useState(false);
+  const [userName, setUserName] = React.useState('');
+  const [emailForOtp, setEmailForOtp] = React.useState('');
+  const [emailOtpSent, setEmailOtpSent] = React.useState(false);
+  const [emailOtpDigits, setEmailOtpDigits] = React.useState(['', '', '', '', '', '']);
+  const [isSendingEmailOtp, setIsSendingEmailOtp] = React.useState(false);
+  const [isVerifyingEmailOtp, setIsVerifyingEmailOtp] = React.useState(false);
 
   const otpInputRefs = React.useRef<Array<HTMLInputElement | null>>([]);
+  const emailOtpInputRefs = React.useRef<Array<HTMLInputElement | null>>([]);
 
   React.useEffect(() => {
     const appId = process.env.NEXT_PUBLIC_FACEBOOK_APP_ID || '1078652399281729';
@@ -229,7 +237,11 @@ export default function LoginPage() {
         const idToken = await getFreshFirebaseIdToken(userCredential);
         await firebasePhoneLogin.mutateAsync({ idToken });
       } else {
-        const { data } = await api.post('/auth/whatsapp/verify-otp', { phone, otp });
+        const { data } = await api.post('/auth/whatsapp/verify-otp', {
+          phone,
+          otp,
+          ...(isNewUser && userName ? { name: userName } : {}),
+        });
         const { accessToken: jwtAccess, refreshToken: jwtRefresh, user } = data;
         useAuthStore.getState().login(user, jwtAccess, jwtRefresh);
         await fetch('/api/auth/session', {
@@ -240,7 +252,13 @@ export default function LoginPage() {
       }
       router.push((redirect as string) || '/');
     } catch (err: any) {
-      setLocalError(err?.response?.data?.message || err?.message || 'OTP verification failed');
+      const msg = err?.response?.data?.message || err?.message || 'OTP verification failed';
+      if (msg === 'NEW_USER_SIGNUP_REQUIRED') {
+        setIsNewUser(true);
+        setLocalError(null);
+        return;
+      }
+      setLocalError(msg);
     }
   };
 
@@ -313,32 +331,43 @@ export default function LoginPage() {
               )}
 
               {/* Auth Mode Toggle */}
-              <div className="mb-6 grid grid-cols-2 rounded-xl bg-surface-container-high p-1">
-                <button
-                  type="button"
-                  onClick={() => setAuthMode('email')}
-                  className={`rounded-lg px-3 py-2.5 text-sm font-bold transition-all ${
-                    authMode === 'email'
-                      ? 'bg-surface-container-lowest text-on-surface shadow-sm border border-outline-variant/40'
-                      : 'text-on-surface-variant hover:text-on-surface'
-                  }`}
-                >
-                  Email
-                </button>
+              <div className="mb-6 grid grid-cols-3 rounded-xl bg-surface-container-high p-1">
                 <button
                   type="button"
                   onClick={() => setAuthMode('phone')}
-                  className={`rounded-lg px-3 py-2.5 text-sm font-bold transition-all ${
+                  className={`rounded-lg px-2 py-2.5 text-sm font-bold transition-all ${
                     authMode === 'phone'
                       ? 'bg-surface-container-lowest text-on-surface shadow-sm border border-outline-variant/40'
                       : 'text-on-surface-variant hover:text-on-surface'
                   }`}
                 >
-                  Phone OTP
+                  Phone
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAuthMode('emailOtp')}
+                  className={`rounded-lg px-2 py-2.5 text-sm font-bold transition-all ${
+                    authMode === 'emailOtp'
+                      ? 'bg-surface-container-lowest text-on-surface shadow-sm border border-outline-variant/40'
+                      : 'text-on-surface-variant hover:text-on-surface'
+                  }`}
+                >
+                  Email OTP
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAuthMode('password')}
+                  className={`rounded-lg px-2 py-2.5 text-sm font-bold transition-all ${
+                    authMode === 'password'
+                      ? 'bg-surface-container-lowest text-on-surface shadow-sm border border-outline-variant/40'
+                      : 'text-on-surface-variant hover:text-on-surface'
+                  }`}
+                >
+                  Password
                 </button>
               </div>
 
-              {authMode === 'email' ? (
+              {authMode === 'password' ? (
                 <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
                   {/* Email Input */}
                   <div className="space-y-2">
@@ -491,13 +520,33 @@ export default function LoginPage() {
                         ))}
                       </div>
 
+                      {isNewUser && (
+                        <div className="space-y-2">
+                          <label htmlFor="userName" className="label-m3">Your Name</label>
+                          <input
+                            id="userName"
+                            type="text"
+                            autoComplete="name"
+                            placeholder="Enter your full name"
+                            value={userName}
+                            onChange={(e) => setUserName(e.target.value)}
+                            className="input-m3"
+                            autoFocus
+                          />
+                          <p className="text-xs text-on-surface-variant">
+                            Looks like you're new here! Please enter your name to create your account.
+                          </p>
+                        </div>
+                      )}
+
                       <Button
                         type="button"
                         onClick={handleVerifyOtp}
                         isLoading={verifyOtp.isPending}
-                        className="w-full h-14 bg-gradient-to-br from-primary to-primary-container text-white font-bold rounded-xl shadow-button hover:shadow-button-hover active:scale-[0.97] transition-all"
+                        disabled={isNewUser && userName.trim().length < 2}
+                        className="w-full h-14 bg-gradient-to-br from-primary to-primary-container text-white font-bold rounded-xl shadow-button hover:shadow-button-hover active:scale-[0.97] transition-all disabled:opacity-50"
                       >
-                        Verify OTP
+                        {isNewUser ? 'Create Account & Sign In' : 'Verify OTP'}
                       </Button>
 
                       <div className="text-center text-sm text-on-surface-variant">
@@ -516,7 +565,156 @@ export default function LoginPage() {
                     </>
                   )}
                 </div>
-              )}
+              ) : authMode === 'emailOtp' ? (
+                <div className="space-y-5">
+                  <div className="space-y-2">
+                    <div className="flex justify-between items-center mb-1">
+                      <label htmlFor="emailOtp" className="label-m3">Email Address</label>
+                      {emailOtpSent && (
+                        <button
+                          type="button"
+                          onClick={() => {
+                            setEmailOtpSent(false);
+                            setEmailOtpDigits(['', '', '', '', '', '']);
+                          }}
+                          className="text-xs font-semibold text-primary hover:underline"
+                        >
+                          Change
+                        </button>
+                      )}
+                    </div>
+                    <input
+                      id="emailOtp"
+                      type="email"
+                      autoComplete="email"
+                      placeholder="name@company.com"
+                      value={emailForOtp}
+                      onChange={(e) => setEmailForOtp(e.target.value)}
+                      className="input-m3"
+                      disabled={emailOtpSent}
+                    />
+                  </div>
+
+                  {!emailOtpSent ? (
+                    <Button
+                      type="button"
+                      onClick={async () => {
+                        if (!emailForOtp) return;
+                        setIsSendingEmailOtp(true);
+                        setLocalError(null);
+                        try {
+                          await api.post('/otp/email/send', { email: emailForOtp });
+                          setEmailOtpSent(true);
+                          setResendCountdown(30);
+                        } catch (err: any) {
+                          setLocalError(err?.response?.data?.message || 'Failed to send email OTP');
+                        } finally {
+                          setIsSendingEmailOtp(false);
+                        }
+                      }}
+                      isLoading={isSendingEmailOtp}
+                      disabled={!emailForOtp || isSendingEmailOtp}
+                      className="w-full h-14 bg-gradient-to-br from-primary to-primary-container text-white font-bold rounded-xl shadow-button hover:shadow-button-hover active:scale-[0.97] transition-all disabled:opacity-50"
+                    >
+                      Send OTP to Email
+                    </Button>
+                  ) : (
+                    <>
+                      <div className="grid grid-cols-6 gap-3">
+                        {emailOtpDigits.map((digit, index) => (
+                          <input
+                            key={index}
+                            id={`email-otp-digit-${index}`}
+                            ref={(el) => {
+                              emailOtpInputRefs.current[index] = el;
+                            }}
+                            type="text"
+                            inputMode="numeric"
+                            autoComplete="one-time-code"
+                            maxLength={1}
+                            value={digit}
+                            onChange={(e) => {
+                              const val = e.target.value.replace(/\D/g, '');
+                              const newDigits = [...emailOtpDigits];
+                              newDigits[index] = val;
+                              setEmailOtpDigits(newDigits);
+                              if (val && index < 5) {
+                                emailOtpInputRefs.current[index + 1]?.focus();
+                              }
+                            }}
+                            onKeyDown={(e) => {
+                              if (e.key === 'Backspace' && !emailOtpDigits[index] && index > 0) {
+                                emailOtpInputRefs.current[index - 1]?.focus();
+                              }
+                            }}
+                            className="h-14 rounded-xl bg-surface-container-low text-center text-lg font-bold text-on-surface border-none focus:ring-2 focus:ring-primary/30 transition-all"
+                          />
+                        ))}
+                      </div>
+
+                      <Button
+                        type="button"
+                        onClick={async () => {
+                          const otp = emailOtpDigits.join('');
+                          if (otp.length !== 6) {
+                            setLocalError('Please enter a valid 6-digit OTP');
+                            return;
+                          }
+                          setIsVerifyingEmailOtp(true);
+                          setLocalError(null);
+                          try {
+                            const { data } = await api.post('/otp/email/verify', { email: emailForOtp, otp });
+                            if (data.tokenResponse) {
+                              const { accessToken, refreshToken, user } = data.tokenResponse;
+                              useAuthStore.getState().login(user, accessToken, refreshToken);
+                              await fetch('/api/auth/session', {
+                                method: 'POST',
+                                headers: { 'Content-Type': 'application/json' },
+                                body: JSON.stringify({ accessToken, refreshToken }),
+                              });
+                              router.push((redirect as string) || '/');
+                            } else if (data.phoneVerificationRequired) {
+                              router.push('/auth/verify-phone');
+                            }
+                          } catch (err: any) {
+                            setLocalError(err?.response?.data?.message || 'OTP verification failed');
+                          } finally {
+                            setIsVerifyingEmailOtp(false);
+                          }
+                        }}
+                        isLoading={isVerifyingEmailOtp}
+                        className="w-full h-14 bg-gradient-to-br from-primary to-primary-container text-white font-bold rounded-xl shadow-button hover:shadow-button-hover active:scale-[0.97] transition-all"
+                      >
+                        Verify OTP
+                      </Button>
+
+                      <div className="text-center text-sm text-on-surface-variant">
+                        {resendCountdown > 0 ? (
+                          <span>Resend OTP in {resendCountdown}s</span>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={async () => {
+                              setIsSendingEmailOtp(true);
+                              try {
+                                await api.post('/otp/email/send', { email: emailForOtp });
+                                setResendCountdown(30);
+                              } catch (err: any) {
+                                setLocalError(err?.response?.data?.message || 'Failed to resend OTP');
+                              } finally {
+                                setIsSendingEmailOtp(false);
+                              }
+                            }}
+                            className="font-bold text-primary hover:underline underline-offset-4"
+                          >
+                            Resend OTP
+                          </button>
+                        )}
+                      </div>
+                    </>
+                  )}
+                </div>
+              ) : null}
 
               {/* Divider */}
               <div className="relative my-10">

@@ -446,8 +446,6 @@ export class AuthService implements OnModuleInit {
   }
 
   async verifyStaffLoginOtp(shopId: string, phone: string, otp: string): Promise<TokenResponse> {
-    // TODO: Remove hardcoded OTP bypass before production OTP go-live
-    const isBypassOtp = otp === '123456';
     const { normalizedPhone, staff } = await this.findActiveStaffForShopAndPhone(shopId, phone);
     if (!staff) {
       throw new ForbiddenException(
@@ -455,17 +453,13 @@ export class AuthService implements OnModuleInit {
       );
     }
 
-    if (!isBypassOtp) {
-      const storedOtp = await this.redis.get(`otp:staff:${shopId}:${normalizedPhone}`);
-      if (!storedOtp) {
-        throw new BadRequestException('OTP expired. Please request a new code.');
-      }
+    const storedOtp = await this.redis.get(`otp:staff:${shopId}:${normalizedPhone}`);
+    if (!storedOtp) {
+      throw new BadRequestException('OTP expired. Please request a new code.');
+    }
 
-      if (storedOtp !== otp) {
-        throw new BadRequestException('Invalid OTP');
-      }
-    } else {
-      this.logger.warn(`[verifyStaffLoginOtp] Bypass OTP used for staff ${normalizedPhone} in shop ${shopId}`);
+    if (storedOtp !== otp) {
+      throw new BadRequestException('Invalid OTP');
     }
 
     await this.redis.del(`otp:staff:${shopId}:${normalizedPhone}`);
@@ -592,7 +586,7 @@ export class AuthService implements OnModuleInit {
     return this.generateTokens(user);
   }
 
-  async loginWithVerifiedPhone(phone: string, requestedRole?: string): Promise<TokenResponse> {
+  async loginWithVerifiedPhone(phone: string, requestedRole?: string, name?: string): Promise<TokenResponse> {
     const normalizedPhone = this.normalizePhone(phone);
 
     const isRequestingAdminRole =
@@ -703,11 +697,16 @@ export class AuthService implements OnModuleInit {
         );
       }
 
+      // New USER registration — require a proper name
+      if (!name || name.trim().length < 2) {
+        throw new BadRequestException('NEW_USER_SIGNUP_REQUIRED');
+      }
+
       return tx.user.create({
         data: {
           phone: normalizedPhone,
           isPhoneVerified: true,
-          name: `User ${normalizedPhone.slice(-4)}`,
+          name: name.trim(),
           role: UserRole.USER,
           authProvider: 'phone',
           lastLoginAt: new Date(),
