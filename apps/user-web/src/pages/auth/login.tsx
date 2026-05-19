@@ -441,7 +441,7 @@ export default function LoginPage() {
                     </Button>
                   </div>
                 </form>
-              ) : (
+              ) : authMode === 'phone' ? (
                 <div className="space-y-5">
                   <div id="recaptcha-container" className="h-0 overflow-hidden" />
                   <div className="space-y-2">
