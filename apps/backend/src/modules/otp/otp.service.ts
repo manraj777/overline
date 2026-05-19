@@ -248,7 +248,7 @@ export class OtpService {
     const normalizedEmail = this.normalizeEmail(email);
     const user = await this.prisma.user.findUnique({ where: { email: normalizedEmail } });
     if (!user || !user.isActive) {
-      throw new UnauthorizedException('Account not found or deactivated.');
+      throw new BadRequestException('No account found with this email. Please sign up using Phone OTP first, then add your email in your profile.');
     }
 
     await this.enforceRateLimit(`otp:rate:email:${normalizedEmail}`);
