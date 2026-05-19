@@ -27,6 +27,7 @@ import { VerifyOtpDto } from './dto/verify-otp.dto';
 import { ResetPasswordDto } from './dto/reset-password.dto';
 import { FirebasePhoneLoginDto } from './dto/firebase-phone-login.dto';
 import { StaffLoginDto } from './dto/staff-login.dto';
+import { CurrentUser } from './decorators/current-user.decorator';
 import { JwtAuthGuard } from './guards/jwt-auth.guard';
 import { GoogleOAuthGuard } from './guards/google-oauth.guard';
 import { IsNotEmpty, IsString, Matches } from 'class-validator';

@@ -186,7 +186,7 @@ export default function LoginPage() {
         const result = await signInWithPhoneFirebase(phone);
         setFirebaseConfirmation(result);
       } else {
-        await sendOtp.mutateAsync({ phone, purpose: 'LOGIN' });
+        await api.post('/auth/whatsapp/send-otp', { phone });
       }
       setOtpSent(true);
       setResendCountdown(60);
@@ -229,7 +229,14 @@ export default function LoginPage() {
         const idToken = await getFreshFirebaseIdToken(userCredential);
         await firebasePhoneLogin.mutateAsync({ idToken });
       } else {
-        await verifyOtp.mutateAsync({ phone, otp, purpose: 'LOGIN' });
+        const { data } = await api.post('/auth/whatsapp/verify-otp', { phone, otp });
+        const { accessToken: jwtAccess, refreshToken: jwtRefresh, user } = data;
+        useAuthStore.getState().login(user, jwtAccess, jwtRefresh);
+        await fetch('/api/auth/session', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ accessToken: jwtAccess, refreshToken: jwtRefresh }),
+        });
       }
       router.push((redirect as string) || '/');
     } catch (err: any) {

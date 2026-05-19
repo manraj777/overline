@@ -16,6 +16,9 @@ import { FraudDetectionModule } from '../fraud-detection/fraud-detection.module'
 import { GoogleModule } from '../google/google.module';
 import { GoogleStrategy } from './strategies/google.strategy';
 import { OtpModule } from '../otp/otp.module';
+import { RedisModule } from '@/common/redis/redis.module';
+import { WhatsappOtpService } from './whatsapp-otp.service';
+import { WhatsappOtpController } from './whatsapp-otp.controller';
 
 /**
  * Resolve JWT secret — accepts both raw strings and Base64-encoded values.
@@ -64,13 +67,15 @@ export const resolveJwtSecret = (rawSecret?: string): string | Buffer => {
         },
       }),
     }),
+    RedisModule,
     FraudDetectionModule,
     GoogleModule,
     forwardRef(() => OtpModule),
   ],
-  controllers: [AuthController],
+  controllers: [AuthController, WhatsappOtpController],
   providers: [
     AuthService,
+    WhatsappOtpService,
     JwtStrategy,
     GoogleStrategy,
     JwtAuthGuard,
