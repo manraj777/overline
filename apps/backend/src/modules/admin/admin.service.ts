@@ -85,7 +85,7 @@ export class AdminService {
         email: dto.email,
         isActive: true,
         maxConcurrentBookings: 1,
-        autoAcceptBookings: true,
+        autoAcceptBookings: false,
       },
     });
 
@@ -1058,6 +1058,13 @@ export class AdminService {
         ...(updateData.latitude !== undefined && { latitude: updateData.latitude }),
         ...(updateData.longitude !== undefined && { longitude: updateData.longitude }),
         ...(updateData.isActive !== undefined && { isActive: updateData.isActive }),
+        ...(updateData.autoAcceptBookings !== undefined && { autoAcceptBookings: updateData.autoAcceptBookings }),
+        ...(updateData.allowCancellation !== undefined && { allowCancellation: updateData.allowCancellation }),
+        ...(updateData.freeCancellationMinutes !== undefined && { freeCancellationMinutes: updateData.freeCancellationMinutes }),
+        ...(updateData.allowReschedule !== undefined && { allowReschedule: updateData.allowReschedule }),
+        ...(updateData.freeRescheduleMinutes !== undefined && { freeRescheduleMinutes: updateData.freeRescheduleMinutes }),
+        ...(updateData.requireOwnerApproval !== undefined && { requireOwnerApproval: updateData.requireOwnerApproval }),
+        ...(updateData.maxConcurrentBookings !== undefined && { maxConcurrentBookings: updateData.maxConcurrentBookings }),
         ...(mergedSettings !== undefined ? { settings: mergedSettings } : {}),
       },
     });

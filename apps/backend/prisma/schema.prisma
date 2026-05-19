@@ -290,7 +290,7 @@ model Shop {
   maxConcurrentBookings Int @default(1) @map("max_concurrent_bookings")
 
   // Auto-accept bookings or require manual approval
-  autoAcceptBookings Boolean @default(true) @map("auto_accept_bookings")
+  autoAcceptBookings Boolean @default(false) @map("auto_accept_bookings")
 
   // Cancellation & Reschedule Policies
   allowCancellation       Boolean @default(true) @map("allow_cancellation")

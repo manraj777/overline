@@ -1124,7 +1124,7 @@ export class AuthService implements OnModuleInit {
             logoUrl: dto.mainPhotoUrl || null,
             coverUrl: dto.coverPhotoUrl || null,
             photoUrls: dto.galleryUrls || [],
-            autoAcceptBookings: true,
+            autoAcceptBookings: false,
             maxConcurrentBookings: 1,
             // Google Verification fields
             isGoogleVerified: googleVerification.isVerified,

@@ -236,12 +236,23 @@ export class SlotEngineService {
     const endMinutes = closeHour * 60 + closeMin;
 
     const now = new Date();
-    // Build local YYYY-MM-DD string instead of using toISOString() which is always
-    // UTC and produces the wrong date in UTC+ timezones late in the day.
+    // Use IST (Asia/Kolkata) for "today" check — the EC2 server runs in UTC
+    // but all shops operate in IST. Without this, slots for today appear wrong
+    // between 00:00–05:30 IST (when UTC date differs from IST date).
     const pad = (n: number) => String(n).padStart(2, '0');
-    const localToday = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+    const istParts = new Intl.DateTimeFormat('en-CA', {
+      timeZone: 'Asia/Kolkata',
+      year: 'numeric', month: '2-digit', day: '2-digit',
+    }).format(now); // returns YYYY-MM-DD
+    const localToday = istParts;
     const isToday = date === localToday;
-    const currentMinutes = isToday ? now.getHours() * 60 + now.getMinutes() : 0;
+    // Get current IST hours/minutes for filtering past slots
+    const istTimeParts = new Intl.DateTimeFormat('en-US', {
+      timeZone: 'Asia/Kolkata',
+      hour12: false, hour: '2-digit', minute: '2-digit',
+    }).format(now); // returns "HH:MM"
+    const [istH, istM] = istTimeParts.split(':').map(Number);
+    const currentMinutes = isToday ? istH * 60 + istM : 0;
 
     // Generate slots at regular intervals
     for (
@@ -303,7 +314,11 @@ export class SlotEngineService {
     for (let i = 0; i < 7; i++) {
       const date = new Date(today);
       date.setDate(date.getDate() + i);
-      const dateStr = date.toISOString().split('T')[0];
+      // Use IST for date string
+      const dateStr = new Intl.DateTimeFormat('en-CA', {
+        timeZone: 'Asia/Kolkata',
+        year: 'numeric', month: '2-digit', day: '2-digit',
+      }).format(date);
 
       const slots = await this.getAvailableSlots({
         shopId,
@@ -535,9 +550,14 @@ export class SlotEngineService {
       return null;
     }
 
+    // Use IST for time extraction — server may run in UTC
+    const fmt = (d: Date) => new Intl.DateTimeFormat('en-US', {
+      timeZone: 'Asia/Kolkata', hour12: false, hour: '2-digit', minute: '2-digit',
+    }).format(d);
+
     return {
-      start: `${String(clippedStart.getHours()).padStart(2, '0')}:${String(clippedStart.getMinutes()).padStart(2, '0')}`,
-      end: `${String(clippedEnd.getHours()).padStart(2, '0')}:${String(clippedEnd.getMinutes()).padStart(2, '0')}`,
+      start: fmt(clippedStart),
+      end: fmt(clippedEnd),
     };
   }
 

@@ -745,6 +745,37 @@ export default function SettingsPage() {
                   </div>
 
                   <div>
+                    <h3 className="text-sm font-bold text-on-surface mb-3">Booking Approval</h3>
+                    <div className="p-4 rounded-xl border border-outline-variant/15 bg-surface-container-low flex items-center justify-between">
+                      <div>
+                        <p className="font-bold text-on-surface">Auto-Accept Bookings: {shopData?.autoAcceptBookings ? 'ON' : 'OFF'}</p>
+                        <p className="text-xs text-on-surface-variant mt-1">
+                          {shopData?.autoAcceptBookings 
+                            ? 'Bookings are instantly confirmed without staff approval.' 
+                            : 'Bookings require manual approval by staff or owner before confirmation.'}
+                        </p>
+                      </div>
+                      <label className="relative inline-flex items-center cursor-pointer">
+                        <input 
+                          type="checkbox" 
+                          className="sr-only peer" 
+                          checked={shopData?.autoAcceptBookings ?? true}
+                          onChange={async (e) => {
+                            const newValue = e.target.checked;
+                            try {
+                              await updateSettings.mutateAsync({ autoAcceptBookings: newValue });
+                              addToast({ type: 'success', title: `Auto-accept ${newValue ? 'enabled' : 'disabled'}` });
+                            } catch {
+                              addToast({ type: 'error', title: 'Failed to update' });
+                            }
+                          }}
+                        />
+                        <div className="w-11 h-6 bg-surface-container-high peer-focus:outline-none peer-focus:ring-4 peer-focus:ring-primary/20 rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-primary"></div>
+                      </label>
+                    </div>
+                  </div>
+
+                  <div>
                     <h3 className="text-sm font-bold text-on-surface mb-3">Customer Notifications</h3>
                     <div className="space-y-3">
                       {[

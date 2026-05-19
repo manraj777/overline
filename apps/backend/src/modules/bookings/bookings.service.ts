@@ -167,11 +167,17 @@ export class BookingsService {
   }
 
   private getSlotDateKey(date: Date): string {
-    return date.toISOString().slice(0, 10);
+    // Use IST (UTC+5:30) for slot date keys — all shops operate in Indian timezone
+    const istOffset = 5.5 * 60 * 60 * 1000;
+    const istDate = new Date(date.getTime() + istOffset);
+    return istDate.toISOString().slice(0, 10);
   }
 
   private getSlotTimeKey(date: Date): string {
-    return date.toISOString().slice(11, 16);
+    // Use IST (UTC+5:30) for slot time keys
+    const istOffset = 5.5 * 60 * 60 * 1000;
+    const istDate = new Date(date.getTime() + istOffset);
+    return istDate.toISOString().slice(11, 16);
   }
 
   private async markBookingSlots(
@@ -456,8 +462,12 @@ export class BookingsService {
     // Determine payment type from DTO (default to PAY_LATER)
     const paymentType = dto.paymentType || PaymentType.PAY_LATER;
 
-    // Temporary approval-first flow: every new booking starts in pending approval.
-    const status = BookingStatus.PENDING_APPROVAL;
+    // Determine initial booking status based on shop setting:
+    // - autoAcceptBookings=true  → CONFIRMED (instant booking)
+    // - autoAcceptBookings=false → PENDING_APPROVAL (requires staff/owner action)
+    const status = shop.autoAcceptBookings
+      ? BookingStatus.CONFIRMED
+      : BookingStatus.PENDING_APPROVAL;
 
     // Calculate price breakdown using the centralized logic. This issues
     // its own DB reads (services + wallet); doing them outside the
