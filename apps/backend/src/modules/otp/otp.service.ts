@@ -335,7 +335,6 @@ export class OtpService {
     if (purpose === 'REGISTER') {
       return {
         success: true,
-        message: 'Email verified for registration.',
         userId: '',
         phone: '',
         phoneVerificationRequired: false

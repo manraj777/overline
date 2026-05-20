@@ -460,6 +460,12 @@ export default function LoginPage() {
                     {errors.password && <p className="text-error text-xs font-medium">{errors.password.message}</p>}
                   </div>
 
+                  <div className="flex justify-end mt-1">
+                    <Link href="/forgot-password" className="text-sm font-semibold text-primary hover:underline">
+                      Forgot Password?
+                    </Link>
+                  </div>
+
                   <Button
                     type="submit"
                     className="w-full btn-primary py-3.5"

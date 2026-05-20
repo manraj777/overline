@@ -2039,6 +2039,13 @@ export class AuthService implements OnModuleInit {
       throw new UnauthorizedException('User not found.');
     }
 
+    if (user.hashedPassword) {
+      const isSamePassword = await bcrypt.compare(newPassword, user.hashedPassword);
+      if (isSamePassword) {
+        throw new BadRequestException('New password cannot be the same as the old password.');
+      }
+    }
+
     const hashedPassword = await bcrypt.hash(newPassword, 10);
     await this.prisma.user.update({
       where: { id: user.id },
