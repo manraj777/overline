@@ -205,7 +205,7 @@ export interface Booking {
   id: string;
   bookingNumber: string;
   userId?: string;
-  user?: Pick<User, 'id' | 'name' | 'email' | 'phone' | 'trustScore' | 'totalBookings' | 'noShowBookings'>;
+  user?: Pick<User, 'id' | 'name' | 'email' | 'phone' | 'avatarUrl' | 'trustScore' | 'totalBookings' | 'noShowBookings'> & { gender?: string };
   shopId: string;
   shop?: Pick<Shop, 'id' | 'name' | 'slug' | 'address' | 'phone' | 'logoUrl'>;
   staffId?: string;
@@ -227,6 +227,7 @@ export interface Booking {
   startedAt?: string;
   completedAt?: string;
   cancelledAt?: string;
+  cancellationReason?: string;
   createdAt: string;
   updatedAt: string;
   services: BookingService[];

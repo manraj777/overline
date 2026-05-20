@@ -158,93 +158,79 @@ export default function StaffBookingsPage() {
 					))}
 				</div>
 
-				<div className="card-m3 overflow-hidden">
+				{/* Card View */}
+				<div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
 					{bookings.length === 0 ? (
-						<div className="p-12 text-center text-sm text-on-surface-variant">No bookings found for the selected filter.</div>
-					) : (
-						<table className="table-m3">
-							<thead>
-								<tr>
-									<th>Time</th>
-									<th>Customer</th>
-									<th>Service</th>
-									<th>Amount</th>
-									<th>Status</th>
-									<th className="text-right">Actions</th>
-								</tr>
-							</thead>
-							<tbody>
-								{bookings.map((booking) => (
-									<tr key={booking.id}>
-										<td>
-											<span className="font-bold">{formatTime(booking.startTime)}</span>
-											{(booking.status === BookingStatus.IN_PROGRESS || booking.status === BookingStatus.IN_SERVICE) && booking.startedAt && (
-												<div className="mt-0.5"><InlineTimer startedAt={booking.startedAt} /></div>
-											)}
-										</td>
-										<td>
-											<span className="font-medium">{booking.user?.name || booking.customerName || 'Walk-in'}</span>
-											{booking.status === BookingStatus.CONFIRMED && (booking.user?.phone || booking.customerPhone) && (
-												<div className="text-[10px] text-on-surface-variant mt-0.5">
-													📞 {booking.user?.phone || booking.customerPhone}
-												</div>
-											)}
-										</td>
-										<td className="text-on-surface-variant">{booking.services?.[0]?.serviceName || 'Service'}</td>
-										<td><span className="font-bold">{formatPrice(Number(booking.totalAmount || 0))}</span></td>
-										<td>
-											<span className={`badge-m3 ${STATUS_BADGE[booking.status] || 'bg-surface-container-high text-outline'}`}>
-												{booking.status}
-											</span>
-										</td>
-										<td className="text-right">
-											<div className="flex justify-end gap-2">
-{['PENDING', 'PENDING_APPROVAL', 'CONFIRMED'].includes(booking.status) && booking.userId && (
-<button onClick={() => window.open(`/chat/${booking.userId}?booking=${booking.id}`, "_blank")} className="btn-outline px-3 py-1 text-[10px] text-primary border-primary">Chat</button>
-)}
-												{(booking.status === BookingStatus.PENDING || booking.status === BookingStatus.PENDING_APPROVAL) && (
-													<button
-														onClick={() => updateStatus.mutate({ bookingId: booking.id, status: BookingStatus.CONFIRMED })}
-														disabled={updateStatus.isPending}
-														className="btn-primary px-3 py-1 text-[10px] disabled:opacity-50"
-													>
-														Approve
-													</button>
-												)}
-												{booking.status === BookingStatus.PENDING && (
-													<button
-														onClick={() => setProposeModalBookingId(booking.id)}
-														disabled={updateStatus.isPending}
-														className="btn-outline px-3 py-1 text-[10px] disabled:opacity-50"
-													>
-														Propose Time
-													</button>
-												)}
-												{booking.status === BookingStatus.CONFIRMED && (
-													<button
-														onClick={() => handleStartWithCode(booking.id)}
-														disabled={startService.isPending}
-														className="btn-primary px-3 py-1 text-[10px] disabled:opacity-50"
-													>
-														Start
-													</button>
-												)}
-												{(booking.status === BookingStatus.IN_PROGRESS || booking.status === BookingStatus.IN_SERVICE) && (
-													<button
-														onClick={() => updateStatus.mutate({ bookingId: booking.id, status: BookingStatus.COMPLETED })}
-														disabled={updateStatus.isPending}
-														className="btn-primary px-3 py-1 text-[10px] disabled:opacity-50"
-													>
-														Complete
-													</button>
-												)}
-											</div>
-										</td>
-									</tr>
-								))}
-							</tbody>
-						</table>
-					)}
+						<div className="card-m3 p-8 text-center text-sm text-on-surface-variant">No bookings found.</div>
+					) : bookings.map((booking) => (
+						<div key={booking.id} className="card-m3 p-4">
+							<div className="flex items-start justify-between gap-2 mb-2">
+								<div className="flex items-center gap-2">
+									<span className="text-sm font-bold text-on-surface">{formatTime(booking.startTime)}</span>
+									{(booking.status === BookingStatus.IN_PROGRESS || booking.status === BookingStatus.IN_SERVICE) && booking.startedAt && (
+										<InlineTimer startedAt={booking.startedAt} />
+									)}
+								</div>
+								<span className={`badge-m3 text-[10px] ${STATUS_BADGE[booking.status] || 'bg-surface-container-high text-outline'}`}>
+									{booking.status}
+								</span>
+							</div>
+							<div className="space-y-1">
+								<p className="font-medium text-sm text-on-surface">{booking.user?.name || booking.customerName || 'Walk-in'}</p>
+								{(booking.user?.phone || booking.customerPhone) && (
+									<p className="text-xs text-on-surface-variant">📞 {booking.user?.phone || booking.customerPhone}</p>
+								)}
+								<p className="text-xs text-on-surface-variant">{booking.services?.[0]?.serviceName || 'Service'}</p>
+								<p className="text-xs font-bold text-on-surface">{formatPrice(Number(booking.totalAmount || 0))}</p>
+							</div>
+							<div className="mt-3 pt-3 border-t border-outline-variant/10 space-y-2">
+								{(booking.status === BookingStatus.PENDING || booking.status === BookingStatus.PENDING_APPROVAL) && (
+									<button
+										onClick={() => updateStatus.mutate({ bookingId: booking.id, status: BookingStatus.CONFIRMED })}
+										disabled={updateStatus.isPending}
+										className="w-full btn-primary px-3 py-2 text-xs disabled:opacity-50"
+									>
+										✓ Approve
+									</button>
+								)}
+								{booking.status === BookingStatus.CONFIRMED && (
+									<button
+										onClick={() => handleStartWithCode(booking.id)}
+										disabled={startService.isPending}
+										className="w-full btn-primary px-3 py-2 text-xs disabled:opacity-50"
+										style={{ backgroundColor: '#059669' }}
+									>
+										▶ Start Service
+									</button>
+								)}
+								{(booking.status === BookingStatus.IN_PROGRESS || booking.status === BookingStatus.IN_SERVICE) && (
+									<button
+										onClick={() => updateStatus.mutate({ bookingId: booking.id, status: BookingStatus.COMPLETED })}
+										disabled={updateStatus.isPending}
+										className="w-full btn-primary px-3 py-2 text-xs disabled:opacity-50"
+									>
+										✓ Complete Service
+									</button>
+								)}
+								<div className="flex flex-wrap gap-1.5">
+									{booking.status === BookingStatus.PENDING && (
+										<button
+											onClick={() => setProposeModalBookingId(booking.id)}
+											disabled={updateStatus.isPending}
+											className="btn-outline px-2.5 py-1.5 text-[11px] disabled:opacity-50"
+										>
+											Propose Time
+										</button>
+									)}
+									{['PENDING', 'PENDING_APPROVAL', 'CONFIRMED'].includes(booking.status) && booking.userId && (
+										<button onClick={() => window.open(`/chat/${booking.userId}?booking=${booking.id}`, "_blank")} className="btn-outline px-2.5 py-1.5 text-[11px] text-primary border-primary">
+											Chat
+										</button>
+									)}
+								</div>
+							</div>
+						</div>
+					))}
 				</div>
 			</div>
 
