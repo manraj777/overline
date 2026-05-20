@@ -201,6 +201,7 @@ export default function RegisterPage() {
     try {
       await api.post('/otp/email/send', {
         email,
+        purpose: 'REGISTER',
       });
       setEmailOtpSent(true);
     } catch (err: any) {
@@ -218,6 +219,7 @@ export default function RegisterPage() {
       await api.post('/otp/email/verify', {
         email: getValues('email'),
         otp: emailOtp,
+        purpose: 'REGISTER',
         requestedRole: 'SHOP_OWNER'
       });
       setEmailVerified(true);
