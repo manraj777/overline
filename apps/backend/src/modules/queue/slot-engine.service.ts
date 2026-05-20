@@ -20,7 +20,7 @@ export interface SlotQuery {
 
 @Injectable()
 export class SlotEngineService {
-  private readonly SLOT_INTERVAL_MINUTES = 15; // Slot granularity
+  private readonly SLOT_INTERVAL_MINUTES = 5; // Slot granularity (exact fitting)
 
   constructor(
     private prisma: PrismaService,

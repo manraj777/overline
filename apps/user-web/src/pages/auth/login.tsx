@@ -113,8 +113,12 @@ export default function LoginPage() {
   const onSubmit = async (data: LoginForm) => {
     setLocalError(null);
     try {
-      await login.mutateAsync(data);
-      router.push((redirect as string) || '/');
+      const response = await login.mutateAsync(data);
+      if (!response.user.isPhoneVerified) {
+        router.push('/auth/verify-phone');
+      } else {
+        router.push((redirect as string) || '/');
+      }
     } catch (err: any) {
       setLocalError(err.response?.data?.message || 'Invalid email or password');
     }
@@ -220,6 +224,27 @@ export default function LoginPage() {
   const handleOtpKeyDown = (index: number, event: React.KeyboardEvent<HTMLInputElement>) => {
     if (event.key === 'Backspace' && !otpDigits[index] && index > 0) {
       otpInputRefs.current[index - 1]?.focus();
+    }
+  };
+
+  const handleOtpPaste = (event: React.ClipboardEvent<HTMLInputElement>, isEmail = false) => {
+    event.preventDefault();
+    const pasteData = event.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6);
+    if (!pasteData) return;
+
+    const nextDigits = ['', '', '', '', '', ''];
+    for (let i = 0; i < pasteData.length; i++) {
+      nextDigits[i] = pasteData[i];
+    }
+
+    if (isEmail) {
+      setEmailOtpDigits(nextDigits);
+      const focusIndex = Math.min(pasteData.length, 5);
+      emailOtpInputRefs.current[focusIndex]?.focus();
+    } else {
+      setOtpDigits(nextDigits);
+      const focusIndex = Math.min(pasteData.length, 5);
+      otpInputRefs.current[focusIndex]?.focus();
     }
   };
 
@@ -508,7 +533,8 @@ export default function LoginPage() {
                             value={digit}
                             onChange={(e) => handleOtpDigitChange(index, e.target.value)}
                             onKeyDown={(e) => handleOtpKeyDown(index, e)}
-                            className="h-14 rounded-xl bg-surface-container-low text-center text-lg font-bold text-on-surface border-none focus:ring-2 focus:ring-primary/30 transition-all"
+                            onPaste={(e) => handleOtpPaste(e, false)}
+                            className="h-14 rounded-xl bg-surface-container-low text-center text-lg font-bold text-on-surface border border-outline-variant/30 focus:border-primary focus:ring-2 focus:ring-primary/30 transition-all"
                           />
                         ))}
                       </div>
@@ -640,7 +666,8 @@ export default function LoginPage() {
                                 emailOtpInputRefs.current[index - 1]?.focus();
                               }
                             }}
-                            className="h-14 rounded-xl bg-surface-container-low text-center text-lg font-bold text-on-surface border-none focus:ring-2 focus:ring-primary/30 transition-all"
+                            onPaste={(e) => handleOtpPaste(e, true)}
+                            className="h-14 rounded-xl bg-surface-container-low text-center text-lg font-bold text-on-surface border border-outline-variant/30 focus:border-primary focus:ring-2 focus:ring-primary/30 transition-all"
                           />
                         ))}
                       </div>

@@ -6,6 +6,7 @@ import { Card, Button, Input, Badge, Loading, useToast } from '@/components/ui';
 import { useAdminBookings, useUpdateBookingStatus, useCreateWalkIn, useQueueSocket } from '@/hooks';
 import { useAuthStore } from '@/stores/auth';
 import { formatTime, cn } from '@/lib/utils';
+import { useNotificationSound } from '@/hooks/useNotificationSound';
 import { useQueryClient } from '@tanstack/react-query';
 import { useServices } from '@/hooks';
 
@@ -45,6 +46,7 @@ export default function AppointmentsPage() {
   const updateStatus = useUpdateBookingStatus();
   const createWalkIn = useCreateWalkIn();
   const { data: services } = useServices();
+  const { play: playSound } = useNotificationSound();
 
   // Real-time queue updates
   const shopId = (user as any)?.shopId || '';
@@ -340,7 +342,7 @@ export default function AppointmentsPage() {
                         </td>
                         <td className="px-4 sm:px-6 py-4 text-right">
                           <div className="flex items-center justify-end gap-1 flex-wrap">
-                            {renderActions(booking, updateStatus, addToast)}
+                            {renderActions(booking, updateStatus, addToast, playSound)}
                           </div>
                         </td>
                       </tr>
@@ -385,7 +387,7 @@ export default function AppointmentsPage() {
                       <p className="text-xs text-on-surface-variant">Staff: {booking.staff?.name || 'Any'}</p>
                     </div>
                     <div className="flex items-center gap-1.5 mt-3 pt-3 border-t border-outline-variant/10 flex-wrap">
-                      {renderActions(booking, updateStatus, addToast)}
+                      {renderActions(booking, updateStatus, addToast, playSound)}
                     </div>
                   </div>
                 );
@@ -399,7 +401,7 @@ export default function AppointmentsPage() {
 }
 
 /** Shared action buttons renderer */
-function renderActions(booking: any, updateStatus: any, addToast: any) {
+function renderActions(booking: any, updateStatus: any, addToast: any, playSound?: () => void) {
   return (
     <>
       {(booking.status === 'PENDING' || booking.status === 'PENDING_APPROVAL' || booking.status === 'CONFIRMED') && (
@@ -411,6 +413,7 @@ function renderActions(booking: any, updateStatus: any, addToast: any) {
             if (window.confirm('Cancel this appointment?')) {
               updateStatus.mutate({ bookingId: booking.id, status: 'CANCELLED' });
               addToast({ title: 'Appointment cancelled', type: 'info' });
+              playSound?.();
             }
           }}
         >
@@ -425,9 +428,34 @@ function renderActions(booking: any, updateStatus: any, addToast: any) {
           onClick={() => {
             updateStatus.mutate({ bookingId: booking.id, status: 'CONFIRMED', adminNotes: 'APPROVED_BY_STAFF' });
             addToast({ title: 'Booking approved', type: 'success' });
+            playSound?.();
           }}
         >
           Approve
+        </Button>
+      )}
+      {(booking.status === 'PENDING' || booking.status === 'PENDING_APPROVAL') && (
+        <Button
+          size="sm"
+          variant="outline"
+          className="text-amber-600 border-amber-600/30 text-xs"
+          onClick={() => {
+            const time = window.prompt('Enter proposed start time (HH:MM, 24-hour):', '10:00');
+            if (time && time.match(/^([01]\d|2[0-3]):([0-5]\d)$/)) {
+              updateStatus.mutate({ 
+                bookingId: booking.id, 
+                status: 'PENDING_APPROVAL',
+                proposedStartTime: time,
+                adminNotes: 'PROPOSED_NEW_TIME'
+              });
+              addToast({ title: 'Reschedule proposed', type: 'success' });
+              playSound?.();
+            } else if (time) {
+              addToast({ title: 'Invalid time format', message: 'Please use HH:MM format', type: 'error' });
+            }
+          }}
+        >
+          Reschedule
         </Button>
       )}
       {(booking.status === 'PENDING' || booking.status === 'PENDING_APPROVAL') && (

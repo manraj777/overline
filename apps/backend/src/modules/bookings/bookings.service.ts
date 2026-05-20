@@ -926,6 +926,10 @@ export class BookingsService {
         break;
       case BookingStatus.COMPLETED:
         updateData.completedAt = new Date();
+        // If completed early, update endTime so staff slot frees up immediately
+        if (booking.endTime > updateData.completedAt) {
+          updateData.endTime = updateData.completedAt;
+        }
         break;
       case BookingStatus.CANCELLED:
         updateData.cancelledAt = new Date();
@@ -981,6 +985,10 @@ export class BookingsService {
       status,
       updatedAt: new Date().toISOString(),
     });
+
+    if (status === BookingStatus.COMPLETED) {
+      this.notificationsService.sendServiceCompletedAndReview(bookingId).catch(console.error);
+    }
 
     // --- TRUST SCORE CALCULATION ---
     const scoreTriggerStatuses: BookingStatus[] = [

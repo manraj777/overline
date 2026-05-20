@@ -560,4 +560,32 @@ export class NotificationsService {
       phone: booking.customerPhone || undefined,
     });
   }
+
+  /**
+   * Notify user service is complete and ask for rating
+   */
+  async sendServiceCompletedAndReview(bookingId: string): Promise<void> {
+    const booking = await this.prisma.booking.findUnique({
+      where: { id: bookingId },
+      include: {
+        user: true,
+        shop: true,
+      },
+    });
+
+    if (!booking) return;
+
+    const message = `Thanks for visiting ${booking.shop.name}! Please take a moment to rate your experience.`;
+
+    await this.send({
+      userId: booking.userId || undefined,
+      bookingId: booking.id,
+      type: NotificationType.QUEUE_UPDATE, // Service completed notification
+      title: 'Service Completed',
+      body: message,
+      channels: [NotificationChannel.SMS, NotificationChannel.PUSH, NotificationChannel.EMAIL],
+      email: booking.customerEmail || undefined,
+      phone: booking.customerPhone || undefined,
+    });
+  }
 }

@@ -74,7 +74,7 @@ export function ChatWidget() {
       <motion.button
         onClick={() => setIsOpen(!isOpen)}
         className={cn(
-          'fixed bottom-6 right-6 z-50 w-14 h-14 rounded-full shadow-lg flex items-center justify-center transition-all',
+          'fixed bottom-24 md:bottom-6 right-6 z-50 w-14 h-14 rounded-full shadow-lg flex items-center justify-center transition-all',
           isOpen
             ? 'bg-secondary hover:bg-secondary-container shadow-card'
             : 'bg-gradient-to-br from-primary-600 to-primary-800 shadow-button hover:shadow-button-hover'
@@ -97,7 +97,7 @@ export function ChatWidget() {
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.95 }}
             transition={{ duration: 0.2 }}
-            className="fixed bottom-24 right-6 z-50 w-[380px] max-w-[calc(100vw-48px)] h-[520px] max-h-[calc(100vh-120px)] bg-surface-container-lowest rounded-3xl shadow-glass-strong border border-outline-variant/40 flex flex-col overflow-hidden"
+            className="fixed bottom-40 md:bottom-24 right-6 z-50 w-[380px] max-w-[calc(100vw-48px)] h-[520px] max-h-[calc(100vh-200px)] md:max-h-[calc(100vh-120px)] bg-surface-container-lowest rounded-3xl shadow-glass-strong border border-outline-variant/40 flex flex-col overflow-hidden"
           >
             {/* Header */}
             <div className="px-5 py-4 bg-gradient-to-br from-primary-600 to-primary-800 text-white flex-shrink-0">

@@ -52,7 +52,11 @@ export default function AuthCallbackPage() {
           body: JSON.stringify({ accessToken: token, refreshToken: refreshToken || token }),
         });
 
-        router.replace('/');
+        if (!user.isPhoneVerified) {
+          router.replace('/auth/verify-phone');
+        } else {
+          router.replace('/');
+        }
       } catch {
         router.replace('/auth/login?error=google_auth_failed');
       }

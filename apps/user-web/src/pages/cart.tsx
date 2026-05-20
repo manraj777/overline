@@ -12,10 +12,12 @@ import { format } from 'date-fns';
 import { saveQueueSession } from '@/lib/queue-session';
 import api from '@/lib/api';
 import { useWalletBalance } from '@/hooks';
+import { useNotificationSound } from '@/hooks/useNotificationSound';
 
 export default function CartPage() {
   const router = useRouter();
   const { isAuthenticated } = useAuthStore();
+  const { play: playBookingSound } = useNotificationSound();
 
   const loadRazorpay = () => {
     return new Promise((resolve) => {
@@ -204,6 +206,7 @@ export default function CartPage() {
                       tokenCode: booking.bookingNumber,
                     });
                   }
+                  playBookingSound();
                   router.push(`/bookings/${booking.id}?success=true`);
                 } catch (err: any) {
                   setError('Payment verification failed. If money was deducted, it will be refunded.');
@@ -240,6 +243,7 @@ export default function CartPage() {
           tokenCode: booking.bookingNumber,
         });
       }
+      playBookingSound();
       router.push(`/bookings/${booking.id}?success=true`);
     } catch (err: any) {
       setError(err.response?.data?.message || err.message || 'Failed to create booking');

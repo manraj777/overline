@@ -11,11 +11,19 @@ export class WhatsappOtpController {
     private readonly authService: AuthService,
   ) {}
 
+  private normalizeWaPhone(phone: string): string {
+    const cleaned = phone.replace(/\D/g, '');
+    if (cleaned.length === 10) {
+      return `91${cleaned}`;
+    }
+    return cleaned;
+  }
+
   @ApiOperation({ summary: 'Send OTP via WhatsApp' })
   @Post('send-otp')
   sendOtp(@Body('phone') phone: string, @Ip() ip: string) {
     if (!phone) throw new Error('Phone is required');
-    const normalizedPhone = phone.startsWith('+') ? phone.slice(1) : phone;
+    const normalizedPhone = this.normalizeWaPhone(phone);
     return this.whatsappOtpService.sendOtp(normalizedPhone, ip);
   }
 
@@ -23,7 +31,7 @@ export class WhatsappOtpController {
   @Post('verify-otp')
   async verifyOtp(@Body() body: { phone: string; otp: string; name?: string }) {
     if (!body.phone || !body.otp) throw new Error('Phone and OTP are required');
-    const normalizedPhone = body.phone.startsWith('+') ? body.phone.slice(1) : body.phone;
+    const normalizedPhone = this.normalizeWaPhone(body.phone);
     await this.whatsappOtpService.verifyOtp(normalizedPhone, body.otp);
     return this.authService.loginWithVerifiedPhone(normalizedPhone, undefined, body.name);
   }

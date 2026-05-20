@@ -44,12 +44,14 @@ async function clearSession() {
 }
 
 export function useUser() {
-  const { isAuthenticated, accessToken } = useAuthStore();
+  const { isAuthenticated, accessToken, setUser } = useAuthStore();
 
   return useQuery<User>({
     queryKey: ['user', 'me'],
     queryFn: async () => {
       const { data } = await api.get('/users/me');
+      // Sync fresh profile data (avatarUrl, name, etc.) back to auth store
+      if (data) setUser(data);
       return data;
     },
     enabled: isAuthenticated && !!accessToken,

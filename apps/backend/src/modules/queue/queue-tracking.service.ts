@@ -16,7 +16,8 @@ export class QueueTrackingService {
     const now = new Date();
     const startOfDay = new Date(now);
     startOfDay.setHours(0, 0, 0, 0);
-    const limitDate = new Date(now.getTime() + 20 * 60000);
+    const endOfDay = new Date(now);
+    endOfDay.setHours(23, 59, 59, 999);
 
     // Get bookings that are pending/confirmed, for today, start <= 20 mins OR in progress
     const bookings = await this.prisma.booking.findMany({
@@ -25,7 +26,7 @@ export class QueueTrackingService {
         OR: [
           {
             status: { in: ['CONFIRMED', 'PENDING'] },
-            startTime: { gte: startOfDay, lte: limitDate },
+            startTime: { gte: startOfDay, lte: endOfDay },
           },
           {
             status: 'IN_PROGRESS',
@@ -45,7 +46,7 @@ export class QueueTrackingService {
         },
       },
       orderBy: { startTime: 'asc' },
-      take: 2, // Limit to current and next person
+      take: 20, // Limit to 20 users to prevent UI clutter
     });
 
     // Decorate with real-time location from Redis

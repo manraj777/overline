@@ -71,6 +71,21 @@ export default function ForgotPasswordPage() {
     }
   };
 
+  const handleOtpPaste = (event: React.ClipboardEvent<HTMLInputElement>) => {
+    event.preventDefault();
+    const pasteData = event.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6);
+    if (!pasteData) return;
+
+    const nextDigits = ['', '', '', '', '', ''];
+    for (let i = 0; i < pasteData.length; i++) {
+      nextDigits[i] = pasteData[i];
+    }
+    setOtpDigits(nextDigits);
+    
+    const focusIndex = Math.min(pasteData.length, 5);
+    otpInputRefs.current[focusIndex]?.focus();
+  };
+
   const handleResetPassword = async (e: React.FormEvent) => {
     e.preventDefault();
     setLocalError(null);
@@ -225,7 +240,8 @@ export default function ForgotPasswordPage() {
                           value={digit}
                           onChange={(e) => handleOtpDigitChange(index, e.target.value)}
                           onKeyDown={(e) => handleOtpKeyDown(index, e)}
-                          className="h-14 rounded-xl bg-surface-container-low text-center text-lg font-bold text-on-surface border-none focus:ring-2 focus:ring-primary/30 transition-all"
+                          onPaste={handleOtpPaste}
+                          className="h-14 rounded-xl bg-surface-container-low text-center text-lg font-bold text-on-surface border border-outline-variant/30 focus:border-primary focus:ring-2 focus:ring-primary/30 transition-all"
                         />
                       ))}
                     </div>

@@ -75,6 +75,7 @@ export interface TokenResponse {
     phone: string | null;
     name: string | null;
     role: UserRole;
+    avatarUrl?: string | null;
     isEmailVerified?: boolean;
     isPhoneVerified?: boolean;
     createdAt?: Date;
@@ -662,13 +663,12 @@ export class AuthService implements OnModuleInit {
           );
         }
 
-        const generatedEmail = `${normalizedPhone.replace(/\D/g, '')}.${Date.now()}@staff.overline.app`;
         const provisionedUser = await tx.user.create({
           data: {
             phone: normalizedPhone,
             isPhoneVerified: true,
-            name: staffRows[0].name || `Staff ${normalizedPhone.slice(-4)}`,
-            email: staffRows[0].email || generatedEmail,
+            name: staffRows[0].name || null,
+            email: staffRows[0].email || null,
             role: UserRole.STAFF,
             authProvider: 'phone',
             lastLoginAt: new Date(),
@@ -688,11 +688,12 @@ export class AuthService implements OnModuleInit {
       }
 
       if (requestedRole === 'OWNER') {
+        // Owner registration via phone — name will be set during shop setup
         return tx.user.create({
           data: {
             phone: normalizedPhone,
             isPhoneVerified: true,
-            name: `User ${normalizedPhone.slice(-4)}`,
+            name: name?.trim() || null,
             role: UserRole.OWNER,
             authProvider: 'phone',
             lastLoginAt: new Date(),
@@ -780,7 +781,7 @@ export class AuthService implements OnModuleInit {
         });
       }
 
-      const name = decodedToken.name?.trim() || `User ${normalizedPhone.slice(-4)}`;
+      const name = decodedToken.name?.trim() || null;
       const roleToAssign = requestedRole === 'OWNER' ? UserRole.OWNER : UserRole.USER;
 
       return tx.user.create({
@@ -1970,6 +1971,7 @@ export class AuthService implements OnModuleInit {
         name: user.name,
         phone: user.phone || null,
         role: effectiveRole,
+        avatarUrl: user.avatarUrl || null,
         tenantId: user.tenantId,
         shopId: primaryShopId,
         shopIds,

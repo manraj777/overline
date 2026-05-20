@@ -61,6 +61,40 @@ export class EventsGateway implements OnGatewayConnection, OnGatewayDisconnect {
     this.logger.log(`Client ${client.id} joined shop room: shop:${shopId}`);
   }
 
+  @UseGuards(WsJwtGuard)
+  @SubscribeMessage('trackBooking')
+  async handleTrackBooking(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() payload: { bookingId: string }
+  ) {
+    if (!payload?.bookingId) return;
+    const room = `booking:${payload.bookingId}`;
+    client.join(room);
+    this.logger.log(`Client ${client.id} tracking booking ${payload.bookingId}`);
+  }
+
+  @UseGuards(WsJwtGuard)
+  @SubscribeMessage('sendMessage')
+  async handleSendMessage(
+    @ConnectedSocket() client: Socket,
+    @MessageBody() payload: { bookingId: string; text: string },
+    @CurrentUser('id') userId: string,
+  ) {
+    if (!payload?.bookingId || !payload?.text) return;
+    
+    // In a full implementation, you would save this to the database's ChatMessage table.
+    // For now, we broadcast it in real-time to the booking room.
+    const message = {
+      id: Math.random().toString(36).substring(7),
+      text: payload.text,
+      senderId: userId,
+      createdAt: new Date().toISOString(),
+    };
+
+    // Broadcast to everyone tracking this booking
+    this.server.to(`booking:${payload.bookingId}`).emit('chatMessage', message);
+  }
+
   // Helper method to send to a specific user
   sendToUser(userId: string, event: string, data: any) {
     const socketId = this.userSockets.get(userId);

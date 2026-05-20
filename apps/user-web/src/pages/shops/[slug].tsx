@@ -257,7 +257,22 @@ export default function ShopDetailPage({ initialShop, slug: ssrSlug }: ShopPageP
   const handleRefresh = async () => {
     setIsRefreshing(true);
     try {
-      await Promise.all([refetchShop(), refetchQueue(), refetchRating()]);
+      // Refresh shop data + user location simultaneously
+      const locationRefresh = new Promise<void>((resolve) => {
+        if (typeof window !== 'undefined' && 'geolocation' in navigator) {
+          navigator.geolocation.getCurrentPosition(
+            (pos) => {
+              setUserLocation({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+              resolve();
+            },
+            () => resolve(),
+            { enableHighAccuracy: true, timeout: 5000 }
+          );
+        } else {
+          resolve();
+        }
+      });
+      await Promise.all([refetchShop(), refetchQueue(), refetchRating(), locationRefresh]);
       setLastRefreshAt(new Date());
     } finally {
       setIsRefreshing(false);
@@ -570,12 +585,23 @@ export default function ShopDetailPage({ initialShop, slug: ssrSlug }: ShopPageP
                   </div>
 
                   {shop.latitude && shop.longitude && (
-                    <div className="mt-8 h-64 w-full rounded-3xl overflow-hidden shadow-sm">
-                      <ShopMap
-                        shops={[shop as any]}
-                        userLocation={userLocation}
-                        zoom={15}
-                      />
+                    <div className="mt-8">
+                      <div className="h-64 w-full rounded-3xl overflow-hidden shadow-sm">
+                        <ShopMap
+                          shops={[shop as any]}
+                          userLocation={userLocation}
+                          zoom={15}
+                        />
+                      </div>
+                      <a
+                        href={`https://www.google.com/maps/dir/?api=1${userLocation ? `&origin=${userLocation.lat},${userLocation.lng}` : ''}&destination=${shop.latitude},${shop.longitude}&travelmode=driving`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="mt-3 w-full flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-bold text-primary bg-primary/10 hover:bg-primary/20 rounded-2xl transition-colors"
+                      >
+                        <MapPin className="w-4 h-4" />
+                        Get Directions to Shop
+                      </a>
                     </div>
                   )}
 

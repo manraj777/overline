@@ -125,9 +125,9 @@ export const LiveTracking = ({ shopId }: { shopId: string }) => {
                 </h2>
             </div>
 
-            <div className="flex gap-4">
+            <div className="flex flex-col lg:flex-row gap-4">
                 {/* Left Side: Users List */}
-                <div className="w-1/3 space-y-3">
+                <div className="w-full lg:w-1/3 space-y-3 max-h-[300px] lg:max-h-[500px] overflow-y-auto pr-1">
                     {bookings.map((booking) => (
                         <div
                             key={booking.id}
@@ -165,7 +165,7 @@ export const LiveTracking = ({ shopId }: { shopId: string }) => {
 
                 {/* Right Side: Map & Chat */}
                 {selectedBooking && (
-                    <div className="w-2/3 border rounded-lg p-4 flex flex-col">
+                    <div className="w-full lg:w-2/3 border rounded-lg p-4 flex flex-col">
                         <div className="flex justify-between items-start mb-4">
                             <div>
                                 <h3 className="font-semibold text-gray-900">{selectedBooking.user?.name}</h3>

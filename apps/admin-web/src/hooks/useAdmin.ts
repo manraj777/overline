@@ -61,6 +61,8 @@ interface UpdateBookingStatusPayload {
   bookingId: string;
   status: string;
   adminNotes?: string;
+  proposedStartTime?: string;
+  proposedEndTime?: string;
 }
 
 interface CreateWalkInPayload {
@@ -249,10 +251,12 @@ export function useUpdateBookingStatus() {
   const queryClient = useQueryClient();
 
   return useMutation<Booking, Error, UpdateBookingStatusPayload>({
-    mutationFn: async ({ bookingId, status, adminNotes }) => {
+    mutationFn: async ({ bookingId, status, adminNotes, proposedStartTime, proposedEndTime }) => {
       const { data } = await api.patch(`/admin/bookings/${bookingId}/status`, {
         status,
         adminNotes,
+        proposedStartTime,
+        proposedEndTime,
       });
       return data;
     },
