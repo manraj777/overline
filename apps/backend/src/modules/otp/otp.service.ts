@@ -259,8 +259,15 @@ export class OtpService {
   ): Promise<{ message: string; expiresAt: Date; retryAfterSeconds: number }> {
     const normalizedEmail = this.normalizeEmail(email);
     const user = await this.prisma.user.findUnique({ where: { email: normalizedEmail } });
-    if (!user || !user.isActive) {
-      throw new BadRequestException('No account found with this email. Please sign up using Phone OTP first, then add your email in your profile.');
+
+    if (purpose !== 'REGISTER') {
+      if (!user || !user.isActive) {
+        throw new BadRequestException('No account found with this email. Please sign up using Phone OTP first, then add your email in your profile.');
+      }
+    } else {
+      if (user) {
+        throw new BadRequestException('An account with this email already exists.');
+      }
     }
 
     await this.enforceRateLimit(`otp:rate:email:${normalizedEmail}`);
@@ -293,9 +300,10 @@ export class OtpService {
     email: string,
     otp: string,
     requestedRole?: string,
+    purpose: OtpPurpose = 'EMAIL_LOGIN',
   ): Promise<EmailVerifyResult> {
     const normalizedEmail = this.normalizeEmail(email);
-    const record = await this.getLatestActiveOtp(normalizedEmail, 'EMAIL_LOGIN');
+    const record = await this.getLatestActiveOtp(normalizedEmail, purpose);
     if (!record) {
       throw new BadRequestException('OTP expired or not found.');
     }
@@ -322,6 +330,16 @@ export class OtpService {
         where: { id: record.id },
         data: { isVerified: true },
       });
+    }
+
+    if (purpose === 'REGISTER') {
+      return {
+        success: true,
+        message: 'Email verified for registration.',
+        userId: '',
+        phone: '',
+        phoneVerificationRequired: false
+      };
     }
 
     const user = await this.prisma.user.findUnique({ where: { email: normalizedEmail } });

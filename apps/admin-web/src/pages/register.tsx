@@ -430,8 +430,13 @@ export default function RegisterPage() {
                       <input
                         type="tel"
                         className="input-m3 pl-11"
-                        placeholder="+91 9876543210"
-                        {...register('ownerPhone', { required: 'Phone is required' })}
+                        placeholder="9876543210"
+                        {...register('ownerPhone', { 
+                          required: 'Phone is required',
+                          onChange: (e) => {
+                            e.target.value = e.target.value.replace(/\D/g, '').slice(0, 10);
+                          }
+                        })}
                       />
                     </div>
                     {errors.ownerPhone && <p className="text-error text-xs font-medium">{errors.ownerPhone.message}</p>}
@@ -576,7 +581,17 @@ export default function RegisterPage() {
                   {!sameAsOwner && (
                     <div className="space-y-2 animate-fade-in">
                       <label className="label-m3">Public Shop Phone <span className="text-error">*</span></label>
-                      <input className="input-m3" placeholder="+91 9876543210" {...register('publicPhone', { required: !sameAsOwner ? 'Public phone is required' : false })} />
+                      <input 
+                        type="tel"
+                        className="input-m3" 
+                        placeholder="9876543210" 
+                        {...register('publicPhone', { 
+                          required: !sameAsOwner ? 'Public phone is required' : false,
+                          onChange: (e) => {
+                            e.target.value = e.target.value.replace(/\D/g, '').slice(0, 10);
+                          }
+                        })} 
+                      />
                       {errors.publicPhone && <p className="text-error text-xs font-medium">{errors.publicPhone.message}</p>}
                     </div>
                   )}
@@ -595,10 +610,19 @@ export default function RegisterPage() {
                     </label>
 
                     {formValues.whatsappOptIn && (
-                      <div className="space-y-2 animate-fade-in">
-                        <label className="label-m3">WhatsApp Number</label>
-                        <input className="input-m3" placeholder="+91 9876543210" {...register('whatsappPhone')} />
-                      </div>
+                      <div className="space-y-2 animate-fade-in pl-10">
+                      <label className="label-m3">WhatsApp Number</label>
+                      <input 
+                        type="tel"
+                        className="input-m3" 
+                        placeholder="9876543210" 
+                        {...register('whatsappPhone', {
+                          onChange: (e) => {
+                            e.target.value = e.target.value.replace(/\D/g, '').slice(0, 10);
+                          }
+                        })} 
+                      />
+                    </div>
                     )}
                   </div>
                 </div>

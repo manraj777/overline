@@ -39,6 +39,11 @@ class SendEmailOtpDto {
   @IsString()
   @IsNotEmpty()
   email: string;
+
+  @IsOptional()
+  @IsString()
+  @IsIn(['EMAIL_LOGIN', 'REGISTER'])
+  purpose?: OtpPurpose;
 }
 
 class VerifyEmailOtpDto {
@@ -54,6 +59,11 @@ class VerifyEmailOtpDto {
   @IsString()
   @IsIn(['OWNER', 'STAFF', 'USER', 'SUPER_ADMIN'])
   requestedRole?: string;
+
+  @IsOptional()
+  @IsString()
+  @IsIn(['EMAIL_LOGIN', 'REGISTER'])
+  purpose?: OtpPurpose;
 }
 
 class SendPhoneVerificationOtpDto {
@@ -99,13 +109,13 @@ export class OtpController {
   @Post('email/send')
   @HttpCode(HttpStatus.OK)
   async sendEmailOtp(@Body() dto: SendEmailOtpDto): Promise<any> {
-    return this.otpService.sendEmailOtp(dto.email, 'EMAIL_LOGIN');
+    return this.otpService.sendEmailOtp(dto.email, dto.purpose || 'EMAIL_LOGIN');
   }
 
   @Post('email/verify')
   @HttpCode(HttpStatus.OK)
   async verifyEmailOtp(@Body() dto: VerifyEmailOtpDto): Promise<any> {
-    return this.otpService.verifyEmailOtp(dto.email, dto.otp, dto.requestedRole);
+    return this.otpService.verifyEmailOtp(dto.email, dto.otp, dto.requestedRole, dto.purpose || 'EMAIL_LOGIN');
   }
 
   @Post('phone/send')
