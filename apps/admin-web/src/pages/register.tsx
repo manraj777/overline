@@ -74,9 +74,14 @@ export default function RegisterPage() {
   const [error, setError] = React.useState<string | null>(null);
   const [showPassword, setShowPassword] = React.useState(false);
 
-  // Verification state
+  // Email verification state
   const [emailVerified, setEmailVerified] = React.useState(false);
-  const [emailSent, setEmailSent] = React.useState(false);
+  const [emailSending, setEmailSending] = React.useState(false);
+  const [emailOtp, setEmailOtp] = React.useState('');
+  const [emailOtpSent, setEmailOtpSent] = React.useState(false);
+  const [verifyingEmailOtp, setVerifyingEmailOtp] = React.useState(false);
+
+  // Phone verification state
   const [phoneVerified, setPhoneVerified] = React.useState(false);
   const [phoneSending, setPhoneSending] = React.useState(false);
   const [phoneOtp, setPhoneOtp] = React.useState('');
@@ -185,10 +190,42 @@ export default function RegisterPage() {
     }
   };
 
-  // ── Email verification is optional in this flow ──
-  const handleSendEmailLink = async () => {
-    setEmailSent(true);
-    setEmailVerified(true);
+  const handleSendEmailOtp = async () => {
+    const email = getValues('email');
+    if (!email) {
+      setError('Enter a valid email first');
+      return;
+    }
+    setError(null);
+    setEmailSending(true);
+    try {
+      await api.post('/otp/email/send', {
+        email,
+      });
+      setEmailOtpSent(true);
+    } catch (err: any) {
+      setError(err?.response?.data?.message || err.message || 'Failed to send Email OTP');
+    } finally {
+      setEmailSending(false);
+    }
+  };
+
+  const handleVerifyEmailOtp = async () => {
+    if (emailOtp.length < 6) return;
+    setVerifyingEmailOtp(true);
+    setError(null);
+    try {
+      await api.post('/otp/email/verify', {
+        email: getValues('email'),
+        otp: emailOtp,
+        requestedRole: 'SHOP_OWNER'
+      });
+      setEmailVerified(true);
+    } catch (err: any) {
+      setError(err?.response?.data?.message || err.message || 'Invalid Email OTP. Please try again.');
+    } finally {
+      setVerifyingEmailOtp(false);
+    }
   };
 
   // ── Final Submit ──
@@ -483,16 +520,34 @@ export default function RegisterPage() {
 
                     {emailVerified ? (
                       <p className="text-sm text-tertiary font-medium">✓ Email verified successfully</p>
-                    ) : emailSent ? (
-                      <p className="text-sm text-on-surface-variant">Verification link sent to <span className="font-bold">{formValues.email}</span>. Check your inbox and click the link.</p>
-                    ) : (
+                    ) : !emailOtpSent ? (
                       <Button
                         type="button"
-                        onClick={handleSendEmailLink}
+                        onClick={handleSendEmailOtp}
+                        isLoading={emailSending}
                         className="btn-tonal py-2.5 w-full"
                       >
-                        Send Verification Email
+                        Send OTP to {formValues.email || 'your email'}
                       </Button>
+                    ) : (
+                      <div className="space-y-3">
+                        <input
+                          type="text"
+                          value={emailOtp}
+                          onChange={(e) => setEmailOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                          placeholder="Enter 6-digit OTP"
+                          className="input-m3 text-center text-lg tracking-[0.4em] font-bold"
+                        />
+                        <Button
+                          type="button"
+                          onClick={handleVerifyEmailOtp}
+                          isLoading={verifyingEmailOtp}
+                          className="btn-primary py-2.5 w-full"
+                          disabled={emailOtp.length < 6}
+                        >
+                          Verify Email OTP
+                        </Button>
+                      </div>
                     )}
                   </div>
                 </div>
