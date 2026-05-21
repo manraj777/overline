@@ -146,6 +146,11 @@ export default function CartPage() {
       return;
     }
 
+    if (bookingForOther && customerPhone.trim() && !/^[6-9]\d{9}$/.test(customerPhone)) {
+      setError('Guest phone number must be exactly 10 digits starting with 6-9.');
+      return;
+    }
+
     submittingRef.current = true;
     setError(null);
 
@@ -368,7 +373,7 @@ export default function CartPage() {
                   <input
                     type="tel"
                     value={customerPhone}
-                    onChange={(e) => setCustomerPhone(e.target.value)}
+                    onChange={(e) => setCustomerPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
                     placeholder="Guest phone (optional)"
                     className="input-m3"
                   />

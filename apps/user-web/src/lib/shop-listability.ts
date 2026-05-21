@@ -22,8 +22,11 @@ export interface ShopListabilityInput {
   isActive?: boolean | null;
   address?: string | null;
   coverImageUrl?: string | null;
+  coverUrl?: string | null;
   images?: Array<{ url?: string | null }> | null;
+  photoUrls?: string[] | null;
   servicesCount?: number | null;
+  _count?: { services?: number } | null;
   workingHours?: Array<any> | null;
   updatedAt?: string | Date | null;
 }
@@ -84,13 +87,16 @@ export function isShopPubliclyListable(shop: ShopListabilityInput): boolean {
   if (!address) return false;
 
   // New Requirements: Cover image
-  if (!shop.coverImageUrl && (!shop.images || shop.images.length === 0)) return false;
+  const hasCover = shop.coverImageUrl || shop.coverUrl;
+  const hasPhotos = (shop.images && shop.images.length > 0) || (shop.photoUrls && shop.photoUrls.length > 0);
+  if (!hasCover && !hasPhotos) return false;
 
   // New Requirements: Working Hours
   if (!shop.workingHours || shop.workingHours.length === 0) return false;
 
   // New Requirements: Services Count
-  if (typeof shop.servicesCount === 'number' && shop.servicesCount < 1) {
+  const svcCount = shop.servicesCount ?? shop._count?.services ?? undefined;
+  if (typeof svcCount === 'number' && svcCount < 1) {
     return false;
   }
 

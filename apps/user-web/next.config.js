@@ -16,6 +16,7 @@ const reactPath = resolveReact('react');
 const reactDomPath = resolveReact('react-dom');
 
 const nextConfig = {
+  optimizeFonts: false,
   output: process.env.DOCKER_BUILD === 'true' ? 'standalone' : undefined,
   reactStrictMode: true,
   transpilePackages: ['@overline/shared'],

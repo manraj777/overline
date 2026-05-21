@@ -121,8 +121,8 @@ export default function LoginScreen() {
 
   const handlePhoneLogin = async () => {
     const cleaned = phone.replace(/\D/g, '');
-    if (cleaned.length < 10) {
-      Alert.alert('Incomplete Number', 'Please enter your 10-digit mobile number.');
+    if (!/^[6-9]\d{9}$/.test(cleaned)) {
+      Alert.alert('Invalid Number', 'Please enter a valid 10-digit mobile number starting with 6-9.');
       return;
     }
     const normalized = `+91${cleaned}`;
@@ -201,7 +201,7 @@ export default function LoginScreen() {
                     placeholderTextColor={Colors.textMuted}
                     keyboardType="phone-pad"
                     value={phone}
-                    onChangeText={setPhone}
+                    onChangeText={(val) => setPhone(val.replace(/\D/g, '').slice(0, 10))}
                     maxLength={10}
                   />
                 </View>
@@ -249,6 +249,9 @@ export default function LoginScreen() {
                 
                 <TouchableOpacity style={styles.loginBtn} onPress={() => login(email, password)}>
                   <Text style={styles.primaryBtnText}>SIGN IN</Text>
+                </TouchableOpacity>
+                <TouchableOpacity style={styles.forgotRow} onPress={() => navigation.navigate('ForgotPassword')}>
+                  <Text style={styles.forgotText}>Forgot password?</Text>
                 </TouchableOpacity>
               </View>
             )}
@@ -544,5 +547,14 @@ const styles = StyleSheet.create({
   link: {
     color: Colors.primary,
     fontWeight: '800',
+  },
+  forgotRow: {
+    alignItems: 'center',
+    marginTop: 16,
+  },
+  forgotText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: Colors.primary,
   },
 });

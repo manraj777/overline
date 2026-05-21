@@ -18,6 +18,7 @@ import RegisterPhoneScreen from '../screens/auth/RegisterPhoneScreen';
 import RegisterOtpScreen from '../screens/auth/RegisterOtpScreen';
 import RegisterProfileScreen from '../screens/auth/RegisterProfileScreen';
 import OtpVerifyScreen from '../screens/auth/OtpVerifyScreen';
+import ForgotPasswordScreen from '../screens/auth/ForgotPasswordScreen';
 import HomeScreen from '../screens/home/HomeScreen';
 import ShopDetailScreen from '../screens/home/ShopDetailScreen';
 import BookingStaffScreen from '../screens/booking/BookingStaffScreen';
@@ -199,6 +200,7 @@ export default function RootNavigator() {
                 animation: 'slide_from_right',
               }}
             />
+            <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
           </>
         ) : (
           <>

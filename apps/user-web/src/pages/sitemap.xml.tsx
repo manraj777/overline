@@ -72,12 +72,16 @@ async function fetchShops(): Promise<UrlEntry[]> {
           phone?: string;
           isActive?: boolean;
           updatedAt?: string;
+          coverUrl?: string | null;
           coverImageUrl?: string | null;
+          photoUrls?: string[] | null;
           images?: Array<{ url?: string | null }> | null;
+          _count?: { services?: number } | null;
           servicesCount?: number | null;
           workingHours?: Array<any> | null;
         }>;
         total?: number;
+        meta?: { total?: number };
       };
       const rows = body?.data || [];
       if (!rows.length) break;
@@ -103,18 +107,52 @@ async function fetchShops(): Promise<UrlEntry[]> {
   }
 }
 
+const SHOP_TYPES = ['salon', 'spa', 'clinic', 'barber', 'gym'];
+
+async function fetchCities(): Promise<UrlEntry[]> {
+  try {
+    const res = await fetch(`${BACKEND_URL}/api/v1/shops/cities`, {
+      headers: { accept: 'application/json' },
+      signal: AbortSignal.timeout(5000),
+    });
+    if (!res.ok) return [];
+    const cities = (await res.json()) as string[];
+    const entries: UrlEntry[] = [];
+    for (const city of cities) {
+      const slug = city.toLowerCase().replace(/\s+/g, '-');
+      // City explore page
+      entries.push({
+        loc: `/explore?city=${encodeURIComponent(city)}`,
+        changefreq: 'daily',
+        priority: 0.7,
+      });
+      // Type + city combination pages
+      for (const type of SHOP_TYPES) {
+        entries.push({
+          loc: `/explore/${type}/${slug}`,
+          changefreq: 'weekly',
+          priority: 0.7,
+        });
+      }
+    }
+    return entries;
+  } catch {
+    return [];
+  }
+}
+
 function Sitemap() {
-  // getServerSideProps writes the body directly; this component never renders.
   return null;
 }
 
 export const getServerSideProps: GetServerSideProps = async ({ res }) => {
-  const shopEntries = await fetchShops();
+  const [shopEntries, cityEntries] = await Promise.all([fetchShops(), fetchCities()]);
   const now = new Date().toISOString();
 
   const allEntries: UrlEntry[] = [
     ...STATIC_ROUTES.map((r) => ({ lastmod: now, ...r })),
     ...shopEntries,
+    ...cityEntries,
   ];
 
   const body = `<?xml version="1.0" encoding="UTF-8"?>

@@ -190,6 +190,10 @@ export default function LoginPage() {
   }, [resendCountdown]);
 
   const handleSendOtp = async (method: 'SMS' | 'WHATSAPP' = 'SMS') => {
+    if (!/^[6-9]\d{9}$/.test(phone)) {
+      setLocalError('Phone number must be exactly 10 digits starting with 6-9');
+      return;
+    }
     setLocalError(null);
     setIsSendingOtp(true);
     try {
@@ -489,9 +493,9 @@ export default function LoginPage() {
                       id="phone"
                       type="tel"
                       autoComplete="tel"
-                      placeholder="+91XXXXXXXXXX"
+                      placeholder="9876543210"
                       value={phone}
-                      onChange={(e) => setPhone(e.target.value)}
+                      onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
                       className="input-m3"
                       disabled={otpSent}
                     />

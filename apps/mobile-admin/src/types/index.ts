@@ -26,6 +26,7 @@ export type RootStackParamList = {
   PaymentUPI: undefined;
   PendingApprovals: undefined;
   LocationMap: undefined;
+  ForgotPassword: undefined;
   PreArrivalChat: {bookingId: string; customerName?: string};
 };
 

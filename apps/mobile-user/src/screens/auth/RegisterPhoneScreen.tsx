@@ -30,17 +30,13 @@ export default function RegisterPhoneScreen() {
   const [isSendingOtp, setIsSendingOtp] = useState(false);
 
   const onSendCode = async () => {
-    const cleaned = phone.replace(/\s+/g, '').replace(/^0+/, '');
-    if (cleaned.length < 10) {
-      Alert.alert('Error', 'Please enter a valid 10-digit phone number');
+    const cleaned = phone.replace(/\D/g, '');
+    if (!/^[6-9]\d{9}$/.test(cleaned)) {
+      Alert.alert('Error', 'Please enter a valid 10-digit phone number starting with 6-9');
       return;
     }
 
-    const normalized = cleaned.startsWith('+91')
-      ? cleaned
-      : cleaned.startsWith('91') && cleaned.length > 10
-        ? `+${cleaned}`
-        : `+91${cleaned}`;
+    const normalized = `+91${cleaned}`;
 
     setIsSendingOtp(true);
     try {
@@ -71,11 +67,11 @@ export default function RegisterPhoneScreen() {
           <InputField
             label="Phone Number"
             icon={<Smartphone color={Colors.textSecondary} size={18} />}
-            placeholder="98765 43210"
+            placeholder="9876543210"
             value={phone}
-            onChangeText={setPhone}
+            onChangeText={(val) => setPhone(val.replace(/\D/g, '').slice(0, 10))}
             keyboardType="phone-pad"
-            maxLength={13}
+            maxLength={10}
           />
 
           <View style={styles.infoCard}>

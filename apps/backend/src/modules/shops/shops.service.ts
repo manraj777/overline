@@ -260,6 +260,7 @@ export class ShopsService {
             orderBy: { sortOrder: 'asc' },
             take: 5,
           },
+          workingHours: true,
           _count: {
             select: {
               services: { where: { isActive: true } },
@@ -679,6 +680,7 @@ export class ShopsService {
         tenant: {
           select: { type: true },
         },
+        workingHours: true,
         _count: {
           select: { services: { where: { isActive: true } } },
         },
@@ -754,6 +756,7 @@ export class ShopsService {
         tenant: {
           select: { type: true },
         },
+        workingHours: true,
         _count: { select: { reviews: true } },
       },
     });

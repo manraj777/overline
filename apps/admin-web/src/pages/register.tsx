@@ -435,6 +435,10 @@ export default function RegisterPage() {
                         placeholder="9876543210"
                         {...register('ownerPhone', { 
                           required: 'Phone is required',
+                          pattern: {
+                            value: /^\d{10}$/,
+                            message: 'Phone number must be exactly 10 digits'
+                          },
                           onChange: (e) => {
                             e.target.value = e.target.value.replace(/\D/g, '').slice(0, 10);
                           }
@@ -589,6 +593,10 @@ export default function RegisterPage() {
                         placeholder="9876543210" 
                         {...register('publicPhone', { 
                           required: !sameAsOwner ? 'Public phone is required' : false,
+                          pattern: {
+                            value: /^\d{10}$/,
+                            message: 'Phone number must be exactly 10 digits'
+                          },
                           onChange: (e) => {
                             e.target.value = e.target.value.replace(/\D/g, '').slice(0, 10);
                           }
@@ -619,11 +627,16 @@ export default function RegisterPage() {
                         className="input-m3" 
                         placeholder="9876543210" 
                         {...register('whatsappPhone', {
+                          pattern: {
+                            value: /^\d{10}$/,
+                            message: 'Phone number must be exactly 10 digits'
+                          },
                           onChange: (e) => {
                             e.target.value = e.target.value.replace(/\D/g, '').slice(0, 10);
                           }
                         })} 
                       />
+                      {errors.whatsappPhone && <p className="text-error text-xs font-medium">{errors.whatsappPhone.message}</p>}
                     </div>
                     )}
                   </div>

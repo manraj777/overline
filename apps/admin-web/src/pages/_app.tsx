@@ -2,7 +2,7 @@ import '../styles/globals.css';
 import type { AppProps } from 'next/app';
 import React from 'react';
 import { useRouter } from 'next/router';
-import { Inter } from 'next/font/google';
+
 import { QueryClientProvider } from '@tanstack/react-query';
 import { queryClient } from '@/lib/query-client';
 import { AdminLayout } from '@/components/layout';
@@ -19,12 +19,9 @@ import {
   isPublicRoute,
 } from '@/lib/role-routing';
 
-const inter = Inter({
-  subsets: ['latin'],
-  variable: '--font-admin-body',
-  display: 'swap',
-  weight: ['400', '500', '600', '700', '800', '900'],
-});
+const inter = {
+  variable: 'font-sans',
+};
 
 function AuthBootstrap() {
   const router = useRouter();

@@ -55,8 +55,8 @@ export default function StaffPage() {
     setFormError('');
 
     const normalizedPhone = formData.phone.replace(/\D/g, '');
-    if (!editingStaffId && normalizedPhone.length < 10) {
-      setFormError('Staff mobile number is required for login.');
+    if (!editingStaffId && normalizedPhone.length !== 10) {
+      setFormError('Staff mobile number must be exactly 10 digits.');
       return;
     }
 
@@ -72,7 +72,7 @@ export default function StaffPage() {
           staffId: editingStaffId,
           name: formData.name,
           email: formData.email || undefined,
-          phone: formData.phone || undefined,
+          phone: normalizedPhone || undefined,
           age: formData.age ? Number(formData.age) : undefined,
           role: formData.role,
           avatarUrl: formData.avatarUrl || undefined,
@@ -81,7 +81,7 @@ export default function StaffPage() {
         const created = await createStaff.mutateAsync({
           name: formData.name,
           email: formData.email || undefined,
-          phone: formData.phone || undefined,
+          phone: normalizedPhone || undefined,
           age: formData.age ? Number(formData.age) : undefined,
           password: formData.password || undefined,
           role: formData.role,
@@ -248,10 +248,10 @@ export default function StaffPage() {
                   <label className="label-m3">Phone</label>
                   <input
                     type="tel"
-                    placeholder="+91 9876543210"
+                    placeholder="9876543210"
                     className="input-m3 disabled:opacity-60 disabled:cursor-not-allowed"
                     value={formData.phone}
-                    onChange={(e) => setFormData({ ...formData, phone: e.target.value.replace(/[^\d+\s-]/g, '') })}
+                    onChange={(e) => setFormData({ ...formData, phone: e.target.value.replace(/\D/g, '').slice(0, 10) })}
                     disabled={!!editingStaffId}
                   />
                 </div>

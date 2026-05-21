@@ -129,8 +129,10 @@ export const authApi = {
     apiClient.post('/auth/google', { idToken, requestedRole: options?.requestedRole }),
   getProfile: () => apiClient.get('/users/me'),
   logout: () => apiClient.post('/auth/logout'),
-  refresh: (refreshToken: string) =>
+  refreshToken: (refreshToken: string) =>
     apiClient.post('/auth/refresh', { refreshToken }),
+  resetPassword: (data: { identifier: string; otp: string; newPassword: string }) =>
+    apiClient.post('/auth/reset-password', data),
 };
 
 // OTP APIs

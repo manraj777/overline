@@ -165,6 +165,7 @@ export type RootStackParamList = {
   EditProfile: undefined;
   Notifications: undefined;
   LocationMap: undefined;
+  ForgotPassword: undefined;
   PhoneVerification: undefined;
 };
 

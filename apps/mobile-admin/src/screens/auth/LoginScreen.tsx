@@ -76,7 +76,7 @@ export default function LoginScreen() {
 
   const handleOwnerPhoneLogin = async () => {
     const digits = ownerPhone.replace(/\D/g, '');
-    if (digits.length < 10) return Alert.alert('Invalid Phone', 'Enter 10 digits');
+    if (!/^[6-9]\d{9}$/.test(digits)) return Alert.alert('Invalid Phone', 'Phone number must be exactly 10 digits starting with 6-9');
     setIsLoading(true);
     try {
       const normalized = `+91${digits}`;
@@ -91,14 +91,15 @@ export default function LoginScreen() {
 
   const handleStaffLogin = async () => {
     if (!selectedShop) return Alert.alert('Missing Shop', 'Please select your shop first');
-    if (staffPhone.replace(/\D/g, '').length < 10) return Alert.alert('Invalid Phone', 'Enter 10 digits');
+    const digits = staffPhone.replace(/\D/g, '');
+    if (!/^[6-9]\d{9}$/.test(digits)) return Alert.alert('Invalid Phone', 'Phone number must be exactly 10 digits starting with 6-9');
     if (staffPin.length !== 6) return Alert.alert('Invalid PIN', 'Enter 6-digit employee code');
     
     setIsLoading(true);
     try {
       await staffLogin({
         shopId: selectedShop.id,
-        phone: `+91${staffPhone.replace(/\D/g, '')}`,
+        phone: `+91${digits}`,
         password: staffPin
       });
     } catch (e: any) {
@@ -110,8 +111,8 @@ export default function LoginScreen() {
 
   const handleFindAssignedShops = async () => {
     const digits = staffPhone.replace(/\D/g, '');
-    if (digits.length < 10) {
-      Alert.alert('Invalid Phone', 'Enter 10 digits to find assigned shops');
+    if (!/^[6-9]\d{9}$/.test(digits)) {
+      Alert.alert('Invalid Phone', 'Phone number must be exactly 10 digits starting with 6-9 to find assigned shops');
       return;
     }
 
@@ -134,7 +135,7 @@ export default function LoginScreen() {
   const handleStaffOtpLogin = async () => {
     if (!selectedShop) return Alert.alert('Missing Shop', 'Please select your shop first');
     const digits = staffPhone.replace(/\D/g, '');
-    if (digits.length < 10) return Alert.alert('Invalid Phone', 'Enter 10 digits');
+    if (!/^[6-9]\d{9}$/.test(digits)) return Alert.alert('Invalid Phone', 'Phone number must be exactly 10 digits starting with 6-9');
 
     setIsLoading(true);
     try {
@@ -266,10 +267,11 @@ export default function LoginScreen() {
                   <Smartphone size={18} color="#94A3B8" />
                   <TextInput 
                     style={styles.input} 
-                    placeholder="Mobile Number" 
+                    placeholder="9876543210" 
                     keyboardType="phone-pad"
                     value={ownerPhone}
-                    onChangeText={(t) => setOwnerPhone(t.replace(/[^\d+\s-]/g, ''))}
+                    onChangeText={(t) => setOwnerPhone(t.replace(/\D/g, '').slice(0, 10))}
+                    maxLength={10}
                   />
                 </View>
 
@@ -308,10 +310,11 @@ export default function LoginScreen() {
                   <Smartphone size={18} color="#94A3B8" />
                   <TextInput 
                     style={styles.input} 
-                    placeholder="Registered Mobile" 
+                    placeholder="9876543210" 
                     keyboardType="phone-pad"
                     value={staffPhone}
-                    onChangeText={(t) => setStaffPhone(t.replace(/[^\d+\s-]/g, ''))}
+                    onChangeText={(t) => setStaffPhone(t.replace(/\D/g, '').slice(0, 10))}
+                    maxLength={10}
                   />
                 </View>
 
@@ -365,6 +368,10 @@ export default function LoginScreen() {
                 )}
               </View>
             )}
+
+            <TouchableOpacity style={styles.forgotRow} onPress={() => navigation.navigate('ForgotPassword')}>
+              <Text style={styles.forgotText}>Forgot password?</Text>
+            </TouchableOpacity>
 
             <View style={styles.footerWrap}>
               <ShieldCheck size={14} color={Colors.primary} />
@@ -469,4 +476,6 @@ const styles = StyleSheet.create({
   shopItemName: { fontSize: 15, fontWeight: '800', color: '#1E293B' },
   shopItemLoc: { fontSize: 11, color: '#94A3B8', fontWeight: '600', marginTop: 2 },
   modalEmpty: { marginTop: 60, alignItems: 'center' },
+  forgotRow: { alignItems: 'center', marginTop: 16 },
+  forgotText: { fontSize: 13, fontWeight: '700', color: Colors.primary },
 });

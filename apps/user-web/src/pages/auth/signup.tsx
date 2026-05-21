@@ -190,14 +190,17 @@ export default function SignupPage() {
                     id="phone"
                     type="tel"
                     autoComplete="tel"
-                    placeholder="+91 9876543210"
+                    placeholder="9876543210"
                     className="input-m3"
                     {...register('phone', {
                       required: 'Phone number is required',
                       pattern: {
-                        value: /^(\+91|91)?[6-9]\d{9}$/,
-                        message: 'Enter a valid Indian mobile number',
+                        value: /^[6-9]\d{9}$/,
+                        message: 'Phone number must be exactly 10 digits starting with 6-9',
                       },
+                      onChange: (e) => {
+                        e.target.value = e.target.value.replace(/\D/g, '').slice(0, 10);
+                      }
                     })}
                   />
                   {errors.phone && <p className="text-error text-xs font-medium">{errors.phone.message}</p>}

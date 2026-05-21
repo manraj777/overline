@@ -33,6 +33,7 @@ import {
 // Screens
 import SplashScreen from '../screens/auth/SplashScreen';
 import LoginScreen from '../screens/auth/LoginScreen';
+import ForgotPasswordScreen from '../screens/auth/ForgotPasswordScreen';
 import OtpVerifyScreen from '../screens/auth/OtpVerifyScreen';
 import ShopSetupScreen from '../screens/onboarding/ShopSetupScreen';
 import BookingDetailScreen from '../screens/bookings/BookingDetailScreen';
@@ -274,6 +275,7 @@ export default function RootNavigator() {
               component={OtpVerifyScreen}
               options={{headerShown: true, title: 'Verify Phone'}}
             />
+            <Stack.Screen name="ForgotPassword" component={ForgotPasswordScreen} />
           </>
         ) : pendingOtpVerification && otpPhone ? (
           <Stack.Screen

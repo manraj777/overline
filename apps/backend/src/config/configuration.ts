@@ -41,6 +41,7 @@ const defaultAdminFrontendUrl = isProduction ? DOMAIN_CONFIG.adminUrl : 'http://
 const defaultCorsOrigins = [
   'http://localhost:3000',
   'http://localhost:3002',
+  'http://localhost:3003',
   DOMAIN_CONFIG.appUrl,
   DOMAIN_CONFIG.adminUrl,
 ];

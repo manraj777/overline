@@ -238,21 +238,23 @@ export default function QueueBoard() {
     proposeTimeMutation.isPending;
 
   return (
-    <section className="card-m3 p-5">
-      <div className="mb-4 flex flex-wrap items-center justify-between gap-3">
-        <h2 className="text-xl font-semibold text-on-surface">Queue Board</h2>
-        <div className="flex items-center gap-2 text-sm text-on-surface-variant">
-          <span>Avg service min</span>
-          <input
-            type="number"
-            value={averageServiceMinutes}
-            min={5}
-            onChange={(event) => setAverageServiceMinutes(Number(event.target.value) || 5)}
-            className="w-16 input-m3 px-2 py-1"
-          />
+    <section className="card-m3 p-4 sm:p-5">
+      <div className="mb-4 space-y-3 sm:space-y-0 sm:flex sm:flex-wrap sm:items-center sm:justify-between sm:gap-3">
+        <h2 className="text-lg sm:text-xl font-semibold text-on-surface">Queue Board</h2>
+        <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:gap-2 text-sm text-on-surface-variant">
+          <div className="flex items-center gap-2">
+            <span className="text-xs sm:text-sm whitespace-nowrap">Avg service min</span>
+            <input
+              type="number"
+              value={averageServiceMinutes}
+              min={5}
+              onChange={(event) => setAverageServiceMinutes(Number(event.target.value) || 5)}
+              className="w-16 input-m3 px-2 py-1 text-sm"
+            />
+          </div>
           <button
             type="button"
-            className="rounded-full bg-[#f6bd60] px-3 py-1 text-xs font-semibold text-black"
+            className="rounded-full bg-[#f6bd60] px-3 py-1.5 sm:py-1 text-xs font-semibold text-black w-full sm:w-auto"
             onClick={callNext}
             disabled={callNextMutation.isPending}
           >
@@ -261,7 +263,7 @@ export default function QueueBoard() {
         </div>
       </div>
 
-      <p className="mb-3 text-sm text-on-surface-variant">Current queue length: {waitingCount}</p>
+      <p className="mb-3 text-xs sm:text-sm text-on-surface-variant">Current queue length: {waitingCount}</p>
 
       {isLoading ? (
         <div className="space-y-3">
@@ -284,23 +286,24 @@ export default function QueueBoard() {
       ) : (
         <div className="space-y-3">
           {queue.map((entry) => (
-          <article key={entry.id} className="card-m3-flat p-4">
-            <div className="flex flex-wrap items-start justify-between gap-3">
-              <div>
-                <p className="font-semibold text-on-surface">
+          <article key={entry.id} className="card-m3-flat p-3 sm:p-4">
+            <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap sm:items-start sm:justify-between sm:gap-3">
+              <div className="min-w-0">
+                <p className="font-semibold text-on-surface text-sm sm:text-base">
                   #{entry.position} {entry.customerName} <span className="text-on-surface-variant">({mask(entry.phone)})</span>
                 </p>
-                <p className="mt-1 text-sm text-on-surface-variant">
+                <p className="mt-1 text-xs sm:text-sm text-on-surface-variant break-words">
                   {entry.service} • Token {entry.tokenCode} • Joined {entry.joinedAt} • ETA {averageServiceMinutes * entry.position}m
                 </p>
               </div>
               <span
-                className={`rounded-full px-3 py-1 text-xs font-semibold ${STATUS_CHIP_STYLES[entry.status]}`}
+                className={`rounded-full px-3 py-1 text-xs font-semibold self-start ${STATUS_CHIP_STYLES[entry.status]}`}
               >
                 {STATUS_LABELS[entry.status]}
               </span>
             </div>
-            <div className="mt-3 flex flex-wrap gap-2">
+            {/* Desktop action buttons */}
+            <div className="mt-3 hidden sm:flex flex-wrap gap-2">
               <button
                 type="button"
                 className="btn-outline px-3 py-1 text-xs"
@@ -336,6 +339,51 @@ export default function QueueBoard() {
               <button
                 type="button"
                 className="btn-outline border-error text-error px-3 py-1 text-xs"
+                onClick={() => openRemoveModal(entry.id)}
+                disabled={isMutating}
+              >
+                Remove From Queue
+              </button>
+            </div>
+            {/* Mobile action buttons – grid layout */}
+            <div className="mt-3 sm:hidden space-y-2">
+              <div className="grid grid-cols-2 gap-1.5">
+                <button
+                  type="button"
+                  className="btn-outline px-2 py-1.5 text-[11px] rounded-lg text-center"
+                  onClick={() => checkIn(entry.id)}
+                  disabled={isMutating}
+                >
+                  Check In
+                </button>
+                <button
+                  type="button"
+                  className="btn-outline px-2 py-1.5 text-[11px] rounded-lg text-center"
+                  onClick={() => openStartService(entry.id)}
+                  disabled={isMutating}
+                >
+                  Verify & Start
+                </button>
+                <button
+                  type="button"
+                  className="btn-outline px-2 py-1.5 text-[11px] rounded-lg text-center"
+                  onClick={() => openProposeTimeModal(entry.id)}
+                  disabled={isMutating || entry.status === 'done' || entry.status === 'cancelled' || entry.status === 'no_show'}
+                >
+                  Propose Time
+                </button>
+                <button
+                  type="button"
+                  className="btn-outline px-2 py-1.5 text-[11px] rounded-lg text-center"
+                  onClick={() => markDone(entry.id)}
+                  disabled={isMutating}
+                >
+                  Mark Done
+                </button>
+              </div>
+              <button
+                type="button"
+                className="w-full btn-outline border-error text-error px-2 py-1.5 text-[11px] rounded-lg text-center"
                 onClick={() => openRemoveModal(entry.id)}
                 disabled={isMutating}
               >

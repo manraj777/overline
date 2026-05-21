@@ -3,13 +3,14 @@ import { PrismaModule } from '../../common/prisma/prisma.module';
 import { AdminController } from './admin.controller';
 import { OwnerController } from './owner.controller';
 import { StaffController } from './staff.controller';
+import { PlatformController } from './platform.controller';
 import { AdminService } from './admin.service';
 import { QueueModule } from '../queue/queue.module';
 import { BookingsModule } from '../bookings/bookings.module';
 
 @Module({
   imports: [PrismaModule, QueueModule, BookingsModule],
-  controllers: [AdminController, OwnerController, StaffController],
+  controllers: [AdminController, OwnerController, StaffController, PlatformController],
   providers: [AdminService],
   exports: [AdminService],
 })

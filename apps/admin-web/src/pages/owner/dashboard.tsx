@@ -154,28 +154,30 @@ export default function OwnerDashboardPage() {
 								</h2>
 								<span className="text-[10px] font-bold text-outline tracking-widest uppercase">Top by workload</span>
 							</div>
-							<table className="table-m3">
-								<thead>
-									<tr>
-										<th>Staff</th>
-										<th>Bookings</th>
-										<th>Est. Revenue</th>
-									</tr>
-								</thead>
-								<tbody>
-									{staffPerformance.length === 0 ? (
-										<tr><td className="text-on-surface-variant" colSpan={3}>No staff activity found for today.</td></tr>
-									) : (
-										staffPerformance.map((row) => (
-											<tr key={row.id}>
-												<td><span className="font-bold">{row.name}</span></td>
-												<td className="text-on-surface-variant">{row.bookings}</td>
-												<td><span className="font-bold">{formatPrice(row.estimatedRevenue)}</span></td>
-											</tr>
-										))
-									)}
-								</tbody>
-							</table>
+							<div className="overflow-x-auto">
+								<table className="table-m3">
+									<thead>
+										<tr>
+											<th>Staff</th>
+											<th>Bookings</th>
+											<th>Est. Revenue</th>
+										</tr>
+									</thead>
+									<tbody>
+										{staffPerformance.length === 0 ? (
+											<tr><td className="text-on-surface-variant" colSpan={3}>No staff activity found for today.</td></tr>
+										) : (
+											staffPerformance.map((row) => (
+												<tr key={row.id}>
+													<td><span className="font-bold">{row.name}</span></td>
+													<td className="text-on-surface-variant">{row.bookings}</td>
+													<td><span className="font-bold">{formatPrice(row.estimatedRevenue)}</span></td>
+												</tr>
+											))
+										)}
+									</tbody>
+								</table>
+							</div>
 						</div>
 
 						{/* Queue Heatmap */}

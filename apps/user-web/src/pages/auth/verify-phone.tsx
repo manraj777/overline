@@ -37,9 +37,8 @@ export default function VerifyPhonePage() {
   }, [user, router]);
 
   const handleSendOtp = async (method: 'SMS' | 'WHATSAPP' = 'SMS') => {
-    const normalizedPhone = phone.replace(/\D/g, '');
-    if (!normalizedPhone || normalizedPhone.length < 10) {
-      setError('Please enter a valid phone number');
+    if (!/^[6-9]\d{9}$/.test(phone)) {
+      setError('Phone number must be exactly 10 digits starting with 6-9');
       return;
     }
     setError(null);
@@ -196,9 +195,9 @@ export default function VerifyPhonePage() {
               <Input
                 label="Phone Number"
                 type="tel"
-                placeholder="+91 9876543210"
+                placeholder="9876543210"
                 value={phone}
-                onChange={(e) => setPhone(e.target.value)}
+                onChange={(e) => setPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
               />
               <div className="flex flex-col gap-3">
                 <Button
