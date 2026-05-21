@@ -37,7 +37,7 @@ interface AuthState {
   }) => Promise<void>;
   sendOtp: (phone: string) => Promise<string | undefined>;
   verifyOtpSession: (otp: string) => Promise<void>;
-  verifyOtpCode: (otp: string) => Promise<void>;
+  verifyOtpCode: (otp: string, name?: string) => Promise<void>;
   completeOtpLogin: (user: User, accessToken?: string, refreshToken?: string) => Promise<void>;
   logout: () => Promise<void>;
   checkAuth: () => Promise<void>;
@@ -143,7 +143,7 @@ export const useAuthStore = create<AuthState>((set, _get) => ({
     }
   },
 
-  verifyOtpCode: async (otp: string) => {
+  verifyOtpCode: async (otp: string, name?: string) => {
     const state = _get();
     if (!state.otpConfirmation) {
       throw new Error('OTP session expired. Please request a new code.');
@@ -156,7 +156,7 @@ export const useAuthStore = create<AuthState>((set, _get) => ({
         throw new Error('OTP confirmation failed. Please request a new code.');
       }
       const idToken = await credential.user.getIdToken(true);
-      const { data } = await authApi.firebasePhoneLogin(idToken);
+      const { data } = await authApi.firebasePhoneLogin(idToken, name);
       await state.completeOtpLogin(data.user, data.accessToken, data.refreshToken);
     } catch (error: any) {
       const message =

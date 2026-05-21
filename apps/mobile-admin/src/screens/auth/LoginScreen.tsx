@@ -57,9 +57,8 @@ export default function LoginScreen() {
 
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
-  const isGoogleAuthEnabled = Boolean(
-    Config.FEATURES?.GOOGLE_AUTH_ENABLED && Config.GOOGLE?.WEB_CLIENT_ID,
-  );
+  // Temporarily disable Google Auth until SHA fingerprints are configured in Firebase
+  const isGoogleAuthEnabled = false;
 
   const { loginWithGoogle, sendPhoneLoginOtp, staffLogin, fetchAssignedStaffShops } = useAuthStore();
 
@@ -89,19 +88,45 @@ export default function LoginScreen() {
     }
   };
 
+  // Auto-resolve shops and login with PIN in one step
   const handleStaffLogin = async () => {
-    if (!selectedShop) return Alert.alert('Missing Shop', 'Please select your shop first');
     const digits = staffPhone.replace(/\D/g, '');
     if (!/^[6-9]\d{9}$/.test(digits)) return Alert.alert('Invalid Phone', 'Phone number must be exactly 10 digits starting with 6-9');
     if (staffPin.length !== 6) return Alert.alert('Invalid PIN', 'Enter 6-digit employee code');
     
     setIsLoading(true);
     try {
-      await staffLogin({
-        shopId: selectedShop.id,
-        phone: `+91${digits}`,
-        password: staffPin
-      });
+      // If we already have a selected shop, go straight to login
+      if (selectedShop) {
+        await staffLogin({
+          shopId: selectedShop.id,
+          phone: `+91${digits}`,
+          password: staffPin
+        });
+        return;
+      }
+
+      // Otherwise, auto-resolve shops first
+      const shops = await fetchAssignedStaffShops(`+91${digits}`);
+      setAssignedShops(shops);
+
+      if (!shops.length) {
+        Alert.alert('No Staff Assignment', 'No active staff assignments found for this mobile number.');
+        return;
+      }
+
+      if (shops.length === 1) {
+        // Single shop — auto-select and login immediately
+        setSelectedShop(shops[0]);
+        await staffLogin({
+          shopId: shops[0].id,
+          phone: `+91${digits}`,
+          password: staffPin
+        });
+      } else {
+        // Multiple shops — show picker, user will tap a shop to login
+        setShowShopPicker(true);
+      }
     } catch (e: any) {
       Alert.alert('Access Denied', e.response?.data?.message || 'Invalid Mobile or PIN for this shop.');
     } finally {
@@ -109,47 +134,103 @@ export default function LoginScreen() {
     }
   };
 
-  const handleFindAssignedShops = async () => {
-    const digits = staffPhone.replace(/\D/g, '');
-    if (!/^[6-9]\d{9}$/.test(digits)) {
-      Alert.alert('Invalid Phone', 'Phone number must be exactly 10 digits starting with 6-9 to find assigned shops');
-      return;
-    }
+  // When user picks a shop from the multi-shop modal, login immediately
+  const handleShopPickAndLogin = async (shop: any) => {
+    setSelectedShop(shop);
+    setShowShopPicker(false);
 
-    setIsLoading(true);
-    try {
-      const shops = await fetchAssignedStaffShops(`+91${digits}`);
-      setAssignedShops(shops);
-      if (!shops.length) {
-        Alert.alert('No Staff Assignment', 'No active staff assignments found for this mobile number.');
+    const digits = staffPhone.replace(/\D/g, '');
+
+    if (staffAuthMode === 'PIN') {
+      if (staffPin.length !== 6) {
+        Alert.alert('Invalid PIN', 'Enter 6-digit employee code');
         return;
       }
-      setShowShopPicker(true);
-    } catch (e: any) {
-      Alert.alert('Lookup Failed', e.response?.data?.message || 'Unable to fetch assigned shops');
-    } finally {
-      setIsLoading(false);
+      setIsLoading(true);
+      try {
+        await staffLogin({
+          shopId: shop.id,
+          phone: `+91${digits}`,
+          password: staffPin
+        });
+      } catch (e: any) {
+        Alert.alert('Access Denied', e.response?.data?.message || 'Invalid Mobile or PIN for this shop.');
+      } finally {
+        setIsLoading(false);
+      }
+    } else {
+      // OTP mode — send OTP for the selected shop
+      setIsLoading(true);
+      try {
+        const normalized = `+91${digits}`;
+        await sendPhoneLoginOtp(normalized, {
+          requestedRole: 'STAFF',
+          selectedShopId: shop.id,
+        });
+        navigation.navigate('OtpVerify', {
+          phone: normalized,
+          flow: 'PHONE_LOGIN',
+          requestedRole: 'STAFF',
+          selectedShopId: shop.id,
+        });
+      } catch (e: any) {
+        Alert.alert('Error', e.response?.data?.message || 'Failed to send OTP');
+      } finally {
+        setIsLoading(false);
+      }
     }
   };
 
+  // Auto-resolve shops and send OTP in one step
   const handleStaffOtpLogin = async () => {
-    if (!selectedShop) return Alert.alert('Missing Shop', 'Please select your shop first');
     const digits = staffPhone.replace(/\D/g, '');
     if (!/^[6-9]\d{9}$/.test(digits)) return Alert.alert('Invalid Phone', 'Phone number must be exactly 10 digits starting with 6-9');
 
     setIsLoading(true);
     try {
-      const normalized = `+91${digits}`;
-      await sendPhoneLoginOtp(normalized, {
-        requestedRole: 'STAFF',
-        selectedShopId: selectedShop.id,
-      });
-      navigation.navigate('OtpVerify', {
-        phone: normalized,
-        flow: 'PHONE_LOGIN',
-        requestedRole: 'STAFF',
-        selectedShopId: selectedShop.id,
-      });
+      // If we already have a selected shop, go straight to OTP
+      if (selectedShop) {
+        const normalized = `+91${digits}`;
+        await sendPhoneLoginOtp(normalized, {
+          requestedRole: 'STAFF',
+          selectedShopId: selectedShop.id,
+        });
+        navigation.navigate('OtpVerify', {
+          phone: normalized,
+          flow: 'PHONE_LOGIN',
+          requestedRole: 'STAFF',
+          selectedShopId: selectedShop.id,
+        });
+        return;
+      }
+
+      // Otherwise, auto-resolve shops first
+      const shops = await fetchAssignedStaffShops(`+91${digits}`);
+      setAssignedShops(shops);
+
+      if (!shops.length) {
+        Alert.alert('No Staff Assignment', 'No active staff assignments found for this mobile number.');
+        return;
+      }
+
+      if (shops.length === 1) {
+        // Single shop — auto-select and send OTP immediately
+        setSelectedShop(shops[0]);
+        const normalized = `+91${digits}`;
+        await sendPhoneLoginOtp(normalized, {
+          requestedRole: 'STAFF',
+          selectedShopId: shops[0].id,
+        });
+        navigation.navigate('OtpVerify', {
+          phone: normalized,
+          flow: 'PHONE_LOGIN',
+          requestedRole: 'STAFF',
+          selectedShopId: shops[0].id,
+        });
+      } else {
+        // Multiple shops — show picker
+        setShowShopPicker(true);
+      }
     } catch (e: any) {
       Alert.alert('Error', e.response?.data?.message || 'Failed to send OTP');
     } finally {
@@ -287,38 +368,38 @@ export default function LoginScreen() {
             ) : (
               <View>
                 <Text style={styles.cardHeader}>Team Member Portal</Text>
-                
-                <TouchableOpacity style={styles.shopTrigger} onPress={() => setShowShopPicker(true)}>
-                  <View style={styles.shopTriggerMain}>
-                    <Building2 size={18} color={selectedShop ? Colors.primary : "#94A3B8"} />
-                    <Text style={[styles.shopTriggerText, selectedShop && { color: '#0F172A' }]}>
-                      {selectedShop ? selectedShop.name : "Select your Shop"}
-                    </Text>
-                  </View>
-                  <ChevronRight size={18} color="#CBD5E1" />
-                </TouchableOpacity>
 
-                <TouchableOpacity
-                  style={[styles.primaryBtn, {marginTop: 16}]}
-                  onPress={handleFindAssignedShops}
-                  disabled={isLoading}
-                >
-                  {isLoading ? <ActivityIndicator color="#FFF" /> : <Text style={styles.primaryBtnText}>FIND MY SHOPS</Text>}
-                </TouchableOpacity>
+                {/* Selected shop indicator (shown after auto-resolve or manual pick) */}
+                {selectedShop && (
+                  <TouchableOpacity 
+                    style={styles.selectedShopBanner} 
+                    onPress={() => { setSelectedShop(null); setAssignedShops([]); }}
+                  >
+                    <View style={styles.shopTriggerMain}>
+                      <Building2 size={18} color={Colors.primary} />
+                      <Text style={[styles.shopTriggerText, { color: '#0F172A' }]}>{selectedShop.name}</Text>
+                    </View>
+                    <Text style={styles.changeShopText}>Change</Text>
+                  </TouchableOpacity>
+                )}
 
-                <View style={[styles.inputBox, { marginTop: 16 }]}>
+                <View style={[styles.inputBox, { marginTop: selectedShop ? 12 : 0 }]}>
                   <Smartphone size={18} color="#94A3B8" />
                   <TextInput 
                     style={styles.input} 
                     placeholder="9876543210" 
                     keyboardType="phone-pad"
                     value={staffPhone}
-                    onChangeText={(t) => setStaffPhone(t.replace(/\D/g, '').slice(0, 10))}
+                    onChangeText={(t) => {
+                      setStaffPhone(t.replace(/\D/g, '').slice(0, 10));
+                      // Clear selected shop when phone changes so we re-resolve
+                      if (selectedShop) { setSelectedShop(null); setAssignedShops([]); }
+                    }}
                     maxLength={10}
                   />
                 </View>
 
-                <View style={styles.roleTabs}>
+                <View style={[styles.roleTabs, { marginTop: 12 }]}>
                   <TouchableOpacity
                     style={[styles.roleTab, staffAuthMode === 'PIN' && styles.roleTabActive]}
                     onPress={() => setStaffAuthMode('PIN')}
@@ -350,7 +431,7 @@ export default function LoginScreen() {
                     <TouchableOpacity style={styles.primaryBtn} onPress={handleStaffLogin} disabled={isLoading}>
                       {isLoading ? <ActivityIndicator color="#FFF" /> : (
                         <>
-                          <Text style={styles.primaryBtnText}>SIGN IN TO SHIFT</Text>
+                          <Text style={styles.primaryBtnText}>SIGN IN</Text>
                           <UserCheck size={16} color="#FFF" />
                         </>
                       )}
@@ -360,7 +441,7 @@ export default function LoginScreen() {
                   <TouchableOpacity style={styles.primaryBtn} onPress={handleStaffOtpLogin} disabled={isLoading}>
                     {isLoading ? <ActivityIndicator color="#FFF" /> : (
                       <>
-                        <Text style={styles.primaryBtnText}>GET OTP CODE</Text>
+                        <Text style={styles.primaryBtnText}>SEND OTP</Text>
                         <Zap size={16} color="#FFF" />
                       </>
                     )}
@@ -381,14 +462,15 @@ export default function LoginScreen() {
         </ScrollView>
       </KeyboardAvoidingView>
 
-      {/* Shop Picker Modal */}
+      {/* Shop Picker Modal — only shown when staff has multiple assigned shops */}
       <Modal visible={showShopPicker} animationType="slide" transparent>
         <View style={styles.modal}>
           <View style={styles.modalSheet}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Select Assigned Shop</Text>
+              <Text style={styles.modalTitle}>Select Your Shop</Text>
               <TouchableOpacity onPress={() => setShowShopPicker(false)}><X size={24} color="#0F172A" /></TouchableOpacity>
             </View>
+            <Text style={styles.modalSubtitle}>You're assigned to multiple shops. Pick one to sign in.</Text>
             <FlatList 
               data={assignedShops}
               keyExtractor={item => item.id}
@@ -396,7 +478,7 @@ export default function LoginScreen() {
               renderItem={({ item }) => (
                 <TouchableOpacity 
                    style={styles.shopItem} 
-                   onPress={() => { setSelectedShop(item); setShowShopPicker(false); }}
+                   onPress={() => handleShopPickAndLogin(item)}
                 >
                   <View style={styles.shopIcon}><Store size={20} color={Colors.primary} /></View>
                   <View>
@@ -462,13 +544,25 @@ const styles = StyleSheet.create({
   primaryBtnText: { color: '#FFF', fontSize: 14, fontWeight: '900', letterSpacing: 1 },
   footerWrap: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6, marginTop: 20 },
   footerText: { fontSize: 11, fontWeight: '800', color: '#94A3B8' },
-  shopTrigger: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', backgroundColor: '#F8FAFC', borderRadius: 20, paddingHorizontal: 16, height: 60, borderWidth: 1, borderColor: '#F1F5F9' },
+  selectedShopBanner: { 
+    flexDirection: 'row', 
+    alignItems: 'center', 
+    justifyContent: 'space-between', 
+    backgroundColor: Colors.primary100 || '#EEF2FF', 
+    borderRadius: 16, 
+    paddingHorizontal: 16, 
+    paddingVertical: 12, 
+    borderWidth: 1.5, 
+    borderColor: Colors.primary + '30',
+  },
   shopTriggerMain: { flexDirection: 'row', alignItems: 'center', gap: 12 },
   shopTriggerText: { fontSize: 15, fontWeight: '700', color: '#94A3B8' },
+  changeShopText: { fontSize: 12, fontWeight: '800', color: Colors.primary },
   modal: { flex: 1, backgroundColor: 'rgba(15, 23, 42, 0.4)', justifyContent: 'flex-end' },
   modalSheet: { backgroundColor: '#FFF', borderTopLeftRadius: 40, borderTopRightRadius: 40, height: '80%' },
   modalHeader: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', padding: 24, borderBottomWidth: 1, borderBottomColor: '#F1F5F9' },
   modalTitle: { fontSize: 20, fontWeight: '900', color: '#0F172A' },
+  modalSubtitle: { paddingHorizontal: 24, paddingTop: 12, fontSize: 13, color: '#64748B', fontWeight: '600' },
   modalSearch: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F8FAFC', margin: 20, paddingHorizontal: 16, height: 50, borderRadius: 16, borderWidth: 1, borderColor: '#F1F5F9' },
   modalInput: { flex: 1, marginLeft: 12, fontSize: 14, fontWeight: '700', color: '#0F172A' },
   shopItem: { flexDirection: 'row', alignItems: 'center', padding: 16, borderRadius: 20, marginBottom: 12, backgroundColor: '#F8FAFC' },

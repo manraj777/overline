@@ -7,6 +7,11 @@ export class FirebasePhoneLoginDto {
   @IsNotEmpty()
   idToken: string;
 
+  @ApiPropertyOptional({ description: 'Optional name for new user registration' })
+  @IsString()
+  @IsOptional()
+  name?: string;
+
   @ApiPropertyOptional({ description: 'Optional role requested by the user' })
   @IsString()
   @IsOptional()

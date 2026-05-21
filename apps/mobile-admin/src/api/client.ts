@@ -118,7 +118,7 @@ export const authApi = {
   firebasePhoneLogin: (idToken: string) =>
     apiClient.post('/auth/firebase/phone-login', { idToken }),
   staffPinLogin: (params: { shopId: string; phone: string; password: string }) =>
-    apiClient.post('/auth/staff-login', params),
+    apiClient.post('/auth/staff-login', { shopId: params.shopId, phone: params.phone, pin: params.password }),
   getAssignedStaffShops: (phone: string) =>
     apiClient.post('/auth/staff/shops', { phone }),
   staffSendOtp: (params: { shopId: string; phone: string }) =>

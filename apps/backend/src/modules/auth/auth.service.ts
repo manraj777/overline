@@ -727,7 +727,7 @@ export class AuthService implements OnModuleInit {
     return this.generateTokens(user);
   }
 
-  async firebasePhoneLogin(idToken: string, requestedRole?: string): Promise<TokenResponse> {
+  async firebasePhoneLogin(idToken: string, requestedRole?: string, providedName?: string): Promise<TokenResponse> {
     const token = idToken?.trim();
     if (!token) {
       throw new BadRequestException('Firebase ID token is required');
@@ -781,8 +781,12 @@ export class AuthService implements OnModuleInit {
         });
       }
 
-      const name = decodedToken.name?.trim() || null;
+      const name = providedName?.trim() || decodedToken.name?.trim() || null;
       const roleToAssign = requestedRole === 'OWNER' ? UserRole.OWNER : UserRole.USER;
+
+      if (!name || name.trim().length < 2) {
+        throw new BadRequestException('NEW_USER_SIGNUP_REQUIRED');
+      }
 
       return tx.user.create({
         data: {

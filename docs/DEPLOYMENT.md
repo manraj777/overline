@@ -64,7 +64,7 @@ REDIS_PASSWORD=your-password
 JWT_SECRET=generate-a-strong-secret-min-32-chars
 JWT_ACCESS_EXPIRATION=15m
 JWT_REFRESH_EXPIRATION=7d
-CORS_ORIGIN=https://app.overline.in,https://admin.overline.in
+CORS_ORIGIN=https://app.overline.in,https://shop.overline.in
 BCRYPT_SALT_ROUNDS=12
 ```
 
@@ -105,7 +105,7 @@ BCRYPT_SALT_ROUNDS=12
    NEXT_PUBLIC_API_URL=https://your-backend-url.up.railway.app/api/v1
    NEXT_PUBLIC_APP_NAME=Overline Admin
    ```
-4. Deploy → Add custom domain `admin.overline.in`
+4. Deploy → Add custom domain `shop.overline.in`
 
 ## Step 5: Run Database Migrations (Production)
 

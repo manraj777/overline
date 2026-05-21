@@ -53,7 +53,6 @@ export default function LoginPage() {
   const [staffAuthMode, setStaffAuthMode] = React.useState<'PIN' | 'OTP'>('PIN');
   const [staffShops, setStaffShops] = React.useState<StaffShopSummary[]>([]);
   const [selectedShop, setSelectedShop] = React.useState<StaffShopSummary | null>(null);
-  const [loadingShops, setLoadingShops] = React.useState(false);
   const [staffAuthBusy, setStaffAuthBusy] = React.useState(false);
   const [otpRequestedRole, setOtpRequestedRole] = React.useState<'OWNER' | 'STAFF' | null>(null);
   const [otpSelectedShopId, setOtpSelectedShopId] = React.useState<string | null>(null);
@@ -154,38 +153,36 @@ export default function LoginPage() {
     }
   };
 
-  const handleFindStaffShops = async () => {
-    const digits = staffPhone.replace(/\D/g, '');
-    if (digits.length !== 10) {
-      setError('Enter a valid 10-digit mobile number');
+  const doStaffPinLoginForShop = async (shop: StaffShopSummary, phoneDigits: string) => {
+    const normalizedPhone = `+91${phoneDigits}`;
+    const payload = {
+      shopId: shop.id,
+      phone: normalizedPhone,
+      pin: staffPin,
+    };
+
+    let auth: any;
+    try {
+      const primary = await api.post<any>('/auth/staff-login', payload);
+      auth = primary.data;
+    } catch (primaryError: any) {
+      const shouldTryFallback = !primaryError?.response || primaryError?.response?.status === 404;
+      if (!shouldTryFallback) throw primaryError;
+      const fallback = await api.post<any>('/auth/staff/login', payload);
+      auth = fallback.data;
+    }
+
+    if (auth.mustSetPin) {
+      setError('Please set up your PIN first using the temporary token.');
       return;
     }
 
-    setError(null);
-    setLoadingShops(true);
-    try {
-      const normalizedPhone = `+91${digits}`;
-      const { data } = await api.post<{ phone: string; shops: StaffShopSummary[] }>('/auth/staff/shops', {
-        phone: normalizedPhone,
-      });
-      const shops = Array.isArray(data.shops) ? data.shops : [];
-      setStaffShops(shops);
-      setSelectedShop(shops[0] || null);
-      if (!shops.length) {
-        setError('No active staff assignment found for this mobile number.');
-      }
-    } catch (err: any) {
-      setError(err.response?.data?.message || 'Unable to fetch assigned shops');
-    } finally {
-      setLoadingShops(false);
-    }
+    login(auth.user, auth.accessToken, auth.refreshToken, shop.id);
+    setShopId(shop.id);
+    router.push(getDefaultRouteForRole(auth.user.role));
   };
 
   const handleStaffPinLogin = async () => {
-    if (!selectedShop) {
-      setError('Select your assigned shop first');
-      return;
-    }
     const digits = staffPhone.replace(/\D/g, '');
     if (digits.length !== 10) {
       setError('Enter a valid 10-digit mobile number');
@@ -198,37 +195,33 @@ export default function LoginPage() {
 
     setError(null);
     setStaffAuthBusy(true);
+
     try {
-      const normalizedPhone = `+91${digits}`;
-      const payload = {
-        shopId: selectedShop.id,
-        phone: normalizedPhone,
-        pin: staffPin,
-      };
-
-      let auth: any;
-      try {
-        const primary = await api.post<any>('/auth/staff-login', payload);
-        auth = primary.data;
-      } catch (primaryError: any) {
-        // Compatibility fallback for environments that expose staff login at a legacy path.
-        const shouldTryFallback = !primaryError?.response || primaryError?.response?.status === 404;
-        if (!shouldTryFallback) {
-          throw primaryError;
+      if (selectedShop) {
+        // If a shop was explicitly selected from dropdown, login directly
+        await doStaffPinLoginForShop(selectedShop, digits);
+      } else {
+        // Auto-resolve shop
+        const normalizedPhone = `+91${digits}`;
+        const { data } = await api.post<{ phone: string; shops: StaffShopSummary[] }>('/auth/staff/shops', {
+          phone: normalizedPhone,
+        });
+        const shops = Array.isArray(data.shops) ? data.shops : [];
+        setStaffShops(shops);
+        
+        if (!shops.length) {
+          setError('No active staff assignment found for this mobile number.');
+          return;
         }
-        const fallback = await api.post<any>('/auth/staff/login', payload);
-        auth = fallback.data;
+        
+        if (shops.length === 1) {
+          setSelectedShop(shops[0]);
+          await doStaffPinLoginForShop(shops[0], digits);
+        } else {
+          // Force user to pick from dropdown which will now become visible
+          setSelectedShop(shops[0]);
+        }
       }
-
-      if (auth.mustSetPin) {
-        setError('Please set up your PIN first using the temporary token.');
-        // Add functionality to redirect or show set-pin modal.
-        return;
-      }
-
-      login(auth.user, auth.accessToken, auth.refreshToken, selectedShop.id);
-      setShopId(selectedShop.id);
-      router.push(getDefaultRouteForRole(auth.user.role));
     } catch (err: any) {
       setError(err.response?.data?.message || 'Invalid mobile number or PIN for selected shop');
     } finally {
@@ -236,11 +229,16 @@ export default function LoginPage() {
     }
   };
 
+  const doStaffOtpLoginForShop = async (shop: StaffShopSummary, phoneDigits: string) => {
+    const normalizedPhone = `+91${phoneDigits}`;
+    await sendOtp(normalizedPhone, { staffShopId: shop.id });
+    setOtpRequestedRole('STAFF');
+    setOtpSelectedShopId(shop.id);
+    setOtpPending(normalizedPhone);
+    setOtp('');
+  };
+
   const handleStaffOtpLogin = async () => {
-    if (!selectedShop) {
-      setError('Select your assigned shop first');
-      return;
-    }
     const digits = staffPhone.replace(/\D/g, '');
     if (digits.length !== 10) {
       setError('Enter a valid 10-digit mobile number');
@@ -249,13 +247,33 @@ export default function LoginPage() {
 
     setError(null);
     setStaffAuthBusy(true);
+
     try {
-      const normalizedPhone = `+91${digits}`;
-      await sendOtp(normalizedPhone, { staffShopId: selectedShop.id });
-      setOtpRequestedRole('STAFF');
-      setOtpSelectedShopId(selectedShop.id);
-      setOtpPending(normalizedPhone);
-      setOtp('');
+      if (selectedShop) {
+        // If a shop was explicitly selected, login directly
+        await doStaffOtpLoginForShop(selectedShop, digits);
+      } else {
+        // Auto-resolve shop
+        const normalizedPhone = `+91${digits}`;
+        const { data } = await api.post<{ phone: string; shops: StaffShopSummary[] }>('/auth/staff/shops', {
+          phone: normalizedPhone,
+        });
+        const shops = Array.isArray(data.shops) ? data.shops : [];
+        setStaffShops(shops);
+
+        if (!shops.length) {
+          setError('No active staff assignment found for this mobile number.');
+          return;
+        }
+
+        if (shops.length === 1) {
+          setSelectedShop(shops[0]);
+          await doStaffOtpLoginForShop(shops[0], digits);
+        } else {
+          // Multiple shops, wait for selection
+          setSelectedShop(shops[0]);
+        }
+      }
     } catch (err: any) {
       setError(err.response?.data?.message || 'Failed to send OTP');
     } finally {
@@ -476,36 +494,14 @@ export default function LoginPage() {
                   </form>
                 ) : (
                   <div className="space-y-5">
-                    <div className="space-y-2">
-                      <label className="label-m3">Registered Mobile</label>
-                      <div className="relative">
-                        <Smartphone className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-outline" />
-                        <input
-                          type="tel"
-                          placeholder="10-digit mobile"
-                          className="input-m3 pl-11"
-                          value={staffPhone}
-                          onChange={(e) => setStaffPhone(e.target.value.replace(/\D/g, '').slice(0, 10))}
-                        />
-                      </div>
-                    </div>
-
-                    <Button
-                      type="button"
-                      className="w-full btn-primary py-3.5"
-                      isLoading={loadingShops}
-                      onClick={handleFindStaffShops}
-                    >
-                      Find Assigned Shops
-                    </Button>
-
-                    {staffShops.length > 0 && (
-                      <div className="space-y-2">
-                        <label className="label-m3">Assigned Shop</label>
+                    {/* Multiple Shops Selector */}
+                    {staffShops.length > 1 && (
+                      <div className="space-y-2 p-3 bg-primary-fixed/20 border border-primary/15 rounded-xl">
+                        <label className="label-m3">Select Assigned Shop</label>
                         <div className="relative">
                           <Building2 className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-outline" />
                           <select
-                            className="input-m3 pl-11"
+                            className="input-m3 pl-11 bg-white"
                             value={selectedShop?.id || ''}
                             onChange={(e) => setSelectedShop(staffShops.find((s) => s.id === e.target.value) || null)}
                           >
@@ -518,6 +514,27 @@ export default function LoginPage() {
                         </div>
                       </div>
                     )}
+
+                    <div className="space-y-2">
+                      <label className="label-m3">Registered Mobile</label>
+                      <div className="relative">
+                        <Smartphone className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-outline" />
+                        <input
+                          type="tel"
+                          placeholder="10-digit mobile"
+                          className="input-m3 pl-11"
+                          value={staffPhone}
+                          onChange={(e) => {
+                            setStaffPhone(e.target.value.replace(/\D/g, '').slice(0, 10));
+                            // Reset shop selection if phone changes
+                            if (staffShops.length > 0) {
+                              setStaffShops([]);
+                              setSelectedShop(null);
+                            }
+                          }}
+                        />
+                      </div>
+                    </div>
 
                     <div className="flex items-center gap-2 rounded-xl bg-surface-container-low p-1">
                       <button

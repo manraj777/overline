@@ -50,9 +50,8 @@ export default function LoginScreen() {
   const [phone, setPhone] = useState('');
   const [isSendingOtp, setIsSendingOtp] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
-  const isGoogleAuthEnabled = Boolean(
-    Config.FEATURES?.GOOGLE_AUTH_ENABLED && Config.GOOGLE?.WEB_CLIENT_ID,
-  );
+  // Temporarily disable Google Auth until SHA fingerprints are configured in Firebase
+  const isGoogleAuthEnabled = false;
 
   useEffect(() => {
     if (isGoogleAuthEnabled) {

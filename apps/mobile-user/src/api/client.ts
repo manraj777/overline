@@ -110,8 +110,8 @@ export const authApi = {
   }) => api.post('/auth/signup', data),
   googleLogin: (idToken: string) =>
     api.post('/auth/google', { idToken }),
-  firebasePhoneLogin: (idToken: string) =>
-    api.post('/auth/firebase/phone-login', { idToken }),
+  firebasePhoneLogin: (idToken: string, name?: string) =>
+    api.post('/auth/firebase/phone-login', { idToken, name }),
   me: () => api.get('/users/me'),
   logout: () => api.post('/auth/logout'),
   refresh: (refreshToken: string) =>

@@ -194,7 +194,7 @@ Multi-layer protection:
 
 ┌─────────────────────────────────────────────┐
 │     Admin Web (Shop Owner)                  │
-│   https://admin.overline.in                │
+│   https://shop.overline.in                 │
 └─────────────────────────────────────────────┘
 ```
 

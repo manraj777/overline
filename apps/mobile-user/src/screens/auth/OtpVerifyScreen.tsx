@@ -40,6 +40,8 @@ export default function OtpVerifyScreen() {
   const [isResending, setIsResending] = useState(false);
   const [countdown, setCountdown] = useState(60);
   const [error, setError] = useState('');
+  const [requiresName, setRequiresName] = useState(false);
+  const [name, setName] = useState('');
   const inputRefs = useRef<Array<TextInput | null>>([]);
 
   // Countdown timer for resend
@@ -103,13 +105,18 @@ export default function OtpVerifyScreen() {
     setError('');
 
     try {
-      await verifyOtpCode(code);
+      await verifyOtpCode(code, requiresName ? name : undefined);
     } catch (err: any) {
       const message =
-        err.response?.data?.message || 'Invalid OTP. Please try again.';
-      setError(message);
-      setOtp(Array(OTP_LENGTH).fill(''));
-      inputRefs.current[0]?.focus();
+        err.response?.data?.message || err.message || 'Invalid OTP. Please try again.';
+      
+      if (message === 'NEW_USER_SIGNUP_REQUIRED') {
+        setRequiresName(true);
+      } else {
+        setError(message);
+        setOtp(Array(OTP_LENGTH).fill(''));
+        inputRefs.current[0]?.focus();
+      }
     } finally {
       setIsVerifying(false);
     }
@@ -163,15 +170,62 @@ export default function OtpVerifyScreen() {
           <View style={styles.iconCircle}>
             <ShieldCheck color={Colors.primary} size={34} />
           </View>
-          <Text style={styles.title}>Verify Your Number</Text>
+          <Text style={styles.title}>{requiresName ? 'Complete Your Profile' : 'Verify Your Number'}</Text>
           <Text style={styles.subtitle}>
-            Enter the 6-digit code sent to{'\n'}
-            <Text style={styles.phoneHighlight}>{formatPhone(phone)}</Text>
+            {requiresName
+              ? 'Please enter your name to complete signup'
+              : <>
+                  Enter the 6-digit code sent to{'\n'}
+                  <Text style={styles.phoneHighlight}>{formatPhone(phone)}</Text>
+                </>}
           </Text>
         </View>
 
-        {/* OTP Inputs */}
-        <View style={styles.otpContainer}>
+        {requiresName ? (
+          <View style={{ marginBottom: Spacing['3xl'] }}>
+            <TextInput
+              style={{
+                height: 56,
+                borderRadius: BorderRadius.md,
+                borderWidth: 1,
+                borderColor: Colors.border,
+                backgroundColor: Colors.surface,
+                paddingHorizontal: Spacing.lg,
+                fontSize: FontSizes.md,
+                color: Colors.textPrimary,
+                marginBottom: Spacing.xl,
+              }}
+              placeholder="Your Full Name"
+              placeholderTextColor={Colors.textTertiary}
+              value={name}
+              onChangeText={(text) => {
+                setName(text);
+                setError('');
+              }}
+              autoFocus
+            />
+            <TouchableOpacity
+              style={{
+                backgroundColor: Colors.primary,
+                height: 56,
+                borderRadius: BorderRadius.md,
+                justifyContent: 'center',
+                alignItems: 'center',
+              }}
+              onPress={() => verifyOtp(otp.join(''))}
+              disabled={isVerifying || !name.trim()}
+            >
+              {isVerifying ? (
+                <ActivityIndicator color={Colors.surface} />
+              ) : (
+                <Text style={{ color: Colors.surface, fontSize: FontSizes.lg, fontWeight: FontWeights.bold }}>Complete Signup</Text>
+              )}
+            </TouchableOpacity>
+          </View>
+        ) : (
+          <>
+            {/* OTP Inputs */}
+            <View style={styles.otpContainer}>
           {otp.map((digit, index) => (
             <TextInput
               key={index}
@@ -235,6 +289,8 @@ export default function OtpVerifyScreen() {
             with anyone.
           </Text>
         </View>
+          </>
+        )}
       </View>
     </KeyboardAvoidingView>
   );

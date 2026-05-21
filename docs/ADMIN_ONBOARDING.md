@@ -5,7 +5,7 @@
 ### 1. Shop Owner Registration Journey
 
 #### Step 1: Register Page
-**URL:** `https://admin.overline.in/auth/register`
+**URL:** `https://shop.overline.in/auth/register`
 
 ```
 ┌─────────────────────────────────────────────────┐
@@ -157,7 +157,7 @@
 
 ### 2. Admin Dashboard - Shop Setup Wizard
 
-**URL:** `https://admin.overline.in/dashboard`
+**URL:** `https://shop.overline.in/dashboard`
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -196,7 +196,7 @@
 
 ### 3. Shop Details & Verification Tab
 
-**URL:** `https://admin.overline.in/shop/settings`
+**URL:** `https://shop.overline.in/shop/settings`
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -266,7 +266,7 @@
 
 ### 4. Services Management
 
-**URL:** `https://admin.overline.in/services`
+**URL:** `https://shop.overline.in/services`
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -297,7 +297,7 @@
 
 ### 5. Staff Management
 
-**URL:** `https://admin.overline.in/staff`
+**URL:** `https://shop.overline.in/staff`
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -336,7 +336,7 @@
 
 ### 6. Bookings & Queue Management
 
-**URL:** `https://admin.overline.in/appointments`
+**URL:** `https://shop.overline.in/appointments`
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
@@ -386,7 +386,7 @@
 
 ### 7. Analytics & Reports
 
-**URL:** `https://admin.overline.in/analytics`
+**URL:** `https://shop.overline.in/analytics`
 
 ```
 ┌─────────────────────────────────────────────────────────────┐

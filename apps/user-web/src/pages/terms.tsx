@@ -215,8 +215,8 @@ const sections: Array<{
       <>
         <p>
           Shops onboarding through <Link href="/auth/signup" className="underline">overline.in</Link> or{' '}
-          <a href="https://admin.overline.in" target="_blank" rel="noreferrer" className="underline">
-            admin.overline.in
+          <a href="https://shop.overline.in" target="_blank" rel="noreferrer" className="underline">
+            shop.overline.in
           </a>{' '}
           additionally agree to:
         </p>

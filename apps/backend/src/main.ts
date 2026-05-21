@@ -53,7 +53,7 @@ async function bootstrap() {
       'http://localhost:3000',
       'http://localhost:3002',
       'https://overline.in',
-      'https://admin.overline.in',
+      'https://shop.overline.in',
     ];
   const allowedOrigins = new Set(configuredOrigins.flatMap(expandOrigin));
 
