@@ -61,6 +61,32 @@ export class UploadController {
   }
 
   /**
+   * Upload a general video (returns URL)
+   */
+  @Post('video')
+  @Throttle({ default: { limit: 10, ttl: 60000 } })
+  @UseGuards(JwtAuthGuard)
+  @ApiBearerAuth('JWT-auth')
+  @UseInterceptors(FileInterceptor('file', { limits: { fileSize: 50 * 1024 * 1024 } }))
+  @ApiConsumes('multipart/form-data')
+  @ApiBody({
+    schema: {
+      type: 'object',
+      properties: {
+        file: { type: 'string', format: 'binary' },
+        folder: { type: 'string' },
+      },
+    },
+  })
+  async uploadVideo(
+    @UploadedFile() file: Express.Multer.File,
+    @Body('folder') folder?: string,
+  ) {
+    const result = await this.uploadService.uploadVideo(file, folder || 'overline');
+    return { url: result.url };
+  }
+
+  /**
    * Upload a general image (returns URL)
    */
   @Post('image')

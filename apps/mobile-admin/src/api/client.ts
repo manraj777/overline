@@ -3,6 +3,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 import DeviceInfo from '../utils/deviceInfo';
 
+import { resolveApiUrl } from './urlResolver';
+
 // Backend URL configuration
 const DEV_HOST =
   process.env.DEV_HOST ||
@@ -10,7 +12,19 @@ const DEV_HOST =
 const PROD_URL = 'https://api.overline.in/api/v1';
 const BASE_URL = __DEV__
   ? `http://${DEV_HOST}:3001/api/v1`
-  : PROD_URL
+  : PROD_URL;
+
+export async function initApiUrl() {
+  try {
+    const { apiBase } = await resolveApiUrl();
+    apiClient.defaults.baseURL = apiBase;
+    console.log('[API Client] Dynamic baseURL resolved:', apiClient.defaults.baseURL);
+  } catch (err) {
+    console.error('[API Client] Failed to resolve dynamic baseURL:', err);
+  }
+}
+
+initApiUrl().catch(() => {});
 
 // Create axios instance
 export const apiClient = axios.create({
@@ -242,6 +256,7 @@ export const servicesApi = {
 // Shop APIs
 export const shopApi = {
   createShop: (data: any) => apiClient.post('/owner/shops', data),
+  registerShop: (data: any) => apiClient.post('/shops/register', data),
   getMyShops: () => apiClient.get('/admin/my-shops'),
   getById: (id: string) => apiClient.get(`/shops/${id}`),
   searchShops: (query: string) => apiClient.get('/shops/search', { params: { q: query } }), // New
@@ -261,6 +276,8 @@ export const shopApi = {
 
 // Staff APIs
 export const staffApi = {
+  getMe: () => apiClient.get('/admin/staff/me'),
+  updateMe: (data: any) => apiClient.patch('/admin/staff/me', data),
   getAll: (shopId: string) =>
     apiClient.get(`/admin/shops/${shopId}/staff`),
   create: (

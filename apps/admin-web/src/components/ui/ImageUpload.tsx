@@ -10,6 +10,9 @@ interface ImageUploadProps {
   className?: string;
   shape?: 'square' | 'circle';
   size?: 'sm' | 'md' | 'lg';
+  accept?: string;
+  maxSizeMB?: number;
+  isVideo?: boolean;
 }
 
 const sizeMap = {
@@ -26,6 +29,9 @@ export const ImageUpload: React.FC<ImageUploadProps> = ({
   className,
   shape = 'square',
   size = 'md',
+  accept = 'image/jpeg,image/png,image/webp,image/gif',
+  maxSizeMB = 5,
+  isVideo = false,
 }) => {
   const [preview, setPreview] = useState<string | null>(currentUrl || null);
   const [isUploading, setIsUploading] = useState(false);
@@ -45,13 +51,22 @@ export const ImageUpload: React.FC<ImageUploadProps> = ({
       if (!file) return;
 
       // Validate
-      const allowedTypes = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
-      if (!allowedTypes.includes(file.type)) {
-        setError('Only JPEG, PNG, WebP, or GIF images are allowed');
-        return;
+      const allowedTypes = accept.split(',').map((t) => t.trim());
+      if (accept !== 'video/*' && !allowedTypes.includes(file.type) && !file.type.startsWith(accept.replace('/*', ''))) {
+        if (!isVideo) {
+          if (!allowedTypes.includes(file.type)) {
+            setError(`Only ${allowedTypes.join(', ')} are allowed`);
+            return;
+          }
+        } else {
+          if (!file.type.startsWith('video/')) {
+            setError('Only video files are allowed');
+            return;
+          }
+        }
       }
-      if (file.size > 5 * 1024 * 1024) {
-        setError('File must be under 5 MB');
+      if (file.size > maxSizeMB * 1024 * 1024) {
+        setError(`File must be under ${maxSizeMB} MB`);
         return;
       }
 
@@ -74,7 +89,7 @@ export const ImageUpload: React.FC<ImageUploadProps> = ({
         if (inputRef.current) inputRef.current.value = '';
       }
     },
-    [currentUrl, onUpload],
+    [currentUrl, onUpload, accept, maxSizeMB, isVideo],
   );
 
   return (
@@ -88,7 +103,11 @@ export const ImageUpload: React.FC<ImageUploadProps> = ({
         )}
       >
         {preview ? (
-          <img src={preview} alt="" className="w-full h-full object-cover" />
+          isVideo ? (
+             <video src={preview} className="w-full h-full object-cover" />
+          ) : (
+             <img src={preview} alt="" className="w-full h-full object-cover" />
+          )
         ) : (
           <Upload className="w-8 h-8 text-gray-400" />
         )}
@@ -98,7 +117,7 @@ export const ImageUpload: React.FC<ImageUploadProps> = ({
             type="button"
             onClick={() => inputRef.current?.click()}
             className="absolute bottom-1 right-1 inline-flex h-6 w-6 items-center justify-center rounded-full bg-black/40 text-white backdrop-blur-sm hover:bg-black/60"
-            title="Change photo"
+            title="Change media"
           >
             <Pencil className="w-3.5 h-3.5" />
           </button>
@@ -129,7 +148,7 @@ export const ImageUpload: React.FC<ImageUploadProps> = ({
       <input
         ref={inputRef}
         type="file"
-        accept="image/jpeg,image/png,image/webp,image/gif"
+        accept={accept}
         onChange={handleFileSelect}
         className="hidden"
       />

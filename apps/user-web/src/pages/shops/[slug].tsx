@@ -14,6 +14,7 @@ import { useShop, useShopQueueStats, useShopRatingStats } from '@/hooks';
 import { useBookingStore } from '@/stores/booking';
 import { format } from 'date-fns';
 import { SeoHead, jsonLd } from '@/components/seo/SeoHead';
+import { isShopOpenNow, getShopTodayHours } from '@/lib/utils';
 import type { ShopWithDetails } from '@/types';
 
 type BookingStep = 'services' | 'staff' | 'datetime' | 'confirm';
@@ -43,7 +44,7 @@ export default function ShopDetailPage({ initialShop, slug: ssrSlug }: ShopPageP
   const { data: ratingStats, refetch: refetchRating } = useShopRatingStats(shop?.id || '');
 
   const [activeTab, setActiveTab] = React.useState('Book Service');
-  const tabs = ['Overview', 'Book Service', 'Team', 'Reviews', 'Photos', 'Info'];
+  const tabs = ['Overview', 'Book Service', 'Team', 'Reviews', 'Media', 'Info'];
 
   const [isRefreshing, setIsRefreshing] = React.useState(false);
   const [lastRefreshAt, setLastRefreshAt] = React.useState<Date | null>(null);
@@ -92,23 +93,8 @@ export default function ShopDetailPage({ initialShop, slug: ssrSlug }: ShopPageP
     return false;
   }, []);
 
-  const todayStr = React.useMemo(() => format(new Date(), 'EEEE').toUpperCase(), []);
-  const todayHours = React.useMemo(() => shop?.workingHours?.find((h: any) => h.dayOfWeek === todayStr), [shop, todayStr]);
-
-  const isShopClosedToday = React.useMemo(() => {
-    if (!shop || !todayHours || todayHours.isClosed) return true;
-    
-    // Check if current time is within operating hours
-    const now = new Date();
-    const currentMinutes = now.getHours() * 60 + now.getMinutes();
-    
-    const [openH, openM] = (todayHours.openTime || '00:00').split(':').map(Number);
-    const [closeH, closeM] = (todayHours.closeTime || '23:59').split(':').map(Number);
-    const openMinutes = openH * 60 + openM;
-    const closeMinutes = closeH * 60 + closeM;
-    
-    return currentMinutes < openMinutes || currentMinutes >= closeMinutes;
-  }, [shop, todayHours]);
+  const todayHours = React.useMemo(() => getShopTodayHours(shop), [shop]);
+  const isShopClosedToday = React.useMemo(() => !isShopOpenNow(shop), [shop]);
 
 
   const eligibleStaff = React.useMemo(() => {
@@ -557,10 +543,21 @@ export default function ShopDetailPage({ initialShop, slug: ssrSlug }: ShopPageP
                       {shop.address}, {shop.city}
                     </a>
                     {shop.phone && (
-                      <a href={`tel:${shop.phone}`} className="flex items-center gap-2 text-sm font-medium hover:text-primary transition-colors">
-                        <Phone className="w-4 h-4 text-outline" />
-                        {shop.phone}
-                      </a>
+                      <>
+                        <a href={`tel:${shop.phone}`} className="flex items-center gap-2 text-sm font-medium hover:text-primary transition-colors">
+                          <Phone className="w-4 h-4 text-outline" />
+                          {shop.phone}
+                        </a>
+                        <a 
+                          href={`https://wa.me/91${shop.phone.replace(/\\D/g, '')}?text=${encodeURIComponent(`Hi, I'm looking to book an appointment at ${shop.name}.`)}`} 
+                          target="_blank" 
+                          rel="noopener noreferrer" 
+                          className="flex items-center gap-2 text-sm font-bold text-emerald-600 hover:text-emerald-700 transition-colors"
+                        >
+                          <MessageSquare className="w-4 h-4" />
+                          WhatsApp
+                        </a>
+                      </>
                     )}
                     <button
                       onClick={handleShareShop}
@@ -714,20 +711,38 @@ export default function ShopDetailPage({ initialShop, slug: ssrSlug }: ShopPageP
                   </div>
                 )}
 
-                {step === 'services' && activeTab === 'Photos' && (
-                  <div className="animate-fade-in">
-                    <h2 className="text-xl font-black tracking-tight text-on-surface mb-6 flex items-center gap-3">
-                      <Camera className="w-5 h-5 text-outline" />
-                      Photos
-                    </h2>
-                    <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
-                       {allPhotos.map((photo, i) => (
-                         <div key={i} className="aspect-square rounded-2xl overflow-hidden cursor-pointer hover:opacity-90" onClick={() => { setGalleryIndex(i); setGalleryOpen(true); }}>
-                           <img src={photo} alt="" className="w-full h-full object-cover" />
-                         </div>
-                       ))}
-                       {allPhotos.length === 0 && <p className="text-on-surface-variant">No photos yet.</p>}
+                {step === 'services' && activeTab === 'Media' && (
+                  <div className="animate-fade-in space-y-8">
+                    <div>
+                      <h2 className="text-xl font-black tracking-tight text-on-surface mb-6 flex items-center gap-3">
+                        <Camera className="w-5 h-5 text-outline" />
+                        Photos
+                      </h2>
+                      <div className="grid grid-cols-2 md:grid-cols-3 gap-2">
+                         {allPhotos.map((photo, i) => (
+                           <div key={i} className="aspect-square rounded-2xl overflow-hidden cursor-pointer hover:opacity-90" onClick={() => { setGalleryIndex(i); setGalleryOpen(true); }}>
+                             <img src={photo} alt="" className="w-full h-full object-cover" />
+                           </div>
+                         ))}
+                         {allPhotos.length === 0 && <p className="text-on-surface-variant">No photos yet.</p>}
+                      </div>
                     </div>
+                    
+                    {(shop.videoUrls?.length ?? 0) > 0 && (
+                      <div>
+                        <h2 className="text-xl font-black tracking-tight text-on-surface mb-6 flex items-center gap-3">
+                          <Camera className="w-5 h-5 text-outline" />
+                          Videos
+                        </h2>
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                           {shop.videoUrls?.map((video: string, i: number) => (
+                             <div key={i} className="aspect-video rounded-2xl overflow-hidden bg-black flex items-center justify-center">
+                               <video src={video} controls className="w-full h-full object-contain" />
+                             </div>
+                           ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 )}
 
@@ -738,7 +753,20 @@ export default function ShopDetailPage({ initialShop, slug: ssrSlug }: ShopPageP
                       Contact & Info
                     </h2>
                     <p className="text-on-surface-variant">Address: {shop.address}, {shop.city}, {shop.postalCode}</p>
-                    {shop.phone && <p className="text-on-surface-variant">Phone: {shop.phone}</p>}
+                    {shop.phone && (
+                      <div className="space-y-4">
+                        <p className="text-on-surface-variant">Phone: {shop.phone}</p>
+                        <a 
+                          href={`https://wa.me/91${shop.phone.replace(/\\D/g, '')}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-2 px-5 py-2.5 bg-emerald-50 text-emerald-700 rounded-xl font-bold hover:bg-emerald-100 transition-colors border border-emerald-100"
+                        >
+                          <MessageSquare className="w-5 h-5" />
+                          Message on WhatsApp
+                        </a>
+                      </div>
+                    )}
                     {shop.email && <p className="text-on-surface-variant">Email: {shop.email}</p>}
                     <p className="text-on-surface-variant mt-4">We accept cash, UPI, and major cards.</p>
                   </div>

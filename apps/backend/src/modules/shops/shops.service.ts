@@ -47,6 +47,58 @@ export class ShopsService {
     return slug;
   }
 
+  async onboardOwnerShop(ownerId: string, dto: RegisterShopRequestDto) {
+    const slug = await this.uniqueShopSlug(dto.shopName, dto.city);
+
+    const tenant = await this.prisma.tenant.create({
+      data: {
+        name: `${dto.shopName} Tenant`,
+        type: dto.shopType,
+      },
+    });
+
+    const settings: Prisma.InputJsonValue = {
+      ownerName: dto.ownerName,
+      ownerEmail: dto.ownerEmail,
+      ownerPhone: dto.ownerPhone || null,
+      googleLink: dto.googleLink || null,
+      timing: dto.timing || null,
+      submittedAt: new Date().toISOString(),
+      ...(dto.settings || {}),
+    };
+
+    const shop = await this.prisma.shop.create({
+      data: {
+        tenantId: tenant.id,
+        ownerId,
+        name: dto.shopName,
+        slug,
+        description: dto.shopDescription || null,
+        address: dto.address,
+        city: dto.city,
+        state: dto.state || null,
+        postalCode: dto.postalCode || null,
+        phone: dto.phone || dto.ownerPhone || null,
+        email: dto.email || dto.ownerEmail,
+        latitude: dto.latitude,
+        longitude: dto.longitude,
+        photoUrls: dto.galleryUrls || [],
+        settings,
+        verificationStatus: 'LIVE',
+        isActive: true,
+      },
+      select: {
+        id: true,
+        slug: true,
+        name: true,
+        verificationStatus: true,
+        isActive: true,
+      },
+    });
+
+    return shop;
+  }
+
   async registerForReview(dto: RegisterShopRequestDto) {
     const slug = await this.uniqueShopSlug(dto.shopName, dto.city);
 

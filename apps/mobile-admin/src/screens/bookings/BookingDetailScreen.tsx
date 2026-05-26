@@ -15,6 +15,7 @@ import {format} from 'date-fns';
 import {bookingsApi} from '../../api/client';
 import {RootStackParamList, Booking} from '../../types';
 import {CalendarDays, Check, Clock3, Phone, Play} from 'lucide-react-native';
+import {SoundManager} from '../../utils/SoundManager';
 
 type RouteProps = RouteProp<RootStackParamList, 'BookingDetail'>;
 
@@ -34,6 +35,7 @@ export default function BookingDetailScreen() {
       queryClient.invalidateQueries({queryKey: ['adminBooking', bookingId]});
       queryClient.invalidateQueries({queryKey: ['adminBookings']});
       queryClient.invalidateQueries({queryKey: ['todayBookings']});
+      SoundManager.playStart();
       Alert.alert('Success', 'Service started');
     },
     onError: (error: any) => {
@@ -51,6 +53,7 @@ export default function BookingDetailScreen() {
       queryClient.invalidateQueries({queryKey: ['adminBookings']});
       queryClient.invalidateQueries({queryKey: ['todayBookings']});
       queryClient.invalidateQueries({queryKey: ['dashboardStats']});
+      SoundManager.playCompleted();
       Alert.alert('Success', 'Service completed');
     },
     onError: (error: any) => {

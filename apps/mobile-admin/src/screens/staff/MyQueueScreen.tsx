@@ -7,12 +7,14 @@ import {
   Text,
   TouchableOpacity,
   View,
+  Switch,
+  Alert,
 } from 'react-native';
 import {useMutation, useQuery, useQueryClient} from '@tanstack/react-query';
 import {format} from 'date-fns';
 import {useNavigation} from '@react-navigation/native';
 import {NativeStackNavigationProp} from '@react-navigation/native-stack';
-import {bookingsApi, queueApi} from '../../api/client';
+import {bookingsApi, queueApi, staffApi} from '../../api/client';
 import {useAuthStore} from '../../stores/authStore';
 import {useQueueRealtime} from '../../hooks/useQueueRealtime';
 import {Booking, RootStackParamList} from '../../types';
@@ -52,6 +54,24 @@ export default function MyQueueScreen() {
     },
     enabled: !!selectedShopId,
     refetchInterval: connected ? false : 10000,
+  });
+
+  const { data: staffProfile } = useQuery({
+    queryKey: ['staffProfile'],
+    queryFn: () => staffApi.getMe().then(res => res.data),
+    enabled: !!selectedShopId,
+  });
+
+  const toggleStatusMutation = useMutation({
+    mutationFn: (isActive: boolean) =>
+      staffApi.updateMe({ isActive }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['staffProfile'] });
+      Alert.alert('Success', 'Availability status updated successfully.');
+    },
+    onError: (err: any) => {
+      Alert.alert('Error', err.response?.data?.message || 'Failed to update status.');
+    }
   });
 
   useEffect(() => {
@@ -142,13 +162,30 @@ export default function MyQueueScreen() {
     );
   }
 
+  const isStaffActive = staffProfile?.isActive ?? true;
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>My Queue</Text>
-        <Text style={styles.headerSubtitle}>
-          {queueBookings.length} active customers • {connected ? 'Live' : 'Polling 10s'}
-        </Text>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+          <View>
+            <Text style={styles.headerTitle}>My Queue</Text>
+            <Text style={styles.headerSubtitle}>
+              {queueBookings.length} active customers • {connected ? 'Live' : 'Polling 10s'}
+            </Text>
+          </View>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <Text style={{ fontSize: 11, fontWeight: '900', color: isStaffActive ? '#10B981' : '#64748B' }}>
+              {isStaffActive ? 'PRESENT' : 'ABSENT'}
+            </Text>
+            <Switch
+              value={isStaffActive}
+              onValueChange={(val) => toggleStatusMutation.mutate(val)}
+              trackColor={{ false: '#CBD5E1', true: '#C7D2FE' }}
+              thumbColor={isStaffActive ? '#4F46E5' : '#64748B'}
+            />
+          </View>
+        </View>
       </View>
 
       <View style={styles.topActionsRow}>

@@ -51,7 +51,7 @@ export default function LoginScreen() {
   const [isSendingOtp, setIsSendingOtp] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
   // Temporarily disable Google Auth until SHA fingerprints are configured in Firebase
-  const isGoogleAuthEnabled = false;
+  const isGoogleAuthEnabled = true;
 
   useEffect(() => {
     if (isGoogleAuthEnabled) {
@@ -281,6 +281,13 @@ export default function LoginScreen() {
             ) : (
               <Text style={styles.googleHint}>Google login is unavailable in this build. Use phone OTP instead.</Text>
             )}
+
+            <View style={{ flexDirection: 'row', justifyContent: 'center', marginTop: 20 }}>
+              <Text style={{ color: '#64748B', fontWeight: '600', fontSize: 13 }}>New to Overline? </Text>
+              <TouchableOpacity onPress={() => navigation.navigate('Register')}>
+                <Text style={{ color: Colors.primary, fontWeight: '800', fontSize: 13 }}>Create account</Text>
+              </TouchableOpacity>
+            </View>
           </View>
 
           <View style={styles.footer}>

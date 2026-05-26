@@ -56,6 +56,23 @@ export default function LocationMapScreen() {
 
   const shops: Shop[] = useMemo(() => shopsData?.data || [], [shopsData]);
 
+  React.useEffect(() => {
+    if (shops.length > 0) {
+      const firstShopWithCoords = shops.find(s => s.latitude != null && s.longitude != null);
+      if (firstShopWithCoords && firstShopWithCoords.latitude && firstShopWithCoords.longitude) {
+        const timer = setTimeout(() => {
+          mapRef.current?.animateToRegion({
+            latitude: firstShopWithCoords.latitude,
+            longitude: firstShopWithCoords.longitude,
+            latitudeDelta: 0.05,
+            longitudeDelta: 0.05,
+          }, 1000);
+        }, 800);
+        return () => clearTimeout(timer);
+      }
+    }
+  }, [shops]);
+
   if (!MapView || !Marker) {
     return (
       <SafeAreaView style={styles.fallbackContainer}>
@@ -92,7 +109,7 @@ export default function LocationMapScreen() {
       onPress={() => navigation.navigate('ShopDetail', { shopId: item.id })}
     >
       <Image 
-        source={{ uri: item.coverPhotoUrl || 'https://images.unsplash.com/photo-1560066984-138dadb4c035' }} 
+        source={{ uri: item.coverUrl || item.coverPhotoUrl || 'https://images.unsplash.com/photo-1560066984-138dadb4c035' }} 
         style={styles.cardImage} 
       />
       <View style={styles.cardContent}>

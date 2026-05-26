@@ -110,38 +110,40 @@ export default function DashboardScreen() {
         {/* Stats Grid */}
         <View style={styles.statsGrid}>
           <View style={styles.statCard}>
-            <Text style={styles.statValue}>{stats?.todayBookings || 0}</Text>
+            <Text style={styles.statValue}>{stats?.todayStats?.total || 0}</Text>
             <Text style={styles.statLabel}>Today's Bookings</Text>
           </View>
           <View style={styles.statCard}>
-            <Text style={styles.statValue}>₹{stats?.todayRevenue || 0}</Text>
+            <Text style={styles.statValue}>₹{stats?.todayStats?.revenue || 0}</Text>
             <Text style={styles.statLabel}>Today's Revenue</Text>
           </View>
           <View style={[styles.statCard, styles.statCardWarning]}>
-            <Text style={styles.statValue}>{stats?.pendingBookings || 0}</Text>
+            <Text style={styles.statValue}>{stats?.todayStats?.upcoming || 0}</Text>
             <Text style={styles.statLabel}>Pending</Text>
           </View>
           <View style={[styles.statCard, styles.statCardSuccess]}>
-            <Text style={styles.statValue}>{stats?.completedToday || 0}</Text>
+            <Text style={styles.statValue}>{stats?.todayStats?.completed || 0}</Text>
             <Text style={styles.statLabel}>Completed</Text>
           </View>
         </View>
 
-        {/* Weekly Comparison */}
-        {stats?.weeklyComparison && (
+        {/* Comparison vs Yesterday */}
+        {stats?.yesterdayStats && (
           <View style={styles.comparisonCard}>
-            <Text style={styles.comparisonTitle}>vs Last Week</Text>
+            <Text style={styles.comparisonTitle}>vs Yesterday</Text>
             <View style={styles.comparisonRow}>
               <View style={styles.comparisonItem}>
                 <Text
                   style={[
                     styles.comparisonValue,
-                    stats.weeklyComparison.bookingsChange >= 0
+                    stats.todayStats.total >= stats.yesterdayStats.total
                       ? styles.positive
                       : styles.negative,
                   ]}>
-                  {stats.weeklyComparison.bookingsChange >= 0 ? '+' : ''}
-                  {stats.weeklyComparison.bookingsChange}%
+                  {stats.todayStats.total >= stats.yesterdayStats.total ? '+' : ''}
+                  {stats.yesterdayStats.total === 0
+                    ? stats.todayStats.total === 0 ? '0%' : 'New'
+                    : `${Math.round(((stats.todayStats.total - stats.yesterdayStats.total) / stats.yesterdayStats.total) * 100)}%`}
                 </Text>
                 <Text style={styles.comparisonLabel}>Bookings</Text>
               </View>
@@ -149,12 +151,14 @@ export default function DashboardScreen() {
                 <Text
                   style={[
                     styles.comparisonValue,
-                    stats.weeklyComparison.revenueChange >= 0
+                    stats.todayStats.revenue >= stats.yesterdayStats.revenue
                       ? styles.positive
                       : styles.negative,
                   ]}>
-                  {stats.weeklyComparison.revenueChange >= 0 ? '+' : ''}
-                  {stats.weeklyComparison.revenueChange}%
+                  {stats.todayStats.revenue >= stats.yesterdayStats.revenue ? '+' : ''}
+                  {stats.yesterdayStats.revenue === 0
+                    ? stats.todayStats.revenue === 0 ? '0%' : 'New'
+                    : `${Math.round(((stats.todayStats.revenue - stats.yesterdayStats.revenue) / stats.yesterdayStats.revenue) * 100)}%`}
                 </Text>
                 <Text style={styles.comparisonLabel}>Revenue</Text>
               </View>

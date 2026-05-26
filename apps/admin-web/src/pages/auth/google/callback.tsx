@@ -27,7 +27,11 @@ export default function GoogleCallbackPage() {
       // Admin login stores shopId if available
       login(user, accessToken, refreshToken, user.shopId);
 
-      router.replace(getDefaultRouteForRole(user.role));
+      if (params.get('needsShopSetup') === 'true') {
+        router.replace('/register?onboarding=true');
+      } else {
+        router.replace(getDefaultRouteForRole(user.role));
+      }
     } catch (e) {
       console.error('Failed to parse base64 user payload from URL', e); 
       router.replace('/login?error=google_auth_failed&details=parse_error');

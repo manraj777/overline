@@ -347,6 +347,31 @@ export default function SettingsPage() {
     }
   };
 
+  const handleUploadVideo = async (file: File): Promise<string> => {
+    const fd = new FormData();
+    fd.append('file', file);
+    fd.append('folder', 'shops-videos');
+    const { data } = await api.post('/upload/video', fd, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    });
+
+    const currentVideos = shopData?.videoUrls || [];
+    await updateSettings.mutateAsync({ videoUrls: [...currentVideos, data.url] });
+    addToast({ type: 'success', title: 'Video added to gallery' });
+    return data.url;
+  };
+
+  const removeVideo = async (indexToRemove: number) => {
+    try {
+      const currentVideos = shopData?.videoUrls || [];
+      const updated = currentVideos.filter((_: string, index: number) => index !== indexToRemove);
+      await updateSettings.mutateAsync({ videoUrls: updated });
+      addToast({ type: 'success', title: 'Video removed' });
+    } catch {
+      addToast({ type: 'error', title: 'Failed to remove video' });
+    }
+  };
+
   if (isLoading) {
     return <Loading text="Loading shop details..." />;
   }
@@ -704,6 +729,37 @@ export default function SettingsPage() {
                     label="Add Gallery Photo"
                     hint="JPG, PNG, WebP up to 5MB"
                     size="sm"
+                  />
+                </div>
+
+                <div className="card-m3 p-8">
+                  <h2 className="text-sm font-bold text-on-surface mb-2">Video Gallery</h2>
+                  <p className="text-xs text-on-surface-variant mb-4">Add and manage promotional shop videos.</p>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mb-4">
+                    {shopData?.videoUrls?.map((url: string, index: number) => (
+                      <div key={index} className="relative group aspect-video rounded-2xl overflow-hidden bg-black flex items-center justify-center">
+                        <video src={url} controls className="w-full h-full object-contain" />
+                        <button
+                          onClick={() => removeVideo(index)}
+                          className="absolute top-2 right-2 p-1.5 bg-error text-white rounded-xl opacity-0 group-hover:opacity-100 transition-opacity shadow-lg z-10"
+                          title="Remove video"
+                        >
+                          x
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+
+                  <ImageUpload
+                    currentUrl={null}
+                    onUpload={handleUploadVideo}
+                    label="Add Gallery Video"
+                    hint="MP4, WebM up to 50MB"
+                    size="sm"
+                    accept="video/*"
+                    maxSizeMB={50}
+                    isVideo={true}
                   />
                 </div>
               </div>

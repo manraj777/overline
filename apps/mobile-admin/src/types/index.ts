@@ -2,6 +2,7 @@
 export type RootStackParamList = {
   Splash: undefined;
   Login: undefined;
+  Register: undefined;
   OtpVerify: {
     phone: string;
     flow: 'LOGIN_2FA' | 'PHONE_LOGIN';
@@ -44,12 +45,13 @@ export type OwnerDrawerParamList = {
   Shop: undefined;
   Payments: undefined;
   Settings: undefined;
+  WhatsAppOnboarding: undefined;
 };
 
 export type StaffTabParamList = {
   Dashboard: undefined;
   Services: undefined;
-  Timing: undefined;
+  Queue: undefined;
   Reviews: undefined;
   Settings: undefined;
 };
@@ -95,6 +97,7 @@ export interface Service {
   durationMinutes: number;
   isActive: boolean;
   category?: string;
+  imageUrl?: string;
 }
 
 export interface WorkingHours {
@@ -209,16 +212,19 @@ export interface BookingService {
 }
 
 export interface DashboardStats {
-  todayBookings: number;
-  todayRevenue: number;
-  pendingBookings: number;
-  completedToday: number;
-  totalCustomers: number;
-  averageRating: number;
-  weeklyComparison: {
-    bookingsChange: number;
-    revenueChange: number;
+  todayStats: {
+    total: number;
+    completed: number;
+    upcoming: number;
+    inProgress: number;
+    noShow: number;
+    revenue: number;
   };
+  yesterdayStats: {
+    total: number;
+    revenue: number;
+  };
+  weeklyStats: Record<string, number>;
 }
 
 export interface Staff {
@@ -240,6 +246,7 @@ export interface ServiceFormData {
   durationMinutes: number;
   category?: string;
   isActive: boolean;
+  imageUrl?: string;
 }
 
 export interface ShopFormData {

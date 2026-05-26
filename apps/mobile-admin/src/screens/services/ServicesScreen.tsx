@@ -2,7 +2,8 @@ import React from 'react';
 import {
   View,
   Text,
-  FlatList,
+  SectionList,
+  Image,
   StyleSheet,
   TouchableOpacity,
   RefreshControl,
@@ -96,34 +97,52 @@ export default function ServicesScreen() {
     navigation.navigate('ServiceForm', {shopId: selectedShopId || ''});
   };
 
+  // Group services by category
+  const servicesByCategory = services.reduce((acc: any, service: Service) => {
+    const cat = service.category || 'General';
+    if (!acc[cat]) {
+      acc[cat] = [];
+    }
+    acc[cat].push(service);
+    return acc;
+  }, {});
+
+  const sections = Object.keys(servicesByCategory).map(category => ({
+    title: category,
+    data: servicesByCategory[category],
+  }));
+
   const renderService = ({item}: {item: Service}) => (
     <View style={styles.serviceCard}>
-      <View style={styles.serviceMain}>
-        <View style={styles.serviceInfo}>
-          <Text style={styles.serviceName}>{item.name}</Text>
-          {item.description && (
-            <Text style={styles.serviceDescription} numberOfLines={1}>
-              {item.description}
-            </Text>
-          )}
-          <View style={styles.serviceDetails}>
-            <Text style={styles.servicePrice}>₹{item.price}</Text>
-            <Text style={styles.serviceDuration}>
-              • {item.durationMinutes} min
-            </Text>
-            {item.category && (
-              <Text style={styles.serviceCategory}>• {item.category}</Text>
+      <View style={{flexDirection: 'row', gap: 12, marginBottom: 12}}>
+        <Image 
+          source={item.imageUrl ? { uri: item.imageUrl } : { uri: 'https://images.unsplash.com/photo-1595475243695-469d2f679b8b?q=80&w=1000' }} 
+          style={styles.serviceImage} 
+        />
+        <View style={styles.serviceMain}>
+          <View style={styles.serviceInfo}>
+            <Text style={styles.serviceName}>{item.name}</Text>
+            {item.description && (
+              <Text style={styles.serviceDescription} numberOfLines={2}>
+                {item.description}
+              </Text>
             )}
+            <View style={styles.serviceDetails}>
+              <Text style={styles.servicePrice}>₹{item.price}</Text>
+              <Text style={styles.serviceDuration}>
+                • {item.durationMinutes} min
+              </Text>
+            </View>
           </View>
-        </View>
 
-        <View style={styles.toggleContainer}>
-          <Switch
-            value={item.isActive}
-            onValueChange={() => handleToggleActive(item)}
-            trackColor={{false: '#E5E7EB', true: '#C7D2FE'}}
-            thumbColor={item.isActive ? '#4F46E5' : '#9CA3AF'}
-          />
+          <View style={styles.toggleContainer}>
+            <Switch
+              value={item.isActive}
+              onValueChange={() => handleToggleActive(item)}
+              trackColor={{false: '#E5E7EB', true: '#C7D2FE'}}
+              thumbColor={item.isActive ? '#4F46E5' : '#9CA3AF'}
+            />
+          </View>
         </View>
       </View>
 
@@ -174,9 +193,14 @@ export default function ServicesScreen() {
       </View>
 
       {/* Services List */}
-      <FlatList
-        data={services}
+      <SectionList
+        sections={sections}
         keyExtractor={item => item.id}
+        renderSectionHeader={({ section: { title } }) => (
+          <View style={styles.categoryHeader}>
+            <Text style={styles.categoryHeaderTitle}>{title.toUpperCase()}</Text>
+          </View>
+        )}
         renderItem={renderService}
         contentContainerStyle={styles.listContent}
         ListEmptyComponent={renderEmpty}
@@ -244,9 +268,9 @@ const styles = StyleSheet.create({
     elevation: 2,
   },
   serviceMain: {
+    flex: 1,
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: 12,
   },
   serviceInfo: {
     flex: 1,
@@ -343,5 +367,23 @@ const styles = StyleSheet.create({
     color: '#fff',
     fontSize: 16,
     fontWeight: '600',
+  },
+  serviceImage: {
+    width: 60,
+    height: 60,
+    borderRadius: 8,
+    backgroundColor: '#F3F4F6',
+  },
+  categoryHeader: {
+    paddingVertical: 12,
+    backgroundColor: '#F9FAFB',
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  categoryHeaderTitle: {
+    fontSize: 12,
+    fontWeight: '900',
+    color: '#4F46E5',
+    letterSpacing: 1,
   },
 });

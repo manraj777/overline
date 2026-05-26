@@ -57,8 +57,13 @@ export default function BookingStaffScreen() {
   });
 
   const staffOptions = useMemo(() => {
-    const slots: TimeSlot[] = availability?.slots || [];
-    const uniqueStaffIds = Array.from(new Set(slots.map(slot => slot.staffId).filter(Boolean) as string[]));
+    const activeStaff: any[] = shop?.staff || [];
+    
+    // Filter staff members to check if they can perform all of the selected services
+    const filteredStaff = activeStaff.filter(member => {
+      const staffServiceIds = new Set(member.staffServices?.map((ss: any) => ss.serviceId) || []);
+      return selectedServices.every(serviceId => staffServiceIds.has(serviceId));
+    });
 
     const options = [
       {
@@ -68,22 +73,24 @@ export default function BookingStaffScreen() {
         rating: 4.9,
         isExpert: false,
         isAny: true,
+        avatarUrl: undefined,
       },
     ];
 
-    uniqueStaffIds.forEach((staffId, index) => {
+    filteredStaff.forEach((member, index) => {
       options.push({
-        id: staffId,
-        name: `Specialist ${index + 1}`,
-        role: 'Senior Stylist',
+        id: member.id,
+        name: member.name,
+        role: member.role || 'Stylist',
         rating: 4.8,
         isExpert: index === 0,
         isAny: false,
+        avatarUrl: member.avatarUrl,
       });
     });
 
     return options;
-  }, [availability?.slots]);
+  }, [shop?.staff, selectedServices]);
 
   const isLoading = loadingShop || loadingAvailability;
 
@@ -137,6 +144,8 @@ export default function BookingStaffScreen() {
                       <View style={[styles.avatarWrapper, isSelected && styles.avatarWrapperSelected]}>
                         {staff.isAny ? (
                           <Sparkles size={24} color={isSelected ? '#FFF' : '#3B82F6'} />
+                        ) : staff.avatarUrl ? (
+                          <Image source={{ uri: staff.avatarUrl }} style={styles.avatarImage} />
                         ) : (
                           <UserRound size={24} color={isSelected ? '#FFF' : '#64748B'} />
                         )}
@@ -342,6 +351,11 @@ const styles = StyleSheet.create({
   },
   avatarWrapperSelected: {
     backgroundColor: '#3B82F6',
+  },
+  avatarImage: {
+    width: 48,
+    height: 48,
+    borderRadius: 16,
   },
   ratingBadge: {
     flexDirection: 'row',

@@ -113,4 +113,16 @@ export class UpdateOwnerShopSettingsDto {
   @IsOptional()
   @IsObject()
   settings?: Record<string, any>;
+
+  @ApiPropertyOptional({ type: [String] })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  photoUrls?: string[];
+
+  @ApiPropertyOptional({ type: [String] })
+  @IsOptional()
+  @IsArray()
+  @IsString({ each: true })
+  videoUrls?: string[];
 }

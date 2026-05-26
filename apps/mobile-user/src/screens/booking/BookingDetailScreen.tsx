@@ -8,13 +8,60 @@ import { RootStackParamList } from '../../types';
 import { Colors, Spacing, BorderRadius, FontSizes, FontWeights, Shadows, BookingStatusConfig } from '../../theme';
 import { PrimaryButton, Divider, Badge, GlassCard } from '../../components/ui';
 import { Phone, Calendar, Clock, X } from 'lucide-react-native';
+import { useQueueBookingRealtime } from '../../hooks/useQueueBookingRealtime';
+import { SoundManager } from '../../utils/SoundManager';
 
 type RouteProps = RouteProp<RootStackParamList, 'BookingDetail'>;
+
+const WELLNESS_TIPS = [
+  "💇‍♂️ Trimming your hair every 6-8 weeks helps prevent split ends and makes it look thicker and healthier.",
+  "💧 Washing your hair with cool water helps seal the cuticles, trapping moisture and adding a natural shine.",
+  "🧔 Beard oil works best when applied right after a shower, as warm water opens up the skin pores to absorb the nutrients.",
+  "🧴 Use sunscreen with at least SPF 30 every single day, even when it's cloudy, to protect your skin from premature aging.",
+  "💆‍♂️ A scalp massage increases blood flow, which stimulates hair follicles and promotes natural hair growth.",
+  "🧖‍♂️ Using a charcoal face mask once a week draws out impurities, dirt, and excess oil from deep inside your pores.",
+  "🌿 Drinking at least 3 liters of water daily hydrates your hair roots and keeps your skin clear and glowing.",
+  "🥝 Foods rich in Vitamin C (like oranges, strawberries, and kiwis) boost collagen production, which strengthens hair strands.",
+  "💤 Silk or satin pillowcases reduce friction on your hair and skin, preventing bedhead, frizz, and sleep wrinkles.",
+  "🧼 Clean your hairbrush and grooming tools weekly to avoid transferring dust, oils, and bacteria back onto your clean hair."
+];
 
 export default function BookingDetailScreen() {
   const route = useRoute<RouteProps>();
   const queryClient = useQueryClient();
   const { bookingId } = route.params;
+
+  // Real-time status sync
+  useQueueBookingRealtime({
+    bookingId,
+    onBookingUpdate: (payload) => {
+      queryClient.invalidateQueries({ queryKey: ['booking', bookingId] });
+      
+      const newStatus = payload.status;
+      if (newStatus === 'CONFIRMED') {
+        SoundManager.playConfirmed();
+      } else if (newStatus === 'IN_SERVICE') {
+        SoundManager.playStart();
+      } else if (newStatus === 'COMPLETED') {
+        SoundManager.playCompleted();
+      }
+    }
+  });
+
+  const [breathState, setBreathState] = React.useState<'Inhale' | 'Hold' | 'Exhale'>('Inhale');
+  const [tipIndex, setTipIndex] = React.useState(0);
+  const [boredomTab, setBoredomTab] = React.useState<'tip' | 'breath'>('tip');
+
+  React.useEffect(() => {
+    let count = 0;
+    const interval = setInterval(() => {
+      count = (count + 1) % 3;
+      if (count === 0) setBreathState('Inhale');
+      else if (count === 1) setBreathState('Hold');
+      else setBreathState('Exhale');
+    }, 4000);
+    return () => clearInterval(interval);
+  }, []);
 
   const { data: booking, isLoading } = useQuery({
     queryKey: ['booking', bookingId],
@@ -153,6 +200,57 @@ export default function BookingDetailScreen() {
         </GlassCard>
       </View>
 
+      {/* Boredom Buster Widget */}
+      {!isCompleted && !isCancelled && (
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>WAITING ROOM BOREDOM BUSTER 🧘‍♂️</Text>
+          <View style={styles.busterCard}>
+            <View style={styles.busterTabs}>
+              <TouchableOpacity
+                style={[styles.busterTab, boredomTab === 'tip' && styles.busterTabActive]}
+                onPress={() => setBoredomTab('tip')}
+              >
+                <Text style={[styles.busterTabText, boredomTab === 'tip' && styles.busterTabTextActive]}>Self-Care Tip</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.busterTab, boredomTab === 'breath' && styles.busterTabActive]}
+                onPress={() => setBoredomTab('breath')}
+              >
+                <Text style={[styles.busterTabText, boredomTab === 'breath' && styles.busterTabTextActive]}>Mindful Breath</Text>
+              </TouchableOpacity>
+            </View>
+
+            {boredomTab === 'tip' ? (
+              <View style={styles.busterContent}>
+                <Text style={styles.busterQuote}>{WELLNESS_TIPS[tipIndex]}</Text>
+                <TouchableOpacity
+                  style={styles.newTipBtn}
+                  onPress={() => setTipIndex(prev => (prev + 1) % WELLNESS_TIPS.length)}
+                >
+                  <Text style={styles.newTipText}>Next Tip ⚡</Text>
+                </TouchableOpacity>
+              </View>
+            ) : (
+              <View style={styles.busterContentCenter}>
+                <View style={[
+                  styles.breathCircle,
+                  breathState === 'Inhale' && styles.breathCircleExpand,
+                  breathState === 'Hold' && styles.breathCircleHold,
+                  breathState === 'Exhale' && styles.breathCircleShrink,
+                ]}>
+                  <Text style={styles.breathText}>{breathState}</Text>
+                </View>
+                <Text style={styles.breathSubText}>
+                  {breathState === 'Inhale' && 'Breathe in slowly through your nose...'}
+                  {breathState === 'Hold' && 'Hold your breath and relax...'}
+                  {breathState === 'Exhale' && 'Release the breath and let go of tension...'}
+                </Text>
+              </View>
+            )}
+          </View>
+        </View>
+      )}
+
       {/* Cancel */}
       {canCancel && (
         <View style={styles.section}>
@@ -220,4 +318,104 @@ const styles = StyleSheet.create({
   payValue: { fontSize: FontSizes.sm, color: Colors.textPrimary },
   totalLabel: { fontSize: FontSizes.lg, fontWeight: FontWeights.bold, color: Colors.textPrimary },
   totalValue: { fontSize: FontSizes.xl, fontWeight: FontWeights.extrabold, color: Colors.textPrimary },
+  busterCard: {
+    backgroundColor: Colors.surface,
+    borderRadius: BorderRadius.xl,
+    padding: Spacing.lg,
+    borderWidth: 1.5,
+    borderColor: Colors.border,
+    ...Shadows.sm,
+  },
+  busterTabs: {
+    flexDirection: 'row',
+    backgroundColor: Colors.surfaceLight,
+    borderRadius: BorderRadius.md,
+    padding: 4,
+    marginBottom: Spacing.md,
+  },
+  busterTab: {
+    flex: 1,
+    paddingVertical: 8,
+    borderRadius: BorderRadius.sm,
+    alignItems: 'center',
+  },
+  busterTabActive: {
+    backgroundColor: Colors.primary,
+    ...Shadows.glow,
+  },
+  busterTabText: {
+    fontSize: FontSizes.sm,
+    fontWeight: FontWeights.medium,
+    color: Colors.textSecondary,
+  },
+  busterTabTextActive: {
+    color: '#fff',
+    fontWeight: FontWeights.bold,
+  },
+  busterContent: {
+    paddingVertical: Spacing.sm,
+    alignItems: 'center',
+  },
+  busterContentCenter: {
+    paddingVertical: Spacing.sm,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  busterQuote: {
+    fontSize: FontSizes.md,
+    fontWeight: FontWeights.medium,
+    color: Colors.textPrimary,
+    textAlign: 'center',
+    lineHeight: 22,
+    marginBottom: Spacing.lg,
+  },
+  newTipBtn: {
+    backgroundColor: Colors.surfaceLight,
+    paddingHorizontal: 20,
+    paddingVertical: 10,
+    borderRadius: BorderRadius.lg,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  newTipText: {
+    fontSize: FontSizes.sm,
+    fontWeight: FontWeights.bold,
+    color: Colors.primary,
+  },
+  breathCircle: {
+    width: 100,
+    height: 100,
+    borderRadius: 50,
+    backgroundColor: Colors.primaryGhost,
+    borderWidth: 3,
+    borderColor: Colors.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: Spacing.md,
+  },
+  breathCircleExpand: {
+    transform: [{ scale: 1.15 }],
+    backgroundColor: 'rgba(59, 130, 246, 0.2)',
+  },
+  breathCircleHold: {
+    transform: [{ scale: 1.15 }],
+    backgroundColor: 'rgba(16, 185, 129, 0.2)',
+    borderColor: Colors.success,
+  },
+  breathCircleShrink: {
+    transform: [{ scale: 0.95 }],
+    backgroundColor: 'rgba(59, 130, 246, 0.05)',
+  },
+  breathText: {
+    fontSize: FontSizes.md,
+    fontWeight: FontWeights.extrabold,
+    color: Colors.textPrimary,
+  },
+  breathSubText: {
+    fontSize: FontSizes.xs,
+    color: Colors.textSecondary,
+    textAlign: 'center',
+    fontWeight: FontWeights.medium,
+    height: 20,
+  },
 });

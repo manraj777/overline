@@ -20,13 +20,23 @@ import { CalendarX, UserRound } from 'lucide-react-native';
 type RouteProps = RouteProp<RootStackParamList, 'Booking'>;
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
+function formatSlotTime(timeStr: string) {
+  if (!timeStr) return '';
+  const [hStr, mStr] = timeStr.split(':');
+  const h = parseInt(hStr, 10);
+  if (isNaN(h)) return timeStr;
+  const ampm = h >= 12 ? 'PM' : 'AM';
+  const displayH = h % 12 === 0 ? 12 : h % 12;
+  return `${displayH.toString().padStart(2, '0')}:${mStr} ${ampm}`;
+}
+
 export default function BookingScreen() {
   const navigation = useNavigation<NavigationProp>();
   const route = useRoute<RouteProps>();
   const { shopId, selectedServices = [], selectedStaffId } = route.params;
 
   const [selectedDate, setSelectedDate] = useState(new Date());
-  const [selectedTime, setSelectedTime] = useState<string | null>(null);
+  const [selectedSlotStartTime, setSelectedSlotStartTime] = useState<string | null>(null);
 
   const { data: shop } = useQuery({
     queryKey: ['shop', shopId],
@@ -49,7 +59,70 @@ export default function BookingScreen() {
     return Array.from({ length: 14 }, (_, i) => addDays(new Date(), i));
   }, []);
 
-  const timeSlots: TimeSlot[] = availability?.slots || [];
+  const workingHour = useMemo(() => {
+    if (!shop?.workingHours) return null;
+    const dayOfWeekStr = new Intl.DateTimeFormat('en-US', {
+      timeZone: 'Asia/Kolkata',
+      weekday: 'long',
+    }).format(selectedDate).toUpperCase();
+    return shop.workingHours.find((wh: any) => wh.dayOfWeek === dayOfWeekStr);
+  }, [shop?.workingHours, selectedDate]);
+
+  const dayTimelineRange = useMemo(() => {
+    if (!workingHour || workingHour.isClosed) {
+      return { startMinutes: 9 * 60, endMinutes: 21 * 60, totalSlots: 49 };
+    }
+    const [openH, openM] = workingHour.openTime.split(':').map(Number);
+    const [closeH, closeM] = workingHour.closeTime.split(':').map(Number);
+    const startMin = openH * 60 + openM;
+    const endMin = closeH * 60 + closeM;
+    const totalSlots = Math.floor((endMin - startMin) / 15) + 1;
+    return { startMinutes: startMin, endMinutes: endMin, totalSlots };
+  }, [workingHour]);
+
+  const timeSlots = useMemo(() => {
+    const rawSlots: any[] = Array.isArray(availability) ? availability : [];
+    return rawSlots.map(slot => {
+      const timePart = slot.startTime ? slot.startTime.split('T')[1]?.substring(0, 5) : '';
+      return {
+        ...slot,
+        time: timePart,
+      };
+    });
+  }, [availability]);
+
+  const handleClockHourPress = (hour12: number) => {
+    // Search for available slots in this hour (either AM or PM)
+    const matchingSlots = timeSlots.filter(s => {
+      if (!s.available) return false;
+      const [hStr] = s.time.split(':');
+      const slotHour = parseInt(hStr, 10);
+      return slotHour % 12 === hour12 % 12;
+    });
+
+    if (matchingSlots.length > 0) {
+      // Snap to the first available slot in that hour
+      setSelectedSlotStartTime(matchingSlots[0].startTime);
+    }
+  };
+
+  const selectedTime = useMemo(() => {
+    if (!selectedSlotStartTime) return null;
+    const found = timeSlots.find(s => s.startTime === selectedSlotStartTime);
+    return found ? found.time : null;
+  }, [selectedSlotStartTime, timeSlots]);
+
+  const clockRotations = useMemo(() => {
+    if (!selectedTime) {
+      return { hourDeg: '0deg', minDeg: '0deg' };
+    }
+    const [hStr, mStr] = selectedTime.split(':');
+    const hours = parseInt(hStr, 10);
+    const minutes = parseInt(mStr, 10);
+    const hourDeg = `${(hours % 12) * 30 + minutes * 0.5}deg`;
+    const minDeg = `${minutes * 6}deg`;
+    return { hourDeg, minDeg };
+  }, [selectedTime]);
 
   return (
     <View style={styles.container}>
@@ -67,12 +140,12 @@ export default function BookingScreen() {
               <Text style={styles.stepNumber}>2</Text>
             </View>
             <View style={styles.stepLineActive} />
-            <View style={[styles.step, selectedTime ? styles.stepActive : undefined]}>
-              <Text style={[styles.stepNumber, !selectedTime && { color: Colors.textTertiary }]}>3</Text>
+            <View style={[styles.step, selectedSlotStartTime ? styles.stepActive : undefined]}>
+              <Text style={[styles.stepNumber, !selectedSlotStartTime && { color: Colors.textTertiary }]}>3</Text>
             </View>
             <View style={styles.stepLine} />
-            <View style={[styles.step, selectedTime ? styles.stepActive : undefined]}>
-              <Text style={[styles.stepNumber, !selectedTime && { color: Colors.textTertiary }]}>4</Text>
+            <View style={[styles.step, selectedSlotStartTime ? styles.stepActive : undefined]}>
+              <Text style={[styles.stepNumber, !selectedSlotStartTime && { color: Colors.textTertiary }]}>4</Text>
             </View>
           </View>
         </View>
@@ -104,7 +177,7 @@ export default function BookingScreen() {
                   style={[styles.dateCard, isSelected && styles.dateCardSelected]}
                   onPress={() => {
                     setSelectedDate(date);
-                    setSelectedTime(null);
+                    setSelectedSlotStartTime(null);
                   }}
                   activeOpacity={0.8}>
                   <Text style={[styles.dateDay, isSelected && styles.dateDaySelected]}>
@@ -124,7 +197,7 @@ export default function BookingScreen() {
 
         {/* Time Selection */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Available Time Slots</Text>
+          <Text style={styles.sectionTitle}>Visual Availability Timeline</Text>
           {loadingSlots ? (
             <ActivityIndicator
               size="small"
@@ -137,31 +210,118 @@ export default function BookingScreen() {
               <Text style={styles.noSlotsText}>No available slots for this date</Text>
             </View>
           ) : (
-            <View style={styles.timeGrid}>
-              {timeSlots.map(slot => {
-                const isSelected = selectedTime === slot.time;
-                return (
-                  <TouchableOpacity
-                    key={slot.time}
-                    style={[
-                      styles.timeSlot,
-                      !slot.available && styles.timeSlotUnavailable,
-                      isSelected && styles.timeSlotSelected,
-                    ]}
-                    onPress={() => slot.available && setSelectedTime(slot.time)}
-                    disabled={!slot.available}
-                    activeOpacity={0.8}>
-                    <Text
-                      style={[
-                        styles.timeText,
-                        !slot.available && styles.timeTextUnavailable,
-                        isSelected && styles.timeTextSelected,
+            <View>
+              {/* Timeline Horizontal Scroll */}
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.timelineScroll}
+              >
+                {Array.from({ length: dayTimelineRange.totalSlots }).map((_, idx) => {
+                  const totalMinutes = dayTimelineRange.startMinutes + idx * 15;
+                  const hours = Math.floor(totalMinutes / 60);
+                  const minutes = totalMinutes % 60;
+                  const timeStr = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
+                  
+                  const slot = timeSlots.find(s => s.time === timeStr);
+                  const isSlotExist = !!slot;
+                  const isAvailable = slot?.available ?? false;
+                  const isSelected = selectedSlotStartTime === slot?.startTime && !!selectedSlotStartTime;
+                  
+                  return (
+                    <TouchableOpacity
+                      key={timeStr}
+                      style={styles.timelineSegmentContainer}
+                      onPress={() => {
+                        if (slot && isAvailable) {
+                          setSelectedSlotStartTime(slot.startTime);
+                        }
+                      }}
+                      disabled={!isAvailable}
+                    >
+                      <View style={[
+                        styles.timelineBar,
+                        isSelected ? styles.barSelected :
+                        (isSlotExist && isAvailable) ? styles.barAvailable :
+                        (isSlotExist && !isAvailable) ? styles.barBooked : styles.barBreak
+                      ]} />
+                      <Text style={[
+                        styles.segmentLabel,
+                        isSelected && styles.segmentLabelSelected
                       ]}>
-                      {slot.time}
-                    </Text>
-                  </TouchableOpacity>
-                );
-              })}
+                        {idx % 4 === 0 ? formatSlotTime(timeStr).replace(' AM', '').replace(' PM', '') : ''}
+                      </Text>
+                    </TouchableOpacity>
+                  );
+                })}
+              </ScrollView>
+
+              {/* Gauge Clock display */}
+              <View style={styles.clockContainer}>
+                <View style={styles.clockFace}>
+                  {/* Hour hand */}
+                  <View style={[styles.handContainer, { transform: [{ rotate: clockRotations.hourDeg }] }]}>
+                    <View style={styles.hourHand} />
+                  </View>
+                  {/* Minute hand */}
+                  <View style={[styles.handContainer, { transform: [{ rotate: clockRotations.minDeg }] }]}>
+                    <View style={styles.minuteHand} />
+                  </View>
+                  {/* Center pin */}
+                  <View style={styles.centerPin} />
+                  
+                  {/* Clickable Clock hour numbers */}
+                  {[12, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11].map((h) => {
+                    const angle = (h * 30 - 90) * (Math.PI / 180);
+                    const radius = 72; // distance from center (100, 100)
+                    const buttonSize = 26;
+                    const x = 100 - buttonSize / 2 + radius * Math.cos(angle);
+                    const y = 100 - buttonSize / 2 + radius * Math.sin(angle);
+                    
+                    const hasAvailable = timeSlots.some(s => {
+                      if (!s.available) return false;
+                      const [hStr] = s.time.split(':');
+                      const slotHour = parseInt(hStr, 10);
+                      return slotHour % 12 === h % 12;
+                    });
+
+                    const isCurrentHour = selectedTime ? parseInt(selectedTime.split(':')[0], 10) % 12 === h % 12 : false;
+
+                    return (
+                      <TouchableOpacity
+                        key={h}
+                        onPress={() => handleClockHourPress(h)}
+                        disabled={!hasAvailable}
+                        style={[
+                          styles.clockHourButton,
+                          { left: x, top: y, width: buttonSize, height: buttonSize, borderRadius: buttonSize / 2 },
+                          isCurrentHour && styles.clockHourButtonActive,
+                          !hasAvailable && styles.clockHourButtonDisabled
+                        ]}
+                      >
+                        <Text style={[
+                          styles.clockHourText,
+                          isCurrentHour && styles.clockHourTextActive,
+                          !hasAvailable && styles.clockHourTextDisabled
+                        ]}>
+                          {h}
+                        </Text>
+                      </TouchableOpacity>
+                    );
+                  })}
+                </View>
+                
+                <View style={styles.clockTextContainer}>
+                  <Text style={styles.clockDigitalLabel}>SELECTED SLOT</Text>
+                  <Text style={styles.clockDigitalTime}>
+                    {selectedTime ? formatSlotTime(selectedTime) : 'Select a Slot'}
+                  </Text>
+                  <Text style={styles.clockStatusText}>
+                    {selectedTime ? 'Specialist available' : 'Tap slot or hour numbers'}
+                  </Text>
+                </View>
+              </View>
+
             </View>
           )}
         </View>
@@ -425,5 +585,147 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: Colors.border,
     ...Shadows.md,
+  },
+
+  // Timeline availability styling
+  timelineScroll: {
+    paddingVertical: 12,
+    gap: 6,
+  },
+  timelineSegmentContainer: {
+    alignItems: 'center',
+    width: 32,
+  },
+  timelineBar: {
+    width: 12,
+    height: 48,
+    borderRadius: 6,
+  },
+  barAvailable: {
+    backgroundColor: '#CBD5E1', // light gray
+  },
+  barBooked: {
+    backgroundColor: '#10B981', // green
+  },
+  barBreak: {
+    backgroundColor: '#475569', // solid dark gray
+  },
+  barSelected: {
+    backgroundColor: Colors.primary,
+    borderWidth: 2,
+    borderColor: '#FFF',
+    ...Shadows.glow,
+  },
+  segmentLabel: {
+    fontSize: 9,
+    fontWeight: FontWeights.bold,
+    color: Colors.textSecondary,
+    marginTop: 8,
+  },
+  segmentLabelSelected: {
+    color: Colors.primary,
+  },
+
+  // Clock Gauge styles
+  clockContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Colors.surface,
+    padding: Spacing.xl,
+    borderRadius: BorderRadius.xl,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    marginTop: 24,
+    gap: 24,
+  },
+  clockFace: {
+    width: 200,
+    height: 200,
+    borderRadius: 100,
+    borderWidth: 3,
+    borderColor: Colors.primary,
+    position: 'relative',
+    backgroundColor: Colors.background,
+  },
+  handContainer: {
+    width: 194,
+    height: 194,
+    position: 'absolute',
+    justifyContent: 'flex-start',
+    alignItems: 'center',
+  },
+  hourHand: {
+    width: 4,
+    height: 50,
+    backgroundColor: Colors.textPrimary,
+    borderRadius: 2,
+    marginTop: 47,
+  },
+  minuteHand: {
+    width: 2,
+    height: 75,
+    backgroundColor: Colors.primary,
+    borderRadius: 1,
+    marginTop: 22,
+  },
+  centerPin: {
+    position: 'absolute',
+    width: 12,
+    height: 12,
+    borderRadius: 6,
+    backgroundColor: Colors.primary,
+    top: 91,
+    left: 91,
+  },
+  clockHourButton: {
+    position: 'absolute',
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: Colors.surfaceElevated,
+    borderWidth: 1,
+    borderColor: Colors.border,
+  },
+  clockHourButtonActive: {
+    backgroundColor: Colors.primary,
+    borderColor: Colors.primary,
+  },
+  clockHourButtonDisabled: {
+    backgroundColor: 'transparent',
+    borderColor: 'transparent',
+    opacity: 0.25,
+  },
+  clockHourText: {
+    fontSize: 10,
+    fontWeight: '900',
+    color: Colors.textSecondary,
+  },
+  clockHourTextActive: {
+    color: '#FFF',
+    fontWeight: '900',
+  },
+  clockHourTextDisabled: {
+    color: Colors.textMuted,
+  },
+  clockTextContainer: {
+    flex: 1,
+    justifyContent: 'center',
+  },
+  clockDigitalLabel: {
+    fontSize: 10,
+    fontWeight: FontWeights.extrabold,
+    color: Colors.textTertiary,
+    letterSpacing: 1.5,
+  },
+  clockDigitalTime: {
+    fontSize: 22,
+    fontWeight: FontWeights.extrabold,
+    color: Colors.textPrimary,
+    marginVertical: 4,
+  },
+  clockStatusText: {
+    fontSize: 11,
+    color: Colors.textSecondary,
+    fontWeight: FontWeights.semibold,
   },
 });

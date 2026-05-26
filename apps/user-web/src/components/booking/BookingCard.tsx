@@ -8,6 +8,7 @@ import { BookingStatus } from '@/types';
 
 interface BookingCardProps {
   booking: Booking;
+  onRate?: () => void;
 }
 
 const statusConfig: Record<BookingStatus, { label: string; variant: 'default' | 'success' | 'warning' | 'error' | 'info' }> = {
@@ -21,7 +22,7 @@ const statusConfig: Record<BookingStatus, { label: string; variant: 'default' | 
   [BookingStatus.REJECTED]: { label: 'Rejected', variant: 'error' },
 };
 
-const BookingCard: React.FC<BookingCardProps> = ({ booking }) => {
+const BookingCard: React.FC<BookingCardProps> = ({ booking, onRate }) => {
   const baseConfig = statusConfig[booking.status as BookingStatus] || statusConfig[BookingStatus.PENDING];
   const config =
     booking.status === BookingStatus.REJECTED && booking.adminNotes?.toUpperCase().includes('FAKE_USER')
@@ -90,7 +91,20 @@ const BookingCard: React.FC<BookingCardProps> = ({ booking }) => {
               {formatTime(booking.startTime)} - {formatTime(booking.endTime)}
             </span>
           </div>
-          <ChevronRight className="w-5 h-5 text-outline" />
+          
+          {booking.status === BookingStatus.COMPLETED && onRate ? (
+            <button 
+              onClick={(e) => {
+                e.preventDefault(); // prevent navigation
+                onRate();
+              }}
+              className="text-xs font-bold text-amber-600 bg-amber-50 px-3 py-1.5 rounded-lg border border-amber-200 hover:bg-amber-100 transition-colors"
+            >
+              Rate Visit
+            </button>
+          ) : (
+            <ChevronRight className="w-5 h-5 text-outline" />
+          )}
         </div>
       </Card>
     </Link>

@@ -21,6 +21,7 @@ import {
   ChevronRight,
   PlusCircle,
   ScanLine,
+  MessageSquare,
 } from 'lucide-react-native';
 import { Colors, Shadows, Radius, FontSize, FontWeight } from '../../theme';
 import { useAuthStore } from '../../stores/authStore';
@@ -36,6 +37,7 @@ export default function CustomSidebar(props: DrawerContentComponentProps) {
     { name: 'Staff', label: 'Specialist Suite', icon: Users },
     { name: 'Shop', label: 'Shop Registry', icon: Store },
     { name: 'Payments', label: 'Financial Vault', icon: CreditCard },
+    { name: 'WhatsAppOnboarding', label: 'WhatsApp Booking', icon: MessageSquare },
     { name: 'Settings', label: 'System Settings', icon: Settings },
   ];
 

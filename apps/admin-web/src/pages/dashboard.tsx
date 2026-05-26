@@ -34,6 +34,7 @@ import { RevenueChart } from '@/components/charts/RevenueChart';
 import { TopServicesChart } from '@/components/charts/TopServicesChart';
 import { formatTime, formatPrice, cn } from '@/lib/utils';
 import { BookingStatus } from '@/types';
+import { useSettingsStore } from '@/stores/settings';
 
 function getTrustLevel(user: any): 'normal' | 'warning' | 'danger' | null {
   if (!user) return null;
@@ -67,6 +68,7 @@ export default function DashboardPage() {
   const startService = useStartService();
   const markComplete = useMarkComplete();
   const { shopId } = useAuthStore();
+  const { language } = useSettingsStore();
 
   if (loadingDashboard || loadingBookings) {
     return <Loading text="Loading dashboard..." />;
@@ -109,7 +111,7 @@ export default function DashboardPage() {
 
   const metricCards = [
     {
-      label: "Today's Appointments",
+      label: language === 'hi' ? 'आज की बुकिंग' : "Today's Appointments",
       value: String(todayStats.total),
       icon: Calendar,
       delta: getChangeProps(todayStats.total, yesterdayStats.total),
@@ -117,21 +119,21 @@ export default function DashboardPage() {
       bgColor: 'bg-primary-fixed',
     },
     {
-      label: 'In Queue',
+      label: language === 'hi' ? 'कतार में' : 'In Queue',
       value: String(todayStats.upcoming + todayStats.inProgress),
       icon: Users,
       color: 'text-secondary',
       bgColor: 'bg-secondary-fixed',
     },
     {
-      label: 'Completed',
+      label: language === 'hi' ? 'पूरी हुई' : 'Completed',
       value: String(todayStats.completed),
       icon: Clock,
       color: 'text-tertiary',
       bgColor: 'bg-tertiary-fixed',
     },
     {
-      label: "Today's Revenue",
+      label: language === 'hi' ? 'आज की कमाई' : "Today's Revenue",
       value: formatPrice(todayStats.revenue),
       icon: DollarSign,
       delta: getChangeProps(todayStats.revenue, yesterdayStats.revenue),
@@ -150,10 +152,43 @@ export default function DashboardPage() {
       <div>
         {/* Header */}
         <div className="mb-8">
-          <span className="label-m3 mb-2 block">Overview</span>
-          <h1 className="text-3xl font-black tracking-tight text-on-surface">Dashboard</h1>
+          <span className="label-m3 mb-2 block">{language === 'hi' ? 'अवलोकन' : 'Overview'}</span>
+          <h1 className="text-3xl font-black tracking-tight text-on-surface">{language === 'hi' ? 'डैशबोर्ड' : 'Dashboard'}</h1>
           <p className="text-on-surface-variant text-sm mt-1">{format(new Date(), 'EEEE, MMMM d, yyyy')}</p>
         </div>
+
+        {/* ── Onboarding Nudge ── */}
+        {!loadingServices && topServices?.length === 0 && (
+          <div className="card-m3 p-6 mb-8 bg-gradient-to-r from-primary-container to-tertiary-container border-none relative overflow-hidden">
+            <div className="absolute top-0 right-0 p-8 opacity-10">
+              <Star className="w-32 h-32 text-primary" />
+            </div>
+            <div className="relative z-10">
+              <h2 className="text-xl font-black text-on-primary-container mb-2">Welcome to Overline! Let's get you set up.</h2>
+              <p className="text-sm text-on-primary-container/80 mb-6 max-w-2xl">
+                Complete these 3 simple steps to start taking bookings online and clear your shop's waiting area.
+              </p>
+              
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div className="bg-surface/60 backdrop-blur-sm p-4 rounded-2xl border border-white/20">
+                  <div className="w-8 h-8 rounded-full bg-primary text-white flex items-center justify-center font-bold mb-3">1</div>
+                  <h3 className="font-bold text-on-surface mb-1">Add Services</h3>
+                  <p className="text-xs text-on-surface-variant">List what you offer and your prices.</p>
+                </div>
+                <div className="bg-surface/60 backdrop-blur-sm p-4 rounded-2xl border border-white/20">
+                  <div className="w-8 h-8 rounded-full bg-secondary text-white flex items-center justify-center font-bold mb-3">2</div>
+                  <h3 className="font-bold text-on-surface mb-1">Add Staff</h3>
+                  <p className="text-xs text-on-surface-variant">Who will be providing the services?</p>
+                </div>
+                <div className="bg-surface/60 backdrop-blur-sm p-4 rounded-2xl border border-white/20">
+                  <div className="w-8 h-8 rounded-full bg-tertiary text-white flex items-center justify-center font-bold mb-3">3</div>
+                  <h3 className="font-bold text-on-surface mb-1">Share on WhatsApp</h3>
+                  <p className="text-xs text-on-surface-variant">Send your booking link to your existing customers.</p>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* ── Metrics Grid ── */}
         <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4 mb-8">

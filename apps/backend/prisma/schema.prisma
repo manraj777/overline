@@ -282,6 +282,7 @@ model Shop {
   logoUrl   String?  @map("logo_url")
   coverUrl  String?  @map("cover_url")
   photoUrls String[] @map("photo_urls")
+  videoUrls String[] @map("video_urls")
 
   // Settings (JSON for flexibility)
   settings Json @default("{}")

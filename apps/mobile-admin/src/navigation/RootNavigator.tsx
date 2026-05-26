@@ -33,6 +33,7 @@ import {
 // Screens
 import SplashScreen from '../screens/auth/SplashScreen';
 import LoginScreen from '../screens/auth/LoginScreen';
+import RegisterScreen from '../screens/auth/RegisterScreen';
 import ForgotPasswordScreen from '../screens/auth/ForgotPasswordScreen';
 import OtpVerifyScreen from '../screens/auth/OtpVerifyScreen';
 import ShopSetupScreen from '../screens/onboarding/ShopSetupScreen';
@@ -46,6 +47,7 @@ import StaffManagementScreen from '../screens/settings/StaffManagementScreen';
 import AnalyticsScreen from '../screens/settings/AnalyticsScreen';
 import PayoutDetailsScreen from '../screens/settings/PayoutDetailsScreen.tsx';
 import OwnerDashboardScreen from '../screens/owner/OwnerDashboardScreen';
+import WhatsAppOnboardingScreen from '../screens/owner/WhatsAppOnboardingScreen';
 import LiveQueueScreen from '../screens/owner/LiveQueueScreen';
 import AllBookingsScreen from '../screens/owner/AllBookingsScreen';
 import OwnerEarningsScreen from '../screens/owner/OwnerEarningsScreen';
@@ -87,6 +89,7 @@ function TabIcon({
     settings: Settings,
     services: Scissors,
     timing: Clock3,
+    queue: Clock3,
     reviews: Star,
     profile: UserRound,
   }[name] || LayoutDashboard;
@@ -174,6 +177,11 @@ function OwnerDrawerNavigator() {
         options={{title: 'Financial Vault'}}
       />
       <OwnerDrawer.Screen
+        name="WhatsAppOnboarding"
+        component={WhatsAppOnboardingScreen}
+        options={{title: 'WhatsApp Automation'}}
+      />
+      <OwnerDrawer.Screen
         name="Settings"
         component={SettingsScreen}
         options={{title: 'System Settings'}}
@@ -206,12 +214,12 @@ function StaffTabs() {
         }}
       />
       <StaffTab.Screen
-        name="Timing"
-        component={MyScheduleScreen}
+        name="Queue"
+        component={MyQueueScreen}
         options={{
-          tabBarLabel: 'Timing',
+          tabBarLabel: 'Live Queue',
           tabBarIcon: ({color, size, focused}) => (
-            <TabIcon name="timing" color={color} size={size} focused={focused} />
+            <TabIcon name="queue" color={color} size={size} focused={focused} />
           ),
         }}
       />
@@ -270,6 +278,7 @@ export default function RootNavigator() {
         {!isAuthenticated && !pendingOtpVerification ? (
           <>
             <Stack.Screen name="Login" component={LoginScreen} />
+            <Stack.Screen name="Register" component={RegisterScreen} />
             <Stack.Screen
               name="OtpVerify"
               component={OtpVerifyScreen}

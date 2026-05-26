@@ -12,6 +12,7 @@ import {
   TextInput,
   KeyboardAvoidingView,
   Platform,
+  Modal,
 } from 'react-native';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -66,6 +67,8 @@ export default function BookingReviewScreen() {
   const { user } = useAuthStore();
   const [paymentMethod, setPaymentMethod] = useState<'ONLINE' | 'WALLET' | 'PAY_AT_SHOP'>('PAY_AT_SHOP');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [agreePolicies, setAgreePolicies] = useState(true);
+  const [showPolicyModal, setShowPolicyModal] = useState(false);
 
   // ── New "web-cart parity" state ─────────────────────────────────────────
   const [couponInput, setCouponInput] = useState('');
@@ -201,7 +204,7 @@ export default function BookingReviewScreen() {
 
     try {
       setIsSubmitting(true);
-      const startTime = `${selectedDate}T${selectedTime}:00`;
+      const startTime = new Date(`${selectedDate}T${selectedTime}:00`).toISOString();
       const created = await bookingsApi.create({
         shopId,
         serviceIds: selectedServices,
@@ -257,7 +260,7 @@ export default function BookingReviewScreen() {
           
           {/* Shop Card */}
           <View style={styles.shopSection}>
-            <Image source={{ uri: shop?.coverPhotoUrl }} style={styles.shopImg} />
+            <Image source={{ uri: shop?.coverUrl || shop?.coverPhotoUrl }} style={styles.shopImg} />
             <View style={styles.shopOverlay}>
               <Text style={styles.shopName}>{shop?.name}</Text>
               <View style={styles.addrRow}>
@@ -430,6 +433,34 @@ export default function BookingReviewScreen() {
             </View>
           )}
 
+          {/* Policies Checkbox Card */}
+          <View style={styles.card}>
+            <TouchableOpacity
+              style={styles.policyRow}
+              onPress={() => setAgreePolicies(v => !v)}
+              activeOpacity={0.7}
+            >
+              <View
+                style={[
+                  styles.checkbox,
+                  agreePolicies && styles.checkboxActive,
+                ]}
+              >
+                {agreePolicies && <CheckCircle2 size={14} color="#FFF" />}
+              </View>
+              <Text style={styles.policyText}>
+                I agree to arrive <Text style={{ fontWeight: '900', color: '#0F172A' }}>10 minutes prior</Text> to my scheduled time and accept the{' '}
+                <Text style={styles.policyLink} onPress={() => setShowPolicyModal(true)}>
+                  Terms of Service
+                </Text>{' '}
+                &{' '}
+                <Text style={styles.policyLink} onPress={() => setShowPolicyModal(true)}>
+                  Privacy Policy
+                </Text>.
+              </Text>
+            </TouchableOpacity>
+          </View>
+
           {/* Bill Breakout */}
           <View style={styles.billCard}>
             <View style={styles.billHeader}>
@@ -501,10 +532,10 @@ export default function BookingReviewScreen() {
             <TouchableOpacity
               style={[
                 styles.payBtn,
-                (isSubmitting || hasActiveBookingOverlap) && { opacity: 0.5 },
+                (isSubmitting || hasActiveBookingOverlap || !agreePolicies) && { opacity: 0.5 },
               ]}
               onPress={handleConfirm}
-              disabled={isSubmitting || hasActiveBookingOverlap}
+              disabled={isSubmitting || hasActiveBookingOverlap || !agreePolicies}
             >
               {isSubmitting ? (
                 <ActivityIndicator color="#FFF" />
@@ -521,6 +552,40 @@ export default function BookingReviewScreen() {
         </KeyboardAvoidingView>
 
       </SafeAreaView>
+
+      {/* Terms & Privacy Policies Modal */}
+      <Modal visible={showPolicyModal} animationType="slide" transparent={false}>
+        <SafeAreaView style={{ flex: 1, backgroundColor: '#FFF' }}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>Terms & Policies</Text>
+            <TouchableOpacity onPress={() => setShowPolicyModal(false)} style={styles.modalCloseBtn}>
+              <X size={24} color="#0F172A" />
+            </TouchableOpacity>
+          </View>
+          <ScrollView contentContainerStyle={styles.modalScroll}>
+            <Text style={styles.policySectionTitle}>1. Arrival & Cancellation Policy</Text>
+            <Text style={styles.policyBodyText}>
+              To ensure all clients receive the highest quality service, we require that you arrive at least 10 minutes prior to your scheduled slot. 
+              If you arrive late, your slot may be shortened or rescheduled to accommodate subsequent bookings. 
+              Cancellations made within 2 hours of the booking slot may be subject to a cancellation fee or forfeiture of your deposit.
+            </Text>
+
+            <Text style={styles.policySectionTitle}>2. Terms of Service</Text>
+            <Text style={styles.policyBodyText}>
+              By booking an appointment through Overline, you agree to comply with our code of conduct. 
+              Our service providers reserve the right to refuse service to anyone demonstrating disrespectful or inappropriate behavior. 
+              Pricing displayed on the app is inclusive of all standard taxes, but specific premium add-ons requested at the shop may incur extra charges.
+            </Text>
+
+            <Text style={styles.policySectionTitle}>3. Privacy & Data Handling</Text>
+            <Text style={styles.policyBodyText}>
+              Overline respects your privacy. We collect your registration details (name, email, and verified phone number) solely to manage bookings, send confirmation alerts, and process secure payments. 
+              Your payment information is handled via secured tokenized gateways and is never stored on our servers. 
+              We do not share your personal identification details with third-party marketers.
+            </Text>
+          </ScrollView>
+        </SafeAreaView>
+      </Modal>
     </View>
   );
 }
@@ -1001,5 +1066,58 @@ const styles = StyleSheet.create({
     fontSize: 13,
     fontWeight: '700',
     color: '#991B1B',
+  },
+  policyRow: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: 12,
+  },
+  policyText: {
+    fontSize: 13,
+    color: '#475569',
+    lineHeight: 18,
+    flex: 1,
+  },
+  policyLink: {
+    color: Colors.primary,
+    fontWeight: '800',
+    textDecorationLine: 'underline',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    padding: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+  },
+  modalTitle: {
+    fontSize: 18,
+    fontWeight: '900',
+    color: '#0F172A',
+  },
+  modalCloseBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 12,
+    backgroundColor: '#F8FAFC',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalScroll: {
+    padding: 20,
+  },
+  policySectionTitle: {
+    fontSize: 15,
+    fontWeight: '900',
+    color: '#0F172A',
+    marginTop: 20,
+    marginBottom: 8,
+  },
+  policyBodyText: {
+    fontSize: 13,
+    color: '#475569',
+    lineHeight: 20,
+    marginBottom: 16,
   },
 });

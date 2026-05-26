@@ -1,4 +1,4 @@
-import { Body, Controller, Get, Param, Post, Query, UseGuards } from '@nestjs/common';
+import { Body, Controller, Get, Param, Post, Query, Req, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiResponse, ApiParam, ApiQuery } from '@nestjs/swagger';
 import { ShopsService } from './shops.service';
 import { SearchShopsDto } from './dto/search-shops.dto';
@@ -10,6 +10,18 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 @Controller('shops')
 export class ShopsController {
   constructor(private readonly shopsService: ShopsService) {}
+
+  @Post('onboard')
+  @UseGuards(JwtAuthGuard)
+  @ApiOperation({ summary: 'Onboard a shop for an authenticated owner (e.g., via Google login)' })
+  @ApiResponse({ status: 201, description: 'Shop created successfully' })
+  async onboardShop(@Body() dto: RegisterShopRequestDto, @Req() req: any) {
+    const user = req.user;
+    if (user.role !== 'OWNER') {
+      throw new Error('Only owners can onboard shops');
+    }
+    return this.shopsService.onboardOwnerShop(user.id, dto);
+  }
 
   @Post('register')
   @Public()

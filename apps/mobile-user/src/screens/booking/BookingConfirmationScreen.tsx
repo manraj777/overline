@@ -9,7 +9,8 @@ import { RootStackParamList } from '../../types';
 import { Colors, Spacing, BorderRadius, FontSizes, FontWeights, Shadows } from '../../theme';
 import { PrimaryButton, Divider } from '../../components/ui';
 import { Check, Sparkles, Zap, Timer, ArrowRight } from 'lucide-react-native';
-import { useSocketEvent } from '../../hooks/useSocket';
+import { useQueueBookingRealtime } from '../../hooks/useQueueBookingRealtime';
+import { SoundManager } from '../../utils/SoundManager';
 
 type RouteProps = RouteProp<RootStackParamList, 'BookingConfirmation'>;
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
@@ -26,12 +27,27 @@ export default function BookingConfirmationScreen() {
   });
 
   // Real-time status sync
-  useSocketEvent('booking_status_update', (data: any) => {
-    if (data.bookingId === bookingId) {
+  useQueueBookingRealtime({
+    bookingId,
+    onBookingUpdate: (payload) => {
       queryClient.invalidateQueries({ queryKey: ['booking', bookingId] });
-      // If started, maybe navigate to a live tracking screen or just show status here
+      
+      const newStatus = payload.status;
+      if (newStatus === 'CONFIRMED') {
+        SoundManager.playConfirmed();
+      } else if (newStatus === 'IN_SERVICE') {
+        SoundManager.playStart();
+      } else if (newStatus === 'COMPLETED') {
+        SoundManager.playCompleted();
+      }
     }
   });
+
+  React.useEffect(() => {
+    if (booking?.status === 'PENDING_APPROVAL' || booking?.status === 'PENDING') {
+      SoundManager.playPending();
+    }
+  }, [booking?.status]);
 
   const goHome = () => {
     navigation.reset({ index: 0, routes: [{ name: 'Main' }] });

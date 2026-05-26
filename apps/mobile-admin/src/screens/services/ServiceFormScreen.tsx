@@ -13,6 +13,7 @@ import {
   KeyboardAvoidingView,
   Platform,
   StatusBar,
+  Image,
 } from 'react-native';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRoute, RouteProp, useNavigation } from '@react-navigation/native';
@@ -30,7 +31,8 @@ import {
   ChevronRight, 
   Sparkles,
   Zap,
-  ShieldCheck
+  ShieldCheck,
+  Camera
 } from 'lucide-react-native';
 
 type RouteProps = RouteProp<RootStackParamList, 'ServiceForm'>;
@@ -53,9 +55,11 @@ export default function ServiceFormScreen() {
     durationMinutes: 30,
     category: '',
     isActive: true,
+    imageUrl: '',
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
 
+  // 1. Fetch singular service (if editing)
   const { data: existingService, isLoading: loadingService } = useQuery({
     queryKey: ['adminService', serviceId],
     queryFn: () => servicesApi.getAll(shopId).then(res => 
@@ -63,6 +67,19 @@ export default function ServiceFormScreen() {
     ),
     enabled: isEditing,
   });
+
+  // 2. Fetch all services to extract dynamic categories
+  const { data: allServices = [] } = useQuery({
+    queryKey: ['adminServices', shopId],
+    queryFn: () => servicesApi.getAll(shopId).then(res => res.data || []),
+  });
+
+  // Extract unique categories (presets + custom shop ones)
+  const uniqueCategories = React.useMemo(() => {
+    const list = allServices.map((s: any) => s.category).filter(Boolean);
+    const combined = [...new Set([...list, ...CATEGORY_PRESETS])];
+    return combined;
+  }, [allServices]);
 
   useEffect(() => {
     if (existingService) {
@@ -73,6 +90,7 @@ export default function ServiceFormScreen() {
         durationMinutes: existingService.durationMinutes,
         category: existingService.category || '',
         isActive: existingService.isActive,
+        imageUrl: existingService.imageUrl || '',
       });
     }
   }, [existingService]);
@@ -83,7 +101,11 @@ export default function ServiceFormScreen() {
         ? servicesApi.update(serviceId!, { ...data, id: serviceId } as any)
         : servicesApi.create(shopId, data),
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['adminServices'] });
+      queryClient.invalidateQueries({ queryKey: ['adminServices', shopId] });
+      queryClient.invalidateQueries({ queryKey: ['staffMyServices', shopId] });
+      if (serviceId) {
+        queryClient.invalidateQueries({ queryKey: ['adminService', serviceId] });
+      }
       Alert.alert('Success', `Service ${isEditing ? 'updated' : 'created'} successfully`);
       navigation.goBack();
     },
@@ -191,16 +213,42 @@ export default function ServiceFormScreen() {
                 </View>
 
                 <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.presetScroll}>
-                  {CATEGORY_PRESETS.map(p => (
+                  {uniqueCategories.map(p => (
                     <TouchableOpacity 
                       key={p} 
-                      style={styles.pChip}
+                      style={[styles.pChip, formData.category === p && styles.pChipActive]}
                       onPress={() => setFormData({ ...formData, category: p })}
                     >
-                      <Text style={styles.pChipText}>{p}</Text>
+                      <Text style={[styles.pChipText, formData.category === p && styles.pChipTextActive]}>{p}</Text>
                     </TouchableOpacity>
                   ))}
                 </ScrollView>
+              </View>
+
+              <View style={[styles.inputSection, { marginTop: 32 }]}>
+                <Text style={styles.sectionLabel}>SERVICE IMAGE URL</Text>
+                <View style={styles.inputBox}>
+                  <Camera size={18} color={Colors.textSecondary} />
+                  <TextInput
+                    style={styles.input}
+                    placeholder="https://example.com/service-photo.jpg"
+                    placeholderTextColor={Colors.textMuted}
+                    autoCapitalize="none"
+                    autoCorrect={false}
+                    value={formData.imageUrl}
+                    onChangeText={t => setFormData({ ...formData, imageUrl: t })}
+                  />
+                </View>
+                {formData.imageUrl ? (
+                  <View style={styles.previewContainer}>
+                    <Text style={styles.previewLabel}>Image Preview:</Text>
+                    <Image 
+                      source={{ uri: formData.imageUrl }} 
+                      style={styles.imagePreview} 
+                      resizeMode="cover"
+                    />
+                  </View>
+                ) : null}
               </View>
 
               <View style={[styles.inputSection, { marginTop: 32 }]}>
@@ -398,10 +446,37 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: '#F1F5F9',
   },
+  pChipActive: {
+    backgroundColor: '#EFF6FF',
+    borderColor: Colors.primary,
+  },
   pChipText: {
     fontSize: 11,
     fontWeight: '700',
     color: '#94A3B8',
+  },
+  pChipTextActive: {
+    color: Colors.primary,
+  },
+  previewContainer: {
+    marginTop: 12,
+    borderRadius: 16,
+    overflow: 'hidden',
+    borderWidth: 1.5,
+    borderColor: '#F1F5F9',
+    padding: 12,
+    backgroundColor: '#F8FAFC',
+  },
+  previewLabel: {
+    fontSize: 11,
+    fontWeight: '800',
+    color: '#64748B',
+    marginBottom: 8,
+  },
+  imagePreview: {
+    width: '100%',
+    height: 150,
+    borderRadius: 12,
   },
   statusBox: {
     flexDirection: 'row',

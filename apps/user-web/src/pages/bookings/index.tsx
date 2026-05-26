@@ -38,6 +38,7 @@ export default function BookingsPage() {
   const [activeTab, setActiveTab] = React.useState<FilterTab>('upcoming');
   const [activeSessions, setActiveSessions] = React.useState<RecoveredQueueSession[]>([]);
   const [isRefreshingSessions, setIsRefreshingSessions] = React.useState(true);
+  const [reviewTarget, setReviewTarget] = React.useState<{ id: string; shopName: string } | null>(null);
 
   const { data: bookings, isLoading } = useMyBookings(
     activeTab === 'all' ? undefined : activeTab
@@ -282,12 +283,20 @@ export default function BookingsPage() {
         ) : (
           <div className="space-y-4">
             {(bookings?.data ?? []).map((booking) => (
-              <BookingCard key={booking.id} booking={booking} />
+              <BookingCard 
+                key={booking.id} 
+                booking={booking} 
+                onRate={() => setReviewTarget({ id: booking.id, shopName: booking.shop?.name || 'this shop' })}
+              />
             ))}
           </div>
         )}
 
-        <ReviewModal />
+        <ReviewModal 
+          bookingId={reviewTarget?.id} 
+          shopName={reviewTarget?.shopName}
+          onClose={() => setReviewTarget(null)}
+        />
       </div>
     </>
   );

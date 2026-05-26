@@ -1,7 +1,6 @@
 import { create } from 'zustand';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import auth, { FirebaseAuthTypes } from '@react-native-firebase/auth';
-import { authApi } from '../api/client';
+import { authApi, otpApi, initApiUrl } from '../api/client';
 
 export interface User {
   id: string;
@@ -24,7 +23,7 @@ interface AuthState {
   // OTP state
   otpPhone: string | null;
   otpSent: boolean;
-  otpConfirmation: FirebaseAuthTypes.ConfirmationResult | null;
+  otpConfirmation: any | null;
 
   // Actions
   login: (email: string, password: string) => Promise<void>;
@@ -108,8 +107,8 @@ export const useAuthStore = create<AuthState>((set, _get) => ({
   sendOtp: async (phone: string) => {
     try {
       set({ error: null });
-      const confirmation = await auth().signInWithPhoneNumber(phone);
-      set({ otpPhone: phone, otpSent: true, otpConfirmation: confirmation });
+      await otpApi.send(phone, 'LOGIN');
+      set({ otpPhone: phone, otpSent: true, otpConfirmation: null });
       return undefined;
     } catch (error: any) {
       const message =
@@ -121,19 +120,13 @@ export const useAuthStore = create<AuthState>((set, _get) => ({
 
   verifyOtpSession: async (otp: string) => {
     const state = _get();
-    if (!state.otpConfirmation) {
-      throw new Error('OTP session expired. Please request a new code.');
+    if (!state.otpPhone) {
+      throw new Error('No phone number found. Please request a new code.');
     }
 
     try {
       set({ error: null });
-      const credential = await state.otpConfirmation.confirm(otp);
-      if (!credential) {
-        throw new Error('OTP confirmation failed. Please request a new code.');
-      }
-
-      // Keep OTP verification separate from login for registration flow.
-      await auth().signOut().catch(() => undefined);
+      await otpApi.verify(state.otpPhone, otp, 'REGISTER');
       set({ otpSent: false, otpConfirmation: null });
     } catch (error: any) {
       const message =
@@ -145,18 +138,13 @@ export const useAuthStore = create<AuthState>((set, _get) => ({
 
   verifyOtpCode: async (otp: string, name?: string) => {
     const state = _get();
-    if (!state.otpConfirmation) {
-      throw new Error('OTP session expired. Please request a new code.');
+    if (!state.otpPhone) {
+      throw new Error('No phone number found. Please request a new code.');
     }
 
     try {
       set({ error: null });
-      const credential = await state.otpConfirmation.confirm(otp);
-      if (!credential) {
-        throw new Error('OTP confirmation failed. Please request a new code.');
-      }
-      const idToken = await credential.user.getIdToken(true);
-      const { data } = await authApi.firebasePhoneLogin(idToken, name);
+      const { data } = await otpApi.verify(state.otpPhone, otp, 'LOGIN', 'USER', name);
       await state.completeOtpLogin(data.user, data.accessToken, data.refreshToken);
     } catch (error: any) {
       const message =
@@ -206,6 +194,7 @@ export const useAuthStore = create<AuthState>((set, _get) => ({
 
   checkAuth: async () => {
     try {
+      await initApiUrl();
       const token = await AsyncStorage.getItem('accessToken');
       if (!token) {
         set({ isLoading: false });

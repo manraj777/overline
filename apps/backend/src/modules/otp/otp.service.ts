@@ -577,12 +577,12 @@ export class OtpService {
   }
 
   /** Verify OTP then issue JWT tokens (phone-OTP login flow) */
-  async loginWithOtp(phone: string, otp: string, requestedRole?: string): Promise<TokenResponse> {
+  async loginWithOtp(phone: string, otp: string, requestedRole?: string, name?: string): Promise<TokenResponse> {
     const result = await this.verifyOtp(phone, otp, 'LOGIN');
     if (!result.verified) throw new BadRequestException('OTP verification failed');
 
     // Delegate to AuthService for role-aware token issuance after OTP has already been verified.
-    return this.authService.loginWithVerifiedPhone(phone, requestedRole);
+    return this.authService.loginWithVerifiedPhone(phone, requestedRole, name);
   }
 
   /** Validate Indian phone number (+91XXXXXXXXXX / 91XXXXXXXXXX / 10 digits) */

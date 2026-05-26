@@ -33,6 +33,10 @@ class VerifyOtpDto {
   @IsString()
   @IsIn(['OWNER', 'STAFF', 'USER', 'SUPER_ADMIN'])
   requestedRole?: string;
+
+  @IsOptional()
+  @IsString()
+  name?: string;
 }
 
 class SendEmailOtpDto {
@@ -157,7 +161,7 @@ export class OtpController {
     const normalizedPhone = this.otpService.normalizePhone(dto.phone);
     // If purpose is LOGIN, delegate to loginWithOtp for token generation + role enforcement
     if (dto.purpose === 'LOGIN') {
-      return this.otpService.loginWithOtp(normalizedPhone, dto.otp, dto.requestedRole);
+      return this.otpService.loginWithOtp(normalizedPhone, dto.otp, dto.requestedRole, dto.name);
     }
     return this.otpService.verifyOtp(normalizedPhone, dto.otp, dto.purpose);
   }
@@ -169,7 +173,7 @@ export class OtpController {
   @HttpCode(HttpStatus.OK)
   async loginWithOtp(@Body() dto: VerifyOtpDto): Promise<any> {
     const normalizedPhone = this.otpService.normalizePhone(dto.phone);
-    return this.otpService.loginWithOtp(normalizedPhone, dto.otp, dto.requestedRole);
+    return this.otpService.loginWithOtp(normalizedPhone, dto.otp, dto.requestedRole, dto.name);
   }
 
   /**

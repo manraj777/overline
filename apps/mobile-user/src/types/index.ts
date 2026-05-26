@@ -29,6 +29,8 @@ export interface Shop {
   reviewCount: number;
   photoUrl?: string;
   coverPhotoUrl?: string;
+  coverUrl?: string;
+  photoUrls?: string[];
   isOpen: boolean;
   distance?: number;
   services?: Service[];

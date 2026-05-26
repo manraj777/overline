@@ -1,6 +1,7 @@
 import React from 'react';
 import Link from 'next/link';
-import { MapPin, Clock, Star, Users, Navigation } from 'lucide-react';
+import { MapPin, Clock, Star, Users, Navigation, MessageCircle } from 'lucide-react';
+import { isShopOpenNow } from '@/lib/utils';
 import type { Shop } from '@/types';
 
 interface ShopCardProps {
@@ -148,6 +149,23 @@ const ShopCard: React.FC<ShopCardProps> = ({ shop, queueInfo, userLocation }) =>
             </button>
           </div>
 
+          {shop.phone && (
+            <div className="flex items-center mb-3">
+              <button
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  const phoneNum = (shop.phone || '').replace(/\D/g, '');
+                  window.open(`https://wa.me/91${phoneNum}`, '_blank', 'noopener,noreferrer');
+                }}
+                className="flex items-center gap-1.5 text-xs font-bold text-emerald-600 hover:text-emerald-700 bg-emerald-50 hover:bg-emerald-100 px-2.5 py-1.5 rounded-lg transition-colors border border-emerald-100"
+              >
+                <MessageCircle className="w-3.5 h-3.5" />
+                WhatsApp
+              </button>
+            </div>
+          )}
+
           {/* Distance & Travel time */}
           {distanceKm !== undefined && travelTime && (
             <div className="flex items-center gap-2 text-[11px] text-primary font-semibold mb-3">
@@ -181,18 +199,37 @@ const ShopCard: React.FC<ShopCardProps> = ({ shop, queueInfo, userLocation }) =>
           </div>
 
           {/* Queue Stats */}
-          {(shop.queueStats || queueInfo) && (
-            <div className="flex items-center justify-between pt-3 mt-3 border-t border-outline-variant/10">
-              <div className="flex items-center text-xs text-on-surface-variant font-medium">
-                <Users className="w-3.5 h-3.5 mr-1 text-secondary" />
-                <span>{(shop.queueStats?.waitingCount ?? queueInfo?.peopleInQueue) || 0} in queue</span>
+          {(() => {
+            const queueCount = (shop.queueStats?.waitingCount ?? queueInfo?.peopleInQueue) || 0;
+            const waitTime = (shop.queueStats?.estimatedWaitMinutes ?? queueInfo?.currentWait) || 0;
+            
+            if (queueCount === 0 && isOpen) {
+              return (
+                <div className="flex items-center pt-3 mt-3 border-t border-outline-variant/10">
+                  <div className="flex items-center text-xs font-bold text-emerald-600 bg-emerald-50 px-2.5 py-1.5 rounded-lg border border-emerald-100 w-full justify-center">
+                    <span className="relative flex h-2 w-2 mr-2">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                    </span>
+                    Available Now - No Wait Time
+                  </div>
+                </div>
+              );
+            }
+
+            return (
+              <div className="flex items-center justify-between pt-3 mt-3 border-t border-outline-variant/10">
+                <div className="flex items-center text-xs text-on-surface-variant font-medium">
+                  <Users className="w-3.5 h-3.5 mr-1 text-secondary" />
+                  <span>{queueCount} in queue</span>
+                </div>
+                <div className="flex items-center text-xs text-on-surface-variant font-medium">
+                  <Clock className="w-3.5 h-3.5 mr-1 text-tertiary" />
+                  <span>~{waitTime} min</span>
+                </div>
               </div>
-              <div className="flex items-center text-xs text-on-surface-variant font-medium">
-                <Clock className="w-3.5 h-3.5 mr-1 text-tertiary" />
-                <span>~{(shop.queueStats?.estimatedWaitMinutes ?? queueInfo?.currentWait) || 0} min</span>
-              </div>
-            </div>
-          )}
+            );
+          })()}
         </div>
       </div>
     </Link>
@@ -219,60 +256,6 @@ function getShopRating(shop: Shop): number | null {
   return Number.isFinite(rating) ? rating : null;
 }
 
-function parseTimeToMinutes(value: string): number {
-  const [hours, minutes] = value.split(':').map((part) => Number(part));
-  if (!Number.isFinite(hours) || !Number.isFinite(minutes)) {
-    return 0;
-  }
-  return hours * 60 + minutes;
-}
 
-function isShopOpenNow(shop: Shop): boolean {
-  if (!shop.isActive) {
-    return false;
-  }
-
-  const todaysHours = shop.workingHours;
-  if (!todaysHours || todaysHours.length === 0) {
-    return true;
-  }
-
-  const now = new Date();
-  const timezone = shop.timezone || 'Asia/Kolkata';
-  const parts = new Intl.DateTimeFormat('en-US', {
-    timeZone: timezone,
-    weekday: 'long',
-    hour: '2-digit',
-    minute: '2-digit',
-    hour12: false,
-  }).formatToParts(now);
-
-  const weekday = parts.find((part) => part.type === 'weekday')?.value;
-  const hour = Number(parts.find((part) => part.type === 'hour')?.value || '0');
-  const minute = Number(parts.find((part) => part.type === 'minute')?.value || '0');
-  const currentMinutes = hour * 60 + minute;
-
-  if (!weekday) {
-    return true;
-  }
-
-  const today = todaysHours.find((entry) => entry.dayOfWeek === weekday.toUpperCase());
-  if (!today || today.isClosed) {
-    return false;
-  }
-
-  const openMinutes = parseTimeToMinutes(today.openTime);
-  const closeMinutes = parseTimeToMinutes(today.closeTime);
-
-  if (closeMinutes === openMinutes) {
-    return true;
-  }
-
-  if (closeMinutes > openMinutes) {
-    return currentMinutes >= openMinutes && currentMinutes < closeMinutes;
-  }
-
-  return currentMinutes >= openMinutes || currentMinutes < closeMinutes;
-}
 
 export { ShopCard };

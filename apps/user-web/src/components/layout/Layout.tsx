@@ -302,8 +302,10 @@ const Layout: React.FC<LayoutProps> = ({ children }) => {
                 <div className="flex flex-col gap-3">
                   <Link href="/privacy" className="font-semibold hover:text-inverse-primary transition-colors">Privacy Policy</Link>
                   <Link href="/terms" className="font-semibold hover:text-inverse-primary transition-colors">Terms of Service</Link>
-                  <a href="mailto:support@overline.in" className="font-semibold hover:text-inverse-primary transition-colors">Support</a>
-                  <a href="https://shop.overline.in" target="_blank" rel="noreferrer" className="font-semibold hover:text-inverse-primary transition-colors text-inverse-on-surface/30">
+                  <a href="mailto:support@overline.in" className="font-semibold hover:text-inverse-primary transition-colors">support@overline.in</a>
+                  <a href="tel:+918989815705" className="font-semibold hover:text-inverse-primary transition-colors">+91 89898 15705</a>
+                  <a href="https://support.overline.in" target="_blank" rel="noreferrer" className="font-semibold hover:text-inverse-primary transition-colors">Help Center</a>
+                  <a href="https://shop.overline.in" target="_blank" rel="noreferrer" className="font-semibold hover:text-inverse-primary transition-colors text-inverse-on-surface/30 mt-2">
                     Partner Login
                   </a>
                 </div>

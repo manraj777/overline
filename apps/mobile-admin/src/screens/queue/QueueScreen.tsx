@@ -7,10 +7,12 @@ import {
   Text,
   TouchableOpacity,
   View,
+  Switch,
+  Alert,
 } from 'react-native';
 import {useMutation, useQuery, useQueryClient} from '@tanstack/react-query';
 import {format} from 'date-fns';
-import {bookingsApi} from '../../api/client';
+import {bookingsApi, shopApi} from '../../api/client';
 import {useAuthStore} from '../../stores/authStore';
 import {Booking} from '../../types';
 import {Colors, FontSize, FontWeight, Radius, Spacing} from '../../theme';
@@ -39,6 +41,24 @@ export default function QueueScreen() {
       return results.flat();
     },
     enabled: !!selectedShopId,
+  });
+
+  const { data: shopSettings } = useQuery({
+    queryKey: ['shopSettings', selectedShopId],
+    queryFn: () => shopApi.getSettings(selectedShopId!).then(res => res.data),
+    enabled: !!selectedShopId,
+  });
+
+  const toggleOpenMutation = useMutation({
+    mutationFn: (isOpen: boolean) =>
+      shopApi.updateSettings(selectedShopId!, { settings: { isOpen } }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['shopSettings', selectedShopId] });
+      Alert.alert('Success', 'Shop status updated successfully.');
+    },
+    onError: (err: any) => {
+      Alert.alert('Error', err.response?.data?.message || 'Failed to update shop status.');
+    }
   });
 
   const updateStatus = useMutation({
@@ -108,11 +128,28 @@ export default function QueueScreen() {
     );
   }
 
+  const isOpen = shopSettings?.settings?.isOpen ?? true;
+
   return (
     <View style={styles.container}>
       <View style={styles.header}>
-        <Text style={styles.headerTitle}>Live Queue</Text>
-        <Text style={styles.headerSubtitle}>{queueBookings.length} active customers</Text>
+        <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
+          <View>
+            <Text style={styles.headerTitle}>Live Queue</Text>
+            <Text style={styles.headerSubtitle}>{queueBookings.length} active customers</Text>
+          </View>
+          <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+            <Text style={{ fontSize: 11, fontWeight: '900', color: isOpen ? '#10B981' : '#64748B' }}>
+              {isOpen ? 'SHOP OPEN' : 'SHOP CLOSED'}
+            </Text>
+            <Switch
+              value={isOpen}
+              onValueChange={(val) => toggleOpenMutation.mutate(val)}
+              trackColor={{ false: '#CBD5E1', true: '#C7D2FE' }}
+              thumbColor={isOpen ? '#4F46E5' : '#64748B'}
+            />
+          </View>
+        </View>
       </View>
 
       <FlatList

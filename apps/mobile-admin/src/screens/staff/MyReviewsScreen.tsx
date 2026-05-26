@@ -15,6 +15,7 @@ import { reviewsApi } from '../../api/client';
 import { useAuthStore } from '../../stores/authStore';
 import { Colors, Shadows, Radius } from '../../theme';
 import { ReviewItem, StaffReviewsResponse } from '../../types';
+import { format } from 'date-fns';
 import { 
   Star, 
   MessageSquare, 
@@ -80,10 +81,12 @@ export default function MyReviewsScreen() {
         {[1, 2, 3, 4, 5].map(s => (
           <Star key={s} size={14} color={s <= (item.rating || 5) ? "#F59E0B" : "#E2E8F0"} fill={s <= (item.rating || 5) ? "#F59E0B" : "transparent"} />
         ))}
-        <Text style={styles.dateText}>2 days ago</Text>
+        <Text style={styles.dateText}>
+          {item.createdAt ? format(new Date(item.createdAt), 'MMM dd, yyyy') : 'Recently'}
+        </Text>
       </View>
 
-      <Text style={styles.comment}>{item.comment || "Amazing experience, the specialist was very professional and understood exactly what I needed."}</Text>
+      <Text style={styles.comment}>{item.comment || "No comment left."}</Text>
       
       <View style={styles.cardFooter}>
         <TouchableOpacity style={styles.likeBtn}>
@@ -149,11 +152,18 @@ export default function MyReviewsScreen() {
         </View>
 
         <FlatList
-          data={[1,2,3]} // Static demo for high-fidelity
-          keyExtractor={i => i.toString()}
+          data={reviews}
+          keyExtractor={item => item.id}
           refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={Colors.primary} />}
           contentContainerStyle={styles.list}
           renderItem={renderReview}
+          ListEmptyComponent={
+            <View style={{ alignItems: 'center', paddingTop: 80 }}>
+              <MessageSquare size={48} color="#CBD5E1" />
+              <Text style={{ fontSize: 16, fontWeight: '800', color: '#1E293B', marginTop: 16 }}>No Reviews Yet</Text>
+              <Text style={{ fontSize: 13, color: '#94A3B8', marginTop: 4 }}>You will see customer feedback here.</Text>
+            </View>
+          }
         />
 
       </SafeAreaView>

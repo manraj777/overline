@@ -62,6 +62,7 @@ export interface Shop {
   logoUrl?: string;
   coverUrl?: string;
   photoUrls: string[];
+  videoUrls?: string[];
   googleRating?: number | string;
   googleReviewsCount?: number;
   maxConcurrentBookings: number;

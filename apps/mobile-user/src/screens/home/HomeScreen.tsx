@@ -122,8 +122,8 @@ export default function HomeScreen() {
       onPress={() => navigation.navigate('ShopDetail', { shopId: item.id })}
       activeOpacity={0.9}>
       <View style={styles.shopImageContainer}>
-        {item.coverPhotoUrl ? (
-          <Image source={{ uri: item.coverPhotoUrl }} style={styles.shopImage} />
+        {item.coverUrl || item.coverPhotoUrl ? (
+          <Image source={{ uri: item.coverUrl || item.coverPhotoUrl }} style={styles.shopImage} />
         ) : (
           <View style={[styles.shopImage, styles.placeholderImage]}>
             <Text style={styles.placeholderLetter}>{item.name.charAt(0)}</Text>

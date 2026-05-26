@@ -68,15 +68,24 @@ export const LiveQueueStatus: React.FC<LiveQueueStatusProps> = ({ shopId, fallba
             </div>
 
             <div className="flex items-center gap-4 text-sm sm:text-base font-bold">
-              <span className="flex items-center gap-1.5 text-white/90">
-                <Users className="w-5 h-5 text-indigo-400" />
-                {displayStats.waitingCount} <span className="text-white/50 font-medium hidden sm:inline">in line</span>
-              </span>
-              <span className="w-1 h-1 rounded-full bg-white/20"></span>
-              <span className="flex items-center gap-1.5 text-white/90">
-                <Clock className="w-5 h-5 text-amber-400" />
-                ~{displayStats.estimatedWaitMinutes}m <span className="text-white/50 font-medium hidden sm:inline">wait</span>
-              </span>
+              {displayStats.waitingCount === 0 ? (
+                <span className="flex items-center gap-1.5 text-emerald-400">
+                  <Zap className="w-5 h-5" />
+                  Available Now
+                </span>
+              ) : (
+                <>
+                  <span className="flex items-center gap-1.5 text-white/90">
+                    <Users className="w-5 h-5 text-indigo-400" />
+                    {displayStats.waitingCount} <span className="text-white/50 font-medium hidden sm:inline">in line</span>
+                  </span>
+                  <span className="w-1 h-1 rounded-full bg-white/20"></span>
+                  <span className="flex items-center gap-1.5 text-white/90">
+                    <Clock className="w-5 h-5 text-amber-400" />
+                    ~{displayStats.estimatedWaitMinutes}m <span className="text-white/50 font-medium hidden sm:inline">wait</span>
+                  </span>
+                </>
+              )}
             </div>
           </div>
         </motion.div>

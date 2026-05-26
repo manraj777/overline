@@ -47,6 +47,7 @@ export default function CartPage() {
     setCustomerPhone,
     removeService,
     getTotalDuration,
+    setStaff,
   } = useBookingStore();
 
   const [error, setError] = React.useState<string | null>(null);
@@ -84,6 +85,20 @@ export default function CartPage() {
 
     fetchPrice();
   }, [shop, selectedServices, appliedCoupon, isAuthenticated]);
+
+  const eligibleStaff = React.useMemo(() => {
+    const shopStaff = (shop as any)?.staff;
+    if (!shopStaff || selectedServices.length === 0) {
+      return shopStaff || [];
+    }
+    const selectedServiceIds = new Set(selectedServices.map((service) => service.id));
+    return shopStaff.filter((person: any) => {
+      const personServiceIds = new Set(
+        (person.staffServices || []).map((staffService: any) => staffService.serviceId),
+      );
+      return Array.from(selectedServiceIds).every((serviceId) => personServiceIds.has(serviceId));
+    });
+  }, [shop, selectedServices]);
 
   const { data: slots, isLoading: loadingSlots } = useAvailableSlots({
     shopId: shop?.id || '',
@@ -312,6 +327,45 @@ export default function CartPage() {
                       </button>
                     </div>
                   </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="card-m3 p-6">
+              <h2 className="text-lg font-black text-on-surface mb-4">Choose Professional</h2>
+              <div className="flex gap-4 overflow-x-auto pb-2 no-scrollbar">
+                <button
+                  onClick={() => setStaff(null)}
+                  className={`flex flex-col items-center gap-2 min-w-[80px] p-3 rounded-2xl border transition-all ${
+                    !selectedStaff
+                      ? 'border-primary bg-primary/10'
+                      : 'border-outline-variant/20 hover:border-primary/50'
+                  }`}
+                >
+                  <div className="w-12 h-12 rounded-full bg-surface-container flex items-center justify-center">
+                    <UserPlus className="w-5 h-5 text-on-surface-variant" />
+                  </div>
+                  <span className="text-xs font-bold text-center">Anyone</span>
+                </button>
+                {eligibleStaff.map((staff: any) => (
+                  <button
+                    key={staff.id}
+                    onClick={() => setStaff(staff)}
+                    className={`flex flex-col items-center gap-2 min-w-[80px] p-3 rounded-2xl border transition-all ${
+                      selectedStaff?.id === staff.id
+                        ? 'border-primary bg-primary/10'
+                        : 'border-outline-variant/20 hover:border-primary/50'
+                    }`}
+                  >
+                    <div className="w-12 h-12 rounded-full bg-surface-container flex items-center justify-center overflow-hidden">
+                      {staff.avatarUrl ? (
+                        <img src={staff.avatarUrl} alt={staff.name} className="w-full h-full object-cover" />
+                      ) : (
+                        <span className="text-lg font-black text-primary">{staff.name.charAt(0)}</span>
+                      )}
+                    </div>
+                    <span className="text-xs font-bold text-center truncate w-full px-1">{staff.name}</span>
+                  </button>
                 ))}
               </div>
             </div>

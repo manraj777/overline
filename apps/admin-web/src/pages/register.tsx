@@ -95,13 +95,23 @@ export default function RegisterPage() {
 
   const formValues = watch();
 
+  const onboarding = router.query.onboarding === 'true';
+  const user = useAuthStore((s) => s.user);
+
   React.useEffect(() => {
-    if (isAuthenticated) router.replace('/owner/dashboard');
-  }, [isAuthenticated, router]);
+    if (isAuthenticated && !onboarding) router.replace('/owner/dashboard');
+  }, [isAuthenticated, router, onboarding]);
+
+  React.useEffect(() => {
+    if (onboarding && user) {
+      if (!getValues('email') && user.email) setValue('email', user.email);
+      if (!getValues('ownerName') && user.name) setValue('ownerName', user.name);
+    }
+  }, [onboarding, user, setValue, getValues]);
 
   // ── Step Navigation ──
   const canGoNext = (): boolean => {
-    if (step === 1) return !!formValues.shopName && !!formValues.shopType && !!formValues.ownerName && !!formValues.email && !!formValues.password && !!formValues.ownerPhone;
+    if (step === 1) return !!formValues.shopName && !!formValues.shopType && !!formValues.ownerName && !!formValues.ownerPhone && (onboarding || (!!formValues.email && !!formValues.password));
     if (step === 2) return phoneVerified; // email verify is optional but phone is required
     if (step === 3) return !!locationData?.lat && !!formValues.city; // must have picked location and city
     return true;
@@ -111,7 +121,7 @@ export default function RegisterPage() {
     setError(null);
     let isValid = true;
 
-    if (step === 1) isValid = await trigger(['shopName', 'shopType', 'ownerName', 'email', 'password', 'ownerPhone']);
+    if (step === 1) isValid = await trigger(onboarding ? ['shopName', 'shopType', 'ownerName', 'ownerPhone'] : ['shopName', 'shopType', 'ownerName', 'email', 'password', 'ownerPhone']);
     else if (step === 3) isValid = await trigger(['city']);
 
     if (isValid && canGoNext()) setStep((prev) => Math.min(prev + 1, TOTAL_STEPS));
@@ -211,6 +221,40 @@ export default function RegisterPage() {
       const composedAddress = [data.building, data.floor, data.locality, data.city]
         .filter(Boolean)
         .join(', ') || locationData?.formattedAddress || data.city || 'Address';
+
+      if (onboarding) {
+        await api.post('/shops/onboard', {
+          email: data.email?.trim().toLowerCase() || user?.email,
+          ownerName: data.ownerName,
+          ownerPhone: data.ownerPhone,
+          shopName: data.shopName,
+          shopType: data.shopType,
+          shopDescription: data.shopDescription,
+          address: composedAddress,
+          building: data.building,
+          floor: data.floor,
+          locality: data.locality,
+          city: data.city,
+          state: data.state,
+          postalCode: data.postalCode,
+          landmark: data.landmark,
+          phone: data.ownerPhone,
+          publicPhone: data.ownerPhone,
+          latitude: locationData?.lat || 0,
+          longitude: locationData?.lng || 0,
+        });
+
+        const latestUser = await api.get('/auth/me');
+        if (latestUser.data && latestUser.data.shopId) {
+          const currentUser = useAuthStore.getState().user;
+          if (currentUser) {
+            useAuthStore.getState().setUser({ ...currentUser, shopId: latestUser.data.shopId });
+          }
+        }
+        
+        router.push('/owner/dashboard');
+        return;
+      }
 
       const result = await registerShop.mutateAsync({
         email: data.email.trim().toLowerCase(),
@@ -373,26 +417,28 @@ export default function RegisterPage() {
                     />
                   </div>
 
-                  {/* Owner Section — seamless continuation */}
+                    {/* Owner Section — seamless continuation */}
                   <div className="border-t border-outline-variant/10 pt-5">
                     <h3 className="text-sm font-bold text-on-surface flex items-center gap-2 mb-4">
                       <User className="w-4 h-4 text-primary" /> Owner Account
                     </h3>
 
                     <div className="space-y-4">
-                      <div className="space-y-2">
-                        <label className="label-m3">Email <span className="text-error">*</span></label>
-                        <div className="relative">
-                          <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-outline" />
-                          <input
-                            type="email"
-                            className="input-m3 pl-11"
-                            placeholder="you@example.com"
-                            {...register('email', { required: 'Email is required', pattern: { value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i, message: 'Invalid email' } })}
-                          />
+                      {!onboarding && (
+                        <div className="space-y-2">
+                          <label className="label-m3">Email <span className="text-error">*</span></label>
+                          <div className="relative">
+                            <Mail className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-outline" />
+                            <input
+                              type="email"
+                              className="input-m3 pl-11"
+                              placeholder="you@example.com"
+                              {...register('email', { required: 'Email is required', pattern: { value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i, message: 'Invalid email' } })}
+                            />
+                          </div>
+                          {errors.email && <p className="text-error text-xs font-medium">{errors.email.message}</p>}
                         </div>
-                        {errors.email && <p className="text-error text-xs font-medium">{errors.email.message}</p>}
-                      </div>
+                      )}
 
                       <div className="grid grid-cols-2 gap-4">
                         <div className="space-y-2">
@@ -418,21 +464,23 @@ export default function RegisterPage() {
                           {errors.ownerPhone && <p className="text-error text-xs font-medium">{errors.ownerPhone.message}</p>}
                         </div>
 
-                        <div className="space-y-2">
-                          <label className="label-m3">Password <span className="text-error">*</span></label>
-                          <div className="relative">
-                            <input
-                              type={showPassword ? 'text' : 'password'}
-                              className="input-m3 pr-11"
-                              placeholder="••••••••"
-                              {...register('password', { required: 'Password is required', minLength: { value: 8, message: 'Min 8 characters' } })}
-                            />
-                            <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-outline hover:text-on-surface">
-                              {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                            </button>
+                        {!onboarding && (
+                          <div className="space-y-2">
+                            <label className="label-m3">Password <span className="text-error">*</span></label>
+                            <div className="relative">
+                              <input
+                                type={showPassword ? 'text' : 'password'}
+                                className="input-m3 pr-11"
+                                placeholder="••••••••"
+                                {...register('password', { required: 'Password is required', minLength: { value: 8, message: 'Min 8 characters' } })}
+                              />
+                              <button type="button" onClick={() => setShowPassword(!showPassword)} className="absolute right-4 top-1/2 -translate-y-1/2 text-outline hover:text-on-surface">
+                                {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                              </button>
+                            </div>
+                            {errors.password && <p className="text-error text-xs font-medium">{errors.password.message}</p>}
                           </div>
-                          {errors.password && <p className="text-error text-xs font-medium">{errors.password.message}</p>}
-                        </div>
+                        )}
                       </div>
                     </div>
                   </div>
@@ -491,49 +539,50 @@ export default function RegisterPage() {
                     )}
                   </div>
 
-                  {/* Email Verification */}
-                  <div className={`p-5 rounded-2xl border-2 transition-colors ${emailVerified ? 'border-tertiary/30 bg-tertiary-fixed/10' : 'border-outline-variant/20 bg-surface-container-low'}`}>
-                    <div className="flex items-center justify-between mb-3">
-                      <div className="flex items-center gap-2">
-                        <Mail className="w-5 h-5 text-secondary" />
-                        <span className="font-bold text-on-surface">Email Verification</span>
-                        <span className="text-outline text-xs font-bold">Recommended</span>
+                  {!onboarding && (
+                    <div className={`p-5 rounded-2xl border-2 transition-colors ${emailVerified ? 'border-tertiary/30 bg-tertiary-fixed/10' : 'border-outline-variant/20 bg-surface-container-low'}`}>
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-2">
+                          <Mail className="w-5 h-5 text-secondary" />
+                          <span className="font-bold text-on-surface">Email Verification</span>
+                          <span className="text-outline text-xs font-bold">Recommended</span>
+                        </div>
+                        {emailVerified && <Check className="w-5 h-5 text-tertiary" />}
                       </div>
-                      {emailVerified && <Check className="w-5 h-5 text-tertiary" />}
-                    </div>
 
-                    {emailVerified ? (
-                      <p className="text-sm text-tertiary font-medium">✓ Email verified successfully</p>
-                    ) : !emailOtpSent ? (
-                      <Button
-                        type="button"
-                        onClick={handleSendEmailOtp}
-                        isLoading={emailSending}
-                        className="btn-tonal py-2.5 w-full"
-                      >
-                        Send OTP to {formValues.email || 'your email'}
-                      </Button>
-                    ) : (
-                      <div className="space-y-3">
-                        <input
-                          type="text"
-                          value={emailOtp}
-                          onChange={(e) => setEmailOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
-                          placeholder="Enter 6-digit OTP"
-                          className="input-m3 text-center text-lg tracking-[0.4em] font-bold"
-                        />
+                      {emailVerified ? (
+                        <p className="text-sm text-tertiary font-medium">✓ Email verified successfully</p>
+                      ) : !emailOtpSent ? (
                         <Button
                           type="button"
-                          onClick={handleVerifyEmailOtp}
-                          isLoading={verifyingEmailOtp}
-                          className="btn-primary py-2.5 w-full"
-                          disabled={emailOtp.length < 6}
+                          onClick={handleSendEmailOtp}
+                          isLoading={emailSending}
+                          className="btn-tonal py-2.5 w-full"
                         >
-                          Verify Email OTP
+                          Send OTP to {formValues.email || 'your email'}
                         </Button>
-                      </div>
-                    )}
-                  </div>
+                      ) : (
+                        <div className="space-y-3">
+                          <input
+                            type="text"
+                            value={emailOtp}
+                            onChange={(e) => setEmailOtp(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                            placeholder="Enter 6-digit OTP"
+                            className="input-m3 text-center text-lg tracking-[0.4em] font-bold"
+                          />
+                          <Button
+                            type="button"
+                            onClick={handleVerifyEmailOtp}
+                            isLoading={verifyingEmailOtp}
+                            className="btn-primary py-2.5 w-full"
+                            disabled={emailOtp.length < 6}
+                          >
+                            Verify Email OTP
+                          </Button>
+                        </div>
+                      )}
+                    </div>
+                  )}
                 </div>
               )}
 

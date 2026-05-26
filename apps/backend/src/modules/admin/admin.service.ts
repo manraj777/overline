@@ -944,6 +944,7 @@ export class AdminService {
       logoUrl: shop.logoUrl,
       coverUrl: shop.coverUrl,
       photoUrls: shop.photoUrls,
+      videoUrls: shop.videoUrls,
       maxConcurrentBookings: shop.maxConcurrentBookings,
       autoAcceptBookings: shop.autoAcceptBookings,
       allowCancellation: shop.allowCancellation,
@@ -1016,6 +1017,7 @@ export class AdminService {
       logoUrl?: string;
       coverUrl?: string;
       photoUrls?: string[];
+      videoUrls?: string[];
       maxConcurrentBookings?: number;
       autoAcceptBookings?: boolean;
       allowCancellation?: boolean;
@@ -1055,6 +1057,7 @@ export class AdminService {
         ...(updateData.logoUrl !== undefined && { logoUrl: updateData.logoUrl }),
         ...(updateData.coverUrl !== undefined && { coverUrl: updateData.coverUrl }),
         ...(updateData.photoUrls !== undefined && { photoUrls: updateData.photoUrls }),
+        ...(updateData.videoUrls !== undefined && { videoUrls: updateData.videoUrls }),
         ...(updateData.latitude !== undefined && { latitude: updateData.latitude }),
         ...(updateData.longitude !== undefined && { longitude: updateData.longitude }),
         ...(updateData.isActive !== undefined && { isActive: updateData.isActive }),
@@ -1143,6 +1146,8 @@ export class AdminService {
       ...(dto.phone !== undefined ? { phone: dto.phone } : {}),
       ...(dto.email !== undefined ? { email: dto.email } : {}),
       ...(dto.website !== undefined ? { website: dto.website } : {}),
+      ...(dto.photoUrls !== undefined ? { photoUrls: dto.photoUrls } : {}),
+      ...(dto.videoUrls !== undefined ? { videoUrls: dto.videoUrls } : {}),
       ...(dto.latitude !== undefined ? { latitude: dto.latitude } : {}),
       ...(dto.longitude !== undefined ? { longitude: dto.longitude } : {}),
     };

@@ -3,15 +3,28 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 import DeviceInfo from '../utils/deviceInfo';
 import { Config } from '../config';
+import { resolveApiUrl } from './urlResolver';
 
 // Configure API base URL from centralized config
-const API_BASE_URL = Config.API_BASE_URL;
+let API_BASE_URL = Config.API_BASE_URL;
 
 export const api = axios.create({
   baseURL: API_BASE_URL,
   timeout: Config.TIMEOUTS.API_REQUEST,
   headers: { 'Content-Type': 'application/json' },
 });
+
+export async function initApiUrl() {
+  try {
+    const { apiBase } = await resolveApiUrl();
+    api.defaults.baseURL = apiBase;
+    console.log('[User API Client] Dynamic baseURL resolved:', api.defaults.baseURL);
+  } catch (err) {
+    console.error('[User API Client] Failed to resolve dynamic baseURL:', err);
+  }
+}
+
+initApiUrl().catch(() => {});
 
 // Track if we're currently refreshing the token
 let isRefreshing = false;
@@ -162,9 +175,23 @@ export const queueApi = {
   getSlots: (
     shopId: string,
     params: { date: string; serviceIds?: string[]; duration?: number; staffId?: string },
-  ) => api.get(`/queue/slots/${shopId}`, { params }),
-  getNextSlot: (shopId: string, params?: { serviceIds?: string[] }) =>
-    api.get(`/queue/next-slot/${shopId}`, { params }),
+  ) => {
+    const { serviceIds, ...rest } = params;
+    return api.get(`/queue/slots/${shopId}`, {
+      params: {
+        ...rest,
+        ...(serviceIds && serviceIds.length > 0 ? { serviceIds: serviceIds.join(',') } : {}),
+      },
+    });
+  },
+  getNextSlot: (shopId: string, params?: { serviceIds?: string[] }) => {
+    const serviceIds = params?.serviceIds;
+    return api.get(`/queue/next-slot/${shopId}`, {
+      params: {
+        ...(serviceIds && serviceIds.length > 0 ? { serviceIds: serviceIds.join(',') } : {}),
+      },
+    });
+  },
   getPosition: (bookingId: string) =>
     api.get(`/queue/position/${bookingId}`),
 };
@@ -252,10 +279,15 @@ export const notificationsApi = {
 export const otpApi = {
   send: (phone: string, purpose: string = 'LOGIN') =>
     api.post('/otp/send', { phone, purpose }),
-  verify: (phone: string, otp: string, purpose: string = 'LOGIN') =>
-    api.post('/otp/verify', { phone, otp, purpose }),
-  login: (phone: string, otp: string) =>
-    api.post('/otp/login', { phone, otp, purpose: 'LOGIN' }),
+  verify: (
+    phone: string,
+    otp: string,
+    purpose: string = 'LOGIN',
+    requestedRole?: string,
+    name?: string,
+  ) => api.post('/otp/verify', { phone, otp, purpose, requestedRole, name }),
+  login: (phone: string, otp: string, requestedRole?: string, name?: string) =>
+    api.post('/otp/login', { phone, otp, purpose: 'LOGIN', requestedRole, name }),
 };
 
 // Payments API

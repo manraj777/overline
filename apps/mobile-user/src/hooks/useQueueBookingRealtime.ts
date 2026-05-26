@@ -1,25 +1,23 @@
-import {useEffect, useState} from 'react';
-import type {Socket} from 'socket.io-client';
-import apiClient from '../api/client';
-import {SoundManager} from '../utils/SoundManager';
+import { useEffect, useState } from 'react';
+import type { Socket } from 'socket.io-client';
+import { api } from '../api/client';
 
-interface QueueRealtimeOptions {
-  shopId?: string | null;
-  onQueueUpdate?: (payload: any) => void;
+interface QueueBookingRealtimeOptions {
+  bookingId?: string | null;
+  onBookingUpdate?: (payload: any) => void;
 }
 
-export function useQueueRealtime(options: QueueRealtimeOptions) {
-  const {shopId, onQueueUpdate} = options;
+export function useQueueBookingRealtime(options: QueueBookingRealtimeOptions) {
+  const { bookingId, onBookingUpdate } = options;
   const [connected, setConnected] = useState(false);
-  const [lastUpdatedAt, setLastUpdatedAt] = useState<number | null>(null);
 
   useEffect(() => {
-    if (!shopId) {
+    if (!bookingId) {
       setConnected(false);
       return;
     }
 
-    const baseUrl = String(apiClient.defaults.baseURL || '');
+    const baseUrl = String(api.defaults.baseURL || '');
     const socketOrigin = baseUrl.replace(/\/api\/v1\/?$/, '');
 
     const anyClient = require('socket.io-client');
@@ -44,29 +42,25 @@ export function useQueueRealtime(options: QueueRealtimeOptions) {
 
     socket.on('connect', () => {
       setConnected(true);
-      socket.emit('joinShopQueue', {shopId});
+      console.log(`[User Socket] Joined /queue room for booking ${bookingId}`);
+      socket.emit('trackBooking', { bookingId });
     });
 
     socket.on('disconnect', () => {
       setConnected(false);
     });
 
-    socket.on('queueUpdate', payload => {
-      setLastUpdatedAt(Date.now());
-      SoundManager.playPending();
-      if (onQueueUpdate) {
-        onQueueUpdate(payload);
+    socket.on('bookingUpdate', payload => {
+      console.log('[User Socket] Received bookingUpdate:', payload);
+      if (onBookingUpdate) {
+        onBookingUpdate(payload);
       }
     });
 
     return () => {
-      socket.emit('leaveShopQueue', {shopId});
       socket.disconnect();
     };
-  }, [shopId, onQueueUpdate]);
+  }, [bookingId, onBookingUpdate]);
 
-  return {
-    connected,
-    lastUpdatedAt,
-  };
+  return { connected };
 }

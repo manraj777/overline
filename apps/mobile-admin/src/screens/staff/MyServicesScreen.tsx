@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   ActivityIndicator,
-  FlatList,
+  SectionList,
   RefreshControl,
   StyleSheet,
   Text,
@@ -14,10 +14,12 @@ import {
   Alert,
 } from 'react-native';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useNavigation } from '@react-navigation/native';
+import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { servicesApi } from '../../api/client';
 import { useAuthStore } from '../../stores/authStore';
 import { Colors, Shadows, Spacing, Radius } from '../../theme';
-import { Service } from '../../types';
+import { Service, RootStackParamList } from '../../types';
 import { 
   Plus, 
   Scissors, 
@@ -35,6 +37,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 export default function MyServicesScreen() {
+  const navigation = useNavigation<NativeStackNavigationProp<RootStackParamList>>();
   const queryClient = useQueryClient();
   const { selectedShopId } = useAuthStore();
   const [showAddModal, setShowAddModal] = useState(false);
@@ -79,10 +82,25 @@ export default function MyServicesScreen() {
     );
   }
 
+  // Group services by category
+  const servicesByCategory = services.reduce((acc: any, service: Service) => {
+    const cat = service.category || 'General';
+    if (!acc[cat]) {
+      acc[cat] = [];
+    }
+    acc[cat].push(service);
+    return acc;
+  }, {});
+
+  const sections = Object.keys(servicesByCategory).map(category => ({
+    title: category,
+    data: servicesByCategory[category],
+  }));
+
   const renderService = ({ item }: { item: Service }) => (
     <View style={styles.card}>
       <Image 
-        source={{ uri: 'https://images.unsplash.com/photo-1595475243695-469d2f679b8b?q=80&w=1000' }} 
+        source={item.imageUrl ? { uri: item.imageUrl } : { uri: 'https://images.unsplash.com/photo-1595475243695-469d2f679b8b?q=80&w=1000' }} 
         style={styles.cardImage} 
       />
       <View style={styles.cardMain}>
@@ -121,20 +139,34 @@ export default function MyServicesScreen() {
       <SafeAreaView style={{ flex: 1 }} edges={['top']}>
         
         <View style={styles.header}>
-          <View>
+          <View style={{ flex: 1 }}>
             <Text style={styles.title}>Service Configurator</Text>
             <Text style={styles.subtitle}>{services.length} Specialized offerings live</Text>
           </View>
-          <TouchableOpacity style={styles.addTrigger} onPress={() => setShowAddModal(true)}>
-            <Plus size={20} color="#FFF" />
-          </TouchableOpacity>
+          <View style={{ flexDirection: 'row', gap: 12 }}>
+            <TouchableOpacity 
+              style={[styles.addTrigger, { backgroundColor: '#FFF', borderWidth: 1, borderColor: '#E2E8F0' }]} 
+              onPress={() => navigation.navigate('MySchedule')}
+            >
+              <Clock size={20} color={Colors.primary} />
+            </TouchableOpacity>
+            <TouchableOpacity style={styles.addTrigger} onPress={() => setShowAddModal(true)}>
+              <Plus size={20} color="#FFF" />
+            </TouchableOpacity>
+          </View>
         </View>
 
-        <FlatList
-          data={services}
+        <SectionList
+          sections={sections}
           keyExtractor={item => item.id}
           refreshControl={<RefreshControl refreshing={isRefetching} onRefresh={refetch} tintColor={Colors.primary} />}
           contentContainerStyle={styles.list}
+          renderSectionHeader={({ section: { title } }) => (
+            <View style={styles.categoryHeader}>
+              <Text style={styles.categoryHeaderTitle}>{title.toUpperCase()}</Text>
+            </View>
+          )}
+          renderItem={({ item }) => renderService({ item })}
           ListEmptyComponent={
             <View style={styles.empty}>
               <Scissors size={48} color="#CBD5E1" strokeWidth={1} />
@@ -142,7 +174,6 @@ export default function MyServicesScreen() {
               <Text style={styles.emptySubtitle}>Add your services to start receiving bookings.</Text>
             </View>
           }
-          renderItem={renderService}
         />
 
         <Modal visible={showAddModal} animationType="slide" transparent>
@@ -282,4 +313,16 @@ const styles = StyleSheet.create({
   submitText: { color: '#FFF', fontSize: 14, fontWeight: '900', letterSpacing: 1.5 },
   draftBtn: { height: 50, borderRadius: 16, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, marginTop: 12 },
   draftText: { color: '#64748B', fontSize: 13, fontWeight: '800' },
+  categoryHeader: {
+    paddingVertical: 12,
+    backgroundColor: '#F8FAFC',
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  categoryHeaderTitle: {
+    fontSize: 12,
+    fontWeight: '900',
+    color: Colors.primary,
+    letterSpacing: 1,
+  },
 });

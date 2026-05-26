@@ -15,7 +15,9 @@ import {
   StatusBar,
   Modal,
   FlatList,
+  Linking,
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { GoogleSignin, statusCodes } from '@react-native-google-signin/google-signin';
@@ -23,6 +25,7 @@ import { useAuthStore } from '../../stores/authStore';
 import { Colors, Shadows } from '../../theme';
 import { RootStackParamList } from '../../types';
 import { Config } from '../../config';
+import { initApiUrl } from '../../api/client';
 import { 
   Smartphone, 
   Lock, 
@@ -32,7 +35,8 @@ import {
   Store, 
   X,
   UserCheck,
-  Building2
+  Building2,
+  Mail
 } from 'lucide-react-native';
 
 const { height } = Dimensions.get('window');
@@ -46,6 +50,9 @@ export default function LoginScreen() {
   
   // Owner Fields
   const [ownerPhone, setOwnerPhone] = useState('');
+  const [ownerEmail, setOwnerEmail] = useState('');
+  const [ownerPassword, setOwnerPassword] = useState('');
+  const [ownerAuthMode, setOwnerAuthMode] = useState<'PHONE' | 'EMAIL'>('PHONE');
   
   // Staff Fields
   const [staffPhone, setStaffPhone] = useState('');
@@ -57,10 +64,14 @@ export default function LoginScreen() {
 
   const [isLoading, setIsLoading] = useState(false);
   const [isGoogleLoading, setIsGoogleLoading] = useState(false);
-  // Temporarily disable Google Auth until SHA fingerprints are configured in Firebase
-  const isGoogleAuthEnabled = false;
+  const isGoogleAuthEnabled = true;
 
-  const { loginWithGoogle, sendPhoneLoginOtp, staffLogin, fetchAssignedStaffShops } = useAuthStore();
+  // Dev Override Settings
+  const [logoTaps, setLogoTaps] = useState(0);
+  const [showOverrideModal, setShowOverrideModal] = useState(false);
+  const [customApiUrl, setCustomApiUrl] = useState('');
+
+  const { login, loginWithGoogle, sendPhoneLoginOtp, staffLogin, fetchAssignedStaffShops } = useAuthStore();
 
   useEffect(() => {
     if (!isGoogleAuthEnabled) {
@@ -73,6 +84,45 @@ export default function LoginScreen() {
     });
   }, [isGoogleAuthEnabled]);
 
+  const handleLogoPress = () => {
+    setLogoTaps(prev => {
+      const next = prev + 1;
+      if (next >= 5) {
+        setShowOverrideModal(true);
+        // Load current custom URL
+        AsyncStorage.getItem('OVERRIDE_API_URL').then(val => {
+          if (val) setCustomApiUrl(val);
+        });
+        return 0;
+      }
+      return next;
+    });
+  };
+
+  // Reset logo taps after a delay
+  useEffect(() => {
+    if (logoTaps > 0) {
+      const t = setTimeout(() => setLogoTaps(0), 2000);
+      return () => clearTimeout(t);
+    }
+  }, [logoTaps]);
+
+  const handleSaveOverride = async () => {
+    try {
+      const trimmed = customApiUrl.trim();
+      if (trimmed) {
+        await AsyncStorage.setItem('OVERRIDE_API_URL', trimmed);
+      } else {
+        await AsyncStorage.removeItem('OVERRIDE_API_URL');
+      }
+      await initApiUrl();
+      setShowOverrideModal(false);
+      Alert.alert('Success', 'API Base URL updated. Please restart the app for it to take complete effect.');
+    } catch (e: any) {
+      Alert.alert('Error', 'Failed to update API Base URL');
+    }
+  };
+
   const handleOwnerPhoneLogin = async () => {
     const digits = ownerPhone.replace(/\D/g, '');
     if (!/^[6-9]\d{9}$/.test(digits)) return Alert.alert('Invalid Phone', 'Phone number must be exactly 10 digits starting with 6-9');
@@ -83,6 +133,19 @@ export default function LoginScreen() {
       navigation.navigate('OtpVerify', { phone: normalized, flow: 'PHONE_LOGIN', requestedRole: 'OWNER' });
     } catch (e: any) {
       Alert.alert('Error', e.response?.data?.message || 'Failed to send OTP');
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleOwnerEmailLogin = async () => {
+    if (!ownerEmail.trim()) return Alert.alert('Invalid Email', 'Please enter your email address');
+    if (!ownerPassword) return Alert.alert('Invalid Password', 'Please enter your password');
+    setIsLoading(true);
+    try {
+      await login(ownerEmail.trim(), ownerPassword, { requestedRole: 'OWNER' });
+    } catch (e: any) {
+      Alert.alert('Login Failed', e.response?.data?.message || e.message || 'Invalid email or password');
     } finally {
       setIsLoading(false);
     }
@@ -301,7 +364,9 @@ export default function LoginScreen() {
         <ScrollView contentContainerStyle={styles.scrollContent} showsVerticalScrollIndicator={false} keyboardShouldPersistTaps="handled">
           
           <View style={styles.header}>
-            <Image source={BRAND_LOGO} style={styles.logo} resizeMode="contain" />
+            <TouchableOpacity activeOpacity={0.8} onPress={handleLogoPress}>
+              <Image source={BRAND_LOGO} style={styles.logo} resizeMode="contain" />
+            </TouchableOpacity>
             <Text style={styles.title}>Overline Business</Text>
             <Text style={styles.subtitle}>Enterprise Operations Cloud</Text>
           </View>
@@ -337,33 +402,94 @@ export default function LoginScreen() {
                     )}
                   </TouchableOpacity>
                 ) : (
-                  <Text style={styles.googleHint}>Google login is unavailable in this build. Use phone OTP.</Text>
+                  <Text style={styles.googleHint}>Google login is unavailable in this build.</Text>
                 )}
 
                 <View style={styles.dividerRow}>
-                  <View style={styles.divider} /><Text style={styles.dividerText}>SECURE PHONE LOGIN</Text><View style={styles.divider} />
+                  <View style={styles.divider} /><Text style={styles.dividerText}>SECURE CREDENTIALS</Text><View style={styles.divider} />
                 </View>
 
-                <View style={styles.inputBox}>
-                  <Smartphone size={18} color="#94A3B8" />
-                  <TextInput 
-                    style={styles.input} 
-                    placeholder="9876543210" 
-                    keyboardType="phone-pad"
-                    value={ownerPhone}
-                    onChangeText={(t) => setOwnerPhone(t.replace(/\D/g, '').slice(0, 10))}
-                    maxLength={10}
-                  />
+                {/* Owner Auth Mode Tabs */}
+                <View style={[styles.roleTabs, { marginBottom: 16 }]}>
+                  <TouchableOpacity
+                    style={[styles.roleTab, ownerAuthMode === 'PHONE' && styles.roleTabActive]}
+                    onPress={() => setOwnerAuthMode('PHONE')}
+                  >
+                    <Text style={[styles.roleTabText, ownerAuthMode === 'PHONE' && styles.roleTabTextActive]}>PHONE OTP</Text>
+                  </TouchableOpacity>
+                  <TouchableOpacity
+                    style={[styles.roleTab, ownerAuthMode === 'EMAIL' && styles.roleTabActive]}
+                    onPress={() => setOwnerAuthMode('EMAIL')}
+                  >
+                    <Text style={[styles.roleTabText, ownerAuthMode === 'EMAIL' && styles.roleTabTextActive]}>EMAIL/PASS</Text>
+                  </TouchableOpacity>
                 </View>
 
-                <TouchableOpacity style={styles.primaryBtn} onPress={handleOwnerPhoneLogin} disabled={isLoading}>
-                  {isLoading ? <ActivityIndicator color="#FFF" /> : (
-                    <>
-                      <Text style={styles.primaryBtnText}>GET LOGIN CODE</Text>
-                      <Zap size={16} color="#FFF" />
-                    </>
-                  )}
-                </TouchableOpacity>
+                {ownerAuthMode === 'PHONE' ? (
+                  <View>
+                    <View style={styles.inputBox}>
+                      <Smartphone size={18} color="#94A3B8" />
+                      <TextInput 
+                        style={styles.input} 
+                        placeholder="9876543210" 
+                        keyboardType="phone-pad"
+                        value={ownerPhone}
+                        onChangeText={(t) => setOwnerPhone(t.replace(/\D/g, '').slice(0, 10))}
+                        maxLength={10}
+                      />
+                    </View>
+
+                    <TouchableOpacity style={styles.primaryBtn} onPress={handleOwnerPhoneLogin} disabled={isLoading}>
+                      {isLoading ? <ActivityIndicator color="#FFF" /> : (
+                        <>
+                          <Text style={styles.primaryBtnText}>GET OTP CODE</Text>
+                          <Zap size={16} color="#FFF" />
+                        </>
+                      )}
+                    </TouchableOpacity>
+                  </View>
+                ) : (
+                  <View>
+                    <View style={styles.inputBox}>
+                      <Mail size={18} color="#94A3B8" />
+                      <TextInput 
+                        style={styles.input} 
+                        placeholder="owner@example.com" 
+                        keyboardType="email-address"
+                        autoCapitalize="none"
+                        value={ownerEmail}
+                        onChangeText={setOwnerEmail}
+                      />
+                    </View>
+
+                    <View style={[styles.inputBox, { marginTop: 12 }]}>
+                      <Lock size={18} color="#94A3B8" />
+                      <TextInput 
+                        style={styles.input} 
+                        placeholder="Password" 
+                        secureTextEntry
+                        value={ownerPassword}
+                        onChangeText={setOwnerPassword}
+                      />
+                    </View>
+
+                    <TouchableOpacity style={styles.primaryBtn} onPress={handleOwnerEmailLogin} disabled={isLoading}>
+                      {isLoading ? <ActivityIndicator color="#FFF" /> : (
+                        <>
+                          <Text style={styles.primaryBtnText}>SIGN IN</Text>
+                          <UserCheck size={16} color="#FFF" />
+                        </>
+                      )}
+                    </TouchableOpacity>
+                  </View>
+                )}
+
+                <View style={{ flexDirection: 'row', justifyContent: 'center', marginTop: 20 }}>
+                  <Text style={{ color: '#64748B', fontWeight: '600', fontSize: 13 }}>Want to register your shop? </Text>
+                  <TouchableOpacity onPress={() => navigation.navigate('Register')}>
+                    <Text style={{ color: Colors.primary, fontWeight: '800', fontSize: 13 }}>Register here</Text>
+                  </TouchableOpacity>
+                </View>
               </View>
             ) : (
               <View>
@@ -447,6 +573,7 @@ export default function LoginScreen() {
                     )}
                   </TouchableOpacity>
                 )}
+
               </View>
             )}
 
@@ -501,6 +628,56 @@ export default function LoginScreen() {
         </View>
       </Modal>
 
+      {/* Dev Override Modal */}
+      <Modal visible={showOverrideModal} animationType="fade" transparent>
+        <View style={[styles.modal, { justifyContent: 'center', padding: 24 }]}>
+          <View style={[styles.modalSheet, { height: 'auto', borderRadius: 32, padding: 24 }]}>
+            <View style={[styles.modalHeader, { paddingHorizontal: 0, paddingBottom: 16, borderBottomWidth: 1 }]}>
+              <Text style={styles.modalTitle}>Developer Override</Text>
+              <TouchableOpacity onPress={() => setShowOverrideModal(false)}>
+                <X size={24} color="#0F172A" />
+              </TouchableOpacity>
+            </View>
+            <Text style={{ fontSize: 13, color: '#64748B', marginVertical: 16, fontWeight: '600', lineHeight: 18 }}>
+              Configure custom NestJS API root URL (e.g. http://10.0.2.2:3001). Leave empty to use auto-detected local environment or standard production.
+            </Text>
+            
+            <View style={styles.inputBox}>
+              <Store size={18} color="#94A3B8" />
+              <TextInput
+                style={styles.input}
+                placeholder="http://10.0.2.2:3001"
+                autoCapitalize="none"
+                autoCorrect={false}
+                value={customApiUrl}
+                onChangeText={setCustomApiUrl}
+              />
+            </View>
+
+            <View style={{ flexDirection: 'row', gap: 12, marginTop: 24 }}>
+              <TouchableOpacity
+                style={[styles.primaryBtn, { flex: 1, marginTop: 0, backgroundColor: '#E2E8F0', ...Shadows.sm }]}
+                onPress={async () => {
+                  setCustomApiUrl('');
+                  await AsyncStorage.removeItem('OVERRIDE_API_URL');
+                  await initApiUrl();
+                  setShowOverrideModal(false);
+                  Alert.alert('Reset', 'API Base URL reset to defaults.');
+                }}
+              >
+                <Text style={[styles.primaryBtnText, { color: '#475569' }]}>RESET</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.primaryBtn, { flex: 1, marginTop: 0 }]}
+                onPress={handleSaveOverride}
+              >
+                <Text style={styles.primaryBtnText}>SAVE</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
     </View>
   );
 }
@@ -548,7 +725,7 @@ const styles = StyleSheet.create({
     flexDirection: 'row', 
     alignItems: 'center', 
     justifyContent: 'space-between', 
-    backgroundColor: Colors.primary100 || '#EEF2FF', 
+    backgroundColor: '#EEF2FF', 
     borderRadius: 16, 
     paddingHorizontal: 16, 
     paddingVertical: 12, 
@@ -566,10 +743,11 @@ const styles = StyleSheet.create({
   modalSearch: { flexDirection: 'row', alignItems: 'center', backgroundColor: '#F8FAFC', margin: 20, paddingHorizontal: 16, height: 50, borderRadius: 16, borderWidth: 1, borderColor: '#F1F5F9' },
   modalInput: { flex: 1, marginLeft: 12, fontSize: 14, fontWeight: '700', color: '#0F172A' },
   shopItem: { flexDirection: 'row', alignItems: 'center', padding: 16, borderRadius: 20, marginBottom: 12, backgroundColor: '#F8FAFC' },
-  shopIcon: { width: 44, height: 44, borderRadius: 14, backgroundColor: Colors.primary100, alignItems: 'center', justifyContent: 'center', marginRight: 16 },
+  shopIcon: { width: 44, height: 44, borderRadius: 14, backgroundColor: '#EEF2FF', alignItems: 'center', justifyContent: 'center', marginRight: 16 },
   shopItemName: { fontSize: 15, fontWeight: '800', color: '#1E293B' },
   shopItemLoc: { fontSize: 11, color: '#94A3B8', fontWeight: '600', marginTop: 2 },
   modalEmpty: { marginTop: 60, alignItems: 'center' },
   forgotRow: { alignItems: 'center', marginTop: 16 },
   forgotText: { fontSize: 13, fontWeight: '700', color: Colors.primary },
 });
+

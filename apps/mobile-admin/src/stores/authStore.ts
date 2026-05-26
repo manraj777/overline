@@ -1,8 +1,7 @@
 import {create} from 'zustand';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from 'axios';
-import auth, {FirebaseAuthTypes} from '@react-native-firebase/auth';
-import {authApi, shopApi} from '../api/client';
+import {authApi, shopApi, otpApi, initApiUrl} from '../api/client';
 
 type ShopSummary = {id: string; name: string};
 type AdminRole = 'SUPER_ADMIN' | 'OWNER' | 'STAFF';
@@ -48,7 +47,7 @@ interface AuthState {
   // OTP 2FA state
   pendingOtpVerification: boolean;
   otpPhone: string | null;
-  otpConfirmation: FirebaseAuthTypes.ConfirmationResult | null;
+  otpConfirmation: any | null;
 
   // Actions
   login: (email: string, password: string, options?: {requestedRole?: string}) => Promise<void>;
@@ -193,10 +192,10 @@ export const useAuthStore = create<AuthState>((set) => ({
     phone: string,
     options?: {requestedRole?: AuthRequestedRole; selectedShopId?: string},
   ) => {
-    const confirmation = await auth().signInWithPhoneNumber(phone);
+    await otpApi.send(phone, 'LOGIN');
     set({
       otpPhone: phone,
-      otpConfirmation: confirmation,
+      otpConfirmation: null,
       pendingOtpVerification: true,
     });
   },
@@ -206,18 +205,7 @@ export const useAuthStore = create<AuthState>((set) => ({
     otp: string,
     options?: {requestedRole?: AuthRequestedRole; selectedShopId?: string},
   ) => {
-    const state = useAuthStore.getState();
-    if (!state.otpConfirmation) {
-      throw new Error('OTP session expired. Please request a new code.');
-    }
-
-    const credential = await state.otpConfirmation.confirm(otp);
-    if (!credential?.user) {
-      throw new Error('OTP confirmation failed. Please request a new code.');
-    }
-
-    const firebaseIdToken = await credential.user.getIdToken(true);
-    const response = await authApi.firebasePhoneLogin(firebaseIdToken);
+    const response = await otpApi.verify(phone, otp, 'LOGIN', options?.requestedRole);
     const {accessToken, refreshToken, user} = response.data as AuthLoginResponse;
 
     const adminRoles: AdminRole[] = ['SUPER_ADMIN', 'OWNER', 'STAFF'];
@@ -263,8 +251,6 @@ export const useAuthStore = create<AuthState>((set) => ({
       otpPhone: null,
       otpConfirmation: null,
     });
-
-    await auth().signOut().catch(() => undefined);
   },
 
   login: async (email: string, password: string, options?: {requestedRole?: string}) => {
@@ -302,12 +288,12 @@ export const useAuthStore = create<AuthState>((set) => ({
       if (user.phone) {
         try {
           const normalizedPhone = user.phone.startsWith('+') ? user.phone : `+91${user.phone.replace(/\D/g, '')}`;
-          const confirmation = await auth().signInWithPhoneNumber(normalizedPhone);
+          await otpApi.send(normalizedPhone, 'LOGIN');
           set({
             user: userWithShops,
             pendingOtpVerification: true,
             otpPhone: normalizedPhone,
-            otpConfirmation: confirmation,
+            otpConfirmation: null,
             selectedShopId: defaultShopId,
             isOwner,
             isStaff,
@@ -366,7 +352,6 @@ export const useAuthStore = create<AuthState>((set) => ({
 
     await AsyncStorage.removeItem('admin_token');
     await AsyncStorage.removeItem('admin_refresh_token');
-    await auth().signOut().catch(() => undefined);
     set({
       user: null,
       isAuthenticated: false,
@@ -382,6 +367,7 @@ export const useAuthStore = create<AuthState>((set) => ({
 
   checkAuth: async () => {
     try {
+      await initApiUrl();
       const token = await AsyncStorage.getItem('admin_token');
 
       if (!token) {

@@ -82,7 +82,7 @@ export default function MyDayScreen() {
       {/* Immersive Shop Header */}
       <View style={styles.hero}>
         <Image 
-          source={{ uri: shopQuery.data?.coverPhotoUrl || shopQuery.data?.logoUrl || 'https://images.unsplash.com/photo-1560066984-138dadb4c035?q=80&w=1000' }} 
+          source={{ uri: shopQuery.data?.coverUrl || shopQuery.data?.coverPhotoUrl || shopQuery.data?.logoUrl || 'https://images.unsplash.com/photo-1560066984-138dadb4c035?q=80&w=1000' }} 
           style={styles.heroImage} 
         />
         <View style={styles.heroOverlay} />
