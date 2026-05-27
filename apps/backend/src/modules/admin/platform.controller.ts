@@ -6,12 +6,13 @@ import {
   Body,
   Query,
   UseGuards,
+  NotFoundException,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiQuery } from '@nestjs/swagger';
 import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
-import { UserRole } from '@prisma/client';
+import { UserRole, BookingStatus } from '@prisma/client';
 import { PrismaService } from '../../common/prisma/prisma.service';
 
 @ApiTags('platform')
@@ -206,6 +207,46 @@ export class PlatformController {
       where: { id },
       data: { isActive: body.isActive },
       select: { id: true, name: true, isActive: true },
+    });
+  }
+
+  @Get('bookings/:query')
+  @ApiOperation({ summary: 'Search booking by number or ID' })
+  async getBooking(@Param('query') query: string) {
+    const booking = await this.prisma.booking.findFirst({
+      where: {
+        OR: [
+          { id: query },
+          { bookingNumber: { equals: query, mode: 'insensitive' } },
+        ],
+      },
+      include: {
+        user: { select: { id: true, name: true, email: true, phone: true } },
+        shop: { select: { id: true, name: true, slug: true, address: true, phone: true } },
+        services: true,
+        payment: true,
+        staff: { select: { id: true, name: true } },
+      },
+    });
+    if (!booking) {
+      throw new NotFoundException('Booking not found');
+    }
+    return booking;
+  }
+
+  @Patch('bookings/:id/cancel')
+  @ApiOperation({ summary: 'Force cancel booking from superadmin console' })
+  async cancelBooking(@Param('id') id: string) {
+    const booking = await this.prisma.booking.findUnique({ where: { id } });
+    if (!booking) {
+      throw new NotFoundException('Booking not found');
+    }
+    return this.prisma.booking.update({
+      where: { id },
+      data: {
+        status: BookingStatus.CANCELLED,
+        cancelledAt: new Date(),
+      },
     });
   }
 }

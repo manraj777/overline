@@ -112,3 +112,27 @@ Must pass items:
 - Razorpay payment verified by backend
 - Booking confirmation shows verification code
 - Admin completes service successfully
+
+## 9. Google Sign-In & Firebase SHA-1 Fingerprints Setup
+
+If you experience `FIS_AUTH_ERROR` or Google Sign-In configuration alerts, you must register the debug certificate fingerprint of your local development machine in the Firebase Console:
+
+1. **Generate the SHA-1 Fingerprint:**
+   Run the following command from the root of the repository:
+   ```bash
+   cd apps/mobile-user/android && ./gradlew signingReport
+   ```
+   Look for the `debug` variant configuration block and copy the `SHA1` hex string (e.g., `5F:21:59:99:...`).
+
+2. **Register SHA-1 in Firebase Console:**
+   - Go to [Firebase Console](https://console.firebase.google.com/).
+   - Open your project settings (`teak-serenity-488010-f3`).
+   - Scroll down to the **Your apps** section.
+   - For both `com.overlineuser` (User App) and `com.overlineadmin` (Admin App), click **Add fingerprint** and paste the copied `SHA-1` value.
+
+3. **Update Config File:**
+   - Download the updated `google-services.json` from the Firebase Console.
+   - Replace it in both app locations:
+     - `apps/mobile-user/android/app/google-services.json`
+     - `apps/mobile-admin/android/app/google-services.json`
+   - Rebuild the APKs.

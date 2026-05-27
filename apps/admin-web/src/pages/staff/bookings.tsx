@@ -5,6 +5,8 @@ import { Loading, useToast } from '@/components/ui';
 import { useQueueStartService, useStaffOwnBookings, useUpdateStaffOwnBookingStatus } from '@/hooks';
 import { BookingStatus } from '@/types';
 import { formatPrice, formatTime, cn } from '@/lib/utils';
+import { useQueryClient } from '@tanstack/react-query';
+import api from '@/lib/api';
 
 /** Compact elapsed timer for the bookings table */
 function InlineTimer({ startedAt }: { startedAt: string }) {
@@ -60,6 +62,47 @@ export default function StaffBookingsPage() {
 	});
 	const updateStatus = useUpdateStaffOwnBookingStatus();
 	const startService = useQueueStartService();
+
+	const queryClient = useQueryClient();
+	const [prescriptionModalBookingId, setPrescriptionModalBookingId] = useState<string | null>(null);
+	const [prescriptionNotes, setPrescriptionNotes] = useState('');
+	const [prescriptionTests, setPrescriptionTests] = useState('');
+	const [prescriptionFollowUp, setPrescriptionFollowUp] = useState('');
+	const [savingPrescription, setSavingPrescription] = useState(false);
+
+	const getPrescription = (prescription: any) => {
+		if (!prescription) return null;
+		if (typeof prescription === 'string') {
+			try {
+				return JSON.parse(prescription);
+			} catch {
+				return null;
+			}
+		}
+		return prescription;
+	};
+
+	const handleSavePrescription = async () => {
+		if (!prescriptionModalBookingId) return;
+		setSavingPrescription(true);
+		try {
+			await api.post(`/staff/me/bookings/${prescriptionModalBookingId}/prescription`, {
+				notes: prescriptionNotes || undefined,
+				recommendedTests: prescriptionTests.split(',').map(t => t.trim()).filter(Boolean),
+				followUpDate: prescriptionFollowUp || undefined,
+			});
+			addToast({ type: 'success', title: 'Prescription Saved', message: 'Medical advice has been added to the booking.' });
+			setPrescriptionModalBookingId(null);
+			setPrescriptionNotes('');
+			setPrescriptionTests('');
+			setPrescriptionFollowUp('');
+			queryClient.invalidateQueries({ queryKey: ['staff', 'bookings'] });
+		} catch (error: any) {
+			addToast({ type: 'error', title: 'Failed', message: error?.response?.data?.message || 'Could not save prescription.' });
+		} finally {
+			setSavingPrescription(false);
+		}
+	};
 
 	const [proposeModalBookingId, setProposeModalBookingId] = useState<string | null>(null);
 	const [proposedStart, setProposedStart] = useState('');
@@ -182,6 +225,20 @@ export default function StaffBookingsPage() {
 								)}
 								<p className="text-xs text-on-surface-variant">{booking.services?.[0]?.serviceName || 'Service'}</p>
 								<p className="text-xs font-bold text-on-surface">{formatPrice(Number(booking.totalAmount || 0))}</p>
+								
+								{/* Prescription Summary */}
+								{getPrescription(booking.prescription) && (
+									<div className="mt-2 p-2 bg-primary/5 border border-primary/10 rounded-xl text-[11px] space-y-1 text-on-surface">
+										<p className="font-bold text-primary">Rx Summary</p>
+										{getPrescription(booking.prescription).notes && <p className="line-clamp-2"><strong>Notes:</strong> {getPrescription(booking.prescription).notes}</p>}
+										{getPrescription(booking.prescription).recommendedTests?.length > 0 && (
+											<p><strong>Tests:</strong> {getPrescription(booking.prescription).recommendedTests.join(', ')}</p>
+										)}
+										{getPrescription(booking.prescription).followUpDate && (
+											<p><strong>Follow-up:</strong> {getPrescription(booking.prescription).followUpDate.slice(0, 10)}</p>
+										)}
+									</div>
+								)}
 							</div>
 							<div className="mt-3 pt-3 border-t border-outline-variant/10 space-y-2">
 								{(booking.status === BookingStatus.PENDING || booking.status === BookingStatus.PENDING_APPROVAL) && (
@@ -225,6 +282,22 @@ export default function StaffBookingsPage() {
 									{['PENDING', 'PENDING_APPROVAL', 'CONFIRMED'].includes(booking.status) && booking.userId && (
 										<button onClick={() => window.open(`/chat/${booking.userId}?booking=${booking.id}`, "_blank")} className="btn-outline px-2.5 py-1.5 text-[11px] text-primary border-primary">
 											Chat
+										</button>
+									)}
+									{['IN_PROGRESS', 'IN_SERVICE', 'COMPLETED'].includes(booking.status) && (
+										<button
+											onClick={() => {
+												setPrescriptionModalBookingId(booking.id);
+												const px = getPrescription(booking.prescription);
+												if (px) {
+													setPrescriptionNotes(px.notes || '');
+													setPrescriptionTests(px.recommendedTests?.join(', ') || '');
+													setPrescriptionFollowUp(px.followUpDate?.slice(0, 10) || '');
+												}
+											}}
+											className="btn-outline px-2.5 py-1.5 text-[11px] border-primary text-primary"
+										>
+											📝 Prescription
 										</button>
 									)}
 								</div>
@@ -293,6 +366,70 @@ export default function StaffBookingsPage() {
 								className="btn-primary px-4 py-1.5 text-xs disabled:opacity-50"
 							>
 								{updateStatus.isPending ? 'Sending...' : 'Send Proposal'}
+							</button>
+						</div>
+					</div>
+				</div>
+			)}
+
+			{prescriptionModalBookingId && (
+				<div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4">
+					<div className="w-full max-w-sm card-m3 p-5">
+						<h3 className="text-lg font-bold text-on-surface flex items-center gap-1.5">
+							📝 Write Clinic Prescription
+						</h3>
+						<p className="mt-1 text-xs text-on-surface-variant">
+							Provide patient advice, diagnostic tests, and schedule a follow-up.
+						</p>
+						<div className="mt-4 space-y-3">
+							<div>
+								<label className="text-xs text-on-surface-variant mb-1 block font-bold">Doctor's Advice & Notes</label>
+								<textarea
+									value={prescriptionNotes}
+									onChange={(e) => setPrescriptionNotes(e.target.value)}
+									className="input-m3 w-full resize-none"
+									rows={3}
+									placeholder="Provide recommendations, advice, or medication details..."
+								/>
+							</div>
+							<div>
+								<label className="text-xs text-on-surface-variant mb-1 block font-bold">Recommended Tests (Comma-separated)</label>
+								<input
+									type="text"
+									value={prescriptionTests}
+									onChange={(e) => setPrescriptionTests(e.target.value)}
+									className="input-m3 w-full"
+									placeholder="e.g. Blood Test, Chest X-Ray, MRI"
+								/>
+							</div>
+							<div>
+								<label className="text-xs text-on-surface-variant mb-1 block font-bold">Follow-up Date</label>
+								<input
+									type="date"
+									value={prescriptionFollowUp}
+									onChange={(e) => setPrescriptionFollowUp(e.target.value)}
+									className="input-m3 w-full"
+								/>
+							</div>
+						</div>
+						<div className="mt-6 flex justify-end gap-2">
+							<button
+								onClick={() => {
+									setPrescriptionModalBookingId(null);
+									setPrescriptionNotes('');
+									setPrescriptionTests('');
+									setPrescriptionFollowUp('');
+								}}
+								className="btn-outline px-4 py-2 text-xs"
+							>
+								Cancel
+							</button>
+							<button
+								onClick={handleSavePrescription}
+								disabled={savingPrescription}
+								className="btn-primary px-4 py-2 text-xs disabled:opacity-50"
+							>
+								{savingPrescription ? 'Saving...' : 'Save Prescription'}
 							</button>
 						</div>
 					</div>

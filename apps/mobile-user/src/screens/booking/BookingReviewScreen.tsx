@@ -18,9 +18,9 @@ import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useQuery } from '@tanstack/react-query';
 import { format } from 'date-fns';
-import { bookingsApi, shopsApi } from '../../api/client';
+import { bookingsApi, shopsApi, paymentsApi } from '../../api/client';
 import { RootStackParamList } from '../../types';
-import { Colors, Shadows } from '../../theme';
+import { Colors, Shadows, BorderRadius } from '../../theme';
 import {
   Store,
   Wallet,
@@ -39,9 +39,11 @@ import {
   X,
   Tag,
   AlertTriangle,
+  CreditCard,
 } from 'lucide-react-native';
 import { useAuthStore } from '../../stores/authStore';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import RazorpayCheckout from 'react-native-razorpay';
 
 const { width: _SCREEN_WIDTH } = Dimensions.get('window');
 // Valid coupon codes — kept in sync with web cart and backend calculatePrice logic.
@@ -219,11 +221,69 @@ export default function BookingReviewScreen() {
             }
           : {}),
       });
+
+      // If grandTotal is greater than 0, create the payment order using the selected method
+      if (grandTotal > 0) {
+        try {
+          const orderResponse = await paymentsApi.createOrder({
+            bookingId: created.data.id,
+            method: paymentMethod,
+          });
+          const order = orderResponse.data;
+
+          if (paymentMethod === 'ONLINE') {
+            if (order.method === 'RAZORPAY' && order.keyId) {
+              const options = {
+                description: 'Booking Appointment Payment',
+                image: shop?.coverUrl || shop?.logoUrl || 'https://i.imgur.com/3g7A6cz.png',
+                currency: order.currency || 'INR',
+                key: order.keyId,
+                amount: order.amount,
+                name: shop?.name || 'Overline Booking',
+                order_id: order.orderId,
+                prefill: {
+                  email: user?.email || '',
+                  contact: user?.phone || '',
+                  name: user?.name || '',
+                },
+                theme: { color: Colors.primary || '#0F172A' },
+              };
+
+              const response = await RazorpayCheckout.open(options);
+              
+              // Verify payment on backend
+              await paymentsApi.verifyRazorpay({
+                razorpay_order_id: response.razorpay_order_id,
+                razorpay_payment_id: response.razorpay_payment_id,
+                razorpay_signature: response.razorpay_signature,
+              });
+            }
+          } else if (paymentMethod === 'WALLET') {
+            Alert.alert(
+              'Payment Successful',
+              'Payment was successfully deducted from your wallet balance.',
+            );
+          } else if (paymentMethod === 'PAY_AT_SHOP') {
+            // Pay-at-shop confirmed on backend successfully
+          }
+        } catch (payError: any) {
+          Alert.alert(
+            'Payment Failed',
+            payError?.response?.data?.message || payError?.description || payError?.message || 'Payment failed. The booking has been created but requires payment.',
+          );
+          if (paymentMethod === 'ONLINE') {
+            // Navigate to BookingConfirmation so booking is not lost, but payment shows failed
+            navigation.replace('BookingConfirmation', { bookingId: created.data.id });
+            return;
+          }
+        }
+      }
+
       navigation.replace('BookingConfirmation', { bookingId: created.data.id });
     } catch (e: any) {
       Alert.alert(
         'Booking Error',
-        e.response?.data?.message || 'The slot might have been taken just now.',
+        e.response?.data?.message || e.message || 'The slot might have been taken just now.',
       );
     } finally {
       setIsSubmitting(false);
@@ -375,11 +435,24 @@ export default function BookingReviewScreen() {
                 <Text style={[styles.methodText, paymentMethod === 'PAY_AT_SHOP' && styles.methodTextActive]}>Pay at Shop</Text>
               </TouchableOpacity>
               <TouchableOpacity
-                style={[styles.methodBtn, paymentMethod === 'WALLET' && styles.methodActive]}
-                onPress={() => setPaymentMethod('WALLET')}
+                style={[styles.methodBtn, styles.methodDisabled]}
+                disabled={true}
               >
-                <Wallet size={18} color={paymentMethod === 'WALLET' ? Colors.primary : Colors.textTertiary} />
-                <Text style={[styles.methodText, paymentMethod === 'WALLET' && styles.methodTextActive]}>Wallet Credits</Text>
+                <CreditCard size={18} color={Colors.textMuted || '#94A3B8'} />
+                <View style={styles.disabledMethodRow}>
+                  <Text style={[styles.methodText, styles.methodTextDisabled]}>Prepay Online</Text>
+                  <Text style={styles.soonBadge}>SOON</Text>
+                </View>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.methodBtn, styles.methodDisabled]}
+                disabled={true}
+              >
+                <Wallet size={18} color={Colors.textMuted || '#94A3B8'} />
+                <View style={styles.disabledMethodRow}>
+                  <Text style={[styles.methodText, styles.methodTextDisabled]}>Wallet Credits</Text>
+                  <Text style={styles.soonBadge}>SOON</Text>
+                </View>
               </TouchableOpacity>
             </View>
           </View>
@@ -563,25 +636,23 @@ export default function BookingReviewScreen() {
             </TouchableOpacity>
           </View>
           <ScrollView contentContainerStyle={styles.modalScroll}>
-            <Text style={styles.policySectionTitle}>1. Arrival & Cancellation Policy</Text>
+            <Text style={styles.policySectionTitle}>1. Mandatory Arrival Timing Policy</Text>
             <Text style={styles.policyBodyText}>
-              To ensure all clients receive the highest quality service, we require that you arrive at least 10 minutes prior to your scheduled slot. 
-              If you arrive late, your slot may be shortened or rescheduled to accommodate subsequent bookings. 
-              Cancellations made within 2 hours of the booking slot may be subject to a cancellation fee or forfeiture of your deposit.
+              To maintain the queue schedule and respect the time slots of other clients, you are required to arrive at the shop at least 10 minutes prior to your scheduled time. Late arrivals may result in slot forfeiture or rescheduling.
             </Text>
 
-            <Text style={styles.policySectionTitle}>2. Terms of Service</Text>
+            <Text style={styles.policySectionTitle}>2. Platform Disclaimer & Shop Liability</Text>
             <Text style={styles.policyBodyText}>
-              By booking an appointment through Overline, you agree to comply with our code of conduct. 
-              Our service providers reserve the right to refuse service to anyone demonstrating disrespectful or inappropriate behavior. 
-              Pricing displayed on the app is inclusive of all standard taxes, but specific premium add-ons requested at the shop may incur extra charges.
+              Overline is a tech platform connecting you with independent service providers. The service quality, timing, accuracy of menu listings, and actual pricing are the sole responsibility of the Shop. Overline is not responsible or liable for any misleading information, pricing discrepancies, or misguiding details ("misguide") listed by shops on our platform.
             </Text>
 
-            <Text style={styles.policySectionTitle}>3. Privacy & Data Handling</Text>
+            <Text style={styles.policySectionTitle}>3. Privacy & Device Permissions</Text>
             <Text style={styles.policyBodyText}>
-              Overline respects your privacy. We collect your registration details (name, email, and verified phone number) solely to manage bookings, send confirmation alerts, and process secure payments. 
-              Your payment information is handled via secured tokenized gateways and is never stored on our servers. 
-              We do not share your personal identification details with third-party marketers.
+              Overline requests specific permissions to operate:
+              {"\n"}• Location access: used to find nearby shops and display route navigation.
+              {"\n"}• Camera & Photos access: used to upload profile avatars, service references, shop gallery photos, or completed review attachments.
+              {"\n"}• Push Notifications: used to send real-time queue status alerts and booking confirmations.
+              {"\n"}We do not share your private data with third parties or advertisers.
             </Text>
           </ScrollView>
         </SafeAreaView>
@@ -1119,5 +1190,30 @@ const styles = StyleSheet.create({
     color: '#475569',
     lineHeight: 20,
     marginBottom: 16,
+  },
+  methodDisabled: {
+    backgroundColor: '#F8FAFC',
+    borderColor: '#E2E8F0',
+    opacity: 0.65,
+  },
+  disabledMethodRow: {
+    flex: 1,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+  },
+  methodTextDisabled: {
+    color: '#94A3B8',
+    textDecorationLine: 'none',
+  },
+  soonBadge: {
+    fontSize: 9,
+    fontWeight: '900',
+    color: Colors.primary,
+    backgroundColor: '#EEF2F6',
+    paddingHorizontal: 8,
+    paddingVertical: 3,
+    borderRadius: BorderRadius.sm,
+    letterSpacing: 0.5,
   },
 });

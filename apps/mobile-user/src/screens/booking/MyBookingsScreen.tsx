@@ -20,12 +20,13 @@ type TabType = 'upcoming' | 'pending' | 'confirmed' | 'past' | 'cancelled' | 'al
 
 export default function MyBookingsScreen() {
   const navigation = useNavigation<NavigationProp>();
-  const { user } = useAuthStore();
+  const { user, isAuthenticated } = useAuthStore();
   const [activeTab, setActiveTab] = useState<TabType>('upcoming');
 
   const { data: bookingsData, isLoading, refetch, isRefetching } = useQuery({
     queryKey: ['myBookings', activeTab],
     queryFn: () => bookingsApi.getMy(activeTab === 'all' ? undefined : { status: activeTab }).then(res => res.data),
+    enabled: isAuthenticated,
   });
 
   const bookings: Booking[] = Array.isArray(bookingsData) ? bookingsData : bookingsData?.data || [];
@@ -72,6 +73,26 @@ export default function MyBookingsScreen() {
       </TouchableOpacity>
     );
   };
+
+  if (!isAuthenticated) {
+    return (
+      <SafeAreaView style={styles.container} edges={['top']}>
+        <View style={styles.unauthContainer}>
+          <Calendar color={Colors.primary} size={64} style={{ marginBottom: 20 }} />
+          <Text style={styles.unauthTitle}>Your Bookings await</Text>
+          <Text style={styles.unauthSubtitle}>
+            Log in to view upcoming appointments, view receipts, and reschedule slots.
+          </Text>
+          <TouchableOpacity
+            style={styles.unauthBtn}
+            onPress={() => navigation.navigate('Login' as any)}
+          >
+            <Text style={styles.unauthBtnText}>SIGN IN / SIGN UP</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   if (isLoading) {
     return (
@@ -187,4 +208,40 @@ const styles = StyleSheet.create({
   },
   codeLabel: { fontSize: FontSizes.xs, color: Colors.textSecondary },
   codeValue: { fontSize: FontSizes.lg, fontWeight: FontWeights.extrabold, color: Colors.primary, letterSpacing: 4 },
+  unauthContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: Spacing.xl * 1.5,
+    backgroundColor: Colors.background,
+  },
+  unauthTitle: {
+    fontSize: 22,
+    fontWeight: '900',
+    color: Colors.textPrimary,
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  unauthSubtitle: {
+    fontSize: 14,
+    color: Colors.textTertiary,
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: 32,
+    fontWeight: '600',
+  },
+  unauthBtn: {
+    backgroundColor: Colors.primary,
+    paddingVertical: 16,
+    paddingHorizontal: 32,
+    borderRadius: BorderRadius.xl,
+    width: '100%',
+    alignItems: 'center',
+  },
+  unauthBtnText: {
+    color: '#FFF',
+    fontSize: 14,
+    fontWeight: '900',
+    letterSpacing: 1.5,
+  },
 });

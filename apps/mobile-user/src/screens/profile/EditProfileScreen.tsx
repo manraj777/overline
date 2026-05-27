@@ -22,7 +22,7 @@ type Props = NativeStackScreenProps<RootStackParamList, 'EditProfile'>;
 
 export default function EditProfileScreen({ navigation }: Props) {
   const queryClient = useQueryClient();
-  const { user } = useAuthStore();
+  const { user, checkAuth } = useAuthStore();
 
   const [name, setName] = useState(user?.name || '');
   const [phone, setPhone] = useState(user?.phone || '');
@@ -46,6 +46,7 @@ export default function EditProfileScreen({ navigation }: Props) {
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['profile'] });
       await queryClient.invalidateQueries({ queryKey: ['me'] });
+      await checkAuth();
       Alert.alert('Profile updated', 'Your profile details were saved successfully.', [
         { text: 'OK', onPress: () => navigation.goBack() },
       ]);

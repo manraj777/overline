@@ -462,6 +462,57 @@ export class StaffController {
     return this.queueService.callAheadCustomer(dto.shopId, dto.bookingId, userId, dto.message);
   }
 
+  @Post('me/queue/call-next')
+  @ApiOperation({ summary: 'Call next N customers in queue' })
+  async callNext(
+    @CurrentUser('id') userId: string,
+    @Body('shopId') shopId: string,
+    @Body('count') count: number = 3,
+    @Body('message') message?: string,
+  ) {
+    return this.queueService.callAheadMultiple(shopId, count, userId, message);
+  }
+
+  @Post('me/bookings/:id/prescription')
+  @ApiOperation({ summary: 'Write clinic prescription/tests for patient' })
+  async writePrescription(
+    @CurrentUser('id') userId: string,
+    @Param('id') bookingId: string,
+    @Body() dto: { recommendedTests: string[]; followUpDate?: string; notes?: string },
+  ) {
+    const [legacyStaff, profile] = await Promise.all([
+      this.prisma.staff.findFirst({ where: { userId, isActive: true }, select: { id: true, name: true } }),
+      this.prisma.staffProfile.findFirst({ where: { userId, isActive: true }, select: { id: true, displayName: true } }),
+    ]);
+
+    const booking = await this.prisma.booking.findFirst({
+      where: {
+        id: bookingId,
+        OR: [
+          ...(legacyStaff ? [{ staffId: legacyStaff.id }] : []),
+          ...(profile ? [{ staffProfileId: profile.id }] : []),
+        ],
+      },
+    });
+
+    if (!booking) {
+      throw new ForbiddenException('You can only prescribe for your own assigned bookings');
+    }
+
+    return this.prisma.booking.update({
+      where: { id: booking.id },
+      data: {
+        prescription: {
+          recommendedTests: dto.recommendedTests,
+          followUpDate: dto.followUpDate || null,
+          notes: dto.notes || '',
+          writtenBy: profile?.displayName || legacyStaff?.name || 'Doctor',
+          writtenAt: new Date().toISOString(),
+        },
+      },
+    });
+  }
+
   @Post('me/queue/propose-time')
   @ApiOperation({ summary: 'Propose a new time for a booking' })
   async proposeQueueTime(@CurrentUser('id') userId: string, @Body() dto: QueueProposeTimeDto) {

@@ -58,9 +58,10 @@ const sections: Array<{
           and reviews between you and the Shop.
         </p>
         <p className="mt-3">
-          Each Shop is an independent business. The quality, safety, legality, accuracy of listings, and delivery of a
-          service are the responsibility of the Shop. We take reasonable steps to verify Shops, but we cannot guarantee
-          any outcome.
+          Each Shop is an independent business. The quality, safety, legality, accuracy of listings, pricing, and delivery of a
+          service are the sole responsibility of the Shop. Overline does not guarantee, and is not responsible or liable for, any
+          pricing discrepancies, outdated service menus, quality mismatch, or any other misleading information or details (&ldquo;misguide&rdquo;)
+          provided by partner Shops on the platform.
         </p>
       </>
     ),
@@ -96,6 +97,11 @@ const sections: Array<{
         <p>
           When you confirm a booking, Overline transmits your name, phone, selected service(s), time slot, and notes to
           the Shop. The Shop then allocates capacity, a staff member (if assigned), and any required resources.
+        </p>
+        <p className="mt-3">
+          <strong>Mandatory Timing Policy:</strong> To ensure smooth queue management and respect the slots of other customers,
+          you are required to arrive at the Shop <strong>at least 10 minutes prior</strong> to your scheduled slot. Late arrival
+          may result in shortened service duration, waitlist rescheduling, or cancellation of the slot at the Shop's discretion.
         </p>
         <p className="mt-3">
           <strong>Cancellations</strong> must follow the cancellation window shown at checkout. Late cancellations may
@@ -253,13 +259,13 @@ const sections: Array<{
       <>
         <p>
           The Service is provided &ldquo;as is&rdquo; and &ldquo;as available&rdquo;. We do not warrant that the Service
-          will be uninterrupted, error-free, or free of harmful components. Recommendations, ratings, and estimated wait
+          will be uninterrupted, error-free, or free of harmful components. Recommendations, ratings, photos, service details, and estimated wait
           times are informational and may vary at the Shop.
         </p>
         <p className="mt-3">
           Services performed at a Shop are delivered by that Shop alone. Overline is not liable for the Shop&rsquo;s
-          acts, omissions, or the quality of a service rendered, except to the extent caused by our own gross negligence
-          or wilful misconduct.
+          acts, omissions, pricing differences, description errors, or the quality of a service rendered. Overline is not responsible
+          for any inaccurate, deceptive, or misleading representation ("misguide") on the platform by any Shop or staff member.
         </p>
       </>
     ),

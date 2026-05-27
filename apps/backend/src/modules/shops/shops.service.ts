@@ -1,4 +1,4 @@
-import { Injectable, NotFoundException } from '@nestjs/common';
+import { Injectable, NotFoundException, BadRequestException, Logger } from '@nestjs/common';
 import { PrismaService } from '@/common/prisma/prisma.service';
 import { RedisService } from '@/common/redis/redis.service';
 import { SearchShopsDto } from './dto/search-shops.dto';
@@ -425,6 +425,7 @@ export class ShopsService {
           id: true,
           name: true,
           avatarUrl: true,
+          bio: true,
           role: true,
           staffServices: {
             select: {
@@ -662,8 +663,11 @@ export class ShopsService {
     const waitingBookings = await this.prisma.booking.count({
       where: {
         shopId,
-        startTime: { gte: now },
-        status: { in: ['PENDING', 'CONFIRMED'] },
+        startTime: {
+          gte: todayStart,
+          lte: todayEnd,
+        },
+        status: { in: ['PENDING', 'CONFIRMED', 'IN_PROGRESS', 'PENDING_APPROVAL', 'WAITLISTED'] },
       },
     });
 
@@ -821,5 +825,81 @@ export class ShopsService {
       await this.redis.set(cacheKey, JSON.stringify(result), 3600); // 1 hour TTL
     } catch (e) {}
     return result;
+  }
+
+  async parseGoogleLink(url: string) {
+    try {
+      let resolvedUrl = url;
+      if (url.includes('goo.gl') || url.includes('maps.app.goo.gl') || url.includes('maps.google.com')) {
+        // Follow redirect
+        const response = await fetch(url, { redirect: 'follow' });
+        resolvedUrl = response.url;
+      }
+
+      // Regex for lat/lng
+      // e.g. @23.5251,77.8224 or ll=23.5251,77.8224 or q=23.5251,77.8224
+      const geoRegex = /@(-?\d+\.\d+),(-?\d+\.\d+)/;
+      const llRegex = /ll=(-?\d+\.\d+),(-?\d+\.\d+)/;
+      const qRegex = /q=(-?\d+\.\d+),(-?\d+\.\d+)/;
+
+      let latitude = 23.5251; // default fallback (Vidisha)
+      let longitude = 77.8224;
+      let hasCoordinates = false;
+
+      let match = resolvedUrl.match(geoRegex);
+      if (match) {
+        latitude = parseFloat(match[1]);
+        longitude = parseFloat(match[2]);
+        hasCoordinates = true;
+      } else {
+        match = resolvedUrl.match(llRegex) || resolvedUrl.match(qRegex);
+        if (match) {
+          latitude = parseFloat(match[1]);
+          longitude = parseFloat(match[2]);
+          hasCoordinates = true;
+        }
+      }
+
+      // If we got coordinates, let's reverse geocode them using Nominatim to get address details
+      let address = '';
+      let city = 'Vidisha';
+      let state = 'Madhya Pradesh';
+      let postalCode = '';
+      let shopName = '';
+
+      if (hasCoordinates) {
+        try {
+          const geoResponse = await fetch(
+            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`,
+            {
+              headers: { 'User-Agent': 'OverlineApp/1.0' }
+            }
+          );
+          const data = (await geoResponse.json()) as any;
+          if (data && data.address) {
+            city = data.address.city || data.address.town || data.address.suburb || data.address.county || 'Vidisha';
+            state = data.address.state || 'Madhya Pradesh';
+            postalCode = data.address.postcode || '';
+            address = data.display_name || '';
+            shopName = data.address.amenity || data.address.shop || data.address.tourism || data.address.historic || '';
+          }
+        } catch (err: any) {
+          console.error('Nominatim reverse geocode error: ' + err.message);
+        }
+      }
+
+      return {
+        latitude,
+        longitude,
+        address,
+        city,
+        state,
+        postalCode,
+        shopName,
+        resolvedUrl
+      };
+    } catch (error: any) {
+      throw new BadRequestException('Failed to parse Google Map link: ' + error.message);
+    }
   }
 }

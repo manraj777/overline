@@ -92,9 +92,18 @@ const sections: Array<{
             an order ID, payment ID, amount, currency, and status.
           </li>
           <li>
-            <strong>Location data</strong> &mdash; if you grant permission in your browser, we use your approximate
-            coordinates (latitude and longitude) solely to show you nearby Shops. You can revoke this at any time from
-            your browser or device settings; the Service continues to work without it.
+            <strong>Location data</strong> &mdash; if you grant permission in your browser or mobile app, we use your
+            coordinates (latitude and longitude) solely to show you nearby Shops and compute routes. You can revoke this at any time
+            from your browser or device settings.
+          </li>
+          <li>
+            <strong>Camera & Photos access</strong> &mdash; on the mobile app, if you grant permission, we access your device camera
+            and photo gallery to allow you to upload profile pictures, share service references with staff, upload shop gallery items,
+            or submit photo attachments with your completed service reviews.
+          </li>
+          <li>
+            <strong>Push Notification tokens</strong> &mdash; we collect your device's FCM token to send real-time alerts about queue status updates,
+            booking confirmations, and payment receipts.
           </li>
           <li>
             <strong>Device and usage data</strong> &mdash; device type, operating system, browser, IP address, crash

@@ -99,6 +99,18 @@ export default function BookingDetailScreen() {
   const isCancelled = booking.status === 'CANCELLED';
   const config = BookingStatusConfig[booking.status] || { color: Colors.textTertiary, bg: Colors.surfaceLight, icon: '•' };
 
+  const prescription = React.useMemo(() => {
+    if (!booking?.prescription) return null;
+    if (typeof booking.prescription === 'string') {
+      try {
+        return JSON.parse(booking.prescription);
+      } catch {
+        return null;
+      }
+    }
+    return booking.prescription as any;
+  }, [booking?.prescription]);
+
   return (
     <ScrollView style={styles.container} showsVerticalScrollIndicator={false}>
       {/* Status Banner */}
@@ -172,6 +184,46 @@ export default function BookingDetailScreen() {
           ))}
         </GlassCard>
       </View>
+
+      {/* Clinic Prescription Card */}
+      {prescription && (
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>CLINIC PRESCRIPTION</Text>
+          <View style={styles.prescriptionCard}>
+            <View style={styles.rxHeader}>
+              <Text style={styles.rxSymbol}>Rx</Text>
+              <Text style={styles.rxTitle}>Consultation Summary</Text>
+            </View>
+            
+            {prescription.notes && (
+              <View style={styles.rxRow}>
+                <Text style={styles.rxLabel}>Doctor's Advice & Notes:</Text>
+                <Text style={styles.rxValue}>{prescription.notes}</Text>
+              </View>
+            )}
+
+            {prescription.recommendedTests && prescription.recommendedTests.length > 0 && (
+              <View style={styles.rxRow}>
+                <Text style={styles.rxLabel}>Recommended Diagnostics / Tests:</Text>
+                <View style={styles.testList}>
+                  {prescription.recommendedTests.map((test: string, idx: number) => (
+                    <Text key={idx} style={styles.testItem}>• {test}</Text>
+                  ))}
+                </View>
+              </View>
+            )}
+
+            {prescription.followUpDate && (
+              <View style={styles.rxRow}>
+                <Text style={styles.rxLabel}>Follow-up Date:</Text>
+                <Text style={styles.rxValue}>
+                  {format(new Date(prescription.followUpDate), 'MMMM d, yyyy')}
+                </Text>
+              </View>
+            )}
+          </View>
+        </View>
+      )}
 
       {/* Payment */}
       <View style={styles.section}>
@@ -417,5 +469,54 @@ const styles = StyleSheet.create({
     textAlign: 'center',
     fontWeight: FontWeights.medium,
     height: 20,
+  },
+  prescriptionCard: {
+    backgroundColor: '#fff',
+    borderRadius: BorderRadius.xl,
+    padding: Spacing.xl,
+    borderWidth: 1.5,
+    borderColor: '#E2E8F0',
+    ...Shadows.sm,
+  },
+  rxHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: Spacing.lg,
+  },
+  rxSymbol: {
+    fontSize: 24,
+    fontWeight: '800',
+    color: Colors.primary,
+    fontStyle: 'italic',
+    marginRight: 8,
+  },
+  rxTitle: {
+    fontSize: FontSizes.md,
+    fontWeight: FontWeights.bold,
+    color: Colors.textPrimary,
+  },
+  rxRow: {
+    marginBottom: Spacing.md,
+  },
+  rxLabel: {
+    fontSize: FontSizes.xs,
+    fontWeight: FontWeights.bold,
+    color: Colors.textSecondary,
+    marginBottom: 4,
+  },
+  rxValue: {
+    fontSize: FontSizes.sm,
+    color: Colors.textPrimary,
+    fontWeight: FontWeights.medium,
+    lineHeight: 18,
+  },
+  testList: {
+    marginTop: 4,
+    gap: 4,
+  },
+  testItem: {
+    fontSize: FontSizes.sm,
+    color: Colors.textPrimary,
+    fontWeight: FontWeights.medium,
   },
 });

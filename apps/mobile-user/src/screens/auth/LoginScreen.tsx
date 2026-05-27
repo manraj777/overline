@@ -288,6 +288,15 @@ export default function LoginScreen() {
                 <Text style={{ color: Colors.primary, fontWeight: '800', fontSize: 13 }}>Create account</Text>
               </TouchableOpacity>
             </View>
+
+            <TouchableOpacity 
+              style={{ alignItems: 'center', marginTop: 16, padding: 8 }} 
+              onPress={() => navigation.navigate('Main' as any)}
+            >
+              <Text style={{ color: '#64748B', fontWeight: '700', fontSize: 13, textDecorationLine: 'underline' }}>
+                Browse as Guest
+              </Text>
+            </TouchableOpacity>
           </View>
 
           <View style={styles.footer}>

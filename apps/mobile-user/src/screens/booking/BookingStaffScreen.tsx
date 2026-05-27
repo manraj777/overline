@@ -37,8 +37,8 @@ type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 export default function BookingStaffScreen() {
   const navigation = useNavigation<NavigationProp>();
   const route = useRoute<RouteProps>();
-  const { shopId, selectedServices } = route.params;
-  const [selectedStaffId, setSelectedStaffId] = useState<string>(ANY_STAFF_ID);
+  const { shopId, selectedServices, preferredStaffId } = route.params;
+  const [selectedStaffId, setSelectedStaffId] = useState<string>(preferredStaffId || ANY_STAFF_ID);
 
   const { data: shop, isLoading: loadingShop } = useQuery({
     queryKey: ['shop', shopId],

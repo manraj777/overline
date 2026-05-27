@@ -10,6 +10,8 @@ import {
   ActivityIndicator,
   Alert,
   Switch,
+  FlatList,
+  ScrollView,
 } from 'react-native';
 import {useQuery, useMutation, useQueryClient} from '@tanstack/react-query';
 import {useNavigation} from '@react-navigation/native';
@@ -19,12 +21,23 @@ import {servicesApi} from '../../api/client';
 import {useAuthStore} from '../../stores/authStore';
 import {RootStackParamList, Service} from '../../types';
 
+const SUGGESTION_CATEGORIES = [
+  { id: 'SALON_MENS', label: "Men's Salon" },
+  { id: 'SALON_WOMENS', label: "Women's Salon" },
+  { id: 'SALON_UNISEX', label: 'Unisex Salon' },
+  { id: 'CLINIC', label: 'Clinic' },
+  { id: 'SPA', label: 'Spa' },
+  { id: 'GYM', label: 'Gym' },
+];
+
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 export default function ServicesScreen() {
   const navigation = useNavigation<NavigationProp>();
   const queryClient = useQueryClient();
-  const {selectedShopId} = useAuthStore();
+  const {selectedShopId, isOwner} = useAuthStore();
+
+  const [selectedCategory, setSelectedCategory] = React.useState<string>('SALON_MENS');
 
   const {
     data: services = [],
@@ -36,6 +49,12 @@ export default function ServicesScreen() {
     queryFn: () =>
       servicesApi.getAll(selectedShopId || '').then(res => res.data),
     enabled: !!selectedShopId,
+  });
+
+  const { data: suggestions = [], isLoading: isLoadingSuggestions } = useQuery({
+    queryKey: ['suggestedServices', selectedCategory],
+    queryFn: () => servicesApi.getSuggestions(selectedCategory).then(res => res.data),
+    enabled: !!selectedShopId && !!selectedCategory,
   });
 
   const toggleMutation = useMutation({
@@ -64,6 +83,35 @@ export default function ServicesScreen() {
         'Error',
         error.response?.data?.message || 'Failed to delete service',
       );
+    },
+  });
+
+  const addFromSuggestionMutation = useMutation({
+    mutationFn: (suggestion: any) =>
+      servicesApi.create(selectedShopId || '', {
+        name: suggestion.name,
+        price: suggestion.price,
+        durationMinutes: suggestion.durationMinutes,
+        description: suggestion.description,
+        category: suggestion.category,
+      }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({queryKey: ['adminServices']});
+      Alert.alert('Success', 'Suggested service added successfully!');
+    },
+    onError: (error: any) => {
+      Alert.alert('Error', error.response?.data?.message || 'Failed to add service');
+    },
+  });
+
+  const approveMutation = useMutation({
+    mutationFn: (id: string) => servicesApi.approve(id),
+    onSuccess: () => {
+      queryClient.invalidateQueries({queryKey: ['adminServices']});
+      Alert.alert('Success', 'Service approved successfully!');
+    },
+    onError: (error: any) => {
+      Alert.alert('Error', error.response?.data?.message || 'Failed to approve service');
     },
   });
 
@@ -97,8 +145,11 @@ export default function ServicesScreen() {
     navigation.navigate('ServiceForm', {shopId: selectedShopId || ''});
   };
 
+  const approvedServices = services.filter(s => s.isApproved !== false);
+  const pendingServices = services.filter(s => s.isApproved === false);
+
   // Group services by category
-  const servicesByCategory = services.reduce((acc: any, service: Service) => {
+  const servicesByCategory = approvedServices.reduce((acc: any, service: Service) => {
     const cat = service.category || 'General';
     if (!acc[cat]) {
       acc[cat] = [];
@@ -161,6 +212,101 @@ export default function ServicesScreen() {
     </View>
   );
 
+  const renderHeader = () => (
+    <View style={styles.headerComponent}>
+      {/* Suggestions Section */}
+      <View style={styles.sectionHeaderContainer}>
+        <Text style={styles.sectionHeaderTitle}>AI-Suggested Services</Text>
+        <Text style={styles.sectionHeaderSubtitle}>Quickly set up standard services for your business</Text>
+      </View>
+
+      <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.chipsScroll} contentContainerStyle={styles.chipsContent}>
+        {SUGGESTION_CATEGORIES.map(cat => {
+          const isSelected = selectedCategory === cat.id;
+          return (
+            <TouchableOpacity
+              key={cat.id}
+              style={[styles.chip, isSelected && styles.chipActive]}
+              onPress={() => setSelectedCategory(cat.id)}
+            >
+              <Text style={[styles.chipText, isSelected && styles.chipTextActive]}>
+                {cat.label}
+              </Text>
+            </TouchableOpacity>
+          );
+        })}
+      </ScrollView>
+
+      {isLoadingSuggestions ? (
+        <ActivityIndicator size="small" color="#4F46E5" style={{ marginVertical: 20 }} />
+      ) : (
+        <FlatList
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          data={suggestions}
+          keyExtractor={(item, index) => `${item.name}-${index}`}
+          renderItem={({ item }) => (
+            <View style={styles.suggestionCard}>
+              <Text style={styles.suggestionName}>{item.name}</Text>
+              <Text style={styles.suggestionDesc} numberOfLines={2}>{item.description}</Text>
+              <View style={styles.suggestionMeta}>
+                <Text style={styles.suggestionPrice}>₹{item.price}</Text>
+                <Text style={styles.suggestionDuration}>{item.durationMinutes}m</Text>
+              </View>
+              <TouchableOpacity
+                style={styles.suggestionAddBtn}
+                disabled={addFromSuggestionMutation.isPending}
+                onPress={() => addFromSuggestionMutation.mutate(item)}
+              >
+                <Text style={styles.suggestionAddBtnText}>+ Quick Add</Text>
+              </TouchableOpacity>
+            </View>
+          )}
+          contentContainerStyle={styles.suggestionsListContent}
+        />
+      )}
+
+      {/* Pending Approval Section */}
+      {pendingServices.length > 0 && (
+        <View style={styles.pendingSection}>
+          <View style={styles.sectionHeaderContainer}>
+            <Text style={styles.sectionHeaderTitle}>Pending Staff Services</Text>
+            <Text style={styles.sectionHeaderSubtitle}>Services created by staff requiring approval</Text>
+          </View>
+          {pendingServices.map(item => (
+            <View key={item.id} style={styles.pendingCard}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.pendingName}>{item.name}</Text>
+                <Text style={styles.pendingDesc} numberOfLines={1}>{item.description}</Text>
+                <Text style={styles.pendingMeta}>₹{item.price} • {item.durationMinutes} min</Text>
+              </View>
+              {isOwner ? (
+                <TouchableOpacity
+                  style={styles.approveBtn}
+                  disabled={approveMutation.isPending}
+                  onPress={() => approveMutation.mutate(item.id)}
+                >
+                  <Text style={styles.approveBtnText}>Approve</Text>
+                </TouchableOpacity>
+              ) : (
+                <View style={styles.statusBadge}>
+                  <Text style={styles.statusBadgeText}>Pending</Text>
+                </View>
+              )}
+            </View>
+          ))}
+        </View>
+      )}
+
+      {/* Approved Services Header */}
+      {approvedServices.length > 0 && (
+        <View style={[styles.sectionHeaderContainer, { marginTop: 24, marginBottom: 8 }]}>
+          <Text style={styles.sectionHeaderTitle}>Active Services</Text>
+        </View>
+      )}
+    </View>
+  );
+
   const renderEmpty = () => (
     <View style={styles.emptyContainer}>
       <Scissors size={56} color="#9CA3AF" style={styles.emptyIcon} />
@@ -196,6 +342,7 @@ export default function ServicesScreen() {
       <SectionList
         sections={sections}
         keyExtractor={item => item.id}
+        ListHeaderComponent={renderHeader}
         renderSectionHeader={({ section: { title } }) => (
           <View style={styles.categoryHeader}>
             <Text style={styles.categoryHeaderTitle}>{title.toUpperCase()}</Text>
@@ -385,5 +532,165 @@ const styles = StyleSheet.create({
     fontWeight: '900',
     color: '#4F46E5',
     letterSpacing: 1,
+  },
+  headerComponent: {
+    backgroundColor: '#F9FAFB',
+    paddingBottom: 8,
+  },
+  sectionHeaderContainer: {
+    paddingHorizontal: 4,
+    marginTop: 12,
+    marginBottom: 8,
+  },
+  sectionHeaderTitle: {
+    fontSize: 18,
+    fontWeight: '700',
+    color: '#111827',
+  },
+  sectionHeaderSubtitle: {
+    fontSize: 12,
+    color: '#6B7280',
+    marginTop: 2,
+  },
+  chipsScroll: {
+    marginVertical: 8,
+  },
+  chipsContent: {
+    paddingHorizontal: 4,
+    gap: 8,
+  },
+  chip: {
+    paddingHorizontal: 16,
+    paddingVertical: 8,
+    borderRadius: 20,
+    backgroundColor: '#E5E7EB',
+    borderWidth: 1,
+    borderColor: '#D1D5DB',
+  },
+  chipActive: {
+    backgroundColor: '#4F46E5',
+    borderColor: '#4F46E5',
+  },
+  chipText: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: '#374151',
+  },
+  chipTextActive: {
+    color: '#fff',
+  },
+  suggestionsListContent: {
+    paddingHorizontal: 4,
+    paddingVertical: 8,
+    gap: 12,
+  },
+  suggestionCard: {
+    width: 160,
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#E5E7EB',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  suggestionName: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#111827',
+    marginBottom: 4,
+  },
+  suggestionDesc: {
+    fontSize: 11,
+    color: '#6B7280',
+    height: 32,
+    marginBottom: 8,
+  },
+  suggestionMeta: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: 10,
+  },
+  suggestionPrice: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#4F46E5',
+  },
+  suggestionDuration: {
+    fontSize: 11,
+    color: '#9CA3AF',
+  },
+  suggestionAddBtn: {
+    backgroundColor: '#EEF2FF',
+    borderWidth: 1,
+    borderColor: '#C7D2FE',
+    borderRadius: 8,
+    paddingVertical: 6,
+    alignItems: 'center',
+  },
+  suggestionAddBtnText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#4F46E5',
+  },
+  pendingSection: {
+    marginTop: 20,
+    backgroundColor: '#FFFBEB',
+    borderRadius: 12,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: '#FDE68A',
+  },
+  pendingCard: {
+    backgroundColor: '#fff',
+    borderRadius: 8,
+    padding: 12,
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginTop: 8,
+    borderWidth: 1,
+    borderColor: '#FEF3C7',
+  },
+  pendingName: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: '#111827',
+  },
+  pendingDesc: {
+    fontSize: 12,
+    color: '#6B7280',
+    marginVertical: 2,
+  },
+  pendingMeta: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#4F46E5',
+  },
+  approveBtn: {
+    backgroundColor: '#10B981',
+    borderRadius: 6,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+  },
+  approveBtnText: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#fff',
+  },
+  statusBadge: {
+    backgroundColor: '#F59E0B',
+    borderRadius: 6,
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+  },
+  statusBadgeText: {
+    fontSize: 11,
+    fontWeight: '600',
+    color: '#fff',
   },
 });

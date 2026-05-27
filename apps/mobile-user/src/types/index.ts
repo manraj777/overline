@@ -100,6 +100,13 @@ export interface Booking {
     phone?: string;
   };
   user?: User;
+  prescription?: {
+    notes?: string;
+    recommendedTests?: string[];
+    followUpDate?: string;
+    writtenBy?: string;
+    writtenAt?: string;
+  } | any;
 }
 
 export interface BookingService {
@@ -153,7 +160,7 @@ export type RootStackParamList = {
   OtpVerify: {phone: string};
   Main: undefined;
   ShopDetail: {shopId: string};
-  BookingStaff: {shopId: string; selectedServices: string[]};
+  BookingStaff: {shopId: string; selectedServices: string[]; preferredStaffId?: string};
   Booking: {shopId: string; selectedServices?: string[]; selectedStaffId?: string};
   BookingReview: {
     shopId: string;

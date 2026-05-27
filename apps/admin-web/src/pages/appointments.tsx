@@ -498,6 +498,24 @@ export default function AppointmentsPage() {
                               Booking #{booking.bookingNumber}
                             </div>
                           )}
+                          
+                          {/* Prescription Summary */}
+                          {booking.prescription && (() => {
+                            const px = typeof booking.prescription === 'string' ? (() => { try { return JSON.parse(booking.prescription); } catch { return null; } })() : booking.prescription;
+                            if (!px) return null;
+                            return (
+                              <div className="p-3 rounded-xl bg-primary/5 border border-primary/10 space-y-1.5 mt-2">
+                                <p className="text-[10px] font-black text-primary uppercase tracking-widest">Rx Consultation Summary</p>
+                                {px.notes && <p className="text-xs text-on-surface"><strong>Advice:</strong> {px.notes}</p>}
+                                {px.recommendedTests?.length > 0 && (
+                                  <p className="text-xs text-on-surface"><strong>Recommended Tests:</strong> {px.recommendedTests.join(', ')}</p>
+                                )}
+                                {px.followUpDate && (
+                                  <p className="text-xs text-on-surface"><strong>Follow-up Date:</strong> {px.followUpDate.slice(0, 10)}</p>
+                                )}
+                              </div>
+                            );
+                          })()}
                         </div>
 
                         {/* Actions */}

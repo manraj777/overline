@@ -31,6 +31,14 @@ export class ShopsController {
     return this.shopsService.registerForReview(dto);
   }
 
+  @Get('parse-google-link')
+  @Public()
+  @ApiOperation({ summary: 'Parse a Google Maps link to extract coordinates and address details' })
+  @ApiQuery({ name: 'url', type: String, required: true })
+  async parseGoogleLink(@Query('url') url: string) {
+    return this.shopsService.parseGoogleLink(url);
+  }
+
   @Get()
   @Public()
   @ApiOperation({ summary: 'Search and list shops' })

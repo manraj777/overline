@@ -752,6 +752,46 @@ export class QueueService {
     return updated;
   }
 
+  async callAheadMultiple(shopId: string, count: number, staffUserId: string, message?: string) {
+    const now = new Date();
+    const todayStart = new Date(now);
+    todayStart.setHours(0, 0, 0, 0);
+    const todayEnd = new Date(now);
+    todayEnd.setHours(23, 59, 59, 999);
+
+    const bookings = await this.prisma.booking.findMany({
+      where: {
+        shopId,
+        status: {
+          in: [
+            BookingStatus.PENDING,
+            BookingStatus.PENDING_APPROVAL,
+            BookingStatus.WAITLISTED,
+            BookingStatus.CONFIRMED,
+          ],
+        },
+        startTime: {
+          gte: todayStart,
+          lte: todayEnd,
+        },
+      },
+      orderBy: { startTime: 'asc' },
+      take: count,
+    });
+
+    const updatedBookings = [];
+    for (const booking of bookings) {
+      try {
+        const updated = await this.callAheadCustomer(shopId, booking.id, staffUserId, message);
+        updatedBookings.push(updated);
+      } catch (err) {
+        // Ignore single failures and continue with others
+      }
+    }
+
+    return updatedBookings;
+  }
+
   async skipCustomer(shopId: string, bookingId: string, staffId: string, reason?: string) {
     const booking = await this.prisma.booking.findFirst({
       where: {

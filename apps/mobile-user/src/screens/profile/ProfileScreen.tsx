@@ -53,11 +53,12 @@ type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
 export default function ProfileScreen() {
   const navigation = useNavigation<NavigationProp>();
-  const { user, logout } = useAuthStore();
+  const { user, logout, isAuthenticated } = useAuthStore();
   
   const { data: profile, isLoading } = useQuery<UserProfile>({
     queryKey: ['profile'],
     queryFn: () => userApi.getProfile().then(res => res.data),
+    enabled: isAuthenticated,
   });
 
   const handleLogout = () => {
@@ -76,6 +77,26 @@ export default function ProfileScreen() {
       console.error('Error sharing:', error);
     }
   };
+
+  if (!isAuthenticated) {
+    return (
+      <SafeAreaView style={styles.container} edges={['top']}>
+        <View style={styles.unauthContainer}>
+          <User color={Colors.primary} size={64} style={{ marginBottom: 20 }} />
+          <Text style={styles.unauthTitle}>Your Profile</Text>
+          <Text style={styles.unauthSubtitle}>
+            Log in to manage your appointments, edit details, and configure notification preferences.
+          </Text>
+          <TouchableOpacity
+            style={styles.unauthBtn}
+            onPress={() => navigation.navigate('Login' as any)}
+          >
+            <Text style={styles.unauthBtnText}>SIGN IN / SIGN UP</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   if (isLoading) {
     return (
@@ -423,5 +444,41 @@ const styles = StyleSheet.create({
     color: '#CBD5E1',
     fontWeight: '600',
     letterSpacing: 0.5,
+  },
+  unauthContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: Spacing.xl * 1.5,
+    backgroundColor: Colors.background,
+  },
+  unauthTitle: {
+    fontSize: 22,
+    fontWeight: '900',
+    color: Colors.textPrimary,
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  unauthSubtitle: {
+    fontSize: 14,
+    color: Colors.textTertiary,
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: 32,
+    fontWeight: '600',
+  },
+  unauthBtn: {
+    backgroundColor: Colors.primary,
+    paddingVertical: 16,
+    paddingHorizontal: 32,
+    borderRadius: BorderRadius.xl,
+    width: '100%',
+    alignItems: 'center',
+  },
+  unauthBtnText: {
+    color: '#FFF',
+    fontSize: 14,
+    fontWeight: '900',
+    letterSpacing: 1.5,
   },
 });

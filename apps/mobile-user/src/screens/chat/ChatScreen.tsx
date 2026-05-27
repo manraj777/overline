@@ -9,9 +9,12 @@ import {
   Text,
   TextInput,
   View,
+  TouchableOpacity,
 } from 'react-native';
 import {SafeAreaView} from 'react-native-safe-area-context';
 import {Bot, Send} from 'lucide-react-native';
+import {useNavigation} from '@react-navigation/native';
+import {useAuthStore} from '../../stores/authStore';
 import {api} from '../../api/client';
 import {BorderRadius, Colors, FontSizes, FontWeights, Spacing} from '../../theme';
 
@@ -32,6 +35,8 @@ interface ChatResponse {
 const QUICK_PROMPTS = ['Near me', 'My bookings', 'How it works'];
 
 export default function ChatScreen() {
+  const navigation = useNavigation<any>();
+  const { isAuthenticated } = useAuthStore();
   const [messages, setMessages] = useState<Message[]>([
     {
       id: 'welcome',
@@ -114,6 +119,26 @@ export default function ChatScreen() {
       </View>
     );
   };
+
+  if (!isAuthenticated) {
+    return (
+      <SafeAreaView style={styles.safeArea} edges={['top']}>
+        <View style={[styles.container, styles.unauthContainer]}>
+          <Bot color={Colors.primary} size={64} style={{ marginBottom: 20 }} />
+          <Text style={styles.unauthTitle}>AI Assistant</Text>
+          <Text style={styles.unauthSubtitle}>
+            Log in to chat with Overline AI assistant, get slot suggestions, and find top rated services.
+          </Text>
+          <TouchableOpacity
+            style={styles.unauthBtn}
+            onPress={() => navigation.navigate('Login' as any)}
+          >
+            <Text style={styles.unauthBtnText}>SIGN IN / SIGN UP</Text>
+          </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView edges={['top']} style={styles.safeArea}>
@@ -308,5 +333,41 @@ const styles = StyleSheet.create({
   },
   sendButtonDisabled: {
     opacity: 0.45,
+  },
+  unauthContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    paddingHorizontal: Spacing.xl * 1.5,
+    backgroundColor: Colors.background,
+  },
+  unauthTitle: {
+    fontSize: 22,
+    fontWeight: '900',
+    color: Colors.textPrimary,
+    marginBottom: 8,
+    textAlign: 'center',
+  },
+  unauthSubtitle: {
+    fontSize: 14,
+    color: Colors.textTertiary,
+    textAlign: 'center',
+    lineHeight: 20,
+    marginBottom: 32,
+    fontWeight: '600',
+  },
+  unauthBtn: {
+    backgroundColor: Colors.primary,
+    paddingVertical: 16,
+    paddingHorizontal: 32,
+    borderRadius: BorderRadius.xl,
+    width: '100%',
+    alignItems: 'center',
+  },
+  unauthBtnText: {
+    color: '#FFF',
+    fontSize: 14,
+    fontWeight: '900',
+    letterSpacing: 1.5,
   },
 });

@@ -1,27 +1,33 @@
 import { io, Socket } from 'socket.io-client';
-import { Config } from '../config';
+import { resolveApiUrl } from './urlResolver';
 
 class SocketService {
   private socket: Socket | null = null;
   private userId: string | null = null;
 
-  connect(token: string, userId: string) {
+  async connect(token: string, userId: string) {
     if (this.socket?.connected && this.userId === userId) return;
 
     this.userId = userId;
-    this.socket = io(`${Config.API_URL}/events`, {
-      auth: { token },
-      transports: ['websocket'],
-    });
+    try {
+      const { wsBase } = await resolveApiUrl();
+      console.log('[SocketService] Connecting to:', `${wsBase}/events`);
+      this.socket = io(`${wsBase}/events`, {
+        auth: { token },
+        transports: ['websocket'],
+      });
 
-    this.socket.on('connect', () => {
-      console.log('Admin Socket.io connected');
-      this.socket?.emit('authenticate');
-    });
+      this.socket.on('connect', () => {
+        console.log('Admin Socket.io connected');
+        this.socket?.emit('authenticate');
+      });
 
-    this.socket.on('disconnect', () => {
-      console.log('Admin Socket.io disconnected');
-    });
+      this.socket.on('disconnect', () => {
+        console.log('Admin Socket.io disconnected');
+      });
+    } catch (err) {
+      console.error('[SocketService] Failed to resolve dynamic socket URL:', err);
+    }
   }
 
   joinShop(shopId: string) {

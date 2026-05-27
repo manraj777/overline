@@ -100,7 +100,22 @@ export default function MyQueueScreen() {
     onSuccess: refreshQueue,
   });
 
-  const loadingAction = callAheadMutation.isPending || skipMutation.isPending || overrunMutation.isPending;
+  const callNextMutation = useMutation({
+    mutationFn: (count: number) => queueApi.callNext(selectedShopId!, count),
+    onSuccess: () => {
+      refreshQueue();
+      Alert.alert('Success', 'Successfully called next customers.');
+    },
+    onError: (err: any) => {
+      Alert.alert('Error', err.response?.data?.message || 'Failed to call next customers.');
+    }
+  });
+
+  const loadingAction = 
+    callAheadMutation.isPending || 
+    skipMutation.isPending || 
+    overrunMutation.isPending ||
+    callNextMutation.isPending;
 
   const renderItem = ({item, index}: {item: Booking; index: number}) => (
     <View style={styles.card}>
@@ -194,6 +209,22 @@ export default function MyQueueScreen() {
         </TouchableOpacity>
         <TouchableOpacity style={styles.topAction} onPress={() => navigation.navigate('LocationMap')}>
           <Text style={styles.topActionText}>Location Map</Text>
+        </TouchableOpacity>
+        <TouchableOpacity 
+          style={[styles.topAction, { backgroundColor: Colors.primary, borderColor: Colors.primary }]} 
+          onPress={() => {
+            Alert.alert(
+              'Call Customers',
+              'Notify and call the next 3 waiting customers?',
+              [
+                { text: 'Cancel', style: 'cancel' },
+                { text: 'Call 3', onPress: () => callNextMutation.mutate(3) }
+              ]
+            );
+          }}
+          disabled={loadingAction || callNextMutation.isPending}
+        >
+          <Text style={[styles.topActionText, { color: Colors.white }]}>Call Next 3</Text>
         </TouchableOpacity>
       </View>
 

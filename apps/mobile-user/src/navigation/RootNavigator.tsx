@@ -184,6 +184,16 @@ export default function RootNavigator() {
           contentStyle: { backgroundColor: Colors.background },
           animation: 'slide_from_right',
         }}>
+        <Stack.Screen name="Main" component={MainTabs} />
+        <Stack.Screen name="ShopDetail" component={ShopDetailScreen} />
+        <Stack.Screen
+          name="LocationMap"
+          component={LocationMapScreen}
+          options={{
+            headerShown: false,
+          }}
+        />
+
         {!isAuthenticated ? (
           <>
             {isFirstLaunch && <Stack.Screen name="Onboarding" component={OnboardingScreen} />}
@@ -204,11 +214,6 @@ export default function RootNavigator() {
           </>
         ) : (
           <>
-            <Stack.Screen name="Main" component={MainTabs} />
-            <Stack.Screen
-              name="ShopDetail"
-              component={ShopDetailScreen}
-            />
             <Stack.Screen
               name="BookingStaff"
               component={BookingStaffScreen}
@@ -264,13 +269,6 @@ export default function RootNavigator() {
               options={{
                 headerShown: true,
                 title: 'Notifications',
-              }}
-            />
-            <Stack.Screen
-              name="LocationMap"
-              component={LocationMapScreen}
-              options={{
-                headerShown: false,
               }}
             />
           </>

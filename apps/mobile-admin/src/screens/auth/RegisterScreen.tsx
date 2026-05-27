@@ -13,6 +13,7 @@ import {
   Dimensions,
   SafeAreaView,
   StatusBar,
+  PermissionsAndroid,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -31,6 +32,8 @@ import {
   ArrowLeft,
   CheckCircle2,
   ChevronDown,
+  Lock,
+  Sparkles,
 } from 'lucide-react-native';
 
 const { width } = Dimensions.get('window');
@@ -55,6 +58,7 @@ export default function RegisterScreen() {
   const [ownerName, setOwnerName] = useState('');
   const [ownerEmail, setOwnerEmail] = useState('');
   const [ownerPhone, setOwnerPhone] = useState('');
+  const [password, setPassword] = useState('');
 
   // Step 2: Shop Info
   const [shopName, setShopName] = useState('');
@@ -74,11 +78,86 @@ export default function RegisterScreen() {
   const [timing, setTiming] = useState('09:00 AM - 09:00 PM');
   const [googleLink, setGoogleLink] = useState('');
 
+  const [isParsingLink, setIsParsingLink] = useState(false);
+  const [isGettingLocation, setIsGettingLocation] = useState(false);
+
+  const handleGetCurrentLocation = async () => {
+    setIsGettingLocation(true);
+    try {
+      let hasPermission = false;
+      if (Platform.OS === 'ios') {
+        hasPermission = true; 
+      } else if (Platform.OS === 'android') {
+        const granted = await PermissionsAndroid.request(
+          PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
+          {
+            title: 'Location Permission',
+            message: 'Overline requires access to your location to set the shop location.',
+            buttonNeutral: 'Ask Later',
+            buttonNegative: 'Cancel',
+            buttonPositive: 'OK',
+          }
+        );
+        hasPermission = granted === PermissionsAndroid.RESULTS.GRANTED;
+      } else {
+        hasPermission = true;
+      }
+
+      if (hasPermission) {
+        (navigator as any).geolocation.getCurrentPosition(
+          (pos: any) => {
+            setLatitude(String(pos.coords.latitude));
+            setLongitude(String(pos.coords.longitude));
+            setIsGettingLocation(false);
+            Alert.alert('Success', 'Updated coordinates to current GPS location!');
+          },
+          (err: any) => {
+            setIsGettingLocation(false);
+            Alert.alert('Location Error', 'Failed to get current GPS location. Please enter manually.');
+          },
+          { enableHighAccuracy: true, timeout: 15000, maximumAge: 10000 }
+        );
+      } else {
+        setIsGettingLocation(false);
+        Alert.alert('Permission Denied', 'Location permission is required.');
+      }
+    } catch (err: any) {
+      setIsGettingLocation(false);
+      Alert.alert('Error', err.message || 'Could not request location permission.');
+    }
+  };
+
+  const handleParseGoogleLink = async () => {
+    if (!googleLink.trim()) {
+      return Alert.alert('Error', 'Please paste a Google Map link first.');
+    }
+    setIsParsingLink(true);
+    try {
+      const res = await shopApi.parseGoogleLink(googleLink.trim());
+      const data = res.data;
+      if (data) {
+        if (data.latitude) setLatitude(String(data.latitude));
+        if (data.longitude) setLongitude(String(data.longitude));
+        if (data.address) setAddress(data.address);
+        if (data.city) setCity(data.city);
+        if (data.state) setState(data.state);
+        if (data.postalCode) setPostalCode(data.postalCode);
+        if (data.shopName && !shopName) setShopName(data.shopName);
+        Alert.alert('Success', 'Address and coordinates populated from Google Map Link!');
+      }
+    } catch (e: any) {
+      Alert.alert('Parse Failed', e.response?.data?.message || 'Could not parse Google Map link. You can enter details manually.');
+    } finally {
+      setIsParsingLink(false);
+    }
+  };
+
   const nextStep = () => {
     if (step === 1) {
       if (!ownerName.trim()) return Alert.alert('Error', 'Owner name is required');
       if (!ownerEmail.trim() || !ownerEmail.includes('@')) return Alert.alert('Error', 'Valid owner email is required');
       if (!/^[6-9]\d{9}$/.test(ownerPhone.replace(/\D/g, ''))) return Alert.alert('Error', 'Valid 10-digit owner phone is required');
+      if (!password.trim() || password.length < 8) return Alert.alert('Error', 'Password must be at least 8 characters');
     } else if (step === 2) {
       if (!shopName.trim()) return Alert.alert('Error', 'Shop name is required');
       if (shopPhone && !/^[6-9]\d{9}$/.test(shopPhone.replace(/\D/g, ''))) return Alert.alert('Error', 'Shop phone must be a 10-digit number');
@@ -103,12 +182,15 @@ export default function RegisterScreen() {
     setIsLoading(true);
     try {
       const payload = {
+        email: ownerEmail.trim().toLowerCase(),
+        password: password,
+        ownerName: ownerName.trim(),
+        ownerPhone: `+91${ownerPhone.replace(/\D/g, '')}`,
+        phoneVerified: true,
+        emailVerified: true,
         shopName: shopName.trim(),
         shopType,
         shopDescription: shopDescription.trim() || undefined,
-        ownerName: ownerName.trim(),
-        ownerEmail: ownerEmail.trim().toLowerCase(),
-        ownerPhone: `+91${ownerPhone.replace(/\D/g, '')}`,
         address: address.trim(),
         city: city.trim(),
         state: state.trim() || undefined,
@@ -116,7 +198,6 @@ export default function RegisterScreen() {
         latitude: latNum,
         longitude: lngNum,
         phone: shopPhone ? `+91${shopPhone.replace(/\D/g, '')}` : undefined,
-        email: shopEmail ? shopEmail.trim().toLowerCase() : undefined,
         googleLink: googleLink.trim() || undefined,
         timing: timing.trim() || undefined,
       };
@@ -236,6 +317,20 @@ export default function RegisterScreen() {
                   value={ownerPhone}
                   onChangeText={t => setOwnerPhone(t.replace(/\D/g, '').slice(0, 10))}
                   maxLength={10}
+                />
+              </View>
+
+              <View style={styles.inputLabelWrap}>
+                <Text style={styles.inputLabel}>Password</Text>
+              </View>
+              <View style={styles.inputBox}>
+                <Lock size={18} color="#94A3B8" />
+                <TextInput
+                  style={styles.input}
+                  placeholder="Min 8 characters"
+                  secureTextEntry
+                  value={password}
+                  onChangeText={setPassword}
                 />
               </View>
             </View>
@@ -403,6 +498,21 @@ export default function RegisterScreen() {
                 </View>
               </View>
 
+              <TouchableOpacity
+                style={styles.locationHelperBtn}
+                onPress={handleGetCurrentLocation}
+                disabled={isGettingLocation}
+              >
+                {isGettingLocation ? (
+                  <ActivityIndicator size="small" color="#3B82F6" />
+                ) : (
+                  <>
+                    <Compass size={16} color="#3B82F6" />
+                    <Text style={styles.locationHelperText}>GET CURRENT GPS LOCATION</Text>
+                  </>
+                )}
+              </TouchableOpacity>
+ 
               <View style={styles.inputLabelWrap}>
                 <Text style={styles.inputLabel}>Opening Hours Timing</Text>
               </View>
@@ -415,7 +525,7 @@ export default function RegisterScreen() {
                   onChangeText={setTiming}
                 />
               </View>
-
+ 
               <View style={styles.inputLabelWrap}>
                 <Text style={styles.inputLabel}>Google Map Link (Optional)</Text>
               </View>
@@ -428,6 +538,21 @@ export default function RegisterScreen() {
                   onChangeText={setGoogleLink}
                 />
               </View>
+
+              <TouchableOpacity
+                style={styles.locationHelperBtn}
+                onPress={handleParseGoogleLink}
+                disabled={isParsingLink}
+              >
+                {isParsingLink ? (
+                  <ActivityIndicator size="small" color="#3B82F6" />
+                ) : (
+                  <>
+                    <Sparkles size={16} color="#3B82F6" />
+                    <Text style={styles.locationHelperText}>AUTO-FILL FROM GOOGLE MAP LINK</Text>
+                  </>
+                )}
+              </TouchableOpacity>
             </View>
           )}
 
@@ -665,5 +790,22 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '900',
     letterSpacing: 1,
+  },
+  locationHelperBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: '#EFF6FF',
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
+    borderRadius: 12,
+    paddingVertical: 12,
+    marginTop: 10,
+  },
+  locationHelperText: {
+    fontSize: 12,
+    fontWeight: '900',
+    color: '#3B82F6',
   },
 });

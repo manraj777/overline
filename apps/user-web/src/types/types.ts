@@ -181,6 +181,13 @@ export interface Booking {
   updatedAt: string;
   services: BookingService[];
   payment?: Payment;
+  prescription?: {
+    notes?: string;
+    recommendedTests?: string[];
+    followUpDate?: string;
+    writtenBy?: string;
+    writtenAt?: string;
+  } | any;
 }
 
 export interface BookingService {

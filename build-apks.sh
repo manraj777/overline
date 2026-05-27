@@ -81,7 +81,7 @@ if [[ ! -f "$ROOT_DIR/apps/mobile-user/android/app/google-services.json" ]]; the
 	exit 1
 fi
 
-validate_google_services "$ROOT_DIR/apps/mobile-admin/android/app/google-services.json" "com.appointmentbooking.app"
+validate_google_services "$ROOT_DIR/apps/mobile-admin/android/app/google-services.json" "com.overlineadmin"
 validate_google_services "$ROOT_DIR/apps/mobile-user/android/app/google-services.json" "com.overlineuser"
 
 echo "\nBuilding Admin App (mobile-admin)..."

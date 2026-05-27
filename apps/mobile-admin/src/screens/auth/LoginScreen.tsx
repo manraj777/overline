@@ -344,7 +344,7 @@ export default function LoginScreen() {
       if (isDeveloperError) {
         Alert.alert(
           'Google Login Misconfigured',
-          'This APK signing certificate is not linked in Firebase Google Sign-In. Add Android OAuth SHA fingerprints for package com.appointmentbooking.app, then download and replace android/app/google-services.json and rebuild the APK.',
+          'This APK signing certificate is not linked in Firebase Google Sign-In. Add Android OAuth SHA fingerprints for package com.overlineadmin, then download and replace android/app/google-services.json and rebuild the APK.',
         );
         return;
       }

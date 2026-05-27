@@ -418,12 +418,18 @@ export class SlotEngineService {
 
     const now = new Date();
 
-    // Get pending/in-progress bookings
+    const todayStart = new Date(now);
+    todayStart.setHours(0, 0, 0, 0);
+
+    // Get pending/in-progress bookings for today
     const activeBookings = await this.prisma.booking.findMany({
       where: {
         shopId,
-        status: { in: ['PENDING', 'CONFIRMED', 'IN_PROGRESS'] },
-        startTime: { lte: new Date(now.getTime() + 4 * 60 * 60 * 1000) }, // Next 4 hours
+        status: { in: ['PENDING', 'CONFIRMED', 'IN_PROGRESS', 'PENDING_APPROVAL', 'WAITLISTED'] },
+        startTime: {
+          gte: todayStart,
+          lte: new Date(now.getTime() + 4 * 60 * 60 * 1000), // Next 4 hours
+        },
       },
       orderBy: { startTime: 'asc' },
     });

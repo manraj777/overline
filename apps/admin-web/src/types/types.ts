@@ -232,6 +232,11 @@ export interface Booking {
   updatedAt: string;
   services: BookingService[];
   payment?: Payment;
+  prescription?: {
+    notes?: string;
+    recommendedTests?: string[];
+    followUpDate?: string;
+  } | any;
 }
 
 export interface BookingService {

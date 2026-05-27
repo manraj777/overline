@@ -1,4 +1,5 @@
 import React, { useState, useMemo } from 'react';
+import Svg, { Path, Circle as SvgCircle, Line } from 'react-native-svg';
 import {
   View,
   Text,
@@ -124,30 +125,36 @@ export default function BookingScreen() {
     return { hourDeg, minDeg };
   }, [selectedTime]);
 
+  const groupedSlots = useMemo(() => {
+    const availableOnly = timeSlots.filter(s => s.available);
+    const morning = availableOnly.filter(s => {
+      if (!s.time) return false;
+      const [hStr] = s.time.split(':');
+      const h = parseInt(hStr, 10);
+      return h < 12;
+    });
+    const afternoon = availableOnly.filter(s => {
+      if (!s.time) return false;
+      const [hStr] = s.time.split(':');
+      const h = parseInt(hStr, 10);
+      return h >= 12 && h < 17;
+    });
+    const evening = availableOnly.filter(s => {
+      if (!s.time) return false;
+      const [hStr] = s.time.split(':');
+      const h = parseInt(hStr, 10);
+      return h >= 17;
+    });
+    return { morning, afternoon, evening };
+  }, [timeSlots]);
+
   return (
     <View style={styles.container}>
       <ScrollView showsVerticalScrollIndicator={false}>
-        {/* Step indicator */}
+        {/* Clean Header */}
         <View style={styles.stepHeader}>
           <Text style={styles.stepTitle}>Book Appointment</Text>
-          <Text style={styles.stepSubtitle}>Step 3 of 4 • Choose date and time</Text>
-          <View style={styles.stepIndicator}>
-            <View style={[styles.step, styles.stepActive]}>
-              <Text style={styles.stepNumber}>1</Text>
-            </View>
-            <View style={styles.stepLineActive} />
-            <View style={[styles.step, styles.stepActive]}>
-              <Text style={styles.stepNumber}>2</Text>
-            </View>
-            <View style={styles.stepLineActive} />
-            <View style={[styles.step, selectedSlotStartTime ? styles.stepActive : undefined]}>
-              <Text style={[styles.stepNumber, !selectedSlotStartTime && { color: Colors.textTertiary }]}>3</Text>
-            </View>
-            <View style={styles.stepLine} />
-            <View style={[styles.step, selectedSlotStartTime ? styles.stepActive : undefined]}>
-              <Text style={[styles.stepNumber, !selectedSlotStartTime && { color: Colors.textTertiary }]}>4</Text>
-            </View>
-          </View>
+          <Text style={styles.stepSubtitle}>Choose date and time for your visit</Text>
         </View>
 
         {selectedStaffId && (
@@ -211,50 +218,140 @@ export default function BookingScreen() {
             </View>
           ) : (
             <View>
-              {/* Timeline Horizontal Scroll */}
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                contentContainerStyle={styles.timelineScroll}
-              >
-                {Array.from({ length: dayTimelineRange.totalSlots }).map((_, idx) => {
-                  const totalMinutes = dayTimelineRange.startMinutes + idx * 15;
-                  const hours = Math.floor(totalMinutes / 60);
-                  const minutes = totalMinutes % 60;
-                  const timeStr = `${hours.toString().padStart(2, '0')}:${minutes.toString().padStart(2, '0')}`;
-                  
-                  const slot = timeSlots.find(s => s.time === timeStr);
-                  const isSlotExist = !!slot;
-                  const isAvailable = slot?.available ?? false;
-                  const isSelected = selectedSlotStartTime === slot?.startTime && !!selectedSlotStartTime;
-                  
-                  return (
-                    <TouchableOpacity
-                      key={timeStr}
-                      style={styles.timelineSegmentContainer}
-                      onPress={() => {
-                        if (slot && isAvailable) {
-                          setSelectedSlotStartTime(slot.startTime);
-                        }
-                      }}
-                      disabled={!isAvailable}
-                    >
-                      <View style={[
-                        styles.timelineBar,
-                        isSelected ? styles.barSelected :
-                        (isSlotExist && isAvailable) ? styles.barAvailable :
-                        (isSlotExist && !isAvailable) ? styles.barBooked : styles.barBreak
-                      ]} />
-                      <Text style={[
-                        styles.segmentLabel,
-                        isSelected && styles.segmentLabelSelected
-                      ]}>
-                        {idx % 4 === 0 ? formatSlotTime(timeStr).replace(' AM', '').replace(' PM', '') : ''}
-                      </Text>
-                    </TouchableOpacity>
-                  );
-                })}
-              </ScrollView>
+              {/* Grouped Time Period Selector — Sun-to-Moon Design */}
+              <View style={styles.groupedSlotsContainer}>
+                {/* Morning Slots */}
+                {groupedSlots.morning.length > 0 && (
+                  <View style={[styles.periodBlock, styles.periodBlockMorning]}>
+                    <View style={styles.periodHeader}>
+                      <View style={[styles.periodIconWrap, { backgroundColor: '#FFF8F0' }]}>
+                        <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">
+                          <SvgCircle cx={12} cy={12} r={5} fill="#D4D4D4" />
+                          {[0,45,90,135,180,225,270,315].map((angle) => {
+                            const rad = (angle * Math.PI) / 180;
+                            return (
+                              <Line
+                                key={angle}
+                                x1={12 + 7.5 * Math.cos(rad)}
+                                y1={12 + 7.5 * Math.sin(rad)}
+                                x2={12 + 10 * Math.cos(rad)}
+                                y2={12 + 10 * Math.sin(rad)}
+                                stroke="#BFBFBF"
+                                strokeWidth={1.5}
+                                strokeLinecap="round"
+                              />
+                            );
+                          })}
+                        </Svg>
+                      </View>
+                      <View>
+                        <Text style={styles.periodLabel}>Morning</Text>
+                        <Text style={styles.periodSub}>Before 12 PM</Text>
+                      </View>
+                    </View>
+                    <View style={styles.slotsGrid}>
+                      {groupedSlots.morning.map((slot) => {
+                        const isSelected = selectedSlotStartTime === slot.startTime;
+                        return (
+                          <TouchableOpacity
+                            key={slot.startTime}
+                            style={[styles.slotChip, isSelected && styles.slotChipSelected]}
+                            onPress={() => setSelectedSlotStartTime(slot.startTime)}
+                          >
+                            <Text style={[styles.slotChipText, isSelected && styles.slotChipTextSelected]}>
+                              {formatSlotTime(slot.time)}
+                            </Text>
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </View>
+                  </View>
+                )}
+
+                {/* Afternoon Slots */}
+                {groupedSlots.afternoon.length > 0 && (
+                  <View style={[styles.periodBlock, styles.periodBlockAfternoon]}>
+                    <View style={styles.periodHeader}>
+                      <View style={[styles.periodIconWrap, { backgroundColor: '#F5F5F5' }]}>
+                        <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">
+                          <SvgCircle cx={12} cy={12} r={5} fill="#A3A3A3" />
+                          {[0,45,90,135,180,225,270,315].map((angle) => {
+                            const rad = (angle * Math.PI) / 180;
+                            return (
+                              <Line
+                                key={angle}
+                                x1={12 + 7.5 * Math.cos(rad)}
+                                y1={12 + 7.5 * Math.sin(rad)}
+                                x2={12 + 10 * Math.cos(rad)}
+                                y2={12 + 10 * Math.sin(rad)}
+                                stroke="#8C8C8C"
+                                strokeWidth={1.5}
+                                strokeLinecap="round"
+                              />
+                            );
+                          })}
+                        </Svg>
+                      </View>
+                      <View>
+                        <Text style={styles.periodLabel}>Afternoon</Text>
+                        <Text style={styles.periodSub}>12 — 5 PM</Text>
+                      </View>
+                    </View>
+                    <View style={styles.slotsGrid}>
+                      {groupedSlots.afternoon.map((slot) => {
+                        const isSelected = selectedSlotStartTime === slot.startTime;
+                        return (
+                          <TouchableOpacity
+                            key={slot.startTime}
+                            style={[styles.slotChip, isSelected && styles.slotChipSelected]}
+                            onPress={() => setSelectedSlotStartTime(slot.startTime)}
+                          >
+                            <Text style={[styles.slotChipText, isSelected && styles.slotChipTextSelected]}>
+                              {formatSlotTime(slot.time)}
+                            </Text>
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </View>
+                  </View>
+                )}
+
+                {/* Evening Slots */}
+                {groupedSlots.evening.length > 0 && (
+                  <View style={[styles.periodBlock, styles.periodBlockEvening]}>
+                    <View style={styles.periodHeader}>
+                      <View style={[styles.periodIconWrap, { backgroundColor: '#F0F0F0' }]}>
+                        <Svg width={18} height={18} viewBox="0 0 24 24" fill="none">
+                          <Path
+                            d="M12 3a9 9 0 1 0 0 18c1.5 0 2.9-.35 4.15-1A7 7 0 0 1 12 3z"
+                            fill="#737373"
+                          />
+                        </Svg>
+                      </View>
+                      <View>
+                        <Text style={styles.periodLabel}>Evening</Text>
+                        <Text style={styles.periodSub}>After 5 PM</Text>
+                      </View>
+                    </View>
+                    <View style={styles.slotsGrid}>
+                      {groupedSlots.evening.map((slot) => {
+                        const isSelected = selectedSlotStartTime === slot.startTime;
+                        return (
+                          <TouchableOpacity
+                            key={slot.startTime}
+                            style={[styles.slotChip, isSelected && styles.slotChipSelected]}
+                            onPress={() => setSelectedSlotStartTime(slot.startTime)}
+                          >
+                            <Text style={[styles.slotChipText, isSelected && styles.slotChipTextSelected]}>
+                              {formatSlotTime(slot.time)}
+                            </Text>
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </View>
+                  </View>
+                )}
+              </View>
 
               {/* Gauge Clock display */}
               <View style={styles.clockContainer}>
@@ -727,5 +824,77 @@ const styles = StyleSheet.create({
     fontSize: 11,
     color: Colors.textSecondary,
     fontWeight: FontWeights.semibold,
+  },
+  groupedSlotsContainer: {
+    gap: Spacing.lg,
+    paddingVertical: 12,
+  },
+  periodBlock: {
+    backgroundColor: Colors.surface,
+    padding: Spacing.md,
+    borderRadius: BorderRadius.xl,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    borderLeftWidth: 3,
+  },
+  periodBlockMorning: {
+    borderLeftColor: '#D4B896',
+  },
+  periodBlockAfternoon: {
+    borderLeftColor: '#A3A3A3',
+  },
+  periodBlockEvening: {
+    borderLeftColor: '#525252',
+  },
+  periodHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 10,
+    marginBottom: Spacing.md,
+  },
+  periodIconWrap: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  periodLabel: {
+    fontSize: FontSizes.sm,
+    fontWeight: FontWeights.bold,
+    color: Colors.textPrimary,
+    letterSpacing: 0.2,
+  },
+  periodSub: {
+    fontSize: 10,
+    color: Colors.textTertiary,
+    fontWeight: FontWeights.medium,
+    marginTop: 1,
+  },
+  slotsGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: Spacing.sm,
+  },
+  slotChip: {
+    paddingHorizontal: Spacing.md,
+    paddingVertical: 8,
+    borderRadius: BorderRadius.lg,
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  slotChipSelected: {
+    backgroundColor: Colors.primary,
+    borderColor: Colors.primary,
+    ...Shadows.sm,
+  },
+  slotChipText: {
+    fontSize: FontSizes.sm,
+    fontWeight: '700',
+    color: Colors.textSecondary,
+  },
+  slotChipTextSelected: {
+    color: '#FFF',
   },
 });

@@ -3,6 +3,7 @@ import { PrismaService } from '@/common/prisma/prisma.service';
 import { RedisService } from '@/common/redis/redis.service';
 import { CreateServiceDto } from './dto/create-service.dto';
 import { UpdateServiceDto } from './dto/update-service.dto';
+import { SUGGESTED_SERVICES } from './suggested-services';
 
 @Injectable()
 export class ServicesService {
@@ -64,6 +65,8 @@ export class ServicesService {
         imageUrl: dto.imageUrl,
         currency: dto.currency || 'INR',
         sortOrder: (maxSort._max.sortOrder || 0) + 1,
+        isApproved: user.role !== 'STAFF',
+        isActive: user.role !== 'STAFF',
       },
     });
 
@@ -194,5 +197,37 @@ export class ServicesService {
     await this.redis.invalidateSlots(shopId);
 
     return this.findByShop(shopId);
+  }
+
+  getSuggestions(type: string) {
+    return SUGGESTED_SERVICES[type] || SUGGESTED_SERVICES['SALON_UNISEX'];
+  }
+
+  async approveService(serviceId: string, user: any) {
+    const service = await this.prisma.service.findUnique({
+      where: { id: serviceId },
+      include: { shop: true },
+    });
+
+    if (!service) {
+      throw new NotFoundException('Service not found');
+    }
+
+    const authorizedShop = await this.getAuthorizedShop(service.shopId, user);
+    if (!authorizedShop) {
+      throw new ForbiddenException('Not authorized to manage this service');
+    }
+
+    if (user.role !== 'OWNER' && user.role !== 'SUPER_ADMIN' && user.role !== 'SUPERADMIN') {
+      throw new ForbiddenException('Only shop owners or superadmins can approve services');
+    }
+
+    const updated = await this.prisma.service.update({
+      where: { id: serviceId },
+      data: { isApproved: true, isActive: true },
+    });
+
+    await this.redis.invalidateSlots(service.shopId);
+    return updated;
   }
 }

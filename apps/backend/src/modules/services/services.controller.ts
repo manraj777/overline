@@ -1,4 +1,4 @@
-import { Controller, Get, Post, Patch, Delete, Body, Param, UseGuards } from '@nestjs/common';
+import { Controller, Get, Post, Patch, Delete, Body, Param, Query, UseGuards } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiParam } from '@nestjs/swagger';
 import { ServicesService } from './services.service';
 import { CreateServiceDto } from './dto/create-service.dto';
@@ -7,6 +7,7 @@ import { JwtAuthGuard } from '../auth/guards/jwt-auth.guard';
 import { RolesGuard } from '../auth/guards/roles.guard';
 import { Roles } from '../auth/decorators/roles.decorator';
 import { CurrentUser } from '../auth/decorators/current-user.decorator';
+import { Public } from '../auth/decorators/public.decorator';
 import { UserRole } from '@prisma/client';
 
 @ApiTags('services')
@@ -74,5 +75,20 @@ export class ServicesController {
     @CurrentUser() user: any,
   ) {
     return this.servicesService.reorder(shopId, body.serviceIds, user);
+  }
+
+  @Get('suggestions')
+  @Public()
+  @ApiOperation({ summary: 'Get suggested services by type' })
+  async getSuggestions(@Query('type') type: string) {
+    return this.servicesService.getSuggestions(type);
+  }
+
+  @Patch(':id/approve')
+  @Roles(UserRole.OWNER, UserRole.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Approve a staff-created service' })
+  @ApiParam({ name: 'id', description: 'Service ID' })
+  async approve(@Param('id') id: string, @CurrentUser() user: any) {
+    return this.servicesService.approveService(id, user);
   }
 }

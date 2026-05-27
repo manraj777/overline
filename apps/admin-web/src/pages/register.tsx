@@ -77,6 +77,37 @@ export default function RegisterPage() {
 
   // Location state
   const [locationData, setLocationData] = React.useState<LocationData | undefined>();
+  const [mapLink, setMapLink] = React.useState('');
+  const [parsingLink, setParsingLink] = React.useState(false);
+
+  const handleParseMapLink = async () => {
+    if (!mapLink) return;
+    setError(null);
+    setParsingLink(true);
+    try {
+      const response = await api.get('/shops/parse-google-link', {
+        params: { url: mapLink }
+      });
+      const data = response.data;
+      if (data) {
+        if (data.city) setValue('city', data.city);
+        if (data.locality) setValue('locality', data.locality);
+        if (data.state) setValue('state', data.state);
+        if (data.postalCode) setValue('postalCode', data.postalCode);
+        if (data.name && !getValues('shopName')) setValue('shopName', data.name);
+        
+        setLocationData({
+          lat: data.latitude,
+          lng: data.longitude,
+          formattedAddress: data.address,
+        });
+      }
+    } catch (err: any) {
+      setError(err?.response?.data?.message || err.message || 'Failed to parse map link');
+    } finally {
+      setParsingLink(false);
+    }
+  };
 
   const {
     register,
@@ -595,6 +626,32 @@ export default function RegisterPage() {
                   <p className="text-sm text-on-surface-variant">
                     Search for your area, then drag the pin to your exact shop entrance.
                   </p>
+
+                  <div className="space-y-3 p-4 bg-primary/5 rounded-2xl border border-primary/10">
+                    <label className="label-m3 flex items-center gap-1.5 font-bold">
+                      <Sparkles className="w-4 h-4 text-primary" /> Autofill with Google Maps Link
+                    </label>
+                    <div className="flex gap-2">
+                      <input
+                        type="url"
+                        className="input-m3 flex-1"
+                        placeholder="https://maps.app.goo.gl/... or https://google.com/maps..."
+                        value={mapLink}
+                        onChange={(e) => setMapLink(e.target.value)}
+                      />
+                      <button
+                        type="button"
+                        className="btn-tonal px-4 py-2.5 rounded-xl font-bold text-sm bg-primary/10 text-primary hover:bg-primary/20 transition-all shrink-0"
+                        onClick={handleParseMapLink}
+                        disabled={parsingLink || !mapLink}
+                      >
+                        {parsingLink ? 'Parsing...' : 'Autofill'}
+                      </button>
+                    </div>
+                    <p className="text-[11px] text-on-surface-variant">
+                      Paste your shop's Google Maps link to instantly fetch coordinates, address, pincode, and state.
+                    </p>
+                  </div>
 
                   <LocationPicker value={locationData} onChange={(loc) => {
                     setLocationData(loc);

@@ -194,6 +194,8 @@ export const bookingsApi = {
     shopId: string,
     data: { serviceIds: string[]; customerName: string; customerPhone: string },
   ) => apiClient.post(`/admin/shops/${shopId}/walk-in`, data),
+  writePrescription: (id: string, data: { recommendedTests: string[]; followUpDate?: string; notes?: string }) =>
+    apiClient.post(`/staff/me/bookings/${id}/prescription`, data),
 };
 
 export const queueApi = {
@@ -203,6 +205,8 @@ export const queueApi = {
     apiClient.post(`/queue/${shopId}/skip`, {bookingId, reason}),
   overrun: (shopId: string, bookingId: string, extraMinutes: number, note?: string) =>
     apiClient.post(`/queue/${shopId}/overrun`, {bookingId, extraMinutes, note}),
+  callNext: (shopId: string, count: number, message?: string) =>
+    apiClient.post('/staff/me/queue/call-next', { shopId, count, message }),
   getTrackableBookings: (shopId: string) =>
     apiClient.get(`/queue/tracking/${shopId}`),
   getMessages: (bookingId: string) =>
@@ -251,12 +255,15 @@ export const servicesApi = {
     },
   ) => apiClient.patch(`/services/${id}`, data),
   delete: (shopId: string, id: string) => apiClient.delete(`/services/${id}`), // Match schema
+  approve: (id: string) => apiClient.patch(`/services/${id}/approve`),
+  getSuggestions: (type: string) => apiClient.get('/services/suggestions', { params: { type } }),
 };
 
 // Shop APIs
 export const shopApi = {
   createShop: (data: any) => apiClient.post('/owner/shops', data),
-  registerShop: (data: any) => apiClient.post('/shops/register', data),
+  registerShop: (data: any) => apiClient.post('/auth/register-shop', data),
+  parseGoogleLink: (url: string) => apiClient.get('/shops/parse-google-link', { params: { url } }),
   getMyShops: () => apiClient.get('/admin/my-shops'),
   getById: (id: string) => apiClient.get(`/shops/${id}`),
   searchShops: (query: string) => apiClient.get('/shops/search', { params: { q: query } }), // New

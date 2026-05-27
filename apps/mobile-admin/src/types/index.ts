@@ -98,6 +98,7 @@ export interface Service {
   isActive: boolean;
   category?: string;
   imageUrl?: string;
+  isApproved?: boolean;
 }
 
 export interface WorkingHours {
@@ -144,6 +145,13 @@ export interface Booking {
     name: string;
   };
   services?: BookingService[];
+  prescription?: {
+    notes?: string;
+    recommendedTests?: string[];
+    followUpDate?: string;
+    writtenBy?: string;
+    writtenAt?: string;
+  } | any;
 }
 
 export interface ReviewItem {

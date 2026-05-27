@@ -136,8 +136,9 @@ export default function LocationMapScreen() {
     <View style={styles.container}>
       <MapView
         ref={mapRef}
-        provider={PROVIDER_GOOGLE}
         style={styles.map}
+        showsUserLocation={true}
+        showsMyLocationButton={true}
         initialRegion={{
           latitude: 28.4595,
           longitude: 77.4938,
@@ -211,10 +212,12 @@ export default function LocationMapScreen() {
                 setActiveShopIndex(index);
                 const shop = shops[index];
                 if (shop?.latitude != null && shop?.longitude != null) {
-                  mapRef.current?.animateCamera({
-                    center: { latitude: shop.latitude, longitude: shop.longitude },
-                    zoom: 16
-                  });
+                  mapRef.current?.animateToRegion({
+                    latitude: shop.latitude,
+                    longitude: shop.longitude,
+                    latitudeDelta: 0.015,
+                    longitudeDelta: 0.015,
+                  }, 500);
                 }
               }
             }}

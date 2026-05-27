@@ -80,7 +80,7 @@ android {
 
     namespace "com.overlineadmin"
     defaultConfig {
-        applicationId "com.appointmentbooking.app"
+        applicationId "com.overlineadmin"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
         versionCode 1

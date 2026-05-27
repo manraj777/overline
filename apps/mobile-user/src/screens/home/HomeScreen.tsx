@@ -13,7 +13,12 @@ import {
   Dimensions,
   StatusBar,
   ActivityIndicator,
+  Platform,
+  PermissionsAndroid,
+  Modal,
+  Alert,
 } from 'react-native';
+import Geolocation from 'react-native-geolocation-service';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -34,7 +39,8 @@ import {
   Zap,
   Map as MapIcon,
   Navigation,
-  ArrowRight
+  ArrowRight,
+  User,
 } from 'lucide-react-native';
 import { Carousel, CarouselItem } from '../../components/Carousel';
 
@@ -81,7 +87,79 @@ export default function HomeScreen() {
   const { user } = useAuthStore();
   const [searchQuery, setSearchQuery] = useState('');
   const [activeCategory, setActiveCategory] = useState('All');
+  const [locationName, setLocationName] = useState('Greater Noida, Uttar Pradesh');
   const scrollY = useRef(new Animated.Value(0)).current;
+
+  // Location selector states
+  const [showLocationModal, setShowLocationModal] = useState(false);
+  const [customAddress, setCustomAddress] = useState('');
+  const [selectedLat, setSelectedLat] = useState<number | null>(null);
+  const [selectedLng, setSelectedLng] = useState<number | null>(null);
+  const [selectedCity, setSelectedCity] = useState<string | null>(null);
+
+  React.useEffect(() => {
+    let isMounted = true;
+    async function requestLocation() {
+      try {
+        let hasPermission = false;
+        if (Platform.OS === 'ios') {
+          const auth = await Geolocation.requestAuthorization('whenInUse');
+          hasPermission = auth === 'granted';
+        } else if (Platform.OS === 'android') {
+          const granted = await PermissionsAndroid.request(
+            PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
+            {
+              title: 'Location Permission',
+              message: 'Overline requires access to your location to find nearby shops.',
+              buttonNeutral: 'Ask Later',
+              buttonNegative: 'Cancel',
+              buttonPositive: 'OK',
+            }
+          );
+          hasPermission = granted === PermissionsAndroid.RESULTS.GRANTED;
+        }
+
+        if (hasPermission && isMounted) {
+          Geolocation.getCurrentPosition(
+            async (pos) => {
+              if (!isMounted) return;
+              const { latitude, longitude } = pos.coords;
+              try {
+                const response = await fetch(
+                  `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`,
+                  {
+                    headers: {
+                      'User-Agent': 'OverlineApp/1.0',
+                    },
+                  }
+                );
+                const data = await response.json();
+                if (data && data.address && isMounted) {
+                  const city = data.address.city || data.address.town || data.address.suburb || data.address.county || '';
+                  const state = data.address.state || '';
+                  const displayLoc = city && state ? `${city}, ${state}` : (data.display_name || `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`);
+                  setLocationName(displayLoc);
+                }
+              } catch (geocodeErr) {
+                console.log('[Geolocation] Geocode error:', geocodeErr);
+                if (isMounted) {
+                  setLocationName(`${latitude.toFixed(4)}, ${longitude.toFixed(4)}`);
+                }
+              }
+            },
+            (err) => console.log('[Geolocation] Error getting position:', err),
+            { enableHighAccuracy: true, timeout: 15000, maximumAge: 10000 }
+          );
+        }
+      } catch (err) {
+        console.warn('[Geolocation] Request error:', err);
+      }
+    }
+    requestLocation();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const {
     data: shopsData,
@@ -89,17 +167,37 @@ export default function HomeScreen() {
     refetch,
     isRefetching,
   } = useQuery({
-    queryKey: ['shops', searchQuery, activeCategory],
+    queryKey: ['shops', searchQuery, activeCategory, selectedLat, selectedLng, selectedCity],
     queryFn: () =>
       shopsApi
         .list({
           search: searchQuery || undefined,
           type: activeCategory === 'All' ? undefined : activeCategory.toUpperCase(),
+          latitude: selectedLat || undefined,
+          longitude: selectedLng || undefined,
+          city: selectedCity || undefined,
         })
         .then(res => res.data),
   });
 
   const shops: Shop[] = useMemo(() => shopsData?.data || [], [shopsData]);
+
+  const promotionsData = useMemo(() => {
+    if (shops && shops.length > 0) {
+      return shops.slice(0, 3).map((shop, index) => ({
+        id: shop.id,
+        title: shop.name,
+        subtitle: shop.address || 'Premium salon & spa experience nearby',
+        tag: index === 0 ? 'FEATURED' : (index === 1 ? 'RECOMMENDED' : 'POPULAR'),
+        imageUrl: shop.coverUrl || shop.coverPhotoUrl || 'https://images.unsplash.com/photo-1560066984-138dadb4c035?auto=format&fit=crop&q=80&w=800',
+        onPress: () => navigation.navigate('ShopDetail', { shopId: shop.id }),
+      }));
+    }
+    return PROMOTIONS.map(p => ({
+      ...p,
+      onPress: () => {}
+    }));
+  }, [shops, navigation]);
 
   const headerBgColor = scrollY.interpolate({
     inputRange: [0, 100],
@@ -169,17 +267,23 @@ export default function HomeScreen() {
       <StatusBar barStyle="dark-content" translucent backgroundColor="transparent" />
       
       {/* Sticky Premium Header */}
-      <Animated.View style={[
-        styles.header, 
-        { 
-          backgroundColor: headerBgColor, 
-          paddingTop: insets.top + (Spacing.xs),
-          shadowOpacity: headerShadow,
-          elevation: headerShadow.interpolate({ inputRange: [0, 3], outputRange: [0, 8] })
-        }
-      ]}>
-        <View style={styles.headerContent}>
-          <TouchableOpacity style={styles.locationContainer}>
+      <Animated.View 
+        pointerEvents="box-none"
+        style={[
+          styles.header, 
+          { 
+            backgroundColor: headerBgColor, 
+            paddingTop: insets.top + (Spacing.xs),
+            shadowOpacity: headerShadow,
+            elevation: headerShadow.interpolate({ inputRange: [0, 3], outputRange: [0, 8] })
+          }
+        ]}
+      >
+        <View style={styles.headerContent} pointerEvents="box-none">
+          <TouchableOpacity 
+            style={styles.locationContainer}
+            onPress={() => setShowLocationModal(true)}
+          >
             <View style={styles.locIconWrap}>
               <Locate size={18} color={Colors.primary} />
             </View>
@@ -188,14 +292,29 @@ export default function HomeScreen() {
                 <Text style={styles.locLabel}>Current Location</Text>
                 <ChevronDown size={14} color={Colors.textTertiary} />
               </View>
-              <Text style={styles.locValue} numberOfLines={1}>Greater Noida, Uttar Pradesh</Text>
+              <Text style={styles.locValue} numberOfLines={1}>{locationName}</Text>
             </View>
           </TouchableOpacity>
           
-          <TouchableOpacity style={styles.bellBtn}>
-            <Bell size={22} color={Colors.textPrimary} />
-            <View style={styles.bellBadge} />
-          </TouchableOpacity>
+          <View style={styles.headerRightActions}>
+            <TouchableOpacity style={styles.bellBtn} onPress={() => navigation.navigate('Notifications' as any)}>
+              <Bell size={22} color={Colors.textPrimary} />
+              <View style={styles.bellBadge} />
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={styles.avatarBtn}
+              onPress={() => navigation.navigate('Profile' as any)}
+            >
+              {user?.avatarUrl ? (
+                <Image source={{ uri: user.avatarUrl }} style={styles.avatarImage} />
+              ) : (
+                <View style={styles.avatarPlaceholder}>
+                  <User size={18} color={Colors.primary} />
+                </View>
+              )}
+            </TouchableOpacity>
+          </View>
         </View>
       </Animated.View>
 
@@ -259,7 +378,47 @@ export default function HomeScreen() {
         </ScrollView>
 
         {/* Promotions */}
-        <Carousel data={PROMOTIONS} />
+        <Carousel data={promotionsData} />
+
+        {/* Why Overline Section (User Benefits for Indian Market) */}
+        <View style={styles.benefitsSection}>
+          <Text style={styles.benefitsSectionTitle}>Why Book on Overline? ⚡</Text>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            contentContainerStyle={styles.benefitsScroll}
+          >
+            <View style={[styles.benefitCard, { backgroundColor: '#EEF2F6' }]}>
+              <Text style={styles.benefitIcon}>⏱️</Text>
+              <Text style={styles.benefitTitle}>Zero Waiting</Text>
+              <Text style={styles.benefitDesc}>Arrive exactly when it's your turn. Save 30-45 minutes on every visit.</Text>
+            </View>
+            
+            <View style={[styles.benefitCard, { backgroundColor: '#ECFDF5' }]}>
+              <Text style={styles.benefitIcon}>💰</Text>
+              <Text style={styles.benefitTitle}>Direct Pricing</Text>
+              <Text style={styles.benefitDesc}>Zero platform charges. Pay the absolute lowest price directly to the shop.</Text>
+            </View>
+
+            <View style={[styles.benefitCard, { backgroundColor: '#FDF2F8' }]}>
+              <Text style={styles.benefitIcon}>📲</Text>
+              <Text style={styles.benefitTitle}>Live Tracking</Text>
+              <Text style={styles.benefitDesc}>Real-time token positions, estimated wait times, and WhatsApp sound alerts.</Text>
+            </View>
+
+            <View style={[styles.benefitCard, { backgroundColor: '#FFFBEB' }]}>
+              <Text style={styles.benefitIcon}>🛡️</Text>
+              <Text style={styles.benefitTitle}>100% Verified</Text>
+              <Text style={styles.benefitDesc}>Browse genuine Google Reviews. No fake listings or bots.</Text>
+            </View>
+
+            <View style={[styles.benefitCard, { backgroundColor: '#F0F9FF' }]}>
+              <Text style={styles.benefitIcon}>📄</Text>
+              <Text style={styles.benefitTitle}>Digital Rx Sync</Text>
+              <Text style={styles.benefitDesc}>Get clinic prescriptions, recommended tests, and follow-ups synced to your app.</Text>
+            </View>
+          </ScrollView>
+        </View>
 
         {/* Section Header */}
         <View style={styles.sectionHeader}>
@@ -274,22 +433,21 @@ export default function HomeScreen() {
         </View>
 
         {/* Shop List */}
-        <FlatList
-          data={shops}
-          renderItem={renderShop}
-          keyExtractor={(item) => item.id}
-          scrollEnabled={false}
-          contentContainerStyle={styles.shopList}
-          ListEmptyComponent={
-            isLoading ? (
-              <ActivityIndicator color={Colors.primary} style={{ marginTop: 40 }} />
-            ) : (
-              <View style={styles.emptyState}>
-                <Text style={styles.emptyText}>No experience found nearby</Text>
-              </View>
-            )
-          }
-        />
+        <View style={styles.shopList}>
+          {shops.length > 0 ? (
+            shops.map((shop) => (
+              <React.Fragment key={shop.id}>
+                {renderShop({ item: shop })}
+              </React.Fragment>
+            ))
+          ) : isLoading ? (
+            <ActivityIndicator color={Colors.primary} style={{ marginTop: 40 }} />
+          ) : (
+            <View style={styles.emptyState}>
+              <Text style={styles.emptyText}>No experience found nearby</Text>
+            </View>
+          )}
+        </View>
 
         <View style={{ height: 100 }} />
       </ScrollView>
@@ -302,6 +460,126 @@ export default function HomeScreen() {
         <MapIcon size={20} color="#FFF" />
         <Text style={styles.mapToggleText}>View Map</Text>
       </TouchableOpacity>
+
+      {/* Location Selector Modal */}
+      <Modal
+        visible={showLocationModal}
+        animationType="slide"
+        transparent={true}
+        onRequestClose={() => setShowLocationModal(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Choose Location</Text>
+              <TouchableOpacity onPress={() => setShowLocationModal(false)} style={styles.modalCloseBtn}>
+                <X size={20} color={Colors.textPrimary} />
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 40 }}>
+              {/* GPS Auto-detect */}
+              <TouchableOpacity 
+                style={styles.gpsOption}
+                onPress={async () => {
+                  setShowLocationModal(false);
+                  Geolocation.getCurrentPosition(
+                    async (pos) => {
+                      const { latitude, longitude } = pos.coords;
+                      setSelectedLat(latitude);
+                      setSelectedLng(longitude);
+                      setSelectedCity(null);
+                      try {
+                        const response = await fetch(
+                          `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`,
+                          { headers: { 'User-Agent': 'OverlineApp/1.0' } }
+                        );
+                        const data = await response.json();
+                        if (data && data.address) {
+                          const city = data.address.city || data.address.town || data.address.suburb || '';
+                          const state = data.address.state || '';
+                          setLocationName(city ? `${city}, ${state}` : `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`);
+                        }
+                      } catch {
+                        setLocationName(`${latitude.toFixed(4)}, ${longitude.toFixed(4)}`);
+                      }
+                    },
+                    (err) => Alert.alert('Error', 'Unable to fetch GPS: ' + err.message),
+                    { enableHighAccuracy: true, timeout: 15000 }
+                  );
+                }}
+              >
+                <Locate size={18} color={Colors.primary} />
+                <Text style={styles.gpsText}>Detect Current GPS Location</Text>
+              </TouchableOpacity>
+
+              {/* Manual Input Address */}
+              <Text style={styles.modalSubtitle}>MANUAL ADDRESS SEARCH</Text>
+              <View style={styles.manualInputRow}>
+                <TextInput
+                  value={customAddress}
+                  onChangeText={setCustomAddress}
+                  placeholder="Enter city or coordinates (e.g. Vidisha)"
+                  placeholderTextColor={Colors.textTertiary}
+                  style={styles.modalInput}
+                />
+                <TouchableOpacity 
+                  style={styles.modalApplyBtn}
+                  onPress={async () => {
+                    if (!customAddress.trim()) return;
+                    setShowLocationModal(false);
+                    const query = customAddress.trim();
+                    setLocationName(query);
+                    const coordsMatch = query.match(/^([-+]?\d{1,2}\.\d+),\s*([-+]?\d{1,3}\.\d+)$/);
+                    if (coordsMatch) {
+                      const lat = parseFloat(coordsMatch[1]);
+                      const lng = parseFloat(coordsMatch[2]);
+                      setSelectedLat(lat);
+                      setSelectedLng(lng);
+                      setSelectedCity(null);
+                    } else {
+                      setSelectedCity(query);
+                      setSelectedLat(null);
+                      setSelectedLng(null);
+                    }
+                  }}
+                >
+                  <Text style={styles.modalApplyBtnText}>Apply</Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* Popular Indian Cities */}
+              <Text style={styles.modalSubtitle}>POPULAR CITIES (TEST DEMO)</Text>
+              <View style={styles.citiesGrid}>
+                {[
+                  { name: 'Vidisha', lat: 23.5251, lng: 77.8081 },
+                  { name: 'Noida', lat: 28.5355, lng: 77.3910 },
+                  { name: 'Greater Noida', lat: 28.4595, lng: 77.4938 },
+                  { name: 'Delhi NCR', lat: 28.6139, lng: 77.2090 },
+                  { name: 'Mumbai', lat: 19.0760, lng: 72.8777 },
+                  { name: 'Bangalore', lat: 12.9716, lng: 77.5946 },
+                  { name: 'Pune', lat: 18.5204, lng: 73.8567 },
+                ].map((city) => (
+                  <TouchableOpacity
+                    key={city.name}
+                    style={styles.cityChip}
+                    onPress={() => {
+                      setShowLocationModal(false);
+                      setLocationName(city.name);
+                      setSelectedCity(city.name);
+                      setSelectedLat(city.lat);
+                      setSelectedLng(city.lng);
+                    }}
+                  >
+                    <MapPin size={12} color={Colors.textSecondary} />
+                    <Text style={styles.cityChipText}>{city.name}</Text>
+                  </TouchableOpacity>
+                ))}
+              </View>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -357,6 +635,11 @@ const styles = StyleSheet.create({
     color: Colors.textPrimary,
     marginTop: -2,
   },
+  headerRightActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: Spacing.sm,
+  },
   bellBtn: {
     width: 44,
     height: 44,
@@ -365,6 +648,27 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     position: 'relative',
+  },
+  avatarBtn: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    overflow: 'hidden',
+    backgroundColor: '#F3F4F6',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  avatarImage: {
+    width: '100%',
+    height: '100%',
+    resizeMode: 'cover',
+  },
+  avatarPlaceholder: {
+    width: '100%',
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(59, 130, 246, 0.1)',
   },
   bellBadge: {
     position: 'absolute',
@@ -618,5 +922,140 @@ const styles = StyleSheet.create({
     color: Colors.textTertiary,
     fontSize: 14,
     fontWeight: '600',
+  },
+  benefitsSection: {
+    paddingVertical: Spacing.md,
+  },
+  benefitsSectionTitle: {
+    fontSize: FontSizes.lg,
+    fontWeight: FontWeights.bold,
+    color: Colors.textPrimary,
+    marginHorizontal: Spacing.xl,
+    marginBottom: Spacing.sm,
+  },
+  benefitsScroll: {
+    paddingHorizontal: Spacing.xl,
+    gap: Spacing.md,
+  },
+  benefitCard: {
+    width: 170,
+    padding: Spacing.md,
+    borderRadius: BorderRadius.xl,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+  },
+  benefitIcon: {
+    fontSize: 24,
+    marginBottom: 6,
+  },
+  benefitTitle: {
+    fontSize: FontSizes.md,
+    fontWeight: FontWeights.bold,
+    color: '#1E293B',
+    marginBottom: 4,
+  },
+  benefitDesc: {
+    fontSize: 11,
+    color: '#64748B',
+    lineHeight: 15,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0,0,0,0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: '#FFF',
+    borderTopLeftRadius: BorderRadius['2xl'],
+    borderTopRightRadius: BorderRadius['2xl'],
+    padding: Spacing.xl,
+    maxHeight: '80%',
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: Spacing.lg,
+  },
+  modalTitle: {
+    fontSize: FontSizes.lg,
+    fontWeight: FontWeights.bold,
+    color: Colors.textPrimary,
+  },
+  modalCloseBtn: {
+    padding: 4,
+  },
+  gpsOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: Spacing.md,
+    backgroundColor: '#F1F5F9',
+    borderRadius: BorderRadius.xl,
+    gap: Spacing.sm,
+    marginBottom: Spacing.lg,
+  },
+  gpsText: {
+    fontSize: FontSizes.md,
+    fontWeight: FontWeights.bold,
+    color: Colors.primary,
+  },
+  modalSubtitle: {
+    fontSize: 10,
+    fontWeight: FontWeights.bold,
+    color: Colors.textTertiary,
+    letterSpacing: 1,
+    marginBottom: Spacing.sm,
+    marginTop: Spacing.sm,
+  },
+  manualInputRow: {
+    flexDirection: 'row',
+    gap: Spacing.sm,
+    marginBottom: Spacing.lg,
+  },
+  modalInput: {
+    flex: 1,
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderRadius: BorderRadius.xl,
+    paddingHorizontal: Spacing.md,
+    height: 48,
+    fontSize: FontSizes.sm,
+    color: Colors.textPrimary,
+    fontWeight: '600',
+  },
+  modalApplyBtn: {
+    backgroundColor: Colors.primary,
+    borderRadius: BorderRadius.xl,
+    paddingHorizontal: Spacing.xl,
+    justifyContent: 'center',
+    alignItems: 'center',
+    height: 48,
+  },
+  modalApplyBtnText: {
+    color: '#FFF',
+    fontWeight: '800',
+    fontSize: FontSizes.sm,
+  },
+  citiesGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: Spacing.sm,
+  },
+  cityChip: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderRadius: BorderRadius.full,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: 8,
+    gap: 6,
+  },
+  cityChipText: {
+    fontSize: FontSizes.xs,
+    color: Colors.textSecondary,
+    fontWeight: '700',
   },
 });
