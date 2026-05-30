@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import {
   View, Text, FlatList, StyleSheet, TouchableOpacity,
-  RefreshControl, ActivityIndicator, ScrollView,
+  RefreshControl, ActivityIndicator, ScrollView, Animated,
 } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigation } from '@react-navigation/native';
@@ -33,46 +33,68 @@ export default function MyBookingsScreen() {
 
   const displayBookings = bookings;
 
-  const renderBooking = ({ item }: { item: Booking }) => {
+  const AnimatedBookingCard = React.useCallback(({ item, index }: { item: Booking; index: number }) => {
     const config = BookingStatusConfig[item.status] || { color: Colors.textTertiary, bg: Colors.surfaceLight, icon: '•' };
+    const scaleAnim = React.useRef(new Animated.Value(1)).current;
+    const fadeAnim = React.useRef(new Animated.Value(0)).current;
+    const slideAnim = React.useRef(new Animated.Value(20)).current;
+
+    React.useEffect(() => {
+      Animated.parallel([
+        Animated.timing(fadeAnim, { toValue: 1, duration: 350, delay: index * 60, useNativeDriver: true }),
+        Animated.timing(slideAnim, { toValue: 0, duration: 350, delay: index * 60, useNativeDriver: true }),
+      ]).start();
+    }, []);
+
+    const onPressIn = () => {
+      Animated.spring(scaleAnim, { toValue: 0.97, friction: 8, useNativeDriver: true }).start();
+    };
+    const onPressOut = () => {
+      Animated.spring(scaleAnim, { toValue: 1, friction: 5, useNativeDriver: true }).start();
+    };
+
     return (
-      <TouchableOpacity
-        style={styles.bookingCard}
-        onPress={() => navigation.navigate('BookingDetail', { bookingId: item.id })}
-        activeOpacity={0.85}>
-        <View style={styles.cardHeader}>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.shopName}>{item.shop?.name}</Text>
-            <Text style={styles.bookingNumber}>{item.bookingNumber}</Text>
+      <Animated.View style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }, { scale: scaleAnim }] }}>
+        <TouchableOpacity
+          style={styles.bookingCard}
+          onPress={() => navigation.navigate('BookingDetail', { bookingId: item.id })}
+          onPressIn={onPressIn}
+          onPressOut={onPressOut}
+          activeOpacity={1}>
+          <View style={styles.cardHeader}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.shopName}>{item.shop?.name}</Text>
+              <Text style={styles.bookingNumber}>{item.bookingNumber}</Text>
+            </View>
+            <Badge text={item.status.replace('_', ' ')} color={config.color} bgColor={config.bg} size="sm" />
           </View>
-          <Badge text={item.status.replace('_', ' ')} color={config.color} bgColor={config.bg} size="sm" />
-        </View>
 
-        <View style={styles.cardBody}>
-          <View style={styles.detailRow}>
-            <Calendar color={Colors.textSecondary} size={16} style={{ marginRight: 6 }} />
-            <Text style={styles.detailText}>{format(new Date(item.startTime), 'EEE, MMM d, yyyy')}</Text>
+          <View style={styles.cardBody}>
+            <View style={styles.detailRow}>
+              <Calendar color={Colors.textSecondary} size={16} style={{ marginRight: 6 }} />
+              <Text style={styles.detailText}>{format(new Date(item.startTime), 'EEE, MMM d, yyyy')}</Text>
+            </View>
+            <View style={styles.detailRow}>
+              <Clock color={Colors.textSecondary} size={16} style={{ marginRight: 6 }} />
+              <Text style={styles.detailText}>{format(new Date(item.startTime), 'h:mm a')}</Text>
+            </View>
           </View>
-          <View style={styles.detailRow}>
-            <Clock color={Colors.textSecondary} size={16} style={{ marginRight: 6 }} />
-            <Text style={styles.detailText}>{format(new Date(item.startTime), 'h:mm a')}</Text>
-          </View>
-        </View>
 
-        <View style={styles.cardFooter}>
-          <Text style={styles.servicesText}>{item.services?.length || 0} service(s)</Text>
-          <Text style={styles.totalText}>₹{item.displayAmount}</Text>
-        </View>
-
-        {activeTab === 'upcoming' && (
-          <View style={styles.codeStrip}>
-            <Text style={styles.codeLabel}>Code:</Text>
-            <Text style={styles.codeValue}>{item.verificationCode}</Text>
+          <View style={styles.cardFooter}>
+            <Text style={styles.servicesText}>{item.services?.length || 0} service(s)</Text>
+            <Text style={styles.totalText}>₹{item.displayAmount}</Text>
           </View>
-        )}
-      </TouchableOpacity>
+
+          {activeTab === 'upcoming' && (
+            <View style={styles.codeStrip}>
+              <Text style={styles.codeLabel}>Code:</Text>
+              <Text style={styles.codeValue}>{item.verificationCode}</Text>
+            </View>
+          )}
+        </TouchableOpacity>
+      </Animated.View>
     );
-  };
+  }, [activeTab, navigation]);
 
   if (!isAuthenticated) {
     return (
@@ -147,7 +169,7 @@ export default function MyBookingsScreen() {
       <FlatList
         data={displayBookings}
         keyExtractor={item => item.id}
-        renderItem={renderBooking}
+        renderItem={({ item, index }) => <AnimatedBookingCard item={item} index={index} />}
         contentContainerStyle={styles.listContent}
         ListEmptyComponent={
           <EmptyState

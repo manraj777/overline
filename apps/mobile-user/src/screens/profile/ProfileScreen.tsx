@@ -1,4 +1,4 @@
-  import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   View, 
   Text, 
@@ -11,8 +11,12 @@ import {
   Linking, 
   Image,
   Dimensions,
-  Platform
+  Platform,
+  Modal,
+  TextInput,
+  Switch
 } from 'react-native';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -37,7 +41,8 @@ import {
   Settings,
   CreditCard,
   Heart,
-  ExternalLink
+  ExternalLink,
+  X
 } from 'lucide-react-native';
 import { RootStackParamList } from '../../types';
 
@@ -54,6 +59,97 @@ type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 export default function ProfileScreen() {
   const navigation = useNavigation<NavigationProp>();
   const { user, logout, isAuthenticated } = useAuthStore();
+
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [addressesOpen, setAddressesOpen] = useState(false);
+
+  // Settings States
+  const [pushEnabled, setPushEnabled] = useState(true);
+  const [smsEnabled, setSmsEnabled] = useState(true);
+  const [whatsappEnabled, setWhatsappEnabled] = useState(true);
+  const [darkMode, setDarkMode] = useState(false);
+
+  // Saved Addresses States
+  const [addresses, setAddresses] = useState<Array<{ id: string; label: string; address: string }>>([]);
+  const [newLabel, setNewLabel] = useState('');
+  const [newAddress, setNewAddress] = useState('');
+
+  // Load settings and addresses on mount
+  useEffect(() => {
+    async function loadSettingsAndAddresses() {
+      try {
+        const stored = await AsyncStorage.getItem('user_saved_addresses');
+        if (stored) {
+          setAddresses(JSON.parse(stored));
+        } else {
+          const initial = [
+            { id: '1', label: 'Office (Noida)', address: 'G-12, Sector 63, Noida, UP' },
+            { id: '2', label: 'Home (Delhi)', address: '45, Connaught Place, New Delhi, DL' }
+          ];
+          await AsyncStorage.setItem('user_saved_addresses', JSON.stringify(initial));
+          setAddresses(initial);
+        }
+
+        const pushVal = await AsyncStorage.getItem('settings_push');
+        if (pushVal !== null) setPushEnabled(pushVal === 'true');
+        const smsVal = await AsyncStorage.getItem('settings_sms');
+        if (smsVal !== null) setSmsEnabled(smsVal === 'true');
+        const waVal = await AsyncStorage.getItem('settings_wa');
+        if (waVal !== null) setWhatsappEnabled(waVal === 'true');
+      } catch (err) {
+        console.warn('[ProfileScreen] Error loading data:', err);
+      }
+    }
+    loadSettingsAndAddresses();
+  }, []);
+
+  const saveAddresses = async (updated: Array<{ id: string; label: string; address: string }>) => {
+    try {
+      setAddresses(updated);
+      await AsyncStorage.setItem('user_saved_addresses', JSON.stringify(updated));
+    } catch (err) {
+      console.warn('[ProfileScreen] Error saving addresses:', err);
+    }
+  };
+
+  const handleAddAddress = () => {
+    if (!newLabel.trim() || !newAddress.trim()) {
+      Alert.alert('Error', 'Please fill in both label and address fields');
+      return;
+    }
+    const newItem = {
+      id: Date.now().toString(),
+      label: newLabel.trim(),
+      address: newAddress.trim()
+    };
+    const updated = [...addresses, newItem];
+    saveAddresses(updated);
+    setNewLabel('');
+    setNewAddress('');
+  };
+
+  const handleDeleteAddress = (id: string) => {
+    const updated = addresses.filter(item => item.id !== id);
+    saveAddresses(updated);
+  };
+
+  const togglePush = async () => {
+    const nextVal = !pushEnabled;
+    setPushEnabled(nextVal);
+    await AsyncStorage.setItem('settings_push', String(nextVal));
+  };
+
+  const toggleSms = async () => {
+    const nextVal = !smsEnabled;
+    setSmsEnabled(nextVal);
+    await AsyncStorage.setItem('settings_sms', String(nextVal));
+  };
+
+  const toggleWhatsapp = async () => {
+    const nextVal = !whatsappEnabled;
+    setWhatsappEnabled(nextVal);
+    await AsyncStorage.setItem('settings_wa', String(nextVal));
+  };
   
   const { data: profile, isLoading } = useQuery<UserProfile>({
     queryKey: ['profile'],
@@ -119,14 +215,14 @@ export default function ProfileScreen() {
       title: 'Management',
       items: [
         { id: 'edit', label: 'Personal Information', icon: <User size={20} color="#10B981" />, onPress: () => navigation.navigate('EditProfile') },
-        { id: 'addresses', label: 'Saved Addresses', icon: <MapPin size={20} color="#8B5CF6" />, onPress: () => {} },
-        { id: 'settings', label: 'App Settings', icon: <Settings size={20} color="#64748B" />, onPress: () => {} },
+        { id: 'addresses', label: 'Saved Addresses', icon: <MapPin size={20} color="#8B5CF6" />, onPress: () => setAddressesOpen(true) },
+        { id: 'settings', label: 'App Settings', icon: <Settings size={20} color="#64748B" />, onPress: () => setSettingsOpen(true) },
       ]
     },
     {
       title: 'Assistance & Legal',
       items: [
-        { id: 'help', label: 'Help Center', icon: <HelpCircle size={20} color="#EC4899" />, onPress: () => Linking.openURL('https://overline.in/support') },
+        { id: 'help', label: 'Help Center', icon: <HelpCircle size={20} color="#EC4899" />, onPress: () => Linking.openURL('mailto:support@overline.in') },
         { id: 'rate', label: 'Rate the App', icon: <Star size={20} color="#FACC15" />, onPress: () => {} },
         { id: 'terms', label: 'Terms of Service', icon: <FileText size={20} color="#94A3B8" />, onPress: () => Linking.openURL('https://overline.in/terms') },
       ]
@@ -140,7 +236,7 @@ export default function ProfileScreen() {
         {/* Modern Header */}
         <View style={styles.header}>
           <View style={styles.headerBg} />
-          <TouchableOpacity style={styles.avatarWrap} activeOpacity={0.9}>
+          <View style={styles.avatarWrap}>
             <View style={styles.avatarInner}>
               {(profile?.avatarUrl || user?.avatarUrl) ? (
                 <Image source={{ uri: profile?.avatarUrl || user?.avatarUrl }} style={styles.avatarImage} />
@@ -150,10 +246,7 @@ export default function ProfileScreen() {
                 </Text>
               )}
             </View>
-            <View style={styles.editBadge}>
-              <Settings size={12} color="#FFF" />
-            </View>
-          </TouchableOpacity>
+          </View>
           <Text style={styles.profileName}>{profile?.name || user?.name}</Text>
           <Text style={styles.profileMeta}>{profile?.email || user?.email}</Text>
         </View>
@@ -214,6 +307,110 @@ export default function ProfileScreen() {
         <Text style={styles.versionInfo}>Overline v2.0.1 (Stable)</Text>
         <View style={{ height: 100 }} />
       </ScrollView>
+
+      {/* App Settings Modal */}
+      <Modal visible={settingsOpen} animationType="slide" transparent>
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>App Settings</Text>
+              <TouchableOpacity onPress={() => setSettingsOpen(false)} style={styles.closeBtn}>
+                <X size={20} color={Colors.textPrimary} />
+              </TouchableOpacity>
+            </View>
+            <ScrollView contentContainerStyle={styles.modalScroll}>
+              <View style={styles.settingOption}>
+                <View style={styles.settingTextWrap}>
+                  <Text style={styles.settingLabel}>Push Notifications</Text>
+                  <Text style={styles.settingSub}>Receive updates about your booking status instantly</Text>
+                </View>
+                <Switch value={pushEnabled} onValueChange={togglePush} thumbColor={pushEnabled ? Colors.primary : "#f4f3f4"} trackColor={{ false: "#767577", true: Colors.primaryLight }} />
+              </View>
+              <View style={styles.settingOption}>
+                <View style={styles.settingTextWrap}>
+                  <Text style={styles.settingLabel}>SMS Notifications</Text>
+                  <Text style={styles.settingSub}>Get text messages for reminders and updates</Text>
+                </View>
+                <Switch value={smsEnabled} onValueChange={toggleSms} thumbColor={smsEnabled ? Colors.primary : "#f4f3f4"} trackColor={{ false: "#767577", true: Colors.primaryLight }} />
+              </View>
+              <View style={styles.settingOption}>
+                <View style={styles.settingTextWrap}>
+                  <Text style={styles.settingLabel}>WhatsApp Notifications</Text>
+                  <Text style={styles.settingSub}>Get updates and reminders via WhatsApp</Text>
+                </View>
+                <Switch value={whatsappEnabled} onValueChange={toggleWhatsapp} thumbColor={whatsappEnabled ? Colors.primary : "#f4f3f4"} trackColor={{ false: "#767577", true: Colors.primaryLight }} />
+              </View>
+              <View style={styles.settingOption}>
+                <View style={styles.settingTextWrap}>
+                  <Text style={styles.settingLabel}>Dark Mode (System Default)</Text>
+                  <Text style={styles.settingSub}>Sync interface with device theme preferences</Text>
+                </View>
+                <Switch value={darkMode} onValueChange={setDarkMode} thumbColor={darkMode ? Colors.primary : "#f4f3f4"} trackColor={{ false: "#767577", true: Colors.primaryLight }} />
+              </View>
+              <View style={[styles.settingOption, { borderBottomWidth: 0 }]}>
+                <View style={styles.settingTextWrap}>
+                  <Text style={styles.settingLabel}>Default App Timezone</Text>
+                  <Text style={styles.settingSub}>Locked to regional server timezone</Text>
+                </View>
+                <Text style={styles.timezoneBadge}>Asia/Kolkata</Text>
+              </View>
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+
+      {/* Saved Addresses Modal */}
+      <Modal visible={addressesOpen} animationType="slide" transparent>
+        <View style={styles.modalBackdrop}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Saved Addresses</Text>
+              <TouchableOpacity onPress={() => setAddressesOpen(false)} style={styles.closeBtn}>
+                <X size={20} color={Colors.textPrimary} />
+              </TouchableOpacity>
+            </View>
+            <ScrollView contentContainerStyle={styles.modalScroll}>
+              <Text style={styles.formSectionTitle}>Add New Address</Text>
+              <View style={styles.addressForm}>
+                <TextInput
+                  placeholder="Address Label (e.g. Home, Office, Gym)"
+                  value={newLabel}
+                  onChangeText={setNewLabel}
+                  style={styles.addressInput}
+                  placeholderTextColor="#94A3B8"
+                />
+                <TextInput
+                  placeholder="Full Address Description"
+                  value={newAddress}
+                  onChangeText={setNewAddress}
+                  style={[styles.addressInput, { height: 60 }]}
+                  multiline
+                  placeholderTextColor="#94A3B8"
+                />
+                <TouchableOpacity onPress={handleAddAddress} style={styles.addAddressBtn}>
+                  <Text style={styles.addAddressBtnText}>Add Address</Text>
+                </TouchableOpacity>
+              </View>
+
+              <Text style={[styles.formSectionTitle, { marginTop: 20 }]}>My Addresses</Text>
+              {addresses.map((item) => (
+                <View key={item.id} style={styles.addressCard}>
+                  <View style={styles.addressCardInfo}>
+                    <Text style={styles.addressCardLabel}>{item.label}</Text>
+                    <Text style={styles.addressCardText}>{item.address}</Text>
+                  </View>
+                  <TouchableOpacity onPress={() => handleDeleteAddress(item.id)} style={styles.deleteAddressBtn}>
+                    <Text style={styles.deleteAddressText}>Delete</Text>
+                  </TouchableOpacity>
+                </View>
+              ))}
+              {addresses.length === 0 && (
+                <Text style={styles.noAddressesText}>No saved addresses yet.</Text>
+              )}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
     </View>
   );
 }
@@ -480,5 +677,147 @@ const styles = StyleSheet.create({
     fontSize: 14,
     fontWeight: '900',
     letterSpacing: 1.5,
+  },
+  modalBackdrop: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'flex-end',
+  },
+  modalContent: {
+    backgroundColor: '#FFF',
+    borderTopLeftRadius: BorderRadius.xl * 1.5,
+    borderTopRightRadius: BorderRadius.xl * 1.5,
+    maxHeight: '85%',
+    paddingBottom: 40,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    padding: Spacing.xl,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+  },
+  modalTitle: {
+    fontSize: FontSizes.lg,
+    fontWeight: FontWeights.bold,
+    color: '#0F172A',
+  },
+  closeBtn: {
+    padding: 4,
+    borderRadius: BorderRadius.sm,
+  },
+  modalScroll: {
+    padding: Spacing.xl,
+  },
+  settingOption: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: Spacing.lg,
+    borderBottomWidth: 1,
+    borderBottomColor: '#F1F5F9',
+  },
+  settingTextWrap: {
+    flex: 1,
+    marginRight: Spacing.md,
+  },
+  settingLabel: {
+    fontSize: FontSizes.md,
+    fontWeight: FontWeights.bold,
+    color: '#1E293B',
+  },
+  settingSub: {
+    fontSize: FontSizes.xs,
+    color: '#64748B',
+    marginTop: 2,
+  },
+  timezoneBadge: {
+    backgroundColor: '#F1F5F9',
+    color: '#475569',
+    fontSize: FontSizes.xs,
+    fontWeight: FontWeights.bold,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.xs,
+    borderRadius: BorderRadius.md,
+  },
+  formSectionTitle: {
+    fontSize: FontSizes.sm,
+    fontWeight: FontWeights.bold,
+    color: '#64748B',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+    marginBottom: Spacing.md,
+  },
+  addressForm: {
+    backgroundColor: '#F8FAFC',
+    borderRadius: BorderRadius.lg,
+    padding: Spacing.md,
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    gap: Spacing.sm,
+  },
+  addressInput: {
+    backgroundColor: '#FFF',
+    borderWidth: 1,
+    borderColor: '#CBD5E1',
+    borderRadius: BorderRadius.md,
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.xs,
+    fontSize: FontSizes.sm,
+    color: '#1E293B',
+  },
+  addAddressBtn: {
+    backgroundColor: Colors.primary,
+    borderRadius: BorderRadius.md,
+    paddingVertical: Spacing.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: Spacing.xs,
+  },
+  addAddressBtnText: {
+    color: '#FFF',
+    fontWeight: FontWeights.bold,
+    fontSize: FontSizes.sm,
+  },
+  addressCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    backgroundColor: '#FFF',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderRadius: BorderRadius.lg,
+    padding: Spacing.md,
+    marginBottom: Spacing.sm,
+    gap: Spacing.md,
+  },
+  addressCardInfo: {
+    flex: 1,
+  },
+  addressCardLabel: {
+    fontSize: FontSizes.sm,
+    fontWeight: FontWeights.bold,
+    color: '#1E293B',
+  },
+  addressCardText: {
+    fontSize: FontSizes.xs,
+    color: '#64748B',
+    marginTop: 2,
+  },
+  deleteAddressBtn: {
+    paddingHorizontal: Spacing.md,
+    paddingVertical: Spacing.xs,
+  },
+  deleteAddressText: {
+    color: '#EF4444',
+    fontSize: FontSizes.xs,
+    fontWeight: FontWeights.bold,
+  },
+  noAddressesText: {
+    textAlign: 'center',
+    color: '#94A3B8',
+    fontSize: FontSizes.sm,
+    marginVertical: Spacing.xl,
   },
 });

@@ -639,11 +639,12 @@ export class BookingsService {
     const customerPhone = booking.user?.phone || booking.customerPhone || 'N/A';
     const serviceNames = booking.services?.map((s: any) => s.serviceName).join(', ') || 'Service';
     const startTime = new Date(booking.startTime);
-    const timeStr = startTime.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit' });
+    const timeStr = startTime.toLocaleTimeString('en-IN', { hour: '2-digit', minute: '2-digit', timeZone: 'Asia/Kolkata' });
     const dateStr = startTime.toLocaleDateString('en-IN', {
       day: '2-digit',
       month: 'short',
       year: 'numeric',
+      timeZone: 'Asia/Kolkata',
     });
     const shopAddress = booking.shop?.address || shop?.address || 'Address not available';
 

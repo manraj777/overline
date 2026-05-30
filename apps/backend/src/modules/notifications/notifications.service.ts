@@ -325,10 +325,12 @@ export class NotificationsService {
       year: 'numeric',
       month: 'long',
       day: 'numeric',
+      timeZone: 'Asia/Kolkata',
     });
     const timeStr = startTime.toLocaleTimeString('en-IN', {
       hour: '2-digit',
       minute: '2-digit',
+      timeZone: 'Asia/Kolkata',
     });
 
     // Every new booking starts in PENDING_APPROVAL. Use "Placed" copy until
@@ -410,6 +412,7 @@ export class NotificationsService {
     const timeStr = startTime.toLocaleTimeString('en-IN', {
       hour: '2-digit',
       minute: '2-digit',
+      timeZone: 'Asia/Kolkata',
     });
 
     const message =

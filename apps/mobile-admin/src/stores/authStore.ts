@@ -139,6 +139,7 @@ export const useAuthStore = create<AuthState>((set) => ({
     // Staff only belongs to one shop in this context
     const shops = [{ id: shopId, name: 'Assigned Shop' }];
     const userWithShops = { ...user, shops };
+    await AsyncStorage.setItem('cachedAdminUser', JSON.stringify(userWithShops));
 
     set({
       user: userWithShops,
@@ -175,6 +176,7 @@ export const useAuthStore = create<AuthState>((set) => ({
 
     const userWithShops = {...user, shops};
     const defaultShopId = shops[0]?.id || null;
+    await AsyncStorage.setItem('cachedAdminUser', JSON.stringify(userWithShops));
 
     set({
       user: userWithShops,
@@ -240,6 +242,8 @@ export const useAuthStore = create<AuthState>((set) => ({
       throw new Error('Access denied. Please use staff login for this account.');
     }
 
+    await AsyncStorage.setItem('cachedAdminUser', JSON.stringify(userWithShops));
+
     set({
       user: userWithShops,
       isAuthenticated: true,
@@ -289,6 +293,7 @@ export const useAuthStore = create<AuthState>((set) => ({
         try {
           const normalizedPhone = user.phone.startsWith('+') ? user.phone : `+91${user.phone.replace(/\D/g, '')}`;
           await otpApi.send(normalizedPhone, 'LOGIN');
+          await AsyncStorage.setItem('cachedAdminUser', JSON.stringify(userWithShops));
           set({
             user: userWithShops,
             pendingOtpVerification: true,
@@ -306,6 +311,7 @@ export const useAuthStore = create<AuthState>((set) => ({
       }
 
       // No phone or OTP send failed - log in directly
+      await AsyncStorage.setItem('cachedAdminUser', JSON.stringify(userWithShops));
       set({
         user: userWithShops,
         isAuthenticated: true,
@@ -319,7 +325,7 @@ export const useAuthStore = create<AuthState>((set) => ({
     }
   },
 
-  completeOtpVerification: () => {
+  completeOtpVerification: async () => {
     const state = useAuthStore.getState();
     const existingUser = state.user;
 
@@ -333,6 +339,8 @@ export const useAuthStore = create<AuthState>((set) => ({
       });
       return;
     }
+
+    await AsyncStorage.setItem('cachedAdminUser', JSON.stringify(existingUser));
 
     set({
       isAuthenticated: true,
@@ -352,6 +360,7 @@ export const useAuthStore = create<AuthState>((set) => ({
 
     await AsyncStorage.removeItem('admin_token');
     await AsyncStorage.removeItem('admin_refresh_token');
+    await AsyncStorage.removeItem('cachedAdminUser');
     set({
       user: null,
       isAuthenticated: false,
@@ -369,6 +378,24 @@ export const useAuthStore = create<AuthState>((set) => ({
     try {
       await initApiUrl();
       const token = await AsyncStorage.getItem('admin_token');
+      const cachedUserStr = await AsyncStorage.getItem('cachedAdminUser');
+      let cachedUser: any = null;
+      if (cachedUserStr) {
+        try {
+          cachedUser = JSON.parse(cachedUserStr);
+        } catch (_) {}
+      }
+
+      if (token && cachedUser) {
+        set({
+          user: cachedUser,
+          isAuthenticated: true,
+          token,
+          isOwner: cachedUser.role === 'OWNER' || cachedUser.role === 'SUPER_ADMIN',
+          isStaff: cachedUser.role === 'STAFF',
+          isLoading: false,
+        });
+      }
 
       if (!token) {
         set({isAuthenticated: false, isLoading: false});
@@ -377,7 +404,9 @@ export const useAuthStore = create<AuthState>((set) => ({
 
       const profileRequest = authApi.getProfile();
       const timeoutPromise = new Promise<never>((_, reject) => {
-        setTimeout(() => reject(new Error('Admin auth bootstrap timed out')), 6000);
+        const error = new Error('Admin auth bootstrap timed out');
+        (error as any).isTimeout = true;
+        setTimeout(() => reject(error), 6000);
       });
       const response = await Promise.race([profileRequest, timeoutPromise]);
       const user = response.data as AuthAdminUser;
@@ -402,6 +431,8 @@ export const useAuthStore = create<AuthState>((set) => ({
           ? storedShopId
           : shops[0]?.id || null;
 
+      await AsyncStorage.setItem('cachedAdminUser', JSON.stringify(userWithShops));
+
       set({
         user: userWithShops,
         isAuthenticated: true,
@@ -411,18 +442,25 @@ export const useAuthStore = create<AuthState>((set) => ({
         isStaff,
         token,
       });
-    } catch {
-      await AsyncStorage.removeItem('admin_token');
-      await AsyncStorage.removeItem('admin_refresh_token');
-      set({
-        user: null,
-        isAuthenticated: false,
-        isLoading: false,
-        otpConfirmation: null,
-        isOwner: false,
-        isStaff: false,
-        token: null,
-      });
+    } catch (error: any) {
+      const status = error?.response?.status;
+      const isAuthError = status === 401 || status === 403;
+      if (isAuthError) {
+        await AsyncStorage.removeItem('admin_token');
+        await AsyncStorage.removeItem('admin_refresh_token');
+        await AsyncStorage.removeItem('cachedAdminUser');
+        set({
+          user: null,
+          isAuthenticated: false,
+          isLoading: false,
+          otpConfirmation: null,
+          isOwner: false,
+          isStaff: false,
+          token: null,
+        });
+      } else {
+        set({ isLoading: false });
+      }
     }
   },
 

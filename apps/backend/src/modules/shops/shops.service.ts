@@ -258,26 +258,16 @@ export class ShopsService {
       const lngDelta = radiusKm / (111.32 * Math.cos((latitude * Math.PI) / 180));
 
       andFilters.push({
-        OR: [
-          {
-            AND: [
-              {
-                latitude: {
-                  gte: latitude - latDelta,
-                  lte: latitude + latDelta,
-                },
-              },
-              {
-                longitude: {
-                  gte: longitude - lngDelta,
-                  lte: longitude + lngDelta,
-                },
-              },
-            ],
-          },
-          { latitude: null },
-          { longitude: null },
-        ],
+        latitude: {
+          gte: latitude - latDelta,
+          lte: latitude + latDelta,
+        },
+      });
+      andFilters.push({
+        longitude: {
+          gte: longitude - lngDelta,
+          lte: longitude + lngDelta,
+        },
       });
     }
 

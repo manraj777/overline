@@ -266,7 +266,8 @@ export const shopApi = {
   parseGoogleLink: (url: string) => apiClient.get('/shops/parse-google-link', { params: { url } }),
   getMyShops: () => apiClient.get('/admin/my-shops'),
   getById: (id: string) => apiClient.get(`/shops/${id}`),
-  searchShops: (query: string) => apiClient.get('/shops/search', { params: { q: query } }), // New
+  searchShops: (query: string) => apiClient.get('/shops/search', { params: { q: query } }),
+  autofillFromGoogleMaps: (shopId: string, queryOrUrl: string) => apiClient.post(`/admin/shops/${shopId}/google-autofill`, { queryOrUrl }),
   getSettings: (shopId: string) =>
     apiClient.get(`/admin/shops/${shopId}/settings`),
   updateSettings: (shopId: string, data: any) =>

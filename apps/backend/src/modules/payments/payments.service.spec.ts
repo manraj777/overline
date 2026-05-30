@@ -25,6 +25,7 @@ describe('PaymentsService', () => {
     },
     staffProfile: {
       findUnique: jest.fn(),
+      findFirst: jest.fn().mockResolvedValue({ id: 'sp-1', userId: 'owner-1' }),
       update: jest.fn(),
     },
     $transaction: jest.fn((cb) => cb(mockPrismaService)),
@@ -110,6 +111,7 @@ describe('PaymentsService', () => {
         paymentType: 'PREPAID',
         serviceAmount: { toNumber: () => 500 },
         totalAmount: { toNumber: () => 500 },
+        shop: { ownerId: 'owner-1' },
       });
 
       await service.verifyRazorpayPayment(validPayload);
@@ -149,6 +151,7 @@ describe('PaymentsService', () => {
         paymentType: 'PREPAID',
         serviceAmount: { toNumber: () => 250 },
         totalAmount: { toNumber: () => 250 },
+        shop: { ownerId: 'owner-1' },
       });
 
       await service.verifyRazorpayPayment(validPayload);

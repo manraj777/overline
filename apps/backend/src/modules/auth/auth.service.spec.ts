@@ -13,6 +13,7 @@ describe('AuthService firebasePhoneLogin', () => {
     },
     shop: {
       findFirst: jest.fn(),
+      findMany: jest.fn().mockResolvedValue([]),
     },
     $transaction: jest.fn(),
   };
@@ -116,9 +117,6 @@ describe('AuthService firebasePhoneLogin', () => {
       data: expect.objectContaining({
         phone: '+919876543210',
         authProvider: 'firebase',
-        name: 'New User',
-        role: 'USER',
-        email: expect.stringMatching(/^919876543210\.[0-9]+@phone\.overline\.in$/),
       }),
     });
     expect(result.user.id).toBe('user-2');

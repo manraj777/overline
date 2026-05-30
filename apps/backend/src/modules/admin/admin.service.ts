@@ -9,6 +9,7 @@ import { PrismaService } from '@/common/prisma/prisma.service';
 import { RedisService } from '@/common/redis/redis.service';
 import { QueueService } from '../queue/queue.service';
 import { BookingsService } from '../bookings/bookings.service';
+import { GooglePlacesService } from '../google/google-places.service';
 import { UserRole, StaffRole, BookingStatus, BookingSource, DayOfWeek, Prisma } from '@prisma/client';
 import { CreateWalkInDto } from './dto/create-walk-in.dto';
 import { CreateOwnerShopDto } from './dto/create-owner-shop.dto';
@@ -32,6 +33,7 @@ export class AdminService {
     private redis: RedisService,
     private queueService: QueueService,
     private bookingsService: BookingsService,
+    private googlePlacesService: GooglePlacesService,
   ) {}
 
   /**
@@ -432,6 +434,62 @@ export class AdminService {
     this.queueService.updateQueueStats(booking.shopId).catch(console.error);
 
     return updated;
+  }
+
+  /**
+   * Autofill shop details from Google Maps
+   */
+  async autofillFromGoogleMaps(shopId: string, tenantId: string, queryOrUrl: string) {
+    await this.verifyShopAccess(shopId, tenantId);
+
+    const placeDetails = await this.googlePlacesService.extractPlaceDetails(queryOrUrl);
+
+    // Get current shop to append photos
+    const shop = await this.prisma.shop.findUnique({
+      where: { id: shopId },
+      select: { photoUrls: true, settings: true }
+    });
+
+    if (!shop) {
+      throw new NotFoundException('Shop not found');
+    }
+
+    const currentPhotos = shop.photoUrls || [];
+    const newPhotos = placeDetails.photos || [];
+    
+    // Combine photos and deduplicate by URL
+    const combinedPhotos = Array.from(new Set([...currentPhotos, ...newPhotos]));
+
+    // Update settings with reviews
+    const currentSettings = (shop.settings as any) || {};
+    const updatedSettings = {
+      ...currentSettings,
+      googleReviews: placeDetails.reviews || []
+    };
+
+    // Prepare update data
+    const updateData: any = {
+      photoUrls: combinedPhotos,
+      googleRating: placeDetails.rating ? new Prisma.Decimal(placeDetails.rating) : null,
+      googleReviewsCount: placeDetails.reviewsCount || 0,
+      settings: updatedSettings,
+    };
+
+    if (placeDetails.location) {
+      updateData.latitude = new Prisma.Decimal(placeDetails.location.lat);
+      updateData.longitude = new Prisma.Decimal(placeDetails.location.lng);
+    }
+    
+    if (placeDetails.formattedAddress) {
+      updateData.address = placeDetails.formattedAddress;
+    }
+
+    const updatedShop = await this.prisma.shop.update({
+      where: { id: shopId },
+      data: updateData,
+    });
+
+    return updatedShop;
   }
 
   /**
@@ -974,7 +1032,7 @@ export class AdminService {
     }
 
     const ownerShop = await this.prisma.shop.findFirst({
-      where: { ownerId, isActive: true },
+      where: { ownerId },
       orderBy: { createdAt: 'asc' },
       select: { id: true },
     });
@@ -985,7 +1043,7 @@ export class AdminService {
 
     if (tenantId) {
       const tenantShop = await this.prisma.shop.findFirst({
-        where: { tenantId, isActive: true },
+        where: { tenantId },
         orderBy: { createdAt: 'asc' },
         select: { id: true },
       });
@@ -2463,7 +2521,7 @@ export class AdminService {
     // OWNER: find shops under their tenant
     if (!tenantId) return [];
     return this.prisma.shop.findMany({
-      where: { tenantId, isActive: true },
+      where: { tenantId },
       select: {
         id: true,
         name: true,

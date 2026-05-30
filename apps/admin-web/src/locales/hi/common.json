@@ -1,0 +1,37 @@
+{
+  "sidebar": {
+    "dashboard": "डैशबोर्ड",
+    "queue": "कतार",
+    "bookings": "बुकिंग",
+    "services": "सेवाएं",
+    "staff": "कर्मचारी",
+    "payments": "भुगतान",
+    "earnings": "कर्मचारी की कमाई",
+    "revenue": "राजस्व",
+    "reviews": "समीक्षाएं",
+    "shopProfile": "दुकान प्रोफ़ाइल",
+    "notifications": "सूचनाएं",
+    "settings": "सेटिंग्स",
+    "schedule": "अनुसूची",
+    "profile": "प्रोफ़ाइल",
+    "signOut": "साइन आउट"
+  },
+  "sections": {
+    "overview": "अवलोकन",
+    "business": "व्यापार",
+    "finance": "वित्त",
+    "insights": "अंतर्दृष्टि",
+    "admin": "प्रशासन",
+    "myDay": "मेरा दिन",
+    "work": "काम",
+    "account": "खाता",
+    "platform": "प्लेटफार्म"
+  },
+  "header": {
+    "open": "खुला है",
+    "closed": "बंद है",
+    "present": "उपस्थित",
+    "absent": "अनुपस्थित",
+    "search": "बुकिंग, कर्मचारी खोजें..."
+  }
+}

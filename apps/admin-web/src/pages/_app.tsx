@@ -12,6 +12,7 @@ import api from '@/lib/api';
 import { useAuthStore } from '@/stores/auth';
 import { usePushNotifications } from '@/hooks/usePushNotifications';
 import { ThemeProvider } from 'next-themes';
+import '../lib/i18n';
 import {
   canAccessPath,
   getDefaultRouteForRole,

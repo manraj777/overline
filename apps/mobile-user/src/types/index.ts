@@ -107,6 +107,11 @@ export interface Booking {
     writtenBy?: string;
     writtenAt?: string;
   } | any;
+  review?: {
+    id: string;
+    rating: number;
+    comment?: string;
+  };
 }
 
 export interface BookingService {

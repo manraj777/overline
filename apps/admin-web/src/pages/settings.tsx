@@ -1,6 +1,6 @@
 import React from 'react';
 import Head from 'next/head';
-import { Bell, Camera, Save, Store, Clock } from 'lucide-react';
+import { Bell, Camera, Save, Store, Clock, Globe } from 'lucide-react';
 import { Input, Loading, useToast, ImageUpload } from '@/components/ui';
 import { useShopSettings, useUpdateShopSettings, useStaff, useWorkingHours, useUpdateWorkingHours } from '@/hooks';
 import api from '@/lib/api';
@@ -47,6 +47,7 @@ export default function SettingsPage() {
     dailySummary: false,
   });
   const [isResolvingLocation, setIsResolvingLocation] = React.useState(false);
+  const [isAutofilling, setIsAutofilling] = React.useState(false);
   const [locationError, setLocationError] = React.useState<string>('');
 
   React.useEffect(() => {
@@ -278,6 +279,25 @@ export default function SettingsPage() {
     } catch (error: any) {
       const message = error?.response?.data?.message;
       addToast({ type: 'error', title: 'Failed to save', message: Array.isArray(message) ? message.join(', ') : message || 'Try again.' });
+    }
+  };
+
+  const handleAutofillFromGoogle = async () => {
+    const query = shopForm.googleMapLink || `${shopForm.name} ${shopForm.city}`;
+    if (!query.trim()) {
+      addToast({ type: 'error', title: 'Query required', message: 'Please enter shop name, city, or Google link to autofill' });
+      return;
+    }
+
+    try {
+      setIsAutofilling(true);
+      await api.post(`/shops/${shopData?.id}/google-autofill`, { queryOrUrl: query });
+      addToast({ type: 'success', title: 'Autofill complete', message: 'Shop details, location, and photos fetched from Google Maps.' });
+      window.location.reload(); // Quick way to refresh data
+    } catch (error: any) {
+      addToast({ type: 'error', title: 'Autofill failed', message: error?.response?.data?.message || 'Could not find place on Google Maps' });
+    } finally {
+      setIsAutofilling(false);
     }
   };
 
@@ -535,11 +555,22 @@ export default function SettingsPage() {
                         }
                       }}
                     />
-                    <Input
-                      label="Google Link (Optional)"
-                      value={shopForm.googleMapLink}
-                      onChange={(e) => setShopForm((prev) => ({ ...prev, googleMapLink: e.target.value }))}
-                    />
+                    <div className="flex flex-col gap-2">
+                      <Input
+                        label="Google Link (Optional)"
+                        value={shopForm.googleMapLink}
+                        onChange={(e) => setShopForm((prev) => ({ ...prev, googleMapLink: e.target.value }))}
+                      />
+                      <button
+                        type="button"
+                        onClick={handleAutofillFromGoogle}
+                        disabled={isAutofilling || !shopData?.id}
+                        className="btn-tonal self-start text-xs py-1.5 px-3 flex items-center gap-1.5"
+                      >
+                        <Globe className="w-3.5 h-3.5" />
+                        {isAutofilling ? 'Autofilling...' : 'Autofill from Google Maps'}
+                      </button>
+                    </div>
                   </div>
 
                   <div className="rounded-xl border border-outline-variant/15 bg-surface-container-low p-4 space-y-3">

@@ -61,6 +61,7 @@ export const useAuthStore = create<AuthState>((set, _get) => ({
       if (data.refreshToken) {
         await AsyncStorage.setItem('refreshToken', data.refreshToken);
       }
+      await AsyncStorage.setItem('cachedUser', JSON.stringify(data.user));
       set({ user: data.user, isAuthenticated: true, isLoading: false, token: data.accessToken });
     } catch (error: any) {
       const message =
@@ -78,6 +79,7 @@ export const useAuthStore = create<AuthState>((set, _get) => ({
       if (data.refreshToken) {
         await AsyncStorage.setItem('refreshToken', data.refreshToken);
       }
+      await AsyncStorage.setItem('cachedUser', JSON.stringify(data.user));
       set({ user: data.user, isAuthenticated: true, isLoading: false, token: data.accessToken });
     } catch (error: any) {
       const message =
@@ -95,6 +97,7 @@ export const useAuthStore = create<AuthState>((set, _get) => ({
       if (response.refreshToken) {
         await AsyncStorage.setItem('refreshToken', response.refreshToken);
       }
+      await AsyncStorage.setItem('cachedUser', JSON.stringify(response.user));
       set({ user: response.user, isAuthenticated: true, isLoading: false, token: response.accessToken });
     } catch (error: any) {
       const message =
@@ -161,6 +164,7 @@ export const useAuthStore = create<AuthState>((set, _get) => ({
     if (refreshToken) {
       await AsyncStorage.setItem('refreshToken', refreshToken);
     }
+    await AsyncStorage.setItem('cachedUser', JSON.stringify(user));
     set({
       user,
       isAuthenticated: true,
@@ -181,6 +185,7 @@ export const useAuthStore = create<AuthState>((set, _get) => ({
     }
     await AsyncStorage.removeItem('accessToken');
     await AsyncStorage.removeItem('refreshToken');
+    await AsyncStorage.removeItem('cachedUser');
     set({
       user: null,
       isAuthenticated: false,
@@ -196,20 +201,43 @@ export const useAuthStore = create<AuthState>((set, _get) => ({
     try {
       await initApiUrl();
       const token = await AsyncStorage.getItem('accessToken');
+      const cachedUserStr = await AsyncStorage.getItem('cachedUser');
+      let cachedUser: User | null = null;
+      if (cachedUserStr) {
+        try {
+          cachedUser = JSON.parse(cachedUserStr);
+        } catch (_) {}
+      }
+
+      if (token && cachedUser) {
+        set({ user: cachedUser, isAuthenticated: true, token, isLoading: false });
+      }
+
       if (!token) {
-        set({ isLoading: false });
+        set({ isLoading: false, isAuthenticated: false, user: null, token: null });
         return;
       }
+
       const profileRequest = authApi.me();
       const timeoutPromise = new Promise<never>((_, reject) => {
-        setTimeout(() => reject(new Error('Auth bootstrap timed out')), 6000);
+        const error = new Error('Auth bootstrap timed out');
+        (error as any).isTimeout = true;
+        setTimeout(() => reject(error), 6000);
       });
       const { data } = await Promise.race([profileRequest, timeoutPromise]);
+      await AsyncStorage.setItem('cachedUser', JSON.stringify(data));
       set({ user: data, isAuthenticated: true, isLoading: false, token });
-    } catch {
-      await AsyncStorage.removeItem('accessToken');
-      await AsyncStorage.removeItem('refreshToken');
-      set({ isLoading: false, isAuthenticated: false, user: null, token: null });
+    } catch (error: any) {
+      const status = error?.response?.status;
+      const isAuthError = status === 401 || status === 403;
+      if (isAuthError) {
+        await AsyncStorage.removeItem('accessToken');
+        await AsyncStorage.removeItem('refreshToken');
+        await AsyncStorage.removeItem('cachedUser');
+        set({ isLoading: false, isAuthenticated: false, user: null, token: null });
+      } else {
+        set({ isLoading: false });
+      }
     }
   },
 

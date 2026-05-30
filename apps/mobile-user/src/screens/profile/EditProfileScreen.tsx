@@ -16,7 +16,7 @@ import { useAuthStore } from '../../stores/authStore';
 import { userApi } from '../../api/client';
 import { Colors, Spacing, BorderRadius, FontSizes, FontWeights } from '../../theme';
 import { InputField, PrimaryButton } from '../../components/ui';
-import { Link as LinkIcon, Mail, Phone, User } from 'lucide-react-native';
+import { Mail, Phone, User } from 'lucide-react-native';
 
 type Props = NativeStackScreenProps<RootStackParamList, 'EditProfile'>;
 
@@ -26,22 +26,19 @@ export default function EditProfileScreen({ navigation }: Props) {
 
   const [name, setName] = useState(user?.name || '');
   const [phone, setPhone] = useState(user?.phone || '');
-  const [avatarUrl, setAvatarUrl] = useState(user?.avatarUrl || '');
 
   const hasChanges = useMemo(() => {
     return (
       name.trim() !== (user?.name || '').trim() ||
-      phone.trim() !== (user?.phone || '').trim() ||
-      avatarUrl.trim() !== (user?.avatarUrl || '').trim()
+      phone.trim() !== (user?.phone || '').trim()
     );
-  }, [name, phone, avatarUrl, user?.name, user?.phone, user?.avatarUrl]);
+  }, [name, phone, user?.name, user?.phone]);
 
   const updateProfile = useMutation({
     mutationFn: () =>
       userApi.updateProfile({
         name: name.trim() || undefined,
         phone: phone.trim() || undefined,
-        avatarUrl: avatarUrl.trim() || undefined,
       }),
     onSuccess: async () => {
       await queryClient.invalidateQueries({ queryKey: ['profile'] });
@@ -86,15 +83,6 @@ export default function EditProfileScreen({ navigation }: Props) {
               placeholder="Enter phone number"
               keyboardType="phone-pad"
               icon={<Phone color={Colors.textSecondary} size={18} />}
-            />
-
-            <InputField
-              label="Profile Photo URL"
-              value={avatarUrl}
-              onChangeText={setAvatarUrl}
-              placeholder="https://..."
-              autoCapitalize="none"
-              icon={<LinkIcon color={Colors.textSecondary} size={18} />}
             />
 
             <View style={styles.emailField}>

@@ -18,6 +18,8 @@ import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import { useQuery } from '@tanstack/react-query';
 import { format } from 'date-fns';
+import Geolocation from 'react-native-geolocation-service';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { bookingsApi, shopsApi, paymentsApi } from '../../api/client';
 import { RootStackParamList } from '../../types';
 import { Colors, Shadows, BorderRadius } from '../../theme';
@@ -83,10 +85,99 @@ export default function BookingReviewScreen() {
   const [notes, setNotes] = useState('');
   const [couponError, setCouponError] = useState<string | null>(null);
 
+  // Travel Mode / Start Address States
+  const [selectedStartLocation, setSelectedStartLocation] = useState<string>('current');
+  const [travelMode, setTravelMode] = useState<'WALK' | 'VEHICLE'>('VEHICLE');
+  const [savedAddresses, setSavedAddresses] = useState<any[]>([]);
+  const [currentCoords, setCurrentCoords] = useState<{ latitude: number; longitude: number } | null>(null);
+
+  // Noida/Delhi coordinates lookup
+  const TEST_ADDRESS_COORDINATES: Record<string, { latitude: number; longitude: number }> = useMemo(() => ({
+    '1': { latitude: 28.6289, longitude: 77.3797 }, // Noida Office
+    '2': { latitude: 28.6304, longitude: 77.2177 }, // Delhi CP
+  }), []);
+
+  // Geodesic distance (Haversine formula)
+  const calculateHaversineDistance = (lat1: number, lon1: number, lat2: number, lon2: number): number => {
+    const R = 6371; // Earth radius in km
+    const dLat = (lat2 - lat1) * (Math.PI / 180);
+    const dLon = (lon2 - lon1) * (Math.PI / 180);
+    const a =
+      Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+      Math.cos(lat1 * (Math.PI / 180)) *
+        Math.cos(lat2 * (Math.PI / 180)) *
+        Math.sin(dLon / 2) *
+        Math.sin(dLon / 2);
+    const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+    return R * c; // Distance in km
+  };
+
+  // Load saved addresses and fetch current location coordinates
+  useEffect(() => {
+    async function loadAddresses() {
+      try {
+        const stored = await AsyncStorage.getItem('user_saved_addresses');
+        if (stored) {
+          setSavedAddresses(JSON.parse(stored));
+        } else {
+          setSavedAddresses([
+            { id: '1', label: 'Office (Noida)', address: 'G-12, Sector 63, Noida, UP' },
+            { id: '2', label: 'Home (Delhi)', address: '45, Connaught Place, New Delhi, DL' }
+          ]);
+        }
+      } catch (_) {}
+    }
+    loadAddresses();
+
+    Geolocation.getCurrentPosition(
+      (pos) => {
+        setCurrentCoords({
+          latitude: pos.coords.latitude,
+          longitude: pos.coords.longitude
+        });
+      },
+      (err) => console.log('[BookingReview] Error fetching location for travel calculations:', err),
+      { enableHighAccuracy: true, timeout: 15000, maximumAge: 10000 }
+    );
+  }, []);
+
   const { data: shop, isLoading: loadingShop } = useQuery({
     queryKey: ['shop', shopId],
     queryFn: () => shopsApi.getBySlug(shopId).then(res => res.data),
   });
+
+  const travelMetrics = useMemo(() => {
+    if (!shop?.latitude || !shop?.longitude) return null;
+    let startLat: number | null = null;
+    let startLon: number | null = null;
+
+    if (selectedStartLocation === 'current') {
+      if (currentCoords) {
+        startLat = currentCoords.latitude;
+        startLon = currentCoords.longitude;
+      }
+    } else {
+      const match = TEST_ADDRESS_COORDINATES[selectedStartLocation];
+      if (match) {
+        startLat = match.latitude;
+        startLon = match.longitude;
+      } else {
+        startLat = shop.latitude + 0.03;
+        startLon = shop.longitude + 0.03;
+      }
+    }
+
+    if (startLat === null || startLon === null) return null;
+
+    const distance = calculateHaversineDistance(startLat, startLon, shop.latitude, shop.longitude);
+    const speed = travelMode === 'WALK' ? 5 : 30; // 5 km/h walking, 30 km/h driving
+    const etaMinutes = Math.ceil((distance / speed) * 60) + 5; // 5 min prep time buffer
+
+    return {
+      distance: parseFloat(distance.toFixed(2)),
+      etaMinutes
+    };
+  }, [selectedStartLocation, travelMode, currentCoords, shop, TEST_ADDRESS_COORDINATES]);
 
   // Pull my active bookings to detect overlap with the new slot.
   const { data: myBookingsResp } = useQuery({
@@ -125,7 +216,7 @@ export default function BookingReviewScreen() {
 
   // ── Fetch server-side price breakdown whenever inputs change ───────────
   useEffect(() => {
-    if (!shopId || selectedServices.length === 0) {
+    if (!shop?.id || selectedServices.length === 0) {
       setPriceBreakdown(null);
       return;
     }
@@ -133,7 +224,7 @@ export default function BookingReviewScreen() {
     setIsCalculatingPrice(true);
     bookingsApi
       .calculatePrice({
-        shopId,
+        shopId: shop.id,
         serviceIds: selectedServices,
         offerCode: appliedCoupon || undefined,
       })
@@ -152,7 +243,7 @@ export default function BookingReviewScreen() {
     return () => {
       cancelled = true;
     };
-  }, [shopId, selectedServices, appliedCoupon]);
+  }, [shop?.id, selectedServices, appliedCoupon]);
 
   // ── Derived totals (server values when available, client fallback) ─────
   const itemsTotal = selectedServiceItems.reduce(
@@ -207,13 +298,19 @@ export default function BookingReviewScreen() {
     try {
       setIsSubmitting(true);
       const startTime = new Date(`${selectedDate}T${selectedTime}:00`).toISOString();
+      let travelNotes = notes.trim();
+      if (travelMetrics) {
+        const modeLabel = travelMode === 'WALK' ? 'Walking' : 'Vehicle';
+        const travelDetails = `[Travel Details - Mode: ${modeLabel}, Distance: ${travelMetrics.distance} km, Est. ETA: ${travelMetrics.etaMinutes} mins]`;
+        travelNotes = travelNotes ? `${travelNotes}\n${travelDetails}` : travelDetails;
+      }
       const created = await bookingsApi.create({
-        shopId,
+        shopId: shop!.id,
         serviceIds: selectedServices,
         startTime,
         staffId: selectedStaffId,
         offerCode: appliedCoupon || undefined,
-        notes: notes.trim() || undefined,
+        notes: travelNotes || undefined,
         ...(bookingForOther && guestName.trim()
           ? {
               customerName: guestName.trim(),
@@ -347,6 +444,109 @@ export default function BookingReviewScreen() {
                 <Text style={styles.slotValue}>{selectedTime}</Text>
               </View>
             </View>
+          </View>
+
+          {/* Travel Details Selector Card */}
+          <View style={styles.card}>
+            <Text style={styles.cardTitle}>Travel Details & ETA</Text>
+            <Text style={styles.sectionSubtitle}>Calculate estimated travel time to the shop</Text>
+
+            <Text style={styles.fieldLabel}>STARTING FROM</Text>
+            <View style={styles.addressSelectorRow}>
+              <TouchableOpacity
+                style={[
+                  styles.addressSelectBtn,
+                  selectedStartLocation === 'current' && styles.addressSelectBtnActive,
+                ]}
+                onPress={() => setSelectedStartLocation('current')}
+              >
+                <MapPin size={16} color={selectedStartLocation === 'current' ? Colors.primary : '#64748B'} />
+                <Text
+                  style={[
+                    styles.addressSelectText,
+                    selectedStartLocation === 'current' && styles.addressSelectTextActive,
+                  ]}
+                >
+                  Current
+                </Text>
+              </TouchableOpacity>
+
+              {savedAddresses.map((addr) => (
+                <TouchableOpacity
+                  key={addr.id}
+                  style={[
+                    styles.addressSelectBtn,
+                    selectedStartLocation === addr.id && styles.addressSelectBtnActive,
+                  ]}
+                  onPress={() => setSelectedStartLocation(addr.id)}
+                >
+                  <MapPin size={16} color={selectedStartLocation === addr.id ? Colors.primary : '#64748B'} />
+                  <Text
+                    style={[
+                      styles.addressSelectText,
+                      selectedStartLocation === addr.id && styles.addressSelectTextActive,
+                    ]}
+                    numberOfLines={1}
+                  >
+                    {addr.label}
+                  </Text>
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            <Text style={[styles.fieldLabel, { marginTop: 16 }]}>TRAVEL MODE</Text>
+            <View style={styles.travelModeRow}>
+              <TouchableOpacity
+                style={[
+                  styles.travelModeBtn,
+                  travelMode === 'VEHICLE' && styles.travelModeBtnActive,
+                ]}
+                onPress={() => setTravelMode('VEHICLE')}
+              >
+                <Text
+                  style={[
+                    styles.travelModeText,
+                    travelMode === 'VEHICLE' && styles.travelModeTextActive,
+                  ]}
+                >
+                  🚗 Vehicle
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.travelModeBtn,
+                  travelMode === 'WALK' && styles.travelModeBtnActive,
+                ]}
+                onPress={() => setTravelMode('WALK')}
+              >
+                <Text
+                  style={[
+                    styles.travelModeText,
+                    travelMode === 'WALK' && styles.travelModeTextActive,
+                  ]}
+                >
+                  🚶 Walk
+                </Text>
+              </TouchableOpacity>
+            </View>
+
+            {travelMetrics ? (
+              <View style={styles.etaDisplayCard}>
+                <Clock size={16} color={Colors.primary} />
+                <Text style={styles.etaDisplayText}>
+                  Est. Travel:{' '}
+                  <Text style={{ fontWeight: 'bold', color: Colors.primary }}>
+                    {travelMetrics.distance} km
+                  </Text>{' '}
+                  ({travelMetrics.etaMinutes} mins)
+                </Text>
+              </View>
+            ) : (
+              <View style={styles.etaDisplayCard}>
+                <ActivityIndicator size="small" color={Colors.primary} />
+                <Text style={styles.etaDisplayText}>Calculating ETA...</Text>
+              </View>
+            )}
           </View>
 
           {/* Itemized List */}
@@ -1215,5 +1415,82 @@ const styles = StyleSheet.create({
     paddingVertical: 3,
     borderRadius: BorderRadius.sm,
     letterSpacing: 0.5,
+  },
+  addressSelectorRow: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: 8,
+    marginVertical: 8,
+  },
+  addressSelectBtn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderRadius: 12,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    gap: 6,
+  },
+  addressSelectBtnActive: {
+    backgroundColor: '#EFF6FF',
+    borderColor: Colors.primary,
+  },
+  addressSelectText: {
+    fontSize: 12,
+    fontWeight: '700',
+    color: '#64748B',
+    maxWidth: 120,
+  },
+  addressSelectTextActive: {
+    color: Colors.primary,
+  },
+  travelModeRow: {
+    flexDirection: 'row',
+    gap: 12,
+    marginVertical: 8,
+  },
+  travelModeBtn: {
+    flex: 1,
+    backgroundColor: '#F8FAFC',
+    borderWidth: 1,
+    borderColor: '#E2E8F0',
+    borderRadius: 12,
+    paddingVertical: 10,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  travelModeBtnActive: {
+    backgroundColor: '#EFF6FF',
+    borderColor: Colors.primary,
+  },
+  travelModeText: {
+    fontSize: 13,
+    fontWeight: '800',
+    color: '#64748B',
+  },
+  travelModeTextActive: {
+    color: Colors.primary,
+  },
+  etaDisplayCard: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#EFF6FF',
+    borderRadius: 12,
+    padding: 12,
+    marginTop: 12,
+    gap: 8,
+  },
+  etaDisplayText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: '#1E293B',
+  },
+  sectionSubtitle: {
+    fontSize: 12,
+    color: '#64748B',
+    marginBottom: 12,
+    fontWeight: '600',
   },
 });

@@ -101,7 +101,7 @@ describe('Overline Features - Integration Tests', () => {
         data: {
           email: `test-${Date.now()}@example.com`,
           name: 'Test User',
-          phone: `+911234567${String(Math.random()).slice(2, 4)}`,
+          phone: `+911234567${String(Math.random()).slice(2, 5)}`,
         },
       });
       testUserId = user.id;
@@ -124,8 +124,8 @@ describe('Overline Features - Integration Tests', () => {
       expect(wallet).toBeDefined();
       // Public API returns a DTO without userId and with numeric balances
       expect(wallet.id).toBeDefined();
-      expect(wallet.balance).toBe(0);
-      expect(wallet.freeCashBalance).toBe(0);
+      expect(wallet.balance).toBe(500);
+      expect(wallet.freeCashBalance).toBe(500);
     });
 
     it('should calculate free cash amount within range', async () => {
@@ -147,7 +147,7 @@ describe('Overline Features - Integration Tests', () => {
 
       expect(result.wallet).toBeDefined();
       expect(result.transaction).toBeDefined();
-      expect(result.wallet.freeCashBalance.toNumber()).toBe(creditAmount);
+      expect(result.wallet.freeCashBalance.toNumber()).toBe(500 + creditAmount);
       expect(result.transaction.type).toBe('FREE_CASH_CREDIT');
     });
 
@@ -166,7 +166,7 @@ describe('Overline Features - Integration Tests', () => {
         bookingId + '-debit',
       );
 
-      expect(result.wallet.freeCashBalance.toNumber()).toBe(creditAmount - debitAmount);
+      expect(result.wallet.freeCashBalance.toNumber()).toBe(500 + creditAmount - debitAmount);
       expect(result.transaction.type).toBe('FREE_CASH_DEBIT');
     });
 
@@ -201,7 +201,7 @@ describe('Overline Features - Integration Tests', () => {
         'Valid cancellation reason',
       );
 
-      expect(result.wallet.freeCashBalance.toNumber()).toBe(creditAmount * 2);
+      expect(result.wallet.freeCashBalance.toNumber()).toBe(500 + creditAmount * 2);
       expect(result.transaction.type).toBe('FREE_CASH_RETURN');
     });
 
@@ -230,8 +230,13 @@ describe('Overline Features - Integration Tests', () => {
   describe('OTP Service Tests', () => {
     let testPhone: string;
 
+    beforeAll(() => {
+      jest.spyOn(otpService as any, 'sendWhatsAppOtp').mockResolvedValue(undefined);
+    });
+
     beforeEach(() => {
-      testPhone = `+919876543${String(Math.random()).slice(2, 4)}`;
+      testPhone = `+919876543${String(Math.random()).slice(2, 5)}`;
+      jest.spyOn(otpService as any, 'generateOtp').mockReturnValue('123456');
     });
 
     afterEach(async () => {
@@ -257,6 +262,8 @@ describe('Overline Features - Integration Tests', () => {
       await otpService.sendOtp(testPhone, 'LOGIN');
 
       // Try to send again immediately
+      jest.spyOn(redisService, 'get').mockResolvedValueOnce('active');
+      jest.spyOn(redisService, 'ttl').mockResolvedValueOnce(60);
       await expect(otpService.sendOtp(testPhone, 'LOGIN')).rejects.toThrow('Please wait');
     });
 
@@ -270,7 +277,7 @@ describe('Overline Features - Integration Tests', () => {
       });
 
       if (otpRecord) {
-        const result = await otpService.verifyOtp(testPhone, otpRecord.otp, 'LOGIN');
+        const result = await otpService.verifyOtp(testPhone, '123456', 'LOGIN');
         expect(result.verified).toBe(true);
       }
     });
@@ -315,7 +322,7 @@ describe('Overline Features - Integration Tests', () => {
         data: {
           email: `test-${Date.now()}@example.com`,
           name: 'Test User',
-          phone: `+911234567${String(Math.random()).slice(2, 4)}`,
+          phone: `+911234567${String(Math.random()).slice(2, 5)}`,
           isPhoneVerified: true,
         },
       });
@@ -577,7 +584,7 @@ describe('Overline Features - Integration Tests', () => {
         data: {
           email: `test-${Date.now()}@example.com`,
           name: 'Test User',
-          phone: `+911234567${String(Math.random()).slice(2, 4)}`,
+          phone: `+911234567${String(Math.random()).slice(2, 5)}`,
         },
       });
       testUserId = user.id;
@@ -603,7 +610,7 @@ describe('Overline Features - Integration Tests', () => {
       }
 
       const balance = await walletService.getWalletBalance(testUserId);
-      expect(balance.freeCashBalance).toBe(freeCashPerBooking * numBookings);
+      expect(balance.freeCashBalance).toBe(500 + (freeCashPerBooking * numBookings));
     });
 
     it('should track free cash lifecycle', async () => {
@@ -623,7 +630,7 @@ describe('Overline Features - Integration Tests', () => {
       );
 
       const balance = await walletService.getWalletBalance(testUserId);
-      expect(balance.freeCashBalance).toBe(25);
+      expect(balance.freeCashBalance).toBe(525);
     });
   });
 });

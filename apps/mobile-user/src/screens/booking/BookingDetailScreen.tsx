@@ -1,13 +1,13 @@
 import React from 'react';
-import { View, Text, ScrollView, StyleSheet, TouchableOpacity, Alert, ActivityIndicator } from 'react-native';
+import { View, Text, ScrollView, StyleSheet, TouchableOpacity, Alert, ActivityIndicator, TextInput } from 'react-native';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import { useRoute, RouteProp } from '@react-navigation/native';
 import { format } from 'date-fns';
-import { bookingsApi } from '../../api/client';
+import { bookingsApi, reviewsApi } from '../../api/client';
 import { RootStackParamList } from '../../types';
 import { Colors, Spacing, BorderRadius, FontSizes, FontWeights, Shadows, BookingStatusConfig } from '../../theme';
 import { PrimaryButton, Divider, Badge, GlassCard } from '../../components/ui';
-import { Phone, Calendar, Clock, X } from 'lucide-react-native';
+import { Phone, Calendar, Clock, X, Star } from 'lucide-react-native';
 import { useQueueBookingRealtime } from '../../hooks/useQueueBookingRealtime';
 import { SoundManager } from '../../utils/SoundManager';
 
@@ -79,6 +79,35 @@ export default function BookingDetailScreen() {
       Alert.alert('Error', error.response?.data?.message || 'Failed to cancel booking');
     },
   });
+
+  const [selectedRating, setSelectedRating] = React.useState(0);
+  const [reviewComment, setReviewComment] = React.useState('');
+
+  const submitReviewMutation = useMutation({
+    mutationFn: () => reviewsApi.create({
+      bookingId,
+      rating: selectedRating,
+      comment: reviewComment.trim() || undefined,
+    }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['booking', bookingId] });
+      queryClient.invalidateQueries({ queryKey: ['shopReviews'] });
+      Alert.alert('Review Submitted', 'Thank you for your feedback!');
+      setSelectedRating(0);
+      setReviewComment('');
+    },
+    onError: (error: any) => {
+      Alert.alert('Submission Failed', error.response?.data?.message || 'Could not submit your review. Please try again.');
+    }
+  });
+
+  const handleSubmitReview = () => {
+    if (selectedRating === 0) {
+      Alert.alert('Rating Required', 'Please select a star rating first.');
+      return;
+    }
+    submitReviewMutation.mutate();
+  };
 
   const handleCancel = () => {
     Alert.alert('Cancel Booking', 'Are you sure you want to cancel this booking?', [
@@ -251,6 +280,77 @@ export default function BookingDetailScreen() {
           />
         </GlassCard>
       </View>
+
+      {/* Review Section */}
+      {isCompleted && !booking.review && (
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>WRITE A REVIEW</Text>
+          <GlassCard style={styles.reviewFormCard}>
+            <Text style={styles.reviewFormTitle}>Rate your experience</Text>
+            <Text style={styles.reviewFormSub}>Share a quick review of your visit with others</Text>
+            
+            {/* Star Selector */}
+            <View style={styles.starsRow}>
+              {[1, 2, 3, 4, 5].map((star) => (
+                <TouchableOpacity
+                  key={star}
+                  onPress={() => setSelectedRating(star)}
+                  style={styles.starTouch}
+                  activeOpacity={0.7}
+                >
+                  <Star
+                    size={32}
+                    color={star <= selectedRating ? '#F59E0B' : '#E2E8F0'}
+                    fill={star <= selectedRating ? '#F59E0B' : 'transparent'}
+                  />
+                </TouchableOpacity>
+              ))}
+            </View>
+
+            {/* Comment Box */}
+            <TextInput
+              style={styles.commentInput}
+              placeholder="Tell us what you liked or how we can improve..."
+              placeholderTextColor="#94A3B8"
+              value={reviewComment}
+              onChangeText={setReviewComment}
+              multiline
+              numberOfLines={4}
+            />
+
+            <PrimaryButton
+              title="Submit Review"
+              onPress={handleSubmitReview}
+              loading={submitReviewMutation.isPending}
+              disabled={selectedRating === 0 || submitReviewMutation.isPending}
+            />
+          </GlassCard>
+        </View>
+      )}
+
+      {isCompleted && booking.review && (
+        <View style={styles.section}>
+          <Text style={styles.sectionTitle}>YOUR REVIEW</Text>
+          <GlassCard>
+            <View style={styles.reviewHeader}>
+              <View style={{ flexDirection: 'row', gap: 4 }}>
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <Star
+                    key={star}
+                    size={16}
+                    color={star <= booking.review!.rating ? '#F59E0B' : '#E2E8F0'}
+                    fill={star <= booking.review!.rating ? '#F59E0B' : 'transparent'}
+                  />
+                ))}
+              </View>
+              <Text style={styles.reviewDate}>Submitted</Text>
+            </View>
+            {booking.review.comment && (
+              <Text style={styles.reviewTextComment}>{booking.review.comment}</Text>
+            )}
+          </GlassCard>
+        </View>
+      )}
 
       {/* Boredom Buster Widget */}
       {!isCompleted && !isCancelled && (
@@ -517,6 +617,61 @@ const styles = StyleSheet.create({
   testItem: {
     fontSize: FontSizes.sm,
     color: Colors.textPrimary,
+    fontWeight: FontWeights.medium,
+  },
+  // ── Review Form Styles ──
+  reviewFormCard: {
+    paddingVertical: Spacing.xl,
+  },
+  reviewFormTitle: {
+    fontSize: FontSizes.lg,
+    fontWeight: FontWeights.bold,
+    color: Colors.textPrimary,
+    marginBottom: 4,
+  },
+  reviewFormSub: {
+    fontSize: FontSizes.sm,
+    color: Colors.textSecondary,
+    marginBottom: Spacing.lg,
+  },
+  starsRow: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    gap: 12,
+    marginBottom: Spacing.lg,
+  },
+  starTouch: {
+    padding: 4,
+  },
+  commentInput: {
+    backgroundColor: Colors.surfaceLight,
+    borderRadius: BorderRadius.lg,
+    borderWidth: 1,
+    borderColor: Colors.border,
+    paddingHorizontal: Spacing.lg,
+    paddingVertical: Spacing.md,
+    fontSize: FontSizes.sm,
+    color: Colors.textPrimary,
+    minHeight: 100,
+    textAlignVertical: 'top',
+    marginBottom: Spacing.lg,
+  },
+  // ── Submitted Review Display ──
+  reviewHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: Spacing.sm,
+  },
+  reviewDate: {
+    fontSize: FontSizes.xs,
+    color: Colors.textTertiary,
+    fontWeight: FontWeights.medium,
+  },
+  reviewTextComment: {
+    fontSize: FontSizes.sm,
+    color: Colors.textSecondary,
+    lineHeight: 20,
     fontWeight: FontWeights.medium,
   },
 });

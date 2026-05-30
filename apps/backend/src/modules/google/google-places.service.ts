@@ -115,6 +115,61 @@ export class GooglePlacesService {
   }
 
   /**
+   * Extract full place details (including reviews) from a query or URL
+   */
+  async extractPlaceDetails(queryOrUrl: string): Promise<any> {
+    if (!this.apiKey) {
+      throw new Error('Google Places API key not configured');
+    }
+
+    try {
+      // Find the place ID first
+      const findPlaceUrl = `${this.baseUrl}/findplacefromtext/json?input=${encodeURIComponent(queryOrUrl)}&inputtype=textquery&fields=place_id&key=${this.apiKey}`;
+      const findResponse = await fetch(findPlaceUrl);
+      const findData: any = await findResponse.json();
+
+      if (findData.status !== 'OK' || !findData.candidates || findData.candidates.length === 0) {
+        throw new Error('Could not find a place matching the provided query or URL');
+      }
+
+      const placeId = findData.candidates[0].place_id;
+
+      // Get full details including reviews
+      const detailsUrl = `${this.baseUrl}/details/json?place_id=${placeId}&fields=name,formatted_address,geometry,rating,user_ratings_total,photos,reviews&key=${this.apiKey}`;
+      const detailsResponse = await fetch(detailsUrl);
+      const detailsData: any = await detailsResponse.json();
+
+      if (detailsData.status !== 'OK' || !detailsData.result) {
+        throw new Error('Could not fetch place details');
+      }
+
+      const place = detailsData.result;
+
+      return {
+        name: place.name,
+        formattedAddress: place.formatted_address,
+        location: place.geometry?.location,
+        rating: place.rating,
+        reviewsCount: place.user_ratings_total,
+        photos: place.photos?.slice(0, 5).map((photo: any) => 
+          `https://maps.googleapis.com/maps/api/place/photo?maxwidth=800&photo_reference=${photo.photo_reference}&key=${this.apiKey}`
+        ) || [],
+        reviews: place.reviews?.map((r: any) => ({
+          authorName: r.author_name,
+          authorPhotoUrl: r.profile_photo_url,
+          rating: r.rating,
+          text: r.text,
+          time: r.time,
+          relativeTimeDescription: r.relative_time_description,
+        })) || []
+      };
+    } catch (error: any) {
+      this.logger.error(`Error extracting place details: ${error.message}`);
+      throw error;
+    }
+  }
+
+  /**
    * Normalize phone number for comparison
    */
   private normalizePhone(phone?: string): string {

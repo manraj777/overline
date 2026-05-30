@@ -8,6 +8,7 @@ import {
   Param,
   Query,
   UseGuards,
+  BadRequestException,
 } from '@nestjs/common';
 import { ApiTags, ApiOperation, ApiBearerAuth, ApiParam, ApiQuery } from '@nestjs/swagger';
 import { AdminService } from './admin.service';
@@ -421,6 +422,23 @@ export class AdminController {
     @CurrentUser('tenantId') tenantId: string,
   ) {
     return this.adminService.updateShopSettings(shopId, tenantId, settings);
+  }
+
+  @Post('shops/:shopId/google-autofill')
+  @UseGuards(ShopOwnerGuard)
+  @ShopIdParam('shopId')
+  @Roles(UserRole.OWNER, UserRole.SUPER_ADMIN)
+  @ApiOperation({ summary: 'Autofill shop details from Google Maps' })
+  @ApiParam({ name: 'shopId', description: 'Shop ID' })
+  async autofillFromGoogleMaps(
+    @Param('shopId') shopId: string,
+    @Body('queryOrUrl') queryOrUrl: string,
+    @CurrentUser('tenantId') tenantId: string,
+  ) {
+    if (!queryOrUrl) {
+      throw new BadRequestException('queryOrUrl is required');
+    }
+    return this.adminService.autofillFromGoogleMaps(shopId, tenantId, queryOrUrl);
   }
 
   @Get('shops/:shopId/payout-details')

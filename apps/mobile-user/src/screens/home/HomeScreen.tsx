@@ -214,53 +214,124 @@ export default function HomeScreen() {
   const getShopCategory = (shop: Shop) =>
     shop.services?.[0]?.category || activeCategory || 'Salon';
 
-  const renderShop = ({ item }: { item: Shop }) => (
-    <TouchableOpacity
-      style={styles.shopCard}
-      onPress={() => navigation.navigate('ShopDetail', { shopId: item.id })}
-      activeOpacity={0.9}>
-      <View style={styles.shopImageContainer}>
-        {item.coverUrl || item.coverPhotoUrl ? (
-          <Image source={{ uri: item.coverUrl || item.coverPhotoUrl }} style={styles.shopImage} />
-        ) : (
-          <View style={[styles.shopImage, styles.placeholderImage]}>
-            <Text style={styles.placeholderLetter}>{item.name.charAt(0)}</Text>
-          </View>
-        )}
-        <View style={styles.ratingBadge}>
-          <Star color="#FFD700" fill="#FFD700" size={12} />
-          <Text style={styles.ratingText}>{item.rating?.toFixed(1) || '4.5'}</Text>
-        </View>
-        
-        {item.isOpen && (
-          <View style={styles.liveBadge}>
-            <Zap size={10} color="#FFF" fill="#FFF" />
-            <Text style={styles.liveText}>OPEN</Text>
-          </View>
-        )}
-      </View>
+  // Animated shop card with scale press effect and fade-in entrance
+  const AnimatedShopCard = React.useCallback(({ item, index }: { item: Shop; index: number }) => {
+    const scaleAnim = useRef(new Animated.Value(1)).current;
+    const fadeAnim = useRef(new Animated.Value(0)).current;
+    const slideAnim = useRef(new Animated.Value(24)).current;
 
-      <View style={styles.shopInfo}>
-        <View style={styles.shopHeaderRow}>
-          <Text style={styles.shopName} numberOfLines={1}>{item.name}</Text>
-          <ShieldCheck size={16} color={Colors.primary} />
-        </View>
-        
-        <Text style={styles.shopCategory}>{getShopCategory(item)}</Text>
-        
-        <View style={styles.shopFooter}>
-          <View style={styles.locationRow}>
-            <MapPin size={12} color={Colors.textTertiary} />
-            <Text style={styles.distanceText}>{item.distance ? `${item.distance.toFixed(1)} km` : 'Near you'}</Text>
+    React.useEffect(() => {
+      Animated.parallel([
+        Animated.timing(fadeAnim, {
+          toValue: 1,
+          duration: 400,
+          delay: index * 80,
+          useNativeDriver: true,
+        }),
+        Animated.timing(slideAnim, {
+          toValue: 0,
+          duration: 400,
+          delay: index * 80,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    }, []);
+
+    const onPressIn = () => {
+      Animated.spring(scaleAnim, {
+        toValue: 0.97,
+        friction: 8,
+        useNativeDriver: true,
+      }).start();
+    };
+
+    const onPressOut = () => {
+      Animated.spring(scaleAnim, {
+        toValue: 1,
+        friction: 5,
+        useNativeDriver: true,
+      }).start();
+    };
+
+    return (
+      <Animated.View style={{
+        opacity: fadeAnim,
+        transform: [{ translateY: slideAnim }, { scale: scaleAnim }],
+      }}>
+        <TouchableOpacity
+          style={styles.shopCard}
+          onPress={() => navigation.navigate('ShopDetail', { shopId: item.id })}
+          onPressIn={onPressIn}
+          onPressOut={onPressOut}
+          activeOpacity={1}>
+          <View style={styles.shopImageContainer}>
+            {item.coverUrl || item.coverPhotoUrl ? (
+              <Image source={{ uri: item.coverUrl || item.coverPhotoUrl }} style={styles.shopImage} />
+            ) : (
+              <View style={[styles.shopImage, styles.placeholderImage]}>
+                <Text style={styles.placeholderLetter}>{item.name.charAt(0)}</Text>
+              </View>
+            )}
+            <View style={styles.ratingBadge}>
+              <Star color="#FFD700" fill="#FFD700" size={12} />
+              <Text style={styles.ratingText}>{item.rating?.toFixed(1) || '4.5'}</Text>
+            </View>
+            
+            {item.isOpen && (
+              <View style={styles.liveBadge}>
+                <Zap size={10} color="#FFF" fill="#FFF" />
+                <Text style={styles.liveText}>OPEN</Text>
+              </View>
+            )}
           </View>
-          <View style={styles.priceRow}>
-            <Text style={styles.priceSymbol}>₹₹</Text>
-            <Text style={styles.priceText}>Mid Range</Text>
+
+          <View style={styles.shopInfo}>
+            <View style={styles.shopHeaderRow}>
+              <Text style={styles.shopName} numberOfLines={1}>{item.name}</Text>
+              <ShieldCheck size={16} color={Colors.primary} />
+            </View>
+            
+            <Text style={styles.shopCategory}>{getShopCategory(item)}</Text>
+            
+            <View style={styles.shopFooter}>
+              <View style={styles.locationRow}>
+                <MapPin size={12} color={Colors.textTertiary} />
+                <Text style={styles.distanceText}>{item.distance ? `${item.distance.toFixed(1)} km` : 'Near you'}</Text>
+              </View>
+              <View style={styles.priceRow}>
+                <Text style={styles.priceSymbol}>₹₹</Text>
+                <Text style={styles.priceText}>Mid Range</Text>
+              </View>
+            </View>
           </View>
+        </TouchableOpacity>
+      </Animated.View>
+    );
+  }, [navigation, activeCategory]);
+
+  // Skeleton shimmer loading placeholder
+  const ShopCardSkeleton = () => {
+    const shimmer = useRef(new Animated.Value(0)).current;
+    React.useEffect(() => {
+      Animated.loop(
+        Animated.sequence([
+          Animated.timing(shimmer, { toValue: 1, duration: 1000, useNativeDriver: true }),
+          Animated.timing(shimmer, { toValue: 0, duration: 1000, useNativeDriver: true }),
+        ])
+      ).start();
+    }, []);
+    const opacity = shimmer.interpolate({ inputRange: [0, 1], outputRange: [0.3, 0.7] });
+    return (
+      <View style={styles.shopCard}>
+        <Animated.View style={[styles.shopImage, { backgroundColor: '#E2E8F0', opacity }]} />
+        <View style={styles.shopInfo}>
+          <Animated.View style={{ height: 16, width: '70%', backgroundColor: '#E2E8F0', borderRadius: 8, opacity, marginBottom: 8 }} />
+          <Animated.View style={{ height: 12, width: '40%', backgroundColor: '#E2E8F0', borderRadius: 6, opacity, marginBottom: 12 }} />
+          <Animated.View style={{ height: 12, width: '55%', backgroundColor: '#E2E8F0', borderRadius: 6, opacity }} />
         </View>
       </View>
-    </TouchableOpacity>
-  );
+    );
+  };
 
   return (
     <View style={styles.container}>
@@ -435,13 +506,15 @@ export default function HomeScreen() {
         {/* Shop List */}
         <View style={styles.shopList}>
           {shops.length > 0 ? (
-            shops.map((shop) => (
-              <React.Fragment key={shop.id}>
-                {renderShop({ item: shop })}
-              </React.Fragment>
+            shops.map((shop, index) => (
+              <AnimatedShopCard key={shop.id} item={shop} index={index} />
             ))
           ) : isLoading ? (
-            <ActivityIndicator color={Colors.primary} style={{ marginTop: 40 }} />
+            <>
+              <ShopCardSkeleton />
+              <ShopCardSkeleton />
+              <ShopCardSkeleton />
+            </>
           ) : (
             <View style={styles.emptyState}>
               <Text style={styles.emptyText}>No experience found nearby</Text>

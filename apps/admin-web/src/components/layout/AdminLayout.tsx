@@ -25,6 +25,7 @@ import { useQueryClient } from '@tanstack/react-query';
 import { UserRole } from '@/types';
 import { getDefaultRouteForRole, isPublicRoute } from '@/lib/role-routing';
 import { ThemeToggle } from '@/components/ThemeToggle';
+import { useTranslation } from 'react-i18next';
 
 interface PendingBooking {
   id: string;
@@ -56,6 +57,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
   const logout = useLogout();
   const [sidebarOpen, setSidebarOpen] = React.useState(false);
   const [sidebarCollapsed, setSidebarCollapsed] = React.useState(false);
+  const { t, i18n } = useTranslation('common');
   const { addToast } = useToast();
   const queryClient = useQueryClient();
   const prevQueueLengthRef = React.useRef<number | null>(null);
@@ -332,7 +334,9 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
           {roleSections.map((section) => (
             <div key={section.title}>
               {!sidebarCollapsed && (
-                <p className="px-4 mb-2 text-[10px] font-bold tracking-[0.15em] uppercase text-white/25">{section.title}</p>
+                <p className="px-4 mb-2 text-[10px] font-bold tracking-[0.15em] uppercase text-white/25">
+                  {t(`sections.${section.title.toLowerCase().replace(/\s+/g, '')}`, section.title)}
+                </p>
               )}
               <div className="space-y-0.5">
                 {section.items.map((item) => (
@@ -350,7 +354,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
                     title={item.name}
                   >
                     <item.icon className="w-[18px] h-[18px]" />
-                    {!sidebarCollapsed && <span>{item.name}</span>}
+                    {!sidebarCollapsed && <span>{t(`sidebar.${item.name.toLowerCase().replace(/\s+/g, '')}`, item.name)}</span>}
                   </Link>
                 ))}
               </div>
@@ -377,7 +381,7 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
             title="Sign Out"
           >
             <LogOut className="w-[18px] h-[18px]" />
-            {!sidebarCollapsed && <span>Sign Out</span>}
+            {!sidebarCollapsed && <span>{t('sidebar.signOut')}</span>}
           </button>
         </div>
       </aside>
@@ -487,6 +491,14 @@ const AdminLayout: React.FC<AdminLayoutProps> = ({ children }) => {
                   </button>
                 </div>
               )}
+
+              {/* Language Toggle */}
+              <button
+                onClick={() => i18n.changeLanguage(i18n.language?.startsWith('en') ? 'hi' : 'en')}
+                className="hidden sm:flex items-center justify-center p-2 rounded-xl hover:bg-surface-container-low transition-colors text-sm font-bold text-on-surface-variant border-r border-outline-variant/10 pr-4 mr-2"
+              >
+                {i18n.language?.startsWith('en') ? 'हिंदी' : 'EN'}
+              </button>
 
               <ThemeToggle />
 

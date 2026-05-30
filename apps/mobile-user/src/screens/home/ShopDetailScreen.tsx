@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, Component, ErrorInfo, useRef } from 'react';
 import {
   View,
   Text,
@@ -12,18 +12,22 @@ import {
   Platform,
   PermissionsAndroid,
   Modal,
+  FlatList,
 } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
 import Geolocation from 'react-native-geolocation-service';
+import { format } from 'date-fns';
 import { shopsApi, reviewsApi } from '../../api/client';
 import { Service, RootStackParamList } from '../../types';
+import { useAuthStore } from '../../stores/authStore';
 import { Colors, Spacing, BorderRadius, FontSizes, FontWeights, Shadows } from '../../theme';
 import { Badge, PrimaryButton, Divider } from '../../components/ui';
 import { 
   ArrowLeft, Star, MapPin, Phone, Clock, Check, ArrowRight, Users, Zap, 
-  MessageCircle, X, ChevronLeft, ChevronRight, Globe, ShieldCheck, Camera, Video, Mail, CreditCard 
+  MessageCircle, X, ChevronLeft, ChevronRight, Globe, ShieldCheck, Camera, Video, Mail, CreditCard,
+  LocateFixed, Navigation
 } from 'lucide-react-native';
 
 type RouteProps = RouteProp<RootStackParamList, 'ShopDetail'>;
@@ -36,6 +40,55 @@ const mapsModule = (() => {
     return null;
   }
 })();
+
+class SafeMapViewContainer extends Component<{ fallback: React.ReactNode; children: React.ReactNode }, { hasError: boolean }> {
+  constructor(props: any) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError() {
+    return { hasError: true };
+  }
+
+  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    console.warn('[SafeMapViewContainer] Map rendering crashed:', error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return this.props.fallback;
+    }
+    return this.props.children;
+  }
+}
+
+// Decode OSRM polyline geometry (polyline6 encoding)
+function decodePolyline(encoded: string): { latitude: number; longitude: number }[] {
+  const coords: { latitude: number; longitude: number }[] = [];
+  let index = 0, lat = 0, lng = 0;
+  while (index < encoded.length) {
+    let b, shift = 0, result = 0;
+    do {
+      b = encoded.charCodeAt(index++) - 63;
+      result |= (b & 0x1f) << shift;
+      shift += 5;
+    } while (b >= 0x20);
+    lat += (result & 1) ? ~(result >> 1) : (result >> 1);
+
+    shift = 0;
+    result = 0;
+    do {
+      b = encoded.charCodeAt(index++) - 63;
+      result |= (b & 0x1f) << shift;
+      shift += 5;
+    } while (b >= 0x20);
+    lng += (result & 1) ? ~(result >> 1) : (result >> 1);
+
+    coords.push({ latitude: lat / 1e5, longitude: lng / 1e5 });
+  }
+  return coords;
+}
 
 function isShopOpenNow(workingHours: any[] | undefined): boolean {
   if (!workingHours || workingHours.length === 0) return false;
@@ -72,6 +125,7 @@ export default function ShopDetailScreen() {
   const navigation = useNavigation<NavigationProp>();
   const route = useRoute<RouteProps>();
   const { shopId } = route.params;
+  const { isAuthenticated } = useAuthStore();
 
   const [selectedServices, setSelectedServices] = useState<string[]>([]);
   const [selectedCategory, setSelectedCategory] = useState<string>('All');
@@ -81,6 +135,8 @@ export default function ShopDetailScreen() {
   // Gallery light box
   const [galleryOpen, setGalleryOpen] = useState(false);
   const [galleryIndex, setGalleryIndex] = useState(0);
+  const [heroPhotoIndex, setHeroPhotoIndex] = useState(0);
+  const lightboxRef = useRef<FlatList>(null);
 
   // User location tracking
   const [userLocation, setUserLocation] = useState<{ latitude: number; longitude: number } | null>(null);
@@ -89,11 +145,62 @@ export default function ShopDetailScreen() {
   const [selectedStaff, setSelectedStaff] = useState<any | null>(null);
   const [staffModalOpen, setStaffModalOpen] = useState(false);
 
+  // Map Routing State
+  const mapRef = useRef<any>(null);
+  const [routeCoords, setRouteCoords] = useState<{ latitude: number; longitude: number }[] | null>(null);
+  const [routeInfo, setRouteInfo] = useState<{ distance: string; duration: string } | null>(null);
+  const [showRoute, setShowRoute] = useState(false);
+  const [loadingRoute, setLoadingRoute] = useState(false);
+
   const { data: shop, isLoading } = useQuery({
     queryKey: ['shop', shopId],
     queryFn: () => shopsApi.getBySlug(shopId).then(res => res.data),
     retry: 2,
   });
+
+  const fetchRoute = React.useCallback(async () => {
+    if (!userLocation || !shop?.latitude || !shop?.longitude) return;
+    setLoadingRoute(true);
+    try {
+      const url = `https://router.project-osrm.org/route/v1/driving/${userLocation.longitude},${userLocation.latitude};${shop.longitude},${shop.latitude}?overview=full&geometries=polyline`;
+      const res = await fetch(url);
+      const data = await res.json();
+      if (data.routes && data.routes.length > 0) {
+        const route = data.routes[0];
+        const decoded = decodePolyline(route.geometry);
+        setRouteCoords(decoded);
+
+        const distKm = (route.distance / 1000).toFixed(1);
+        const durMin = Math.round(route.duration / 60);
+        setRouteInfo({
+          distance: `${distKm} km`,
+          duration: durMin < 60 ? `${durMin} min` : `${Math.floor(durMin / 60)}h ${durMin % 60}m`,
+        });
+
+        // Fit map to route
+        mapRef.current?.fitToCoordinates(decoded, {
+          edgePadding: { top: 50, right: 50, bottom: 50, left: 50 },
+          animated: true,
+        });
+      }
+    } catch (err) {
+      console.warn('[ShopDetailScreen] Route fetch failed:', err);
+    } finally {
+      setLoadingRoute(false);
+    }
+  }, [userLocation, shop?.latitude, shop?.longitude]);
+
+  const handleToggleRoute = React.useCallback(() => {
+    if (!showRoute && !routeCoords) {
+      fetchRoute();
+    } else if (!showRoute && routeCoords) {
+      mapRef.current?.fitToCoordinates(routeCoords, {
+        edgePadding: { top: 50, right: 50, bottom: 50, left: 50 },
+        animated: true,
+      });
+    }
+    setShowRoute(prev => !prev);
+  }, [showRoute, routeCoords, fetchRoute]);
 
   const { data: queueStats } = useQuery({
     queryKey: ['shopQueue', shop?.id],
@@ -262,7 +369,8 @@ export default function ShopDetailScreen() {
   // Safe require Map components
   const MapView = mapsModule?.default;
   const Marker = mapsModule?.Marker;
-  const PROVIDER_GOOGLE = mapsModule?.PROVIDER_GOOGLE;
+  const Polyline = mapsModule?.Polyline;
+  const UrlTile = mapsModule?.UrlTile;
 
   return (
     <View style={styles.container}>
@@ -270,11 +378,47 @@ export default function ShopDetailScreen() {
         {/* Hero Image */}
         <View style={styles.heroContainer}>
           {allPhotos.length > 0 ? (
-            <Image
-              source={{ uri: allPhotos[0] }}
-              style={styles.heroImage}
-              resizeMode="cover"
-            />
+            <View style={{ flex: 1 }}>
+              <FlatList
+                data={allPhotos}
+                horizontal
+                pagingEnabled
+                showsHorizontalScrollIndicator={false}
+                keyExtractor={(item, index) => index.toString()}
+                onScroll={(e) => {
+                  const x = e.nativeEvent.contentOffset.x;
+                  const index = Math.round(x / width);
+                  setHeroPhotoIndex(index);
+                }}
+                renderItem={({ item }) => (
+                  <TouchableOpacity activeOpacity={0.9} onPress={() => {
+                    const idx = allPhotos.indexOf(item);
+                    setGalleryIndex(idx);
+                    setGalleryOpen(true);
+                  }}>
+                    <Image
+                      source={{ uri: item }}
+                      style={{ width, height: '100%' }}
+                      resizeMode="cover"
+                    />
+                  </TouchableOpacity>
+                )}
+              />
+              {/* Pagination Dots */}
+              {allPhotos.length > 1 && (
+                <View style={styles.heroDotsContainer}>
+                  {allPhotos.map((_, i) => (
+                    <View
+                      key={i}
+                      style={[
+                        styles.heroDot,
+                        heroPhotoIndex === i && styles.heroDotActive
+                      ]}
+                    />
+                  ))}
+                </View>
+              )}
+            </View>
           ) : (
             <View style={[styles.heroImage, styles.placeholderHero]}>
               <Text style={styles.placeholderLetter}>
@@ -282,7 +426,7 @@ export default function ShopDetailScreen() {
               </Text>
             </View>
           )}
-          <View style={styles.heroOverlay} />
+          <View style={styles.heroOverlay} pointerEvents="none" />
 
           {/* Back button */}
           <TouchableOpacity
@@ -367,31 +511,102 @@ export default function ShopDetailScreen() {
                 <View style={styles.overviewMapBlock}>
                   <Text style={styles.cardHeaderTitle}>Interactive Map Locator</Text>
                   <View style={styles.miniMapWrap}>
-                    <MapView
-                      style={StyleSheet.absoluteFillObject}
-                      scrollEnabled={false}
-                      zoomEnabled={false}
-                      pitchEnabled={false}
-                      rotateEnabled={false}
-                      initialRegion={{
-                        latitude: shop.latitude,
-                        longitude: shop.longitude,
-                        latitudeDelta: 0.015,
-                        longitudeDelta: 0.015,
-                      }}
-                    >
-                      {/* Shop pin */}
-                      <Marker coordinate={{ latitude: shop.latitude, longitude: shop.longitude }} title={shop.name} />
-                      
-                      {/* User Location pin */}
-                      {userLocation && (
-                        <Marker 
-                          coordinate={{ latitude: userLocation.latitude, longitude: userLocation.longitude }} 
-                          title="Your Location"
-                          pinColor="#3B82F6"
-                        />
+                    <SafeMapViewContainer fallback={
+                      <View style={[StyleSheet.absoluteFillObject, { backgroundColor: '#F1F5F9', justifyContent: 'center', alignItems: 'center' }]}>
+                        <MapPin size={24} color={Colors.primary} />
+                        <Text style={{ fontSize: 12, color: '#64748B', marginTop: 4, fontWeight: '600' }}>Map View is unavailable</Text>
+                      </View>
+                    }>
+                      <MapView
+                        ref={mapRef}
+                        provider={null}
+                        mapType="none"
+                        style={StyleSheet.absoluteFillObject}
+                        scrollEnabled={true}
+                        zoomEnabled={true}
+                        pitchEnabled={false}
+                        rotateEnabled={false}
+                        showsUserLocation={true}
+                        showsMyLocationButton={false}
+                        initialRegion={{
+                          latitude: Number(shop.latitude),
+                          longitude: Number(shop.longitude),
+                          latitudeDelta: 0.015,
+                          longitudeDelta: 0.015,
+                        }}
+                      >
+                        {UrlTile && (
+                          <UrlTile
+                            urlTemplate="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                            maximumZ={19}
+                          />
+                        )}
+                        {/* Shop pin */}
+                        {!isNaN(Number(shop.latitude)) && !isNaN(Number(shop.longitude)) && (
+                          <Marker coordinate={{ latitude: Number(shop.latitude), longitude: Number(shop.longitude) }} title={shop.name} />
+                        )}
+                        
+                        {/* User Location pin */}
+                        {userLocation && !isNaN(Number(userLocation.latitude)) && !isNaN(Number(userLocation.longitude)) && (
+                          <Marker 
+                            coordinate={{ latitude: Number(userLocation.latitude), longitude: Number(userLocation.longitude) }} 
+                            title="Your Location"
+                            pinColor="#3B82F6"
+                          />
+                        )}
+
+                        {/* Route Polyline */}
+                        {showRoute && routeCoords && Polyline && (
+                          <Polyline
+                            coordinates={routeCoords}
+                            strokeColor={Colors.primary}
+                            strokeWidth={5}
+                            lineDashPattern={[12, 8]}
+                          />
+                        )}
+                      </MapView>
+
+                      {/* Map Overlay Controls */}
+                      {userLocation && shop.latitude && (
+                        <View style={styles.mapOverlayControls}>
+                          <TouchableOpacity
+                            style={styles.mapFloatingBtn}
+                            onPress={() => {
+                              if (userLocation) {
+                                mapRef.current?.animateToRegion({
+                                  latitude: userLocation.latitude,
+                                  longitude: userLocation.longitude,
+                                  latitudeDelta: 0.01,
+                                  longitudeDelta: 0.01,
+                                }, 500);
+                              }
+                            }}
+                          >
+                            <LocateFixed size={20} color={Colors.primary} />
+                          </TouchableOpacity>
+                          
+                          <TouchableOpacity
+                            style={[styles.mapFloatingBtn, showRoute && { backgroundColor: Colors.primary }]}
+                            onPress={handleToggleRoute}
+                          >
+                            {loadingRoute ? (
+                              <ActivityIndicator size="small" color={showRoute ? "#FFF" : Colors.primary} />
+                            ) : (
+                              <Navigation size={20} color={showRoute ? "#FFF" : Colors.primary} />
+                            )}
+                          </TouchableOpacity>
+                        </View>
                       )}
-                    </MapView>
+
+                      {/* Route Info Badge */}
+                      {showRoute && routeInfo && (
+                        <View style={styles.routeInfoBadge}>
+                          <Text style={styles.routeInfoText}>🚗 {routeInfo.distance}</Text>
+                          <View style={styles.routeInfoDivider} />
+                          <Text style={styles.routeInfoText}>⏱ {routeInfo.duration}</Text>
+                        </View>
+                      )}
+                    </SafeMapViewContainer>
                   </View>
                   
                   <TouchableOpacity
@@ -402,8 +617,8 @@ export default function ShopDetailScreen() {
                       Linking.openURL(url);
                     }}
                   >
-                    <MapPin size={16} color="#FFF" style={{ marginRight: 8 }} />
-                    <Text style={styles.directionsButtonText}>GET DRIVING DIRECTIONS</Text>
+                    <Globe size={16} color="#FFF" style={{ marginRight: 8 }} />
+                    <Text style={styles.directionsButtonText}>OPEN IN GOOGLE MAPS</Text>
                   </TouchableOpacity>
                 </View>
               )}
@@ -606,32 +821,14 @@ export default function ShopDetailScreen() {
               <Text style={styles.cardHeaderTitle}>Customer Testimonials</Text>
               <Text style={styles.sectionSubtitle}>Verified ratings from active store visits</Text>
               
-              {(() => {
-                const displayReviews = reviews.length > 0 ? reviews.map((r: any) => ({ ...r, source: 'Overline' })) : [
-                  {
-                    id: 'g1',
-                    rating: 5,
-                    comment: 'Absolutely love this place! Zero wait times, and direct pricing on Overline gives me full confidence. The styling team here is extremely professional and polite.',
-                    user: { name: 'Rahul Sharma' },
-                    source: 'Google Reviews'
-                  },
-                  {
-                    id: 'g2',
-                    rating: 5,
-                    comment: 'Very easy appointment process. I booked pay at shop option, got in, and my turn started within 5 mins of arriving. Doctors/staff here are highly skilled.',
-                    user: { name: 'Priya Patel' },
-                    source: 'Google Reviews'
-                  },
-                  {
-                    id: 'g3',
-                    rating: 4,
-                    comment: 'Great value for money. Visited for physiotherapy. Clear follow up dates and tests were prescribed and instantly synced to my mobile app. Highly recommended.',
-                    user: { name: 'Amit Verma' },
-                    source: 'Google Reviews'
-                  }
-                ];
-
-                return displayReviews.map((rev: any) => (
+              {reviews.length === 0 ? (
+                <View style={styles.emptyReviews}>
+                  <Star size={32} color="#CBD5E1" style={{ marginBottom: 8 }} />
+                  <Text style={styles.emptyReviewsText}>No reviews yet for this shop</Text>
+                  <Text style={styles.emptyReviewsSub}>Be the first to share your experience after your visit!</Text>
+                </View>
+              ) : (
+                reviews.map((r: any) => ({ ...r, source: 'Overline' })).map((rev: any) => (
                   <View key={rev.id} style={styles.reviewCardFull}>
                     <View style={styles.reviewCardHeader}>
                       <View style={styles.reviewAvatar}>
@@ -654,18 +851,23 @@ export default function ShopDetailScreen() {
                           ))}
                         </View>
                       </View>
-                      <Badge 
-                        text={rev.source === 'Google Reviews' ? 'GOOGLE REVIEW' : 'VERIFIED VISIT'} 
-                        color={rev.source === 'Google Reviews' ? Colors.primary : Colors.success} 
-                        size="sm" 
-                      />
+                      <View style={{ alignItems: 'flex-end', gap: 4 }}>
+                        <Badge 
+                          text={rev.source === 'Google Reviews' ? 'GOOGLE REVIEW' : 'VERIFIED VISIT'} 
+                          color={rev.source === 'Google Reviews' ? Colors.primary : Colors.success} 
+                          size="sm" 
+                        />
+                        <Text style={{ fontSize: 10, color: '#94A3B8', fontWeight: '600' }}>
+                          {rev.createdAt ? format(new Date(rev.createdAt), 'MMM d, yyyy') : 'Just now'}
+                        </Text>
+                      </View>
                     </View>
-                    <Text style={styles.reviewCommentFull}>
-                      {rev.comment || 'Excellent services and staff! Had a very comfortable experience.'}
-                    </Text>
+                    {rev.comment ? (
+                      <Text style={styles.reviewCommentFull}>{rev.comment}</Text>
+                    ) : null}
                   </View>
-                ));
-              })()}
+                ))
+              )}
             </View>
           )}
 
@@ -762,9 +964,13 @@ export default function ShopDetailScreen() {
           </View>
           <PrimaryButton
             title={`Add ${selectedServices.length} item${selectedServices.length > 1 ? 's' : ''} to cart`}
-            onPress={() =>
-              navigation.navigate('BookingStaff', { shopId, selectedServices })
-            }
+            onPress={() => {
+              if (!isAuthenticated) {
+                navigation.navigate('Login' as any);
+              } else {
+                navigation.navigate('BookingStaff', { shopId, selectedServices });
+              }
+            }}
             icon={<ArrowRight color="#fff" size={18} />}
             size="sm"
             style={{ paddingHorizontal: 28 }}
@@ -773,29 +979,61 @@ export default function ShopDetailScreen() {
       )}
 
       {/* Photo Lightbox Modal */}
-      <Modal visible={galleryOpen} transparent animationType="fade">
+      <Modal visible={galleryOpen} transparent animationType="fade" onRequestClose={() => setGalleryOpen(false)}>
         <View style={styles.lightboxBackdrop}>
           <TouchableOpacity style={styles.lightboxClose} onPress={() => setGalleryOpen(false)}>
             <X size={28} color="#FFF" />
           </TouchableOpacity>
           <View style={styles.lightboxInner}>
-            <TouchableOpacity
-              style={styles.lightboxArrow}
-              onPress={() => setGalleryIndex((prev) => (prev > 0 ? prev - 1 : allPhotos.length - 1))}
-            >
-              <ChevronLeft size={32} color="#FFF" />
-            </TouchableOpacity>
-            
-            {allPhotos.length > 0 && (
-              <Image source={{ uri: allPhotos[galleryIndex] }} style={styles.lightboxImage} resizeMode="contain" />
+            {galleryOpen && allPhotos.length > 0 && (
+              <FlatList
+                ref={lightboxRef}
+                data={allPhotos}
+                horizontal
+                pagingEnabled
+                showsHorizontalScrollIndicator={false}
+                keyExtractor={(item, index) => index.toString()}
+                initialScrollIndex={galleryIndex}
+                getItemLayout={(data, index) => (
+                  { length: width, offset: width * index, index }
+                )}
+                onMomentumScrollEnd={(e) => {
+                  const index = Math.round(e.nativeEvent.contentOffset.x / width);
+                  setGalleryIndex(index);
+                }}
+                renderItem={({ item }) => (
+                  <View style={{ width, height: '100%', justifyContent: 'center', alignItems: 'center' }}>
+                    <Image source={{ uri: item }} style={styles.lightboxImage} resizeMode="contain" />
+                  </View>
+                )}
+              />
             )}
 
-            <TouchableOpacity
-              style={styles.lightboxArrow}
-              onPress={() => setGalleryIndex((prev) => (prev < allPhotos.length - 1 ? prev + 1 : 0))}
-            >
-              <ChevronRight size={32} color="#FFF" />
-            </TouchableOpacity>
+            {allPhotos.length > 1 && (
+              <>
+                <TouchableOpacity
+                  style={[styles.lightboxArrow, { position: 'absolute', left: 10 }]}
+                  onPress={() => {
+                    const prevIdx = galleryIndex > 0 ? galleryIndex - 1 : allPhotos.length - 1;
+                    setGalleryIndex(prevIdx);
+                    lightboxRef.current?.scrollToIndex({ index: prevIdx, animated: true });
+                  }}
+                >
+                  <ChevronLeft size={32} color="#FFF" />
+                </TouchableOpacity>
+
+                <TouchableOpacity
+                  style={[styles.lightboxArrow, { position: 'absolute', right: 10 }]}
+                  onPress={() => {
+                    const nextIdx = galleryIndex < allPhotos.length - 1 ? galleryIndex + 1 : 0;
+                    setGalleryIndex(nextIdx);
+                    lightboxRef.current?.scrollToIndex({ index: nextIdx, animated: true });
+                  }}
+                >
+                  <ChevronRight size={32} color="#FFF" />
+                </TouchableOpacity>
+              </>
+            )}
           </View>
           <Text style={styles.lightboxIndicator}>{galleryIndex + 1} / {allPhotos.length}</Text>
         </View>
@@ -912,7 +1150,7 @@ export default function ShopDetailScreen() {
   );
 }
 
-const { height } = Dimensions.get('window');
+const { width, height } = Dimensions.get('window');
 
 const styles = StyleSheet.create({
   container: {
@@ -939,6 +1177,24 @@ const styles = StyleSheet.create({
   heroContainer: {
     height: height * 0.35,
     position: 'relative',
+  },
+  heroDotsContainer: {
+    position: 'absolute',
+    bottom: 24,
+    right: 20,
+    flexDirection: 'row',
+    gap: 6,
+    zIndex: 10,
+  },
+  heroDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: 'rgba(255, 255, 255, 0.4)',
+  },
+  heroDotActive: {
+    backgroundColor: '#FFFFFF',
+    width: 14,
   },
   heroImage: {
     width: '100%',
@@ -1263,6 +1519,29 @@ const styles = StyleSheet.create({
     fontWeight: FontWeights.bold,
     color: Colors.primary,
   },
+  emptyReviews: {
+    paddingVertical: 40,
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: Colors.surfaceElevated,
+    borderRadius: BorderRadius.xl,
+    borderWidth: 1.5,
+    borderColor: Colors.border,
+    paddingHorizontal: 20,
+    marginVertical: 10,
+  },
+  emptyReviewsText: {
+    fontSize: FontSizes.md,
+    fontWeight: FontWeights.bold,
+    color: Colors.textPrimary,
+    marginBottom: 4,
+  },
+  emptyReviewsSub: {
+    fontSize: FontSizes.xs,
+    color: Colors.textTertiary,
+    textAlign: 'center',
+    fontWeight: '500',
+  },
   reviewsSection: {
     paddingHorizontal: Spacing.xl,
     marginBottom: Spacing.xl,
@@ -1403,9 +1682,46 @@ const styles = StyleSheet.create({
   },
   directionsButtonText: {
     color: '#FFF',
-    fontSize: 13,
-    fontWeight: '900',
-    letterSpacing: 0.5,
+    fontSize: 12,
+    fontWeight: '800',
+  },
+  mapOverlayControls: {
+    position: 'absolute',
+    top: 10,
+    right: 10,
+    gap: 10,
+  },
+  mapFloatingBtn: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    ...Shadows.md,
+  },
+  routeInfoBadge: {
+    position: 'absolute',
+    bottom: 10,
+    left: 10,
+    backgroundColor: Colors.primary,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    borderRadius: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 8,
+    ...Shadows.md,
+  },
+  routeInfoText: {
+    color: '#FFF',
+    fontSize: 12,
+    fontWeight: '700',
+  },
+  routeInfoDivider: {
+    width: 1,
+    height: 12,
+    backgroundColor: 'rgba(255, 255, 255, 0.4)',
   },
   serviceCoverPhoto: {
     width: 70,

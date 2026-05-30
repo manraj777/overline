@@ -1,0 +1,38 @@
+{
+  "hero": {
+    "title1": "Find top experts and book",
+    "title2": "appointments instantly.",
+    "subtitle": "Zero waiting in line. Verified professionals. Real-time availability.",
+    "search": {
+      "location": "Location",
+      "locationPlaceholder": "Your city or area...",
+      "search": "Search",
+      "searchPlaceholder": "Salons, clinics, spas...",
+      "button": "Search"
+    }
+  },
+  "header": {
+    "home": "Home",
+    "explore": "Explore",
+    "bookings": "Bookings",
+    "exploringIn": "Exploring in",
+    "login": "Login",
+    "signUp": "Sign Up"
+  },
+  "features": {
+    "title": "Why choose Overline?",
+    "subtitle": "We ensure a seamless, high-quality experience from booking to service completion.",
+    "verified": {
+      "title": "Verified Partners",
+      "desc": "Every clinic, salon, and professional is thoroughly vetted for quality."
+    },
+    "instant": {
+      "title": "Instant Booking",
+      "desc": "See live schedules and reserve your slot instantly. No phone calls needed."
+    },
+    "skip": {
+      "title": "Skip the Queue",
+      "desc": "Track your wait time live. Walk in exactly when it is your turn."
+    }
+  }
+}

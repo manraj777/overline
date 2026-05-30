@@ -236,7 +236,7 @@ export default function DashboardPage() {
                 </button>
               </div>
 
-              {todayBookings?.data.length === 0 ? (
+              {todayBookings?.data?.length === 0 || !todayBookings?.data ? (
                 <div className="text-center py-16">
                   <Calendar className="w-12 h-12 text-outline-variant mx-auto mb-4" />
                   <p className="text-on-surface-variant font-medium">No appointments scheduled for today</p>

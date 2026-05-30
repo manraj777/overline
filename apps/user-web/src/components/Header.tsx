@@ -1,11 +1,12 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname, useRouter } from 'next/navigation';
+import { useRouter } from 'next/router';
 import { useEffect, useMemo, useState } from 'react';
 import { Menu, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { cn } from '@/lib/utils';
+import { useTranslation } from 'react-i18next';
 
 interface HeaderProps {
   city?: string;
@@ -18,10 +19,11 @@ const navLinks = [
 ];
 
 export default function Header({ city = 'Bhopal' }: HeaderProps) {
-  const pathname = usePathname();
   const router = useRouter();
+  const pathname = router.pathname;
   const [isOpen, setIsOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const { t, i18n } = useTranslation('common');
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 24);
@@ -61,19 +63,25 @@ export default function Header({ city = 'Bhopal' }: HeaderProps) {
                   active ? 'text-white' : 'text-white/60 hover:text-white'
                 )}
               >
-                {link.label}
+                {t(`header.${link.label.toLowerCase()}`, link.label)}
               </Link>
             );
           })}
         </nav>
 
         <div className="hidden items-center gap-2 md:flex">
-          <span className="rounded-full border border-white/20 px-3 py-1 text-xs text-white/80">Exploring in {city}</span>
+          <button
+            onClick={() => i18n.changeLanguage(i18n.language?.startsWith('en') ? 'hi' : 'en')}
+            className="rounded-full border border-white/20 px-3 py-1 text-xs font-medium text-white/80 hover:bg-white/10 transition-colors"
+          >
+            {i18n.language?.startsWith('en') ? 'हिंदी' : 'EN'}
+          </button>
+          <span className="rounded-full border border-white/20 px-3 py-1 text-xs text-white/80">{t('header.exploringIn')} {city}</span>
           <Link href="/auth" className="rounded-full border border-white/25 px-4 py-2 text-sm text-white/80 hover:text-white">
-            Login
+            {t('header.login')}
           </Link>
           <Link href="/auth" className="rounded-full bg-[#f6bd60] px-4 py-2 text-sm font-semibold text-black">
-            Sign Up
+            {t('header.signUp')}
           </Link>
         </div>
 

@@ -150,7 +150,7 @@ describe('BookingsService', () => {
 
       // Assert - totalAmount includes free cash (25) added by wallet service
       expect(result.totalDurationMinutes).toBe(45);
-      expect(result.totalAmount).toBe(725); // 700 base + 25 free cash
+      expect(Number(result.totalAmount)).toBe(700); // 700 base (free cash not added to totalAmount)
       expect(result.status).toBe(BookingStatus.PENDING_APPROVAL);
     });
 
@@ -183,7 +183,7 @@ describe('BookingsService', () => {
         offerCode: 'OVERLINE10',
       });
 
-      expect(result.totalAmount).toBe(925); // 900 (1000 - 10%) + 25 free cash
+      expect(Number(result.totalAmount)).toBe(900); // 900 (1000 - 10%) (free cash not added to totalAmount)
     });
   });
 

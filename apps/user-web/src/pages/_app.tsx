@@ -10,6 +10,7 @@ import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
 import { SmoothScrollProvider } from '@/components/layout/SmoothScrollProvider';
 import { AuthGuard } from '@/components/auth/AuthGuard';
 import { ThemeProvider } from 'next-themes';
+import '../lib/i18n';
 
 const inter = {
   variable: 'font-sans',

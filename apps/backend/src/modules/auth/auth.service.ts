@@ -1872,13 +1872,13 @@ export class AuthService implements OnModuleInit {
 
     const [ownedShops, tenantShops] = await Promise.all([
       this.prisma.shop.findMany({
-        where: { ownerId: user.id, isActive: true },
+        where: { ownerId: user.id },
         orderBy: { createdAt: 'asc' },
         select: { id: true },
       }),
       user.tenantId
         ? this.prisma.shop.findMany({
-            where: { tenantId: user.tenantId, isActive: true },
+            where: { tenantId: user.tenantId },
             orderBy: { createdAt: 'asc' },
             select: { id: true },
           })
@@ -1900,7 +1900,7 @@ export class AuthService implements OnModuleInit {
 
     if (effectiveRole === UserRole.OWNER && shopIds.length === 0) {
       const ownerShops = await this.prisma.shop.findMany({
-        where: { ownerId: user.id, isActive: true },
+        where: { ownerId: user.id },
         orderBy: { createdAt: 'asc' },
         select: { id: true },
       });

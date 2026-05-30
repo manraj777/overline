@@ -9,6 +9,7 @@ import { cn } from '@/lib/utils';
 import { ShopCard } from '@/components/shop';
 import { useShops, useLocation, useAiRecommendations } from '@/hooks';
 import { SeoHead, jsonLd } from '@/components/seo/SeoHead';
+import { useTranslation } from 'react-i18next';
 
 const HOME_FAQ = [
   {
@@ -39,6 +40,7 @@ const HOME_FAQ = [
 ];
 
 export default function HomePage() {
+  const { t } = useTranslation('common');
   const [searchQuery, setSearchQuery] = React.useState('');
   const [locationQuery, setLocationQuery] = React.useState('');
   const { location, loading: locationLoading, requestLocation } = useLocation(true);
@@ -76,13 +78,13 @@ export default function HomePage() {
         <div className="max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8 relative z-10 text-center">
           <div className="max-w-4xl mx-auto">
             <h1 className="text-4xl sm:text-5xl lg:text-[56px] font-black tracking-tight text-on-surface mb-6 leading-[1.1] animate-in fade-in slide-in-from-bottom-4 duration-700">
-              Find top experts and book
+              {t('hero.title1')}
               <br className="hidden sm:block" />
-              appointments instantly.
+              {t('hero.title2')}
             </h1>
 
             <p className="text-on-surface-variant text-lg sm:text-xl font-medium mb-10 animate-in fade-in slide-in-from-bottom-4 duration-700 delay-100 fill-mode-both">
-              Zero waiting in line. Verified professionals. Real-time availability.
+              {t('hero.subtitle')}
             </p>
 
             {/* Prominent Search Bar (Practo style) */}
@@ -93,12 +95,12 @@ export default function HomePage() {
                 <div className="flex items-center flex-1 px-4 py-3 bg-surface hover:bg-surface-container-low rounded-xl group transition-colors">
                   <MapPin className="w-5 h-5 text-outline-variant mr-3 flex-shrink-0 group-focus-within:text-primary transition-colors" />
                   <div className="flex flex-col flex-1 text-left">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-outline mb-0.5">Location</span>
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-outline mb-0.5">{t('hero.search.location')}</span>
                     <input
                       className="bg-transparent border-none p-0 focus:ring-0 focus:outline-none text-on-surface font-semibold text-sm w-full placeholder:text-outline/50 placeholder:font-medium"
                       value={locationQuery || location?.address || ''}
                       onChange={(e) => setLocationQuery(e.target.value)}
-                      placeholder="Your city or area..."
+                      placeholder={t('hero.search.locationPlaceholder')}
                     />
                   </div>
                 </div>
@@ -109,10 +111,10 @@ export default function HomePage() {
                 <div className="flex flex-1 items-center px-4 py-3 bg-surface hover:bg-surface-container-low rounded-xl group transition-colors">
                   <Search className="w-5 h-5 text-outline-variant mr-3 flex-shrink-0 group-focus-within:text-primary transition-colors" />
                   <div className="flex flex-col flex-1 text-left">
-                    <span className="text-[10px] font-bold uppercase tracking-wider text-outline mb-0.5">Search</span>
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-outline mb-0.5">{t('hero.search.search')}</span>
                     <input
                       className="bg-transparent border-none p-0 focus:ring-0 focus:outline-none text-on-surface font-semibold text-sm w-full placeholder:text-outline/50 placeholder:font-medium"
-                      placeholder="Salons, clinics, spas..."
+                      placeholder={t('hero.search.searchPlaceholder')}
                       value={searchQuery}
                       onChange={(e) => setSearchQuery(e.target.value)}
                     />
@@ -227,32 +229,32 @@ export default function HomePage() {
       <section className="py-20 bg-surface border-t border-outline-variant/10">
         <div className="max-w-[1200px] mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <h2 className="text-3xl md:text-4xl font-black text-on-surface tracking-tight mb-4">
-            Why choose Overline?
+            {t('features.title')}
           </h2>
           <p className="text-on-surface-variant text-lg max-w-2xl mx-auto font-medium mb-16">
-            We ensure a seamless, high-quality experience from booking to service completion.
+            {t('features.subtitle')}
           </p>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {[
               {
                 icon: ShieldCheck,
-                title: 'Verified Partners',
-                desc: 'Every clinic, salon, and professional is thoroughly vetted for quality.',
+                title: t('features.verified.title'),
+                desc: t('features.verified.desc'),
                 color: 'text-primary',
                 bg: 'bg-primary/10',
               },
               {
                 icon: Zap,
-                title: 'Instant Booking',
-                desc: 'See live schedules and reserve your slot instantly. No phone calls needed.',
+                title: t('features.instant.title'),
+                desc: t('features.instant.desc'),
                 color: 'text-secondary',
                 bg: 'bg-secondary/10',
               },
               {
                 icon: Calendar,
-                title: 'Skip the Queue',
-                desc: 'Track your wait time live. Walk in exactly when it is your turn.',
+                title: t('features.skip.title'),
+                desc: t('features.skip.desc'),
                 color: 'text-tertiary',
                 bg: 'bg-tertiary/10',
               },

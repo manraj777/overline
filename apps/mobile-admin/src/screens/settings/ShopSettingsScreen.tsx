@@ -17,7 +17,7 @@ import { shopApi, staffApi } from '../../api/client';
 import { RootStackParamList } from '../../types';
 import { Colors, Shadows } from '../../theme';
 import { useAuthStore } from '../../stores/authStore';
-import { Bell, Camera, MapPin, Pencil, Save, Store, Users } from 'lucide-react-native';
+import { Bell, Camera, MapPin, Pencil, Save, Store, Users, Globe } from 'lucide-react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 type RouteProps = RouteProp<RootStackParamList, 'ShopSettings'>;
@@ -100,6 +100,27 @@ export default function ShopSettingsScreen() {
       Alert.alert('Update failed', Array.isArray(message) ? message.join(', ') : message || 'Please try again.');
     },
   });
+
+  const autofillMutation = useMutation({
+    mutationFn: (query: string) => shopApi.autofillFromGoogleMaps(shopId, query),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['adminShopSettings', shopId] });
+      Alert.alert('Autofill complete', 'Shop details, location, and photos fetched from Google Maps.');
+    },
+    onError: (error: any) => {
+      const message = error?.response?.data?.message;
+      Alert.alert('Autofill failed', Array.isArray(message) ? message.join(', ') : message || 'Could not find place on Google Maps.');
+    },
+  });
+
+  const handleAutofill = () => {
+    const query = formData.googleMapLink || `${formData.name} ${formData.city}`;
+    if (!query.trim()) {
+      Alert.alert('Query required', 'Please enter shop name, city, or Google link to autofill.');
+      return;
+    }
+    autofillMutation.mutate(query);
+  };
 
   const saveShopDetails = () => {
     updateMutation.mutate({
@@ -247,7 +268,25 @@ export default function ShopSettingsScreen() {
               <TextInput style={styles.input} placeholder="State" value={formData.state} onChangeText={t => setFormData({ ...formData, state: t })} />
               <TextInput style={styles.input} placeholder="Postal Code" value={formData.postalCode} onChangeText={t => setFormData({ ...formData, postalCode: t })} />
               <TextInput style={styles.input} placeholder="Location" value={formData.location} onChangeText={t => setFormData({ ...formData, location: t })} />
-              <TextInput style={styles.input} placeholder="Google Link (Optional)" value={formData.googleMapLink} onChangeText={t => setFormData({ ...formData, googleMapLink: t })} />
+              
+              <View style={styles.autofillContainer}>
+                <TextInput style={[styles.input, { flex: 1, marginBottom: 0 }]} placeholder="Google Link (Optional)" value={formData.googleMapLink} onChangeText={t => setFormData({ ...formData, googleMapLink: t })} />
+                <TouchableOpacity 
+                  style={[styles.autofillBtn, autofillMutation.isPending && { opacity: 0.6 }]}
+                  onPress={handleAutofill}
+                  disabled={autofillMutation.isPending}
+                >
+                  {autofillMutation.isPending ? (
+                    <ActivityIndicator size="small" color="#FFF" />
+                  ) : (
+                    <>
+                      <Globe size={14} color="#FFF" />
+                      <Text style={styles.autofillBtnText}>Autofill</Text>
+                    </>
+                  )}
+                </TouchableOpacity>
+              </View>
+
               <TextInput style={styles.input} placeholder="Timing (Working Time)" value={formData.workingTime} onChangeText={t => setFormData({ ...formData, workingTime: t })} />
             </View>
           )}
@@ -360,6 +399,9 @@ const styles = StyleSheet.create({
   input: { backgroundColor: '#FFF', borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 12, paddingHorizontal: 14, height: 46, marginBottom: 10, fontSize: 14, color: '#0F172A', fontWeight: '700' },
   selectWrap: { backgroundColor: '#FFF', borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 12, padding: 10, marginBottom: 10 },
   selectLabel: { fontSize: 11, color: '#64748B', fontWeight: '800', marginBottom: 8 },
+  autofillContainer: { flexDirection: 'row', gap: 8, marginBottom: 10, alignItems: 'stretch' },
+  autofillBtn: { backgroundColor: Colors.primary, borderRadius: 12, paddingHorizontal: 12, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
+  autofillBtnText: { color: '#FFF', fontSize: 12, fontWeight: '800' },
   typeChip: { borderWidth: 1, borderColor: '#CBD5E1', borderRadius: 999, paddingHorizontal: 12, paddingVertical: 6, marginRight: 8 },
   typeChipActive: { borderColor: Colors.primary, backgroundColor: '#EEF2FF' },
   typeChipText: { fontSize: 12, fontWeight: '700', color: '#475569' },

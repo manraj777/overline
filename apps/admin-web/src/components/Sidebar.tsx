@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { usePathname } from 'next/navigation';
+import { useRouter } from 'next/router';
 import { Bell, BarChart3, Clock3, LayoutDashboard, Settings, Users, UserRound, Siren, Rocket, Shield } from 'lucide-react';
 import { Languages } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -25,7 +25,8 @@ const items = [
 ];
 
 export default function Sidebar({ unreadCount = 3 }: SidebarProps) {
-  const pathname = usePathname();
+  const router = useRouter();
+  const pathname = router.pathname;
   const { user } = useAuthStore();
   const { language, toggleLanguage } = useSettingsStore();
 

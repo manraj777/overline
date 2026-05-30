@@ -46,14 +46,15 @@ export default function BookingStaffScreen() {
   });
 
   const { data: availability, isLoading: loadingAvailability } = useQuery({
-    queryKey: ['availability-staff-step', shopId, selectedServices.join('|')],
+    queryKey: ['availability-staff-step', shop?.id, selectedServices.join('|')],
     queryFn: () =>
       queueApi
-        .getSlots(shopId, {
+        .getSlots(shop!.id, {
           date: format(new Date(), 'yyyy-MM-dd'),
           serviceIds: selectedServices,
         })
         .then(res => res.data),
+    enabled: !!shop?.id,
   });
 
   const staffOptions = useMemo(() => {

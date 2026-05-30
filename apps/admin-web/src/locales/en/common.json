@@ -1,0 +1,37 @@
+{
+  "sidebar": {
+    "dashboard": "Dashboard",
+    "queue": "Queue",
+    "bookings": "Bookings",
+    "services": "Services",
+    "staff": "Staff",
+    "payments": "Payments",
+    "earnings": "Staff Earnings",
+    "revenue": "Revenue",
+    "reviews": "Reviews",
+    "shopProfile": "Shop Profile",
+    "notifications": "Notifications",
+    "settings": "Settings",
+    "schedule": "Schedule",
+    "profile": "Profile",
+    "signOut": "Sign Out"
+  },
+  "sections": {
+    "overview": "Overview",
+    "business": "Business",
+    "finance": "Finance",
+    "insights": "Insights",
+    "admin": "Admin",
+    "myDay": "My Day",
+    "work": "Work",
+    "account": "Account",
+    "platform": "Platform"
+  },
+  "header": {
+    "open": "Open",
+    "closed": "Closed",
+    "present": "Present",
+    "absent": "Absent",
+    "search": "Search bookings, staff..."
+  }
+}
