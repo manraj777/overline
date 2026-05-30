@@ -37,6 +37,34 @@ const ShopSetupScreen: React.FC = () => {
     description: '',
   });
 
+  const [mapLink, setMapLink] = useState('');
+  const [parsingLink, setParsingLink] = useState(false);
+
+  const handleParseMapLink = async () => {
+    if (!mapLink) {
+      Alert.alert('Required', 'Please paste a valid Google Maps link.');
+      return;
+    }
+    setParsingLink(true);
+    try {
+      const { data } = await shopApi.parseGoogleLink(mapLink);
+      if (data) {
+        setFormData(prev => ({
+          ...prev,
+          name: data.name || prev.name,
+          address: data.address || prev.address,
+          city: data.city || prev.city,
+        }));
+        Alert.alert('Success', 'Shop details fetched from map link!');
+      }
+    } catch (err: any) {
+      const message = err?.response?.data?.message || err.message || 'Failed to parse map link';
+      Alert.alert('Error', message);
+    } finally {
+      setParsingLink(false);
+    }
+  };
+
   const categories = [
     { label: 'Salon', value: 'SALON', icon: Scissors },
     { label: 'Clinic', value: 'CLINIC', icon: Building2 },
@@ -85,6 +113,36 @@ const ShopSetupScreen: React.FC = () => {
             </View>
 
             <View style={styles.card}>
+              <View style={styles.autofillSection}>
+                <View style={styles.autofillHeader}>
+                  <Sparkles size={16} color="#3B82F6" />
+                  <Text style={styles.autofillTitle}>Autofill with Google Maps Link</Text>
+                </View>
+                <View style={styles.autofillInputRow}>
+                  <TextInput
+                    style={[styles.input, styles.autofillInput]}
+                    placeholder="https://maps.app.goo.gl/..."
+                    value={mapLink}
+                    onChangeText={setMapLink}
+                    placeholderTextColor="#94A3B8"
+                    autoCapitalize="none"
+                  />
+                  <TouchableOpacity
+                    style={[styles.autofillButton, parsingLink && styles.autofillButtonDisabled]}
+                    onPress={handleParseMapLink}
+                    disabled={parsingLink || !mapLink}
+                  >
+                    {parsingLink ? (
+                      <ActivityIndicator size="small" color="#FFF" />
+                    ) : (
+                      <Text style={styles.autofillButtonText}>Autofill</Text>
+                    )}
+                  </TouchableOpacity>
+                </View>
+                <Text style={styles.autofillSubtitle}>
+                  Paste your shop's Google Maps link to instantly fetch name, address, and city.
+                </Text>
+              </View>
               <View style={styles.inputGroup}>
                 <Text style={styles.label}>Shop Name *</Text>
                 <TextInput
@@ -302,6 +360,56 @@ const styles = StyleSheet.create({
   categoryLabelSelected: {
     color: '#3B82F6',
     fontWeight: '600',
+  },
+  autofillSection: {
+    backgroundColor: '#EFF6FF',
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: '#BFDBFE',
+  },
+  autofillHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    marginBottom: 12,
+  },
+  autofillTitle: {
+    fontSize: 14,
+    fontWeight: '700',
+    color: '#1E3A8A',
+  },
+  autofillInputRow: {
+    flexDirection: 'row',
+    gap: 8,
+    marginBottom: 8,
+  },
+  autofillInput: {
+    flex: 1,
+    marginBottom: 0,
+    height: 44,
+    borderColor: '#93C5FD',
+  },
+  autofillButton: {
+    backgroundColor: '#3B82F6',
+    paddingHorizontal: 16,
+    borderRadius: 12,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  autofillButtonDisabled: {
+    backgroundColor: '#94A3B8',
+  },
+  autofillButtonText: {
+    color: '#FFF',
+    fontSize: 14,
+    fontWeight: '700',
+  },
+  autofillSubtitle: {
+    fontSize: 11,
+    color: '#60A5FA',
+    lineHeight: 16,
   },
   submitButton: {
     backgroundColor: '#3B82F6',

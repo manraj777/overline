@@ -981,6 +981,8 @@ const styles = StyleSheet.create({
     borderRadius: BorderRadius.full,
     gap: 10,
     ...Shadows.lg,
+    zIndex: 999,
+    elevation: 8,
   },
   mapToggleText: {
     color: '#FFF',

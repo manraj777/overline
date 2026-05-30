@@ -154,7 +154,14 @@ export default function RootNavigator() {
       }
     };
 
-    loadFirstLaunchState();
+    const init = async () => {
+      await Promise.all([
+        loadFirstLaunchState(),
+        useAuthStore.getState().checkAuth()
+      ]);
+    };
+
+    init();
 
     return () => {
       isMounted = false;

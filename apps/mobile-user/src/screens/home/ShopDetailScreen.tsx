@@ -537,7 +537,7 @@ export default function ShopDetailScreen() {
                       >
                         {UrlTile && (
                           <UrlTile
-                            urlTemplate="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                            urlTemplate="https://a.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}.png"
                             maximumZ={19}
                           />
                         )}
