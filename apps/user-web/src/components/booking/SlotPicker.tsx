@@ -37,8 +37,9 @@ const SlotPicker: React.FC<SlotPickerProps> = ({
     );
   }
 
-  // Filter only available slots or show them all but disabled if unavailable
+  // Remove filter so we show all slots (available and booked)
   const availableSlots = slots.filter(s => s.available);
+  const displaySlots = slots;
 
   if (availableSlots.length === 0) {
     return (
@@ -70,9 +71,9 @@ const SlotPicker: React.FC<SlotPickerProps> = ({
   };
 
   const groupedSlots = {
-    Morning: availableSlots.filter(s => timeToMinutes(s.startTime) < 720), // Before 12:00 PM
-    Afternoon: availableSlots.filter(s => timeToMinutes(s.startTime) >= 720 && timeToMinutes(s.startTime) < 1020), // 12:00 PM - 5:00 PM
-    Evening: availableSlots.filter(s => timeToMinutes(s.startTime) >= 1020), // After 5:00 PM
+    Morning: displaySlots.filter(s => timeToMinutes(s.startTime) < 720), // Before 12:00 PM
+    Afternoon: displaySlots.filter(s => timeToMinutes(s.startTime) >= 720 && timeToMinutes(s.startTime) < 1020), // 12:00 PM - 5:00 PM
+    Evening: displaySlots.filter(s => timeToMinutes(s.startTime) >= 1020), // After 5:00 PM
   };
 
   return (
@@ -145,18 +146,29 @@ const SlotPicker: React.FC<SlotPickerProps> = ({
             <div className="grid grid-cols-3 sm:grid-cols-4 md:grid-cols-5 gap-3">
               {periodSlots.map((slot, index) => {
                 const isSelected = selectedSlot?.startTime === slot.startTime;
+                const isAvailable = slot.available;
                 return (
                   <button
                     key={`${slot.startTime}-${index}`}
-                    onClick={() => onSelectSlot(slot)}
+                    onClick={() => isAvailable && onSelectSlot(slot)}
+                    disabled={!isAvailable}
                     className={cn(
-                      "px-3 py-2.5 rounded-xl text-sm font-black transition-all duration-200 border",
+                      "px-3 py-2.5 rounded-xl text-sm font-black transition-all duration-200 border relative overflow-hidden",
                       isSelected
                         ? "bg-primary text-on-primary border-primary shadow-md shadow-primary/20 scale-[1.02]"
-                        : "bg-surface-container-low text-on-surface border-outline-variant/20 hover:border-primary/40 hover:bg-surface-container"
+                        : isAvailable
+                          ? "bg-surface-container-low text-on-surface border-outline-variant/20 hover:border-primary/40 hover:bg-surface-container"
+                          : "bg-surface-container-high/50 text-on-surface-variant/40 border-outline-variant/10 cursor-not-allowed opacity-60"
                     )}
                   >
-                    {formatSlotTime(slot.startTime)}
+                    <span className={cn(!isAvailable && "line-through decoration-on-surface-variant/40")}>
+                      {formatSlotTime(slot.startTime)}
+                    </span>
+                    {!isAvailable && (
+                      <span className="absolute bottom-0 left-0 right-0 text-[8px] font-bold text-center text-error bg-error-container/20 py-0.5 uppercase tracking-widest">
+                        Booked
+                      </span>
+                    )}
                   </button>
                 );
               })}

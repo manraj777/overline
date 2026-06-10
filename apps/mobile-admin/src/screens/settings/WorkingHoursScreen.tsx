@@ -33,11 +33,8 @@ const DAYS = [
   'sunday',
 ] as const;
 
-const TIME_SLOTS = [
-  '06:00', '07:00', '08:00', '09:00', '10:00', '11:00', '12:00', 
-  '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00', 
-  '20:00', '21:00', '22:00',
-];
+const HOURS = Array.from({ length: 24 }, (_, i) => i.toString().padStart(2, '0'));
+const MINUTES = ['00', '15', '30', '45'];
 
 const defaultDayHours: DayHours = {
   isOpen: true,
@@ -114,8 +111,19 @@ export default function WorkingHoursScreen() {
   const formatTime = (time?: string) => {
     if (!time) return '';
     const [hours, minutes] = time.split(':');
-    const h = parseInt(hours);
+    const h = parseInt(hours, 10);
     return `${h % 12 || 12}:${minutes} ${h >= 12 ? 'PM' : 'AM'}`;
+  };
+
+  const updateTimePart = (type: 'open' | 'close', part: 'hour' | 'minute', val: string) => {
+    const current = type === 'open' ? currentHours.openTime : currentHours.closeTime;
+    const [h, m] = current.split(':');
+    const newTime = part === 'hour' ? `${val}:${m}` : `${h}:${val}`;
+    
+    setWorkingHours(prev => ({
+      ...prev,
+      [selectedDay]: { ...currentHours, [type === 'open' ? 'openTime' : 'closeTime']: newTime }
+    }));
   };
 
   if (isLoading) {
@@ -194,36 +202,78 @@ export default function WorkingHoursScreen() {
                 </View>
 
                 {/* Selection Grids */}
-                <Text style={styles.gridLabel}>Select Opening Time</Text>
-                <View style={styles.grid}>
-                  {TIME_SLOTS.slice(0, 10).map(t => (
-                    <TouchableOpacity 
-                      key={t}
-                      style={[styles.chip, currentHours.openTime === t && styles.chipActive]}
-                      onPress={() => setWorkingHours(prev => ({
-                        ...prev,
-                        [selectedDay]: { ...currentHours, openTime: t }
-                      }))}
-                    >
-                      <Text style={[styles.chipText, currentHours.openTime === t && styles.chipTextActive]}>{formatTime(t)}</Text>
-                    </TouchableOpacity>
-                  ))}
+                <View style={styles.pickerSection}>
+                  <Text style={styles.gridLabel}>Set Opening Time</Text>
+                  <View style={styles.pickerRow}>
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.pickerScroll}>
+                      {HOURS.map(h => {
+                        const [currH] = currentHours.openTime.split(':');
+                        const active = currH === h;
+                        return (
+                          <TouchableOpacity 
+                            key={`open-h-${h}`}
+                            style={[styles.chip, active && styles.chipActive]}
+                            onPress={() => updateTimePart('open', 'hour', h)}
+                          >
+                            <Text style={[styles.chipText, active && styles.chipTextActive]}>{h}</Text>
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </ScrollView>
+                    <Text style={styles.pickerDivider}>:</Text>
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.pickerScroll}>
+                      {MINUTES.map(m => {
+                        const [, currM] = currentHours.openTime.split(':');
+                        const active = currM === m;
+                        return (
+                          <TouchableOpacity 
+                            key={`open-m-${m}`}
+                            style={[styles.chip, active && styles.chipActive]}
+                            onPress={() => updateTimePart('open', 'minute', m)}
+                          >
+                            <Text style={[styles.chipText, active && styles.chipTextActive]}>{m}</Text>
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </ScrollView>
+                  </View>
                 </View>
 
-                <Text style={[styles.gridLabel, { marginTop: 20 }]}>Select Closing Time</Text>
-                <View style={styles.grid}>
-                  {TIME_SLOTS.slice(8).map(t => (
-                    <TouchableOpacity 
-                      key={t}
-                      style={[styles.chip, currentHours.closeTime === t && styles.chipActive]}
-                      onPress={() => setWorkingHours(prev => ({
-                        ...prev,
-                        [selectedDay]: { ...currentHours, closeTime: t }
-                      }))}
-                    >
-                      <Text style={[styles.chipText, currentHours.closeTime === t && styles.chipTextActive]}>{formatTime(t)}</Text>
-                    </TouchableOpacity>
-                  ))}
+                <View style={[styles.pickerSection, { marginTop: 24 }]}>
+                  <Text style={styles.gridLabel}>Set Closing Time</Text>
+                  <View style={styles.pickerRow}>
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.pickerScroll}>
+                      {HOURS.map(h => {
+                        const [currH] = currentHours.closeTime.split(':');
+                        const active = currH === h;
+                        return (
+                          <TouchableOpacity 
+                            key={`close-h-${h}`}
+                            style={[styles.chip, active && styles.chipActive]}
+                            onPress={() => updateTimePart('close', 'hour', h)}
+                          >
+                            <Text style={[styles.chipText, active && styles.chipTextActive]}>{h}</Text>
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </ScrollView>
+                    <Text style={styles.pickerDivider}>:</Text>
+                    <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.pickerScroll}>
+                      {MINUTES.map(m => {
+                        const [, currM] = currentHours.closeTime.split(':');
+                        const active = currM === m;
+                        return (
+                          <TouchableOpacity 
+                            key={`close-m-${m}`}
+                            style={[styles.chip, active && styles.chipActive]}
+                            onPress={() => updateTimePart('close', 'minute', m)}
+                          >
+                            <Text style={[styles.chipText, active && styles.chipTextActive]}>{m}</Text>
+                          </TouchableOpacity>
+                        );
+                      })}
+                    </ScrollView>
+                  </View>
                 </View>
               </View>
             )}
@@ -438,18 +488,31 @@ const styles = StyleSheet.create({
     color: '#475569',
     marginBottom: 12,
   },
-  grid: {
+  pickerSection: {
+    marginBottom: 8,
+  },
+  pickerRow: {
     flexDirection: 'row',
-    flexWrap: 'wrap',
+    alignItems: 'center',
     gap: 8,
   },
+  pickerScroll: {
+    flex: 1,
+  },
+  pickerDivider: {
+    fontSize: 20,
+    fontWeight: '900',
+    color: '#94A3B8',
+    marginHorizontal: 4,
+  },
   chip: {
-    paddingHorizontal: 12,
-    paddingVertical: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
     borderRadius: 14,
     backgroundColor: '#F8FAFC',
     borderWidth: 1,
     borderColor: '#F1F5F9',
+    marginRight: 8,
   },
   chipActive: {
     backgroundColor: '#EFF6FF',
