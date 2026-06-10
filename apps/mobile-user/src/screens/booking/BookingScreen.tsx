@@ -7,6 +7,7 @@ import {
   StyleSheet,
   TouchableOpacity,
   ActivityIndicator,
+  Vibration,
 } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
 import { useNavigation, useRoute, RouteProp } from '@react-navigation/native';
@@ -20,6 +21,14 @@ import { CalendarX, UserRound } from 'lucide-react-native';
 
 type RouteProps = RouteProp<RootStackParamList, 'Booking'>;
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
+
+function safeVibrate() {
+  try {
+    Vibration.vibrate(50);
+  } catch (e) {
+    console.warn('Vibration failed', e);
+  }
+}
 
 function formatSlotTime(timeStr: string) {
   if (!timeStr) return '';
@@ -46,6 +55,18 @@ function SunMoonIndicator({ time }: { time: string | null }) {
   const [hStr, mStr] = time.split(':');
   const hours = parseInt(hStr, 10);
   const minutes = parseInt(mStr, 10);
+
+  if (isNaN(hours) || isNaN(minutes)) {
+    return (
+      <View style={styles.emojiContainer}>
+        <Svg width={40} height={40} viewBox="0 0 24 24">
+          <SvgCircle cx="12" cy="12" r="5" fill="#E2E8F0" />
+          <SvgCircle cx="12" cy="12" r="8" stroke="#CBD5E1" strokeWidth="1" strokeDasharray="4 2" />
+        </Svg>
+      </View>
+    );
+  }
+
   const totalMinutes = hours * 60 + minutes;
 
   const isNight = hours >= 18 || hours < 6;
@@ -181,21 +202,18 @@ export default function BookingScreen() {
 
   const workingHour = useMemo(() => {
     if (!shop?.workingHours) return null;
-    const dayOfWeekStr = new Intl.DateTimeFormat('en-US', {
-      timeZone: 'Asia/Kolkata',
-      weekday: 'long',
-    }).format(selectedDate).toUpperCase();
+    const dayOfWeekStr = format(selectedDate, 'EEEE').toUpperCase();
     return shop.workingHours.find((wh: any) => wh.dayOfWeek === dayOfWeekStr);
   }, [shop?.workingHours, selectedDate]);
 
   const dayTimelineRange = useMemo(() => {
-    if (!workingHour || workingHour.isClosed) {
+    if (!workingHour || workingHour.isClosed || !workingHour.openTime || !workingHour.closeTime) {
       return { startMinutes: 9 * 60, endMinutes: 21 * 60, totalSlots: 49 };
     }
     const [openH, openM] = workingHour.openTime.split(':').map(Number);
     const [closeH, closeM] = workingHour.closeTime.split(':').map(Number);
-    const startMin = openH * 60 + openM;
-    const endMin = closeH * 60 + closeM;
+    const startMin = (openH || 9) * 60 + (openM || 0);
+    const endMin = (closeH || 21) * 60 + (closeM || 0);
     const totalSlots = Math.floor((endMin - startMin) / 15) + 1;
     return { startMinutes: startMin, endMinutes: endMin, totalSlots };
   }, [workingHour]);
@@ -223,7 +241,12 @@ export default function BookingScreen() {
     async function fetchAllStaffSlots() {
       try {
         setLoadingStaffSlots(true);
-        const promises = shop.staff.map((person: any) =>
+        const filteredStaff = shop.staff.filter((person: any) => {
+          const staffServiceIds = new Set(person.staffServices?.map((ss: any) => ss.serviceId) || []);
+          return selectedServices.every((serviceId: string) => staffServiceIds.has(serviceId));
+        });
+
+        const promises = filteredStaff.map((person: any) =>
           queueApi.getSlots(shop.id, {
             date: format(selectedDate, 'yyyy-MM-dd'),
             serviceIds: selectedServices,
@@ -290,6 +313,16 @@ export default function BookingScreen() {
     return { hourDeg, minDeg };
   }, [selectedHour, selectedMinute]);
 
+  // Auto-select first available
+  React.useEffect(() => {
+    if (!selectedSlotStartTime && timeSlots.length > 0) {
+      const firstAvailable = timeSlots.find(s => s.available);
+      if (firstAvailable) {
+        setSelectedSlotStartTime(firstAvailable.startTime);
+      }
+    }
+  }, [timeSlots, selectedSlotStartTime]);
+
   const nearestFreeSlot = useMemo(() => {
     if (!selectedSlotStartTime) return null;
     const selectedSlot = timeSlots.find(s => s.startTime === selectedSlotStartTime);
@@ -315,12 +348,12 @@ export default function BookingScreen() {
   }, [selectedSlotStartTime, timeSlots]);
 
   const timelineRange = useMemo(() => {
-    if (!workingHour || workingHour.isClosed) {
+    if (!workingHour || workingHour.isClosed || !workingHour.openTime || !workingHour.closeTime) {
       return { startMin: 9 * 60, endMin: 21 * 60 };
     }
     const [openH, openM] = workingHour.openTime.split(':').map(Number);
     const [closeH, closeM] = workingHour.closeTime.split(':').map(Number);
-    return { startMin: openH * 60 + openM, endMin: closeH * 60 + closeM };
+    return { startMin: (openH || 9) * 60 + (openM || 0), endMin: (closeH || 21) * 60 + (closeM || 0) };
   }, [workingHour]);
 
   const hourMarkers = useMemo(() => {
@@ -352,9 +385,11 @@ export default function BookingScreen() {
     } else {
       const firstAvail = timeSlots.find(s => s.time.startsWith(`${targetHour24.toString().padStart(2, '0')}:`) && s.available);
       if (firstAvail) {
+        safeVibrate();
         setSelectedSlotStartTime(firstAvail.startTime);
       } else {
         const dateStr = format(selectedDate, 'yyyy-MM-dd');
+        safeVibrate();
         setSelectedSlotStartTime(`${dateStr}T${timeStr}:00.000Z`);
       }
     }
@@ -368,9 +403,11 @@ export default function BookingScreen() {
       const timeStr = `${targetHour24.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
       const found = timeSlots.find(s => s.time === timeStr);
       if (found) {
+        safeVibrate();
         setSelectedSlotStartTime(found.startTime);
       } else {
         const dateStr = format(selectedDate, 'yyyy-MM-dd');
+        safeVibrate();
         setSelectedSlotStartTime(`${dateStr}T${timeStr}:00.000Z`);
       }
     }
@@ -428,6 +465,7 @@ export default function BookingScreen() {
                   key={date.toISOString()}
                   style={[styles.dateCard, isSelected && styles.dateCardSelected]}
                   onPress={() => {
+                    safeVibrate();
                     setSelectedDate(date);
                     setSelectedSlotStartTime(null);
                   }}
@@ -501,6 +539,7 @@ export default function BookingScreen() {
                                 disabled={status !== 'free'}
                                 onPress={() => {
                                   if (slotData) {
+                                    safeVibrate();
                                     setSelectedSlotStartTime(slotData.startTime);
                                   }
                                 }}
@@ -525,10 +564,16 @@ export default function BookingScreen() {
                 <View style={styles.multiTrackContainer}>
                   {loadingStaffSlots ? (
                     <ActivityIndicator size="small" color={Colors.primary} style={{ marginVertical: 20 }} />
-                  ) : (shop?.staff || []).length === 0 ? (
+                  ) : (shop?.staff || []).filter((person: any) => {
+                    const staffServiceIds = new Set(person.staffServices?.map((ss: any) => ss.serviceId) || []);
+                    return selectedServices.every((serviceId: string) => staffServiceIds.has(serviceId));
+                  }).length === 0 ? (
                     <Text style={styles.noStaffTimeline}>No specialist timelines available</Text>
                   ) : (
-                    (shop?.staff || []).map((person: any) => {
+                    (shop?.staff || []).filter((person: any) => {
+                      const staffServiceIds = new Set(person.staffServices?.map((ss: any) => ss.serviceId) || []);
+                      return selectedServices.every((serviceId: string) => staffServiceIds.has(serviceId));
+                    }).map((person: any) => {
                       const slots = staffSlotsMap[person.id] || [];
                       return (
                         <View key={person.id} style={styles.staffTrackRow}>
@@ -806,18 +851,16 @@ export default function BookingScreen() {
         <PrimaryButton
           title="Continue to Review & Pay"
           onPress={() => {
-            if (!selectedTime) {
-              return;
-            }
+            safeVibrate();
             navigation.navigate('BookingReview', {
               shopId,
               selectedServices,
               selectedDate: format(selectedDate, 'yyyy-MM-dd'),
-              selectedTime,
+              selectedTime: selectedTime || '10:00',
               selectedStaffId,
             });
           }}
-          disabled={!selectedTime}
+          disabled={false}
         />
       </View>
     </View>

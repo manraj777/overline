@@ -269,20 +269,25 @@ export default function HomeScreen() {
               <Image source={{ uri: item.coverUrl || item.coverPhotoUrl }} style={styles.shopImage} />
             ) : (
               <View style={[styles.shopImage, styles.placeholderImage]}>
-                <Text style={styles.placeholderLetter}>{item.name.charAt(0)}</Text>
+                <Text style={styles.placeholderLetter}>{(item?.name || 'S').charAt(0)}</Text>
               </View>
             )}
-            <View style={styles.ratingBadge}>
+            <View style={styles.ratingBadge} pointerEvents="none">
               <Star color="#FFD700" fill="#FFD700" size={12} />
               <Text style={styles.ratingText}>{item.rating?.toFixed(1) || '4.5'}</Text>
             </View>
             
             {item.isOpen && (
-              <View style={styles.liveBadge}>
+              <View style={styles.liveBadge} pointerEvents="none">
                 <Zap size={10} color="#FFF" fill="#FFF" />
                 <Text style={styles.liveText}>OPEN</Text>
               </View>
             )}
+
+            <View style={styles.bookNowBadge} pointerEvents="none">
+              <Text style={styles.bookNowText}>Book Now</Text>
+              <ArrowRight size={12} color="#FFF" />
+            </View>
           </View>
 
           <View style={styles.shopInfo}>
@@ -343,13 +348,20 @@ export default function HomeScreen() {
         style={[
           styles.header, 
           { 
-            backgroundColor: headerBgColor, 
             paddingTop: insets.top + (Spacing.xs),
-            shadowOpacity: headerShadow,
-            elevation: headerShadow.interpolate({ inputRange: [0, 3], outputRange: [0, 8] })
           }
         ]}
       >
+        <Animated.View 
+          style={[
+            StyleSheet.absoluteFillObject, 
+            { 
+              backgroundColor: headerBgColor,
+              shadowOpacity: headerShadow,
+              elevation: headerShadow.interpolate({ inputRange: [0, 3], outputRange: [0, 8] })
+            }
+          ]} 
+        />
         <View style={styles.headerContent} pointerEvents="box-none">
           <TouchableOpacity 
             style={styles.locationContainer}
@@ -556,6 +568,29 @@ export default function HomeScreen() {
                 style={styles.gpsOption}
                 onPress={async () => {
                   setShowLocationModal(false);
+                  
+                  if (Platform.OS === 'android') {
+                    try {
+                      const granted = await PermissionsAndroid.request(
+                        PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
+                        {
+                          title: 'Location Permission',
+                          message: 'Overline needs access to your location to detect your city.',
+                          buttonNeutral: 'Ask Later',
+                          buttonNegative: 'Cancel',
+                          buttonPositive: 'OK',
+                        }
+                      );
+                      if (granted !== PermissionsAndroid.RESULTS.GRANTED) {
+                        Alert.alert('Permission Denied', 'Location permission is required to auto-detect your location.');
+                        return;
+                      }
+                    } catch (err) {
+                      console.warn(err);
+                      return;
+                    }
+                  }
+
                   Geolocation.getCurrentPosition(
                     async (pos) => {
                       const { latitude, longitude } = pos.coords;
@@ -1132,5 +1167,23 @@ const styles = StyleSheet.create({
     fontSize: FontSizes.xs,
     color: Colors.textSecondary,
     fontWeight: '700',
+  },
+  bookNowBadge: {
+    position: 'absolute',
+    bottom: 12,
+    right: 12,
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: Colors.primary,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: BorderRadius.sm,
+    gap: 4,
+    ...Shadows.md,
+  },
+  bookNowText: {
+    color: '#FFF',
+    fontSize: 12,
+    fontWeight: '800',
   },
 });

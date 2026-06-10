@@ -4,6 +4,7 @@ import { Platform } from 'react-native';
 import DeviceInfo from '../utils/deviceInfo';
 import { Config } from '../config';
 import { resolveApiUrl } from './urlResolver';
+import axiosRetry from 'axios-retry';
 
 // Configure API base URL from centralized config
 let API_BASE_URL = Config.API_BASE_URL;
@@ -12,6 +13,19 @@ export const api = axios.create({
   baseURL: API_BASE_URL,
   timeout: Config.TIMEOUTS.API_REQUEST,
   headers: { 'Content-Type': 'application/json' },
+});
+
+// Resilient network requests
+axiosRetry(api, { 
+  retries: 3, 
+  retryDelay: axiosRetry.exponentialDelay,
+  retryCondition: (error) => {
+    return (
+      error.code === 'ECONNABORTED' || 
+      error.message === 'Network Error' || 
+      (error.response ? error.response.status >= 500 : false)
+    );
+  }
 });
 
 export async function initApiUrl() {
@@ -46,7 +60,10 @@ const processQueue = (error: any, token: string | null = null) => {
 
 // Add auth token and device info to requests
 api.interceptors.request.use(async config => {
-  const token = await AsyncStorage.getItem('accessToken');
+  // Use in-memory token from zustand for speed and to avoid AsyncStorage race conditions
+  const { useAuthStore } = require('../stores/authStore');
+  const token = useAuthStore.getState().token;
+  
   if (token) {
     config.headers.Authorization = `Bearer ${token}`;
   }
@@ -100,8 +117,8 @@ api.interceptors.response.use(
         return api(originalRequest);
       } catch (refreshError) {
         processQueue(refreshError, null);
-        await AsyncStorage.removeItem('accessToken');
-        await AsyncStorage.removeItem('refreshToken');
+        const { useAuthStore } = require('../stores/authStore');
+        useAuthStore.getState().logout();
         return Promise.reject(refreshError);
       } finally {
         isRefreshing = false;
@@ -254,6 +271,7 @@ export const userApi = {
     api.patch('/users/me', data),
   sendOtp: () => api.post('/users/me/otp/send'),
   verifyOtp: (data: { otp: string }) => api.post('/users/me/otp/verify', data),
+  updateFcmToken: (token: string) => api.post('/users/fcm-token', { token }),
 };
 
 // Reviews API

@@ -104,6 +104,11 @@ export default function RegisterScreen() {
       }
 
       if (hasPermission) {
+        if (!(navigator as any).geolocation) {
+          setIsGettingLocation(false);
+          Alert.alert('Not Supported', 'Auto-location is not supported. Please enter manually or paste Google Maps link.');
+          return;
+        }
         (navigator as any).geolocation.getCurrentPosition(
           (pos: any) => {
             setLatitude(String(pos.coords.latitude));

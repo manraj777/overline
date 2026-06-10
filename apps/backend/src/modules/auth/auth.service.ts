@@ -1241,7 +1241,7 @@ export class AuthService implements OnModuleInit {
         shopName: dto.shopName,
         error: error instanceof Error ? error.message : 'unknown_error',
       });
-      throw error;
+      throw new InternalServerErrorException(error instanceof Error ? error.message : String(error));
     }
 
     // Generate tokens for the new owner

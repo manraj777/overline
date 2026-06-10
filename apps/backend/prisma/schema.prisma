@@ -1,5 +1,3 @@
-// Prisma Schema for Overline - Multi-tenant Appointment & Queue Management System
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -10,9 +8,761 @@ datasource db {
   directUrl = env("DIRECT_URL")
 }
 
-// ============================================================================
-// ENUMS
-// ============================================================================
+model User {
+  id                       String         @id @default(uuid())
+  email                    String?        @unique
+  phone                    String?        @unique
+  hashedPassword           String?        @map("hashed_password")
+  name                     String
+  avatarUrl                String?        @map("avatar_url")
+  role                     UserRole       @default(USER)
+  isActive                 Boolean        @default(true) @map("is_active")
+  isEmailVerified          Boolean        @default(false) @map("is_email_verified")
+  isPhoneVerified          Boolean        @default(false) @map("is_phone_verified")
+  lastLoginAt              DateTime?      @map("last_login_at")
+  createdAt                DateTime       @default(now()) @map("created_at")
+  updatedAt                DateTime       @updatedAt @map("updated_at")
+  tenantId                 String?        @map("tenant_id")
+  googleId                 String?        @unique @map("google_id")
+  authProvider             String         @default("local") @map("auth_provider")
+  dateOfBirth              DateTime?      @map("date_of_birth") @db.Date
+  gender                   String?
+  cancelledBookings        Int            @default(0) @map("cancelled_bookings")
+  completedBookings        Int            @default(0) @map("completed_bookings")
+  noShowBookings           Int            @default(0) @map("no_show_bookings")
+  totalBookings            Int            @default(0) @map("total_bookings")
+  trustScore               Float          @default(100.0) @map("trust_score")
+  otpCode                  String?        @map("otp_code")
+  otpExpiresAt             DateTime?      @map("otp_expires_at")
+  fcmToken                 String?        @map("fcm_token")
+  emailVerifiedAt          DateTime?      @map("email_verified_at")
+  phoneVerificationChannel String?        @map("phone_verification_channel")
+  phoneVerifiedAt          DateTime?      @map("phone_verified_at")
+  smsOtpAttempts           Int            @default(0) @map("sms_otp_attempts")
+  whatsAppOtpAttempts      Int            @default(0) @map("whatsapp_otp_attempts")
+  facebookId               String?        @unique @map("facebook_id")
+  auditLogs                AuditLog[]     @relation("AuditActor")
+  bookings                 Booking[]
+  helpfulVotes             HelpfulVote[]
+  notifications            Notification[]
+  refreshTokens            RefreshToken[]
+  reviews                  Review[]
+  shopOwner                Shop[]         @relation("ShopOwner")
+  staffProfile             Staff?
+  staffProfileV2           StaffProfile?
+  tenant                   Tenant?        @relation(fields: [tenantId], references: [id])
+  wallet                   Wallet?
+
+  @@index([email])
+  @@index([phone])
+  @@index([tenantId])
+  @@map("users")
+}
+
+model RefreshToken {
+  id        String   @id @default(uuid())
+  token     String   @unique
+  userId    String   @map("user_id")
+  expiresAt DateTime @map("expires_at")
+  createdAt DateTime @default(now()) @map("created_at")
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([token])
+  @@map("refresh_tokens")
+}
+
+model Tenant {
+  id        String     @id @default(uuid())
+  name      String
+  type      TenantType
+  plan      TenantPlan @default(FREE)
+  isActive  Boolean    @default(true) @map("is_active")
+  createdAt DateTime   @default(now()) @map("created_at")
+  updatedAt DateTime   @updatedAt @map("updated_at")
+  shops     Shop[]
+  users     User[]
+
+  @@map("tenants")
+}
+
+model Shop {
+  id                      String            @id @default(uuid())
+  tenantId                String            @map("tenant_id")
+  name                    String
+  slug                    String            @unique
+  description             String?
+  address                 String
+  city                    String
+  state                   String?
+  postalCode              String?           @map("postal_code")
+  country                 String            @default("IN")
+  latitude                Decimal?          @db.Decimal(10, 8)
+  longitude               Decimal?          @db.Decimal(11, 8)
+  phone                   String?
+  email                   String?
+  website                 String?
+  logoUrl                 String?           @map("logo_url")
+  coverUrl                String?           @map("cover_url")
+  photoUrls               String[]          @map("photo_urls")
+  settings                Json              @default("{}")
+  maxConcurrentBookings   Int               @default(1) @map("max_concurrent_bookings")
+  autoAcceptBookings      Boolean           @default(false) @map("auto_accept_bookings")
+  isActive                Boolean           @default(true) @map("is_active")
+  createdAt               DateTime          @default(now()) @map("created_at")
+  updatedAt               DateTime          @updatedAt @map("updated_at")
+  isGoogleVerified        Boolean           @default(false) @map("is_google_verified")
+  isCustomerVerified      Boolean           @default(false) @map("is_customer_verified")
+  googlePlaceId           String?           @map("google_place_id")
+  googleRating            Decimal?          @map("google_rating") @db.Decimal(3, 2)
+  googleReviewsCount      Int               @default(0) @map("google_reviews_count")
+  verificationStatus      String            @default("PENDING") @map("verification_status")
+  verificationNotes       String?           @map("verification_notes")
+  verifiedAt              DateTime?         @map("verified_at")
+  allowCancellation       Boolean           @default(true) @map("allow_cancellation")
+  allowReschedule         Boolean           @default(true) @map("allow_reschedule")
+  freeCancellationMinutes Int               @default(60) @map("free_cancellation_minutes")
+  freeRescheduleMinutes   Int               @default(60) @map("free_reschedule_minutes")
+  requireOwnerApproval    Boolean           @default(false) @map("require_owner_approval")
+  ownerId                 String?           @map("owner_id")
+  videoUrls               String[]          @map("video_urls")
+  bookings                Booking[]
+  queueStats              QueueStats?
+  reviews                 Review[]
+  services                Service[]
+  owner                   User?             @relation("ShopOwner", fields: [ownerId], references: [id])
+  tenant                  Tenant            @relation(fields: [tenantId], references: [id], onDelete: Cascade)
+  specialSchedules        SpecialSchedule[]
+  staff                   Staff[]
+  staffProfiles           StaffProfile[]
+  workingHours            WorkingHours[]
+
+  @@index([tenantId])
+  @@index([ownerId])
+  @@index([slug])
+  @@index([city])
+  @@index([latitude, longitude])
+  @@index([googlePlaceId])
+  @@index([verificationStatus])
+  @@map("shops")
+}
+
+model Service {
+  id                String           @id @default(uuid())
+  shopId            String           @map("shop_id")
+  name              String
+  description       String?
+  durationMinutes   Int              @map("duration_minutes")
+  price             Decimal          @db.Decimal(10, 2)
+  currency          String           @default("INR")
+  isActive          Boolean          @default(true) @map("is_active")
+  sortOrder         Int              @default(0) @map("sort_order")
+  createdAt         DateTime         @default(now()) @map("created_at")
+  updatedAt         DateTime         @updatedAt @map("updated_at")
+  imageUrl          String?          @map("image_url")
+  category          String?
+  maxClientsPerHour Int              @default(1) @map("max_clients_per_hour")
+  photos            String[]         @default([])
+  staffProfileId    String?          @map("staff_profile_id")
+  videos            String[]         @default([])
+  isApproved        Boolean          @default(true) @map("is_approved")
+  bookingServices   BookingService[]
+  bookings          Booking[]
+  shop              Shop             @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  staffProfile      StaffProfile?    @relation("ServiceStaffProfile", fields: [staffProfileId], references: [id])
+  staffServices     StaffService[]
+
+  @@index([shopId])
+  @@index([shopId, staffProfileId])
+  @@map("services")
+}
+
+model Staff {
+  id                String              @id @default(uuid())
+  shopId            String              @map("shop_id")
+  userId            String?             @unique @map("user_id")
+  name              String
+  email             String?
+  phone             String?
+  avatarUrl         String?             @map("avatar_url")
+  role              String              @default("staff")
+  isActive          Boolean             @default(true) @map("is_active")
+  createdAt         DateTime            @default(now()) @map("created_at")
+  updatedAt         DateTime            @updatedAt @map("updated_at")
+  age               Int?
+  password          String?             @map("password")
+  bio               String?
+  bookings          Booking[]
+  shop              Shop                @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  user              User?               @relation(fields: [userId], references: [id])
+  staffServices     StaffService[]
+  staffTimeOffs     StaffTimeOff[]
+  staffWorkingHours StaffWorkingHours[]
+
+  @@index([shopId])
+  @@map("staff")
+}
+
+model StaffService {
+  id        String  @id @default(uuid())
+  staffId   String  @map("staff_id")
+  serviceId String  @map("service_id")
+  service   Service @relation(fields: [serviceId], references: [id], onDelete: Cascade)
+  staff     Staff   @relation(fields: [staffId], references: [id], onDelete: Cascade)
+
+  @@unique([staffId, serviceId])
+  @@map("staff_services")
+}
+
+model StaffProfile {
+  id                     String          @id @default(cuid())
+  userId                 String          @unique @map("user_id")
+  shopId                 String          @map("shop_id")
+  displayName            String          @map("display_name")
+  bio                    String?
+  avatar                 String?
+  isActive               Boolean         @default(true) @map("is_active")
+  isSuspended            Boolean         @default(false) @map("is_suspended")
+  suspendReason          String?         @map("suspend_reason")
+  upiId                  String?         @map("upi_id")
+  bankAccountNo          String?         @map("bank_account_no")
+  bankIfsc               String?         @map("bank_ifsc")
+  upiVerified            Boolean         @default(false) @map("upi_verified")
+  notifReminderMins      Int             @default(30) @map("notif_reminder_mins")
+  notifCallAheadMins     Int             @default(15) @map("notif_call_ahead_mins")
+  notifNewBooking        Boolean         @default(true) @map("notif_new_booking")
+  notifLocationShare     Boolean         @default(true) @map("notif_location_share")
+  notifReview            Boolean         @default(true) @map("notif_review")
+  notifNoShow            Boolean         @default(true) @map("notif_no_show")
+  createdAt              DateTime        @default(now()) @map("created_at")
+  updatedAt              DateTime        @updatedAt @map("updated_at")
+  staffRole              StaffRole       @default(TECHNICIAN) @map("staff_role")
+  bankVerificationStatus String?         @map("bank_verification_status")
+  contactMetadata        Json?           @map("contact_metadata")
+  fundAccountId          String?         @map("fund_account_id")
+  payoutPreference       String?         @map("payout_preference")
+  pin                    String?         @map("pin")
+  pinMustChange          Boolean         @default(true) @map("pin_must_change")
+  razorpayContactId      String?         @map("razorpay_contact_id")
+  upiVerificationStatus  String?         @map("upi_verification_status")
+  bookings               Booking[]       @relation("BookingStaffProfile")
+  chatSessions           ChatSession[]
+  earnings               Earning[]
+  reviews                Review[]        @relation("ReviewStaffProfile")
+  services               Service[]       @relation("ServiceStaffProfile")
+  shop                   Shop            @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  user                   User            @relation(fields: [userId], references: [id], onDelete: Cascade)
+  schedules              StaffSchedule[]
+
+  @@index([shopId])
+  @@index([shopId, staffRole])
+  @@map("staff_profiles")
+}
+
+model StaffSchedule {
+  id             String       @id @default(cuid())
+  staffProfileId String       @map("staff_profile_id")
+  dayOfWeek      Int          @map("day_of_week")
+  startTime      String       @map("start_time")
+  endTime        String       @map("end_time")
+  isWorking      Boolean      @default(true) @map("is_working")
+  breaks         StaffBreak[]
+  staff          StaffProfile @relation(fields: [staffProfileId], references: [id], onDelete: Cascade)
+
+  @@unique([staffProfileId, dayOfWeek])
+  @@map("staff_schedules")
+}
+
+model StaffBreak {
+  id         String        @id @default(cuid())
+  scheduleId String        @map("schedule_id")
+  startTime  String        @map("start_time")
+  endTime    String        @map("end_time")
+  label      String?
+  schedule   StaffSchedule @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
+
+  @@map("staff_breaks")
+}
+
+model Earning {
+  id                 String        @id @default(cuid())
+  shopId             String        @map("shop_id")
+  staffProfileId     String        @map("staff_profile_id")
+  bookingId          String        @unique @map("booking_id")
+  amount             Int
+  platformFee        Int           @map("platform_fee")
+  netAmount          Int           @map("net_amount")
+  paymentMethod      PaymentMethod @map("payment_method")
+  earnedAt           DateTime      @default(now()) @map("earned_at")
+  settledAt          DateTime?     @map("settled_at")
+  razorpayTransferId String?       @map("razorpay_transfer_id")
+  booking            Booking       @relation(fields: [bookingId], references: [id])
+  staff              StaffProfile  @relation(fields: [staffProfileId], references: [id])
+
+  @@index([staffProfileId, earnedAt])
+  @@index([shopId, earnedAt])
+  @@map("earnings")
+}
+
+model ChatSession {
+  id             String        @id @default(cuid())
+  bookingId      String        @unique @map("booking_id")
+  staffProfileId String        @map("staff_profile_id")
+  userId         String        @map("user_id")
+  isOpen         Boolean       @default(true) @map("is_open")
+  openedAt       DateTime      @default(now()) @map("opened_at")
+  closedAt       DateTime?     @map("closed_at")
+  messages       ChatMessage[]
+  booking        Booking       @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  staff          StaffProfile  @relation(fields: [staffProfileId], references: [id])
+
+  @@index([staffProfileId])
+  @@index([userId])
+  @@map("chat_sessions")
+}
+
+model WorkingHours {
+  id           String    @id @default(uuid())
+  shopId       String    @map("shop_id")
+  dayOfWeek    DayOfWeek @map("day_of_week")
+  openTime     String    @map("open_time")
+  closeTime    String    @map("close_time")
+  isClosed     Boolean   @default(false) @map("is_closed")
+  breakWindows Json      @default("[]") @map("break_windows")
+  shop         Shop      @relation(fields: [shopId], references: [id], onDelete: Cascade)
+
+  @@unique([shopId, dayOfWeek])
+  @@index([shopId])
+  @@map("working_hours")
+}
+
+model SpecialSchedule {
+  id        String   @id @default(uuid())
+  shopId    String   @map("shop_id")
+  date      DateTime @db.Date
+  isClosed  Boolean  @default(false) @map("is_closed")
+  openTime  String?  @map("open_time")
+  closeTime String?  @map("close_time")
+  reason    String?
+  createdAt DateTime @default(now()) @map("created_at")
+  shop      Shop     @relation(fields: [shopId], references: [id], onDelete: Cascade)
+
+  @@unique([shopId, date])
+  @@index([shopId])
+  @@index([date])
+  @@map("special_schedules")
+}
+
+model StaffWorkingHours {
+  id        String    @id @default(uuid())
+  staffId   String    @map("staff_id")
+  dayOfWeek DayOfWeek @map("day_of_week")
+  isOff     Boolean   @default(false) @map("is_off")
+  createdAt DateTime  @default(now()) @map("created_at")
+  updatedAt DateTime  @updatedAt @map("updated_at")
+  intervals Json      @default("[]") @map("intervals")
+  staff     Staff     @relation(fields: [staffId], references: [id], onDelete: Cascade)
+
+  @@unique([staffId, dayOfWeek])
+  @@index([staffId])
+  @@map("staff_working_hours")
+}
+
+model StaffTimeOff {
+  id        String   @id @default(uuid())
+  staffId   String   @map("staff_id")
+  startTime DateTime @map("start_time")
+  endTime   DateTime @map("end_time")
+  reason    String?
+  isFullDay Boolean  @default(false) @map("is_full_day")
+  createdAt DateTime @default(now()) @map("created_at")
+  staff     Staff    @relation(fields: [staffId], references: [id], onDelete: Cascade)
+
+  @@index([staffId])
+  @@index([staffId, startTime, endTime])
+  @@map("staff_time_off")
+}
+
+model Booking {
+  id                   String              @id @default(uuid())
+  bookingNumber        String              @unique @map("booking_number")
+  userId               String?             @map("user_id")
+  shopId               String              @map("shop_id")
+  staffId              String?             @map("staff_id")
+  startTime            DateTime            @map("start_time")
+  endTime              DateTime            @map("end_time")
+  totalDurationMinutes Int                 @map("total_duration_minutes")
+  totalAmount          Decimal             @map("total_amount") @db.Decimal(10, 2)
+  currency             String              @default("INR")
+  status               BookingStatus       @default(PENDING)
+  source               BookingSource       @default(WEB)
+  customerName         String?             @map("customer_name")
+  customerPhone        String?             @map("customer_phone")
+  customerEmail        String?             @map("customer_email")
+  queuePosition        Int?                @map("queue_position")
+  notes                String?
+  adminNotes           String?             @map("admin_notes")
+  arrivedAt            DateTime?           @map("arrived_at")
+  startedAt            DateTime?           @map("started_at")
+  completedAt          DateTime?           @map("completed_at")
+  cancelledAt          DateTime?           @map("cancelled_at")
+  createdAt            DateTime            @default(now()) @map("created_at")
+  updatedAt            DateTime            @updatedAt @map("updated_at")
+  cancellationDetails  String?             @map("cancellation_details")
+  cancellationReason   CancellationReason? @map("cancellation_reason")
+  codeVerifiedAt       DateTime?           @map("code_verified_at")
+  codeVerifiedBy       String?             @map("code_verified_by")
+  displayAmount        Decimal             @default(0) @map("display_amount") @db.Decimal(10, 2)
+  freeCashAmount       Decimal             @default(0) @map("free_cash_amount") @db.Decimal(10, 2)
+  freeCashReturned     Boolean             @default(false) @map("free_cash_returned")
+  freeCashUsed         Boolean             @default(false) @map("free_cash_used")
+  paymentType          PaymentType         @default(PAY_LATER) @map("payment_type")
+  serviceAmount        Decimal             @default(0) @map("service_amount") @db.Decimal(10, 2)
+  serviceStatus        ServiceStatus       @default(AWAITING_CODE) @map("service_status")
+  verificationCode     String?             @map("verification_code")
+  amount               Int?                @map("amount")
+  approvedAt           DateTime?           @map("approved_at")
+  approvedBy           String?             @map("approved_by")
+  callAheadReply       String?             @map("call_ahead_reply")
+  callAheadSentAt      DateTime?           @map("call_ahead_sent_at")
+  locationSharedAt     DateTime?           @map("location_shared_at")
+  paymentId            String?             @map("payment_id")
+  paymentMethod        PaymentMethod?      @map("payment_method")
+  platformFee          Int?                @map("platform_fee")
+  rejectionReason      String?             @map("rejection_reason")
+  serviceId            String?             @map("service_id")
+  slotDate             DateTime?           @map("slot_date") @db.Date
+  slotEndTime          String?             @map("slot_end_time")
+  slotTime             String?             @map("slot_time")
+  staffEarning         Int?                @map("staff_earning")
+  staffProfileId       String?             @map("staff_profile_id")
+  tokenNumber          String?             @map("token_number")
+  userLat              Float?              @map("user_lat")
+  userLng              Float?              @map("user_lng")
+  paymentStatus        PaymentStatus       @default(PENDING) @map("payment_status")
+  proposedEndTime      DateTime?           @map("proposed_end_time")
+  proposedStartTime    DateTime?           @map("proposed_start_time")
+  prescription         Json?
+  services             BookingService[]
+  service              Service?            @relation(fields: [serviceId], references: [id])
+  shop                 Shop                @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  staff                Staff?              @relation(fields: [staffId], references: [id])
+  staffProfile         StaffProfile?       @relation("BookingStaffProfile", fields: [staffProfileId], references: [id])
+  user                 User?               @relation(fields: [userId], references: [id])
+  chatMessages         ChatMessage[]
+  chatSession          ChatSession?
+  earning              Earning?
+  notifications        Notification[]
+  payment              Payment?
+  review               Review?
+
+  @@index([userId])
+  @@index([shopId])
+  @@index([staffId])
+  @@index([staffProfileId])
+  @@index([serviceId])
+  @@index([startTime])
+  @@index([status])
+  @@index([bookingNumber])
+  @@index([verificationCode])
+  @@index([shopId, slotDate, slotTime])
+  @@index([staffProfileId, slotDate])
+  @@index([shopId, status, startTime])
+  @@index([userId, status])
+  @@map("bookings")
+}
+
+model BookingService {
+  id              String  @id @default(uuid())
+  bookingId       String  @map("booking_id")
+  serviceId       String  @map("service_id")
+  serviceName     String  @map("service_name")
+  durationMinutes Int     @map("duration_minutes")
+  price           Decimal @db.Decimal(10, 2)
+  booking         Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  service         Service @relation(fields: [serviceId], references: [id])
+
+  @@index([bookingId])
+  @@map("booking_services")
+}
+
+model QueueStats {
+  id                   String    @id @default(uuid())
+  shopId               String    @unique @map("shop_id")
+  currentWaitingCount  Int       @default(0) @map("current_waiting_count")
+  estimatedWaitMinutes Int       @default(0) @map("estimated_wait_minutes")
+  nextAvailableSlot    DateTime? @map("next_available_slot")
+  lastUpdatedAt        DateTime  @default(now()) @map("last_updated_at")
+  shop                 Shop      @relation(fields: [shopId], references: [id], onDelete: Cascade)
+
+  @@map("queue_stats")
+}
+
+model Payment {
+  id                String          @id @default(uuid())
+  bookingId         String          @unique @map("booking_id")
+  provider          PaymentProvider
+  amount            Decimal         @db.Decimal(10, 2)
+  currency          String          @default("INR")
+  status            PaymentStatus   @default(PENDING)
+  transactionRef    String?         @map("transaction_ref")
+  providerOrderId   String?         @map("provider_order_id")
+  providerPaymentId String?         @map("provider_payment_id")
+  metadata          Json            @default("{}")
+  paidAt            DateTime?       @map("paid_at")
+  createdAt         DateTime        @default(now()) @map("created_at")
+  updatedAt         DateTime        @updatedAt @map("updated_at")
+  booking           Booking         @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+
+  @@index([bookingId])
+  @@index([transactionRef])
+  @@map("payments")
+}
+
+model Notification {
+  id        String              @id @default(uuid())
+  userId    String?             @map("user_id")
+  bookingId String?             @map("booking_id")
+  channel   NotificationChannel
+  type      NotificationType
+  title     String
+  body      String
+  data      Json                @default("{}")
+  status    NotificationStatus  @default(PENDING)
+  sentAt    DateTime?           @map("sent_at")
+  readAt    DateTime?           @map("read_at")
+  createdAt DateTime            @default(now()) @map("created_at")
+  booking   Booking?            @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  user      User?               @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([bookingId])
+  @@index([status])
+  @@index([userId, readAt, createdAt])
+  @@map("notifications")
+}
+
+model AuditLog {
+  id          String   @id @default(uuid())
+  actorUserId String?  @map("actor_user_id")
+  action      String
+  entityType  String   @map("entity_type")
+  entityId    String   @map("entity_id")
+  metadata    Json     @default("{}")
+  ipAddress   String?  @map("ip_address")
+  userAgent   String?  @map("user_agent")
+  createdAt   DateTime @default(now()) @map("created_at")
+  actor       User?    @relation("AuditActor", fields: [actorUserId], references: [id])
+
+  @@index([actorUserId])
+  @@index([entityType, entityId])
+  @@index([createdAt])
+  @@map("audit_logs")
+}
+
+model Review {
+  id             String        @id @default(uuid())
+  bookingId      String        @unique @map("booking_id")
+  userId         String        @map("user_id")
+  shopId         String        @map("shop_id")
+  rating         Int
+  comment        String?
+  staffRating    Int?          @map("staff_rating")
+  isVerified     Boolean       @default(true) @map("is_verified")
+  isPublic       Boolean       @default(true) @map("is_public")
+  reply          String?
+  repliedAt      DateTime?     @map("replied_at")
+  createdAt      DateTime      @default(now()) @map("created_at")
+  updatedAt      DateTime      @updatedAt @map("updated_at")
+  helpfulCount   Int           @default(0) @map("helpful_count")
+  helpful        Int           @default(0)
+  images         String[]      @default([])
+  ownerReply     String?       @map("owner_reply")
+  staffProfileId String?       @map("staff_profile_id")
+  staffReply     String?       @map("staff_reply")
+  helpfulVotes   HelpfulVote[]
+  booking        Booking       @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  shop           Shop          @relation(fields: [shopId], references: [id], onDelete: Cascade)
+  staffProfile   StaffProfile? @relation("ReviewStaffProfile", fields: [staffProfileId], references: [id])
+  user           User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([shopId])
+  @@index([staffProfileId, createdAt])
+  @@index([shopId, createdAt])
+  @@index([userId])
+  @@index([rating])
+  @@map("reviews")
+}
+
+model HelpfulVote {
+  id        String   @id @default(uuid())
+  userId    String   @map("user_id")
+  reviewId  String   @map("review_id")
+  createdAt DateTime @default(now()) @map("created_at")
+  review    Review   @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, reviewId])
+  @@map("helpful_votes")
+}
+
+model DailyAnalytics {
+  id                 String   @id @default(uuid())
+  shopId             String   @map("shop_id")
+  date               DateTime @db.Date
+  totalBookings      Int      @default(0) @map("total_bookings")
+  completedBookings  Int      @default(0) @map("completed_bookings")
+  cancelledBookings  Int      @default(0) @map("cancelled_bookings")
+  noShowBookings     Int      @default(0) @map("no_show_bookings")
+  walkInBookings     Int      @default(0) @map("walk_in_bookings")
+  totalRevenue       Decimal  @default(0) @map("total_revenue") @db.Decimal(12, 2)
+  averageWaitMinutes Decimal  @default(0) @map("average_wait_minutes") @db.Decimal(5, 2)
+  peakHour           Int?     @map("peak_hour")
+  createdAt          DateTime @default(now()) @map("created_at")
+
+  @@unique([shopId, date])
+  @@index([shopId])
+  @@index([date])
+  @@map("daily_analytics")
+}
+
+model ChatMessage {
+  id         String       @id @default(uuid())
+  bookingId  String       @map("booking_id")
+  senderId   String       @map("sender_id")
+  senderType String
+  content    String
+  createdAt  DateTime     @default(now()) @map("created_at")
+  readAt     DateTime?    @map("read_at")
+  senderRole String?      @map("sender_role")
+  sessionId  String?      @map("session_id")
+  booking    Booking      @relation(fields: [bookingId], references: [id], onDelete: Cascade)
+  session    ChatSession? @relation(fields: [sessionId], references: [id])
+
+  @@index([sessionId, createdAt])
+  @@index([bookingId])
+  @@index([createdAt])
+  @@map("chat_messages")
+}
+
+model Wallet {
+  id              String              @id @default(uuid())
+  userId          String              @unique @map("user_id")
+  balance         Decimal             @default(0) @db.Decimal(10, 2)
+  freeCashBalance Decimal             @default(0) @map("free_cash_balance") @db.Decimal(10, 2)
+  lockedAmount    Decimal             @default(0) @map("locked_amount") @db.Decimal(10, 2)
+  totalEarned     Decimal             @default(0) @map("total_earned") @db.Decimal(10, 2)
+  totalSpent      Decimal             @default(0) @map("total_spent") @db.Decimal(10, 2)
+  isActive        Boolean             @default(true) @map("is_active")
+  createdAt       DateTime            @default(now()) @map("created_at")
+  updatedAt       DateTime            @updatedAt @map("updated_at")
+  transactions    WalletTransaction[]
+  user            User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@map("wallets")
+}
+
+model WalletTransaction {
+  id              String                @id @default(uuid())
+  walletId        String                @map("wallet_id")
+  bookingId       String?               @map("booking_id")
+  type            WalletTransactionType
+  amount          Decimal               @db.Decimal(10, 2)
+  previousBalance Decimal               @map("previous_balance") @db.Decimal(10, 2)
+  newBalance      Decimal               @map("new_balance") @db.Decimal(10, 2)
+  description     String?
+  metadata        Json                  @default("{}")
+  createdAt       DateTime              @default(now()) @map("created_at")
+  wallet          Wallet                @relation(fields: [walletId], references: [id], onDelete: Cascade)
+
+  @@index([walletId])
+  @@index([bookingId])
+  @@index([type])
+  @@index([createdAt])
+  @@map("wallet_transactions")
+}
+
+model CancellationRequest {
+  id                  String             @id @default(uuid())
+  bookingId           String             @unique @map("booking_id")
+  userId              String             @map("user_id")
+  reason              CancellationReason
+  reasonDetails       String?            @map("reason_details")
+  requestedAt         DateTime           @default(now()) @map("requested_at")
+  isWithinGracePeriod Boolean            @default(false) @map("is_within_grace_period")
+  freeCashRefunded    Boolean            @default(false) @map("free_cash_refunded")
+  refundAmount        Decimal?           @map("refund_amount") @db.Decimal(10, 2)
+  ownerApproved       Boolean?           @map("owner_approved")
+  ownerResponseAt     DateTime?          @map("owner_response_at")
+  ownerNote           String?            @map("owner_note")
+  isValidReason       Boolean            @default(true) @map("is_valid_reason")
+  processedAt         DateTime?          @map("processed_at")
+  createdAt           DateTime           @default(now()) @map("created_at")
+
+  @@index([bookingId])
+  @@index([userId])
+  @@map("cancellation_requests")
+}
+
+model RescheduleRequest {
+  id                String    @id @default(uuid())
+  bookingId         String    @map("booking_id")
+  userId            String    @map("user_id")
+  originalStartTime DateTime  @map("original_start_time")
+  originalEndTime   DateTime  @map("original_end_time")
+  newStartTime      DateTime  @map("new_start_time")
+  newEndTime        DateTime  @map("new_end_time")
+  reason            String?
+  requestedAt       DateTime  @default(now()) @map("requested_at")
+  ownerApproved     Boolean?  @map("owner_approved")
+  ownerResponseAt   DateTime? @map("owner_response_at")
+  ownerNote         String?   @map("owner_note")
+  suggestedTime     DateTime? @map("suggested_time")
+  processedAt       DateTime? @map("processed_at")
+  createdAt         DateTime  @default(now()) @map("created_at")
+
+  @@index([bookingId])
+  @@index([userId])
+  @@map("reschedule_requests")
+}
+
+model OtpVerification {
+  id          String   @id @default(uuid())
+  phone       String
+  otp         String
+  purpose     String
+  attempts    Int      @default(0)
+  maxAttempts Int      @default(3) @map("max_attempts")
+  isVerified  Boolean  @default(false) @map("is_verified")
+  expiresAt   DateTime @map("expires_at")
+  createdAt   DateTime @default(now()) @map("created_at")
+
+  @@index([phone])
+  @@index([otp])
+  @@index([expiresAt])
+  @@map("otp_verifications")
+}
+
+model UserFeedback {
+  id              String   @id @default(uuid())
+  bookingId       String   @unique @map("booking_id")
+  userId          String   @map("user_id")
+  shopId          String   @map("shop_id")
+  staffId         String?  @map("staff_id")
+  rating          Int
+  behavior        String?
+  note            String?
+  wasOnTime       Boolean  @default(true) @map("was_on_time")
+  wasPolite       Boolean  @default(true) @map("was_polite")
+  wouldServeAgain Boolean  @default(true) @map("would_serve_again")
+  createdAt       DateTime @default(now()) @map("created_at")
+
+  @@index([userId])
+  @@index([shopId])
+  @@index([bookingId])
+  @@map("user_feedback")
+}
 
 enum UserRole {
   USER
@@ -61,12 +811,12 @@ enum BookingStatus {
 enum PaymentMethod {
   CASH
   ONLINE
-  PAY_AT_SHOP
   UPI
   CARD
   RAZORPAY
   STRIPE
   WALLET
+  PAY_AT_SHOP
 }
 
 enum BookingSource {
@@ -127,917 +877,33 @@ enum DayOfWeek {
 }
 
 enum PaymentType {
-  PREPAID // Pay before service
-  PAY_LATER // Pay at shop after service
+  PREPAID
+  PAY_LATER
 }
 
 enum WalletTransactionType {
-  FREE_CASH_CREDIT // Initial free cash added for booking
-  FREE_CASH_DEBIT // Free cash used for booking
-  FREE_CASH_RETURN // Free cash returned on valid cancellation
-  REFUND // Prepaid amount refunded
-  REWARD // Reward for completing service
-  ADMIN_CREDIT // Manual credit by admin
-  ADMIN_DEBIT // Manual debit by admin
+  FREE_CASH_CREDIT
+  FREE_CASH_DEBIT
+  FREE_CASH_RETURN
+  REFUND
+  REWARD
+  ADMIN_CREDIT
+  ADMIN_DEBIT
 }
 
 enum CancellationReason {
-  SHOP_CLOSED // Shop was closed/unavailable
-  EMERGENCY // Personal emergency
-  WRONG_BOOKING // Booked by mistake
-  FOUND_BETTER // Found better option
-  PRICE_ISSUE // Price was different
-  SCHEDULE_CONFLICT // Timing conflict
-  OTHER // Other reason
+  SHOP_CLOSED
+  EMERGENCY
+  WRONG_BOOKING
+  FOUND_BETTER
+  PRICE_ISSUE
+  SCHEDULE_CONFLICT
+  OTHER
 }
 
 enum ServiceStatus {
-  AWAITING_CODE // Waiting for service to start
-  IN_SERVICE // Service is ongoing
-  COMPLETED // Service completed
-  DISPUTED // User disputed the service
-}
-
-// ============================================================================
-// USER & AUTHENTICATION
-// ============================================================================
-
-model User {
-  id              String    @id @default(uuid())
-  email           String?   @unique
-  phone           String?   @unique
-  hashedPassword  String?   @map("hashed_password")
-  name            String
-  avatarUrl       String?   @map("avatar_url")
-  dateOfBirth     DateTime? @map("date_of_birth") @db.Date
-  gender          String? // "male" | "female" | "other" | "prefer_not_to_say"
-  googleId        String?   @unique @map("google_id")
-  facebookId      String?   @unique @map("facebook_id")
-  authProvider    String    @default("local") @map("auth_provider") // "local" | "google" | "facebook"
-  role            UserRole  @default(USER)
-  isActive        Boolean   @default(true) @map("is_active")
-  isEmailVerified Boolean   @default(false) @map("is_email_verified")
-  isPhoneVerified Boolean   @default(false) @map("is_phone_verified")
-  emailVerifiedAt DateTime? @map("email_verified_at")
-  phoneVerifiedAt DateTime? @map("phone_verified_at")
-  phoneVerificationChannel String? @map("phone_verification_channel")
-  whatsAppOtpAttempts Int @default(0) @map("whatsapp_otp_attempts")
-  smsOtpAttempts Int @default(0) @map("sms_otp_attempts")
-  lastLoginAt     DateTime? @map("last_login_at")
-  createdAt       DateTime  @default(now()) @map("created_at")
-  updatedAt       DateTime  @updatedAt @map("updated_at")
-
-  // Verification OTP
-  otpCode      String?   @map("otp_code")
-  otpExpiresAt DateTime? @map("otp_expires_at")
-
-  // Push Notifications
-  fcmToken String? @map("fcm_token")
-
-  // Trust Scoring & Statistics
-  trustScore        Float @default(100.0) @map("trust_score")
-  totalBookings     Int   @default(0) @map("total_bookings")
-  completedBookings Int   @default(0) @map("completed_bookings")
-  noShowBookings    Int   @default(0) @map("no_show_bookings")
-  cancelledBookings Int   @default(0) @map("cancelled_bookings")
-
-  // Relations
-  tenantId       String?        @map("tenant_id")
-  tenant         Tenant?        @relation(fields: [tenantId], references: [id])
-  bookings       Booking[]
-  refreshTokens  RefreshToken[]
-  notifications  Notification[]
-  auditLogs      AuditLog[]     @relation("AuditActor")
-  staffProfile   Staff?
-  staffProfileV2 StaffProfile?
-  shopOwner      Shop[]         @relation("ShopOwner")
-  reviews        Review[]
-  helpfulVotes   HelpfulVote[]
-  wallet         Wallet?
-
-  @@index([email])
-  @@index([phone])
-  @@index([tenantId])
-  @@map("users")
-}
-
-model RefreshToken {
-  id        String   @id @default(uuid())
-  token     String   @unique
-  userId    String   @map("user_id")
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  expiresAt DateTime @map("expires_at")
-  createdAt DateTime @default(now()) @map("created_at")
-
-  @@index([userId])
-  @@index([token])
-  @@map("refresh_tokens")
-}
-
-// ============================================================================
-// TENANT & SHOP
-// ============================================================================
-
-model Tenant {
-  id        String     @id @default(uuid())
-  name      String
-  type      TenantType
-  plan      TenantPlan @default(FREE)
-  isActive  Boolean    @default(true) @map("is_active")
-  createdAt DateTime   @default(now()) @map("created_at")
-  updatedAt DateTime   @updatedAt @map("updated_at")
-
-  // Relations
-  shops Shop[]
-  users User[]
-
-  @@map("tenants")
-}
-
-model Shop {
-  id          String  @id @default(uuid())
-  tenantId    String  @map("tenant_id")
-  tenant      Tenant  @relation(fields: [tenantId], references: [id], onDelete: Cascade)
-  ownerId     String? @map("owner_id")
-  owner       User?   @relation("ShopOwner", fields: [ownerId], references: [id])
-  name        String
-  slug        String  @unique
-  description String?
-  address     String
-  city        String
-  state       String?
-  postalCode  String? @map("postal_code")
-  country     String  @default("IN")
-
-  // Geo-location for nearby search
-  latitude  Decimal? @db.Decimal(10, 8)
-  longitude Decimal? @db.Decimal(11, 8)
-
-  // Contact
-  phone   String?
-  email   String?
-  website String?
-
-  // Media
-  logoUrl   String?  @map("logo_url")
-  coverUrl  String?  @map("cover_url")
-  photoUrls String[] @map("photo_urls")
-  videoUrls String[] @map("video_urls")
-
-  // Settings (JSON for flexibility)
-  settings Json @default("{}")
-
-  // Capacity
-  maxConcurrentBookings Int @default(1) @map("max_concurrent_bookings")
-
-  // Auto-accept bookings or require manual approval
-  autoAcceptBookings Boolean @default(false) @map("auto_accept_bookings")
-
-  // Cancellation & Reschedule Policies
-  allowCancellation       Boolean @default(true) @map("allow_cancellation")
-  freeCancellationMinutes Int     @default(60) @map("free_cancellation_minutes") // Minutes before booking for free cancellation
-  allowReschedule         Boolean @default(true) @map("allow_reschedule")
-  freeRescheduleMinutes   Int     @default(60) @map("free_reschedule_minutes") // Minutes before booking for free reschedule
-  requireOwnerApproval    Boolean @default(false) @map("require_owner_approval") // Require owner approval for late cancellations
-
-  // Verification & Trust
-  isGoogleVerified   Boolean   @default(false) @map("is_google_verified")
-  isCustomerVerified Boolean   @default(false) @map("is_customer_verified")
-  googlePlaceId      String?   @map("google_place_id")
-  googleRating       Decimal?  @map("google_rating") @db.Decimal(3, 2)
-  googleReviewsCount Int       @default(0) @map("google_reviews_count")
-  verificationStatus String    @default("PENDING") @map("verification_status") // PENDING, GOOGLE_VERIFIED, CUSTOMER_VERIFIED, FULLY_VERIFIED
-  verificationNotes  String?   @map("verification_notes")
-  verifiedAt         DateTime? @map("verified_at")
-
-  // Status
-  isActive  Boolean  @default(true) @map("is_active")
-  createdAt DateTime @default(now()) @map("created_at")
-  updatedAt DateTime @updatedAt @map("updated_at")
-
-  // Relations
-  services         Service[]
-  staff            Staff[]
-  staffProfiles    StaffProfile[]
-  workingHours     WorkingHours[]
-  specialSchedules SpecialSchedule[]
-  bookings         Booking[]
-  queueStats       QueueStats?
-  reviews          Review[]
-
-  @@index([tenantId])
-  @@index([ownerId])
-  @@index([slug])
-  @@index([city])
-  @@index([latitude, longitude])
-  @@index([googlePlaceId])
-  @@index([verificationStatus])
-  @@map("shops")
-}
-
-// ============================================================================
-// SERVICES & STAFF
-// ============================================================================
-
-model Service {
-  id                String        @id @default(uuid())
-  shopId            String        @map("shop_id")
-  shop              Shop          @relation(fields: [shopId], references: [id], onDelete: Cascade)
-  staffProfileId    String?       @map("staff_profile_id")
-  staffProfile      StaffProfile? @relation("ServiceStaffProfile", fields: [staffProfileId], references: [id])
-  name              String
-  description       String?
-  imageUrl          String?       @map("image_url")
-  durationMinutes   Int           @map("duration_minutes")
-  price             Decimal       @db.Decimal(10, 2)
-  maxClientsPerHour Int           @default(1) @map("max_clients_per_hour")
-  category          String?
-  photos            String[]      @default([])
-  videos            String[]      @default([])
-  currency          String        @default("INR")
-  isActive          Boolean       @default(true) @map("is_active")
-  isApproved        Boolean       @default(true) @map("is_approved")
-  sortOrder         Int           @default(0) @map("sort_order")
-  createdAt         DateTime      @default(now()) @map("created_at")
-  updatedAt         DateTime      @updatedAt @map("updated_at")
-
-  // Relations
-  bookingServices BookingService[]
-  bookings        Booking[]
-  staffServices   StaffService[]
-
-  @@index([shopId])
-  @@index([shopId, staffProfileId])
-  @@map("services")
-}
-
-model Staff {
-  id        String   @id @default(uuid())
-  shopId    String   @map("shop_id")
-  shop      Shop     @relation(fields: [shopId], references: [id], onDelete: Cascade)
-  userId    String?  @unique @map("user_id")
-  user      User?    @relation(fields: [userId], references: [id])
-  name      String
-  email     String?
-  phone     String?
-  age       Int?
-  password  String?   @map("password") // 6-digit code for shop-specific login
-  avatarUrl String?   @map("avatar_url")
-  bio       String?
-  role      String    @default("staff")
-  isActive  Boolean   @default(true) @map("is_active")
-  createdAt DateTime  @default(now()) @map("created_at")
-  updatedAt DateTime  @updatedAt @map("updated_at")
-
-  // Relations
-  staffServices     StaffService[]
-  bookings          Booking[]
-  staffWorkingHours StaffWorkingHours[]
-  staffTimeOffs     StaffTimeOff[]
-
-  @@index([shopId])
-  @@map("staff")
-}
-
-model StaffService {
-  id        String  @id @default(uuid())
-  staffId   String  @map("staff_id")
-  staff     Staff   @relation(fields: [staffId], references: [id], onDelete: Cascade)
-  serviceId String  @map("service_id")
-  service   Service @relation(fields: [serviceId], references: [id], onDelete: Cascade)
-
-  @@unique([staffId, serviceId])
-  @@map("staff_services")
-}
-
-model StaffProfile {
-  id                 String   @id @default(cuid())
-  userId             String   @unique @map("user_id")
-  user               User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  shopId             String   @map("shop_id")
-  shop               Shop     @relation(fields: [shopId], references: [id], onDelete: Cascade)
-  staffRole          StaffRole @default(TECHNICIAN) @map("staff_role")
-  displayName        String   @map("display_name")
-  bio                String?
-  avatar             String?
-  isActive           Boolean  @default(true) @map("is_active")
-  isSuspended        Boolean  @default(false) @map("is_suspended")
-  suspendReason      String?  @map("suspend_reason")
-  upiId              String?  @map("upi_id")
-  bankAccountNo      String?  @map("bank_account_no")
-  bankIfsc           String?  @map("bank_ifsc")
-  upiVerified        Boolean  @default(false) @map("upi_verified")
-  razorpayContactId  String?  @map("razorpay_contact_id")
-  fundAccountId      String?  @map("fund_account_id")
-  contactMetadata    Json?    @map("contact_metadata")
-  upiVerificationStatus  String? @map("upi_verification_status")
-  bankVerificationStatus String? @map("bank_verification_status")
-  payoutPreference       String? @map("payout_preference")
-  notifReminderMins  Int      @default(30) @map("notif_reminder_mins")
-  notifCallAheadMins Int      @default(15) @map("notif_call_ahead_mins")
-  notifNewBooking    Boolean  @default(true) @map("notif_new_booking")
-  notifLocationShare Boolean  @default(true) @map("notif_location_share")
-  notifReview        Boolean  @default(true) @map("notif_review")
-  notifNoShow        Boolean  @default(true) @map("notif_no_show")
-  pin                String?  @map("pin") // bcrypt hashed 6-digit code
-  pinMustChange      Boolean  @default(true) @map("pin_must_change")
-  createdAt          DateTime @default(now()) @map("created_at")
-  updatedAt          DateTime @updatedAt @map("updated_at")
-
-  services     Service[]       @relation("ServiceStaffProfile")
-  bookings     Booking[]       @relation("BookingStaffProfile")
-  reviews      Review[]        @relation("ReviewStaffProfile")
-  schedules    StaffSchedule[]
-  earnings     Earning[]
-  chatSessions ChatSession[]
-
-  @@index([shopId])
-  @@index([shopId, staffRole])
-  @@map("staff_profiles")
-}
-
-model StaffSchedule {
-  id             String       @id @default(cuid())
-  staffProfileId String       @map("staff_profile_id")
-  staff          StaffProfile @relation(fields: [staffProfileId], references: [id], onDelete: Cascade)
-  dayOfWeek      Int          @map("day_of_week")
-  startTime      String       @map("start_time")
-  endTime        String       @map("end_time")
-  isWorking      Boolean      @default(true) @map("is_working")
-  breaks         StaffBreak[]
-
-  @@unique([staffProfileId, dayOfWeek])
-  @@map("staff_schedules")
-}
-
-model StaffBreak {
-  id         String        @id @default(cuid())
-  scheduleId String        @map("schedule_id")
-  schedule   StaffSchedule @relation(fields: [scheduleId], references: [id], onDelete: Cascade)
-  startTime  String        @map("start_time")
-  endTime    String        @map("end_time")
-  label      String?
-
-  @@map("staff_breaks")
-}
-
-model Earning {
-  id                 String        @id @default(cuid())
-  shopId             String        @map("shop_id")
-  staffProfileId     String        @map("staff_profile_id")
-  bookingId          String        @unique @map("booking_id")
-  amount             Int
-  platformFee        Int           @map("platform_fee")
-  netAmount          Int           @map("net_amount")
-  paymentMethod      PaymentMethod @map("payment_method")
-  earnedAt           DateTime      @default(now()) @map("earned_at")
-  settledAt          DateTime?     @map("settled_at")
-  razorpayTransferId String?       @map("razorpay_transfer_id")
-
-  staff   StaffProfile @relation(fields: [staffProfileId], references: [id])
-  booking Booking      @relation(fields: [bookingId], references: [id])
-
-  @@index([staffProfileId, earnedAt])
-  @@index([shopId, earnedAt])
-  @@map("earnings")
-}
-
-model ChatSession {
-  id             String    @id @default(cuid())
-  bookingId      String    @unique @map("booking_id")
-  staffProfileId String    @map("staff_profile_id")
-  userId         String    @map("user_id")
-  isOpen         Boolean   @default(true) @map("is_open")
-  openedAt       DateTime  @default(now()) @map("opened_at")
-  closedAt       DateTime? @map("closed_at")
-
-  booking  Booking       @relation(fields: [bookingId], references: [id], onDelete: Cascade)
-  staff    StaffProfile  @relation(fields: [staffProfileId], references: [id])
-  messages ChatMessage[]
-
-  @@index([staffProfileId])
-  @@index([userId])
-  @@map("chat_sessions")
-}
-
-// ============================================================================
-// WORKING HOURS & SCHEDULES
-// ============================================================================
-
-model WorkingHours {
-  id        String    @id @default(uuid())
-  shopId    String    @map("shop_id")
-  shop      Shop      @relation(fields: [shopId], references: [id], onDelete: Cascade)
-  dayOfWeek DayOfWeek @map("day_of_week")
-  openTime  String    @map("open_time") // Format: "09:00"
-  closeTime String    @map("close_time") // Format: "18:00"
-  isClosed  Boolean   @default(false) @map("is_closed")
-
-  // Break windows stored as JSON array: [{"start": "13:00", "end": "14:00"}]
-  breakWindows Json @default("[]") @map("break_windows")
-
-  @@unique([shopId, dayOfWeek])
-  @@index([shopId])
-  @@map("working_hours")
-}
-
-model SpecialSchedule {
-  id        String   @id @default(uuid())
-  shopId    String   @map("shop_id")
-  shop      Shop     @relation(fields: [shopId], references: [id], onDelete: Cascade)
-  date      DateTime @db.Date
-  isClosed  Boolean  @default(false) @map("is_closed")
-  openTime  String?  @map("open_time")
-  closeTime String?  @map("close_time")
-  reason    String?
-  createdAt DateTime @default(now()) @map("created_at")
-
-  @@unique([shopId, date])
-  @@index([shopId])
-  @@index([date])
-  @@map("special_schedules")
-}
-
-model StaffWorkingHours {
-  id        String    @id @default(uuid())
-  staffId   String    @map("staff_id")
-  staff     Staff     @relation(fields: [staffId], references: [id], onDelete: Cascade)
-  dayOfWeek DayOfWeek @map("day_of_week")
-  
-  // Format: [{"start": "09:00", "end": "13:00"}, {"start": "16:00", "end": "20:00"}]
-  intervals Json      @default("[]") @map("intervals")
-  
-  isOff     Boolean   @default(false) @map("is_off")
-  createdAt DateTime  @default(now()) @map("created_at")
-  updatedAt DateTime  @updatedAt @map("updated_at")
-
-  @@unique([staffId, dayOfWeek])
-  @@index([staffId])
-  @@map("staff_working_hours")
-}
-
-model StaffTimeOff {
-  id        String   @id @default(uuid())
-  staffId   String   @map("staff_id")
-  staff     Staff    @relation(fields: [staffId], references: [id], onDelete: Cascade)
-  startTime DateTime @map("start_time")
-  endTime   DateTime @map("end_time")
-  reason    String?
-  isFullDay Boolean  @default(false) @map("is_full_day")
-  createdAt DateTime @default(now()) @map("created_at")
-
-  @@index([staffId])
-  @@index([staffId, startTime, endTime])
-  @@map("staff_time_off")
-}
-
-// ============================================================================
-// BOOKINGS & QUEUE
-// ============================================================================
-
-model Booking {
-  id             String        @id @default(uuid())
-  bookingNumber  String        @unique @map("booking_number")
-  userId         String?       @map("user_id")
-  user           User?         @relation(fields: [userId], references: [id])
-  shopId         String        @map("shop_id")
-  shop           Shop          @relation(fields: [shopId], references: [id], onDelete: Cascade)
-  staffId        String?       @map("staff_id")
-  staff          Staff?        @relation(fields: [staffId], references: [id])
-  staffProfileId String?       @map("staff_profile_id")
-  staffProfile   StaffProfile? @relation("BookingStaffProfile", fields: [staffProfileId], references: [id])
-  serviceId      String?       @map("service_id")
-  service        Service?      @relation(fields: [serviceId], references: [id])
-
-  // Time
-  startTime   DateTime  @map("start_time")
-  endTime     DateTime  @map("end_time")
-  slotDate    DateTime? @map("slot_date") @db.Date
-  slotTime    String?   @map("slot_time")
-  slotEndTime String?   @map("slot_end_time")
-  tokenNumber String?   @map("token_number")
-
-  // Total calculated from services
-  totalDurationMinutes Int     @map("total_duration_minutes")
-  totalAmount          Decimal @map("total_amount") @db.Decimal(10, 2)
-  currency             String  @default("INR")
-
-  // Payment & Free Cash System
-  paymentType      PaymentType @default(PAY_LATER) @map("payment_type")
-  serviceAmount    Decimal     @default(0) @map("service_amount") @db.Decimal(10, 2) // Actual service price
-  freeCashAmount   Decimal     @default(0) @map("free_cash_amount") @db.Decimal(10, 2) // Free cash added (25-30)
-  displayAmount    Decimal     @default(0) @map("display_amount") @db.Decimal(10, 2) // serviceAmount + freeCashAmount (shown to user)
-  freeCashUsed     Boolean     @default(false) @map("free_cash_used") // Was free cash used from wallet
-  freeCashReturned Boolean     @default(false) @map("free_cash_returned") // Was free cash returned after cancellation
-
-  // Service Verification Code (like Rapido/Uber)
-  verificationCode String?       @map("verification_code") // 4-digit code for service start
-  serviceStatus    ServiceStatus @default(AWAITING_CODE) @map("service_status")
-  codeVerifiedAt   DateTime?     @map("code_verified_at")
-  codeVerifiedBy   String?       @map("code_verified_by") // Staff ID who verified
-
-  // Status
-  status          BookingStatus @default(PENDING)
-  source          BookingSource @default(WEB)
-  approvedBy      String?       @map("approved_by")
-  approvedAt      DateTime?     @map("approved_at")
-  rejectionReason String?       @map("rejection_reason")
-
-  // Counter-offer / Reschedule Proposal
-  proposedStartTime DateTime? @map("proposed_start_time")
-  proposedEndTime   DateTime? @map("proposed_end_time")
-  
-  // Walk-in customer info (when userId is null)
-  customerName  String? @map("customer_name")
-  customerPhone String? @map("customer_phone")
-  customerEmail String? @map("customer_email")
-
-  // Queue position at time of booking
-  queuePosition    Int?      @map("queue_position")
-  callAheadSentAt  DateTime? @map("call_ahead_sent_at")
-  callAheadReply   String?   @map("call_ahead_reply")
-  userLat          Float?    @map("user_lat")
-  userLng          Float?    @map("user_lng")
-  locationSharedAt DateTime? @map("location_shared_at")
-
-  // Notes
-  notes      String?
-  adminNotes String? @map("admin_notes")
-  prescription Json?
-
-  // Prompt-aligned payment snapshots (paise)
-  paymentMethod PaymentMethod? @map("payment_method")
-  paymentStatus PaymentStatus  @default(PENDING) @map("payment_status")
-  paymentId     String?        @map("payment_id")
-  amount        Int?           @map("amount")
-  platformFee   Int?           @map("platform_fee")
-  staffEarning  Int?           @map("staff_earning")
-
-  // Cancellation details
-  cancellationReason  CancellationReason? @map("cancellation_reason")
-  cancellationDetails String?             @map("cancellation_details")
-
-  // Timestamps
-  arrivedAt   DateTime? @map("arrived_at")
-  startedAt   DateTime? @map("started_at")
-  completedAt DateTime? @map("completed_at")
-  cancelledAt DateTime? @map("cancelled_at")
-  createdAt   DateTime  @default(now()) @map("created_at")
-  updatedAt   DateTime  @updatedAt @map("updated_at")
-
-  // Relations
-  services      BookingService[]
-  payment       Payment?
-  earning       Earning?
-  notifications Notification[]
-  review        Review?
-  chatSession   ChatSession?
-  chatMessages  ChatMessage[]
-
-  @@index([userId])
-  @@index([shopId])
-  @@index([staffId])
-  @@index([staffProfileId])
-  @@index([serviceId])
-  @@index([startTime])
-  @@index([status])
-  @@index([bookingNumber])
-  @@index([verificationCode])
-  @@index([shopId, slotDate, slotTime])
-  @@index([staffProfileId, slotDate])
-  @@index([shopId, status, startTime])
-  @@index([userId, status])
-  @@map("bookings")
-}
-
-model BookingService {
-  id        String  @id @default(uuid())
-  bookingId String  @map("booking_id")
-  booking   Booking @relation(fields: [bookingId], references: [id], onDelete: Cascade)
-  serviceId String  @map("service_id")
-  service   Service @relation(fields: [serviceId], references: [id])
-
-  // Snapshot of service details at booking time
-  serviceName     String  @map("service_name")
-  durationMinutes Int     @map("duration_minutes")
-  price           Decimal @db.Decimal(10, 2)
-
-  @@index([bookingId])
-  @@map("booking_services")
-}
-
-model QueueStats {
-  id                   String    @id @default(uuid())
-  shopId               String    @unique @map("shop_id")
-  shop                 Shop      @relation(fields: [shopId], references: [id], onDelete: Cascade)
-  currentWaitingCount  Int       @default(0) @map("current_waiting_count")
-  estimatedWaitMinutes Int       @default(0) @map("estimated_wait_minutes")
-  nextAvailableSlot    DateTime? @map("next_available_slot")
-  lastUpdatedAt        DateTime  @default(now()) @map("last_updated_at")
-
-  @@map("queue_stats")
-}
-
-// ============================================================================
-// PAYMENTS
-// ============================================================================
-
-model Payment {
-  id                String          @id @default(uuid())
-  bookingId         String          @unique @map("booking_id")
-  booking           Booking         @relation(fields: [bookingId], references: [id], onDelete: Cascade)
-  provider          PaymentProvider
-  amount            Decimal         @db.Decimal(10, 2)
-  currency          String          @default("INR")
-  status            PaymentStatus   @default(PENDING)
-  transactionRef    String?         @map("transaction_ref")
-  providerOrderId   String?         @map("provider_order_id")
-  providerPaymentId String?         @map("provider_payment_id")
-  metadata          Json            @default("{}")
-  paidAt            DateTime?       @map("paid_at")
-  createdAt         DateTime        @default(now()) @map("created_at")
-  updatedAt         DateTime        @updatedAt @map("updated_at")
-
-  @@index([bookingId])
-  @@index([transactionRef])
-  @@map("payments")
-}
-
-// ============================================================================
-// NOTIFICATIONS
-// ============================================================================
-
-model Notification {
-  id        String              @id @default(uuid())
-  userId    String?             @map("user_id")
-  user      User?               @relation(fields: [userId], references: [id], onDelete: Cascade)
-  bookingId String?             @map("booking_id")
-  booking   Booking?            @relation(fields: [bookingId], references: [id], onDelete: Cascade)
-  channel   NotificationChannel
-  type      NotificationType
-  title     String
-  body      String
-  data      Json                @default("{}")
-  status    NotificationStatus  @default(PENDING)
-  sentAt    DateTime?           @map("sent_at")
-  readAt    DateTime?           @map("read_at")
-  createdAt DateTime            @default(now()) @map("created_at")
-
-  @@index([userId])
-  @@index([bookingId])
-  @@index([status])
-  @@index([userId, readAt, createdAt])
-  @@map("notifications")
-}
-
-// ============================================================================
-// AUDIT LOG
-// ============================================================================
-
-model AuditLog {
-  id          String   @id @default(uuid())
-  actorUserId String?  @map("actor_user_id")
-  actor       User?    @relation("AuditActor", fields: [actorUserId], references: [id])
-  action      String
-  entityType  String   @map("entity_type")
-  entityId    String   @map("entity_id")
-  metadata    Json     @default("{}")
-  ipAddress   String?  @map("ip_address")
-  userAgent   String?  @map("user_agent")
-  createdAt   DateTime @default(now()) @map("created_at")
-
-  @@index([actorUserId])
-  @@index([entityType, entityId])
-  @@index([createdAt])
-  @@map("audit_logs")
-}
-
-// ============================================================================
-// ANALYTICS (Aggregated data for fast querying)
-// ============================================================================
-
-model Review {
-  id             String        @id @default(uuid())
-  bookingId      String        @unique @map("booking_id")
-  booking        Booking       @relation(fields: [bookingId], references: [id], onDelete: Cascade)
-  userId         String        @map("user_id")
-  user           User          @relation(fields: [userId], references: [id], onDelete: Cascade)
-  shopId         String        @map("shop_id")
-  shop           Shop          @relation(fields: [shopId], references: [id], onDelete: Cascade)
-  staffProfileId String?       @map("staff_profile_id")
-  staffProfile   StaffProfile? @relation("ReviewStaffProfile", fields: [staffProfileId], references: [id])
-  rating         Int // 1-5 stars
-  comment        String?
-  images         String[]      @default([])
-  staffRating    Int?          @map("staff_rating") // 1-5 stars for staff
-  isVerified     Boolean       @default(true) @map("is_verified") // Verified purchase
-  isPublic       Boolean       @default(true) @map("is_public")
-  reply          String? // Shop owner's reply
-  ownerReply     String?       @map("owner_reply")
-  staffReply     String?       @map("staff_reply")
-  repliedAt      DateTime?     @map("replied_at")
-  helpfulCount   Int           @default(0) @map("helpful_count")
-  helpful        Int           @default(0)
-  helpfulVotes   HelpfulVote[]
-  createdAt      DateTime      @default(now()) @map("created_at")
-  updatedAt      DateTime      @updatedAt @map("updated_at")
-
-  @@index([shopId])
-  @@index([staffProfileId, createdAt])
-  @@index([shopId, createdAt])
-  @@index([userId])
-  @@index([rating])
-  @@map("reviews")
-}
-
-model HelpfulVote {
-  id        String   @id @default(uuid())
-  userId    String   @map("user_id")
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  reviewId  String   @map("review_id")
-  review    Review   @relation(fields: [reviewId], references: [id], onDelete: Cascade)
-  createdAt DateTime @default(now()) @map("created_at")
-
-  @@unique([userId, reviewId])
-  @@map("helpful_votes")
-}
-
-model DailyAnalytics {
-  id                 String   @id @default(uuid())
-  shopId             String   @map("shop_id")
-  date               DateTime @db.Date
-  totalBookings      Int      @default(0) @map("total_bookings")
-  completedBookings  Int      @default(0) @map("completed_bookings")
-  cancelledBookings  Int      @default(0) @map("cancelled_bookings")
-  noShowBookings     Int      @default(0) @map("no_show_bookings")
-  walkInBookings     Int      @default(0) @map("walk_in_bookings")
-  totalRevenue       Decimal  @default(0) @map("total_revenue") @db.Decimal(12, 2)
-  averageWaitMinutes Decimal  @default(0) @map("average_wait_minutes") @db.Decimal(5, 2)
-  peakHour           Int?     @map("peak_hour")
-  createdAt          DateTime @default(now()) @map("created_at")
-
-  @@unique([shopId, date])
-  @@index([shopId])
-  @@index([date])
-  @@map("daily_analytics")
-}
-
-// ============================================================================
-// CHAT & TRACKING
-// ============================================================================
-
-model ChatMessage {
-  id         String       @id @default(uuid())
-  sessionId  String?      @map("session_id")
-  session    ChatSession? @relation(fields: [sessionId], references: [id], onDelete: SetNull)
-  bookingId  String       @map("booking_id")
-  booking    Booking      @relation(fields: [bookingId], references: [id], onDelete: Cascade)
-  senderId   String       @map("sender_id")
-  senderType String // "USER" | "SHOP"
-  senderRole String?      @map("sender_role") // "USER" | "STAFF"
-  content    String
-  readAt     DateTime?    @map("read_at")
-  createdAt  DateTime     @default(now()) @map("created_at")
-
-  @@index([sessionId, createdAt])
-  @@index([bookingId])
-  @@index([createdAt])
-  @@map("chat_messages")
-}
-
-// ============================================================================
-// WALLET & FREE CASH SYSTEM
-// ============================================================================
-
-model Wallet {
-  id              String   @id @default(uuid())
-  userId          String   @unique @map("user_id")
-  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  balance         Decimal  @default(0) @db.Decimal(10, 2) // Total wallet balance
-  freeCashBalance Decimal  @default(0) @map("free_cash_balance") @db.Decimal(10, 2) // Free cash (25-30 rupees per booking)
-  lockedAmount    Decimal  @default(0) @map("locked_amount") @db.Decimal(10, 2) // Amount locked for pending bookings
-  totalEarned     Decimal  @default(0) @map("total_earned") @db.Decimal(10, 2) // Lifetime earnings
-  totalSpent      Decimal  @default(0) @map("total_spent") @db.Decimal(10, 2) // Lifetime spent
-  isActive        Boolean  @default(true) @map("is_active")
-  createdAt       DateTime @default(now()) @map("created_at")
-  updatedAt       DateTime @updatedAt @map("updated_at")
-
-  // Relations
-  transactions WalletTransaction[]
-
-  @@index([userId])
-  @@map("wallets")
-}
-
-model WalletTransaction {
-  id              String                @id @default(uuid())
-  walletId        String                @map("wallet_id")
-  wallet          Wallet                @relation(fields: [walletId], references: [id], onDelete: Cascade)
-  bookingId       String?               @map("booking_id")
-  type            WalletTransactionType
-  amount          Decimal               @db.Decimal(10, 2)
-  previousBalance Decimal               @map("previous_balance") @db.Decimal(10, 2)
-  newBalance      Decimal               @map("new_balance") @db.Decimal(10, 2)
-  description     String?
-  metadata        Json                  @default("{}")
-  createdAt       DateTime              @default(now()) @map("created_at")
-
-  @@index([walletId])
-  @@index([bookingId])
-  @@index([type])
-  @@index([createdAt])
-  @@map("wallet_transactions")
-}
-
-// ============================================================================
-// CANCELLATION & RESCHEDULE REQUESTS
-// ============================================================================
-
-model CancellationRequest {
-  id                  String             @id @default(uuid())
-  bookingId           String             @unique @map("booking_id")
-  userId              String             @map("user_id")
-  reason              CancellationReason
-  reasonDetails       String?            @map("reason_details")
-  requestedAt         DateTime           @default(now()) @map("requested_at")
-  isWithinGracePeriod Boolean            @default(false) @map("is_within_grace_period") // Within 1hr = true
-  freeCashRefunded    Boolean            @default(false) @map("free_cash_refunded")
-  refundAmount        Decimal?           @map("refund_amount") @db.Decimal(10, 2)
-  ownerApproved       Boolean?           @map("owner_approved") // null = pending, true = approved, false = rejected
-  ownerResponseAt     DateTime?          @map("owner_response_at")
-  ownerNote           String?            @map("owner_note")
-  isValidReason       Boolean            @default(true) @map("is_valid_reason") // System/admin flag for spammer detection
-  processedAt         DateTime?          @map("processed_at")
-  createdAt           DateTime           @default(now()) @map("created_at")
-
-  @@index([bookingId])
-  @@index([userId])
-  @@map("cancellation_requests")
-}
-
-model RescheduleRequest {
-  id                String    @id @default(uuid())
-  bookingId         String    @map("booking_id")
-  userId            String    @map("user_id")
-  originalStartTime DateTime  @map("original_start_time")
-  originalEndTime   DateTime  @map("original_end_time")
-  newStartTime      DateTime  @map("new_start_time")
-  newEndTime        DateTime  @map("new_end_time")
-  reason            String?
-  requestedAt       DateTime  @default(now()) @map("requested_at")
-  ownerApproved     Boolean?  @map("owner_approved") // null = pending, true = approved, false = rejected
-  ownerResponseAt   DateTime? @map("owner_response_at")
-  ownerNote         String?   @map("owner_note")
-  suggestedTime     DateTime? @map("suggested_time") // Owner can suggest alternative time
-  processedAt       DateTime? @map("processed_at")
-  createdAt         DateTime  @default(now()) @map("created_at")
-
-  @@index([bookingId])
-  @@index([userId])
-  @@map("reschedule_requests")
-}
-
-// ============================================================================
-// OTP VERIFICATION
-// ============================================================================
-
-model OtpVerification {
-  id          String   @id @default(uuid())
-  phone       String
-  otp         String
-  purpose     String // "LOGIN" | "REGISTER" | "VERIFY_PHONE"
-  attempts    Int      @default(0)
-  maxAttempts Int      @default(3) @map("max_attempts")
-  isVerified  Boolean  @default(false) @map("is_verified")
-  expiresAt   DateTime @map("expires_at")
-  createdAt   DateTime @default(now()) @map("created_at")
-
-  @@index([phone])
-  @@index([otp])
-  @@index([expiresAt])
-  @@map("otp_verifications")
-}
-
-// ============================================================================
-// USER FEEDBACK (Bidirectional - Owner/Staff rates User)
-// ============================================================================
-
-model UserFeedback {
-  id              String   @id @default(uuid())
-  bookingId       String   @unique @map("booking_id")
-  userId          String   @map("user_id") // The user being rated
-  shopId          String   @map("shop_id")
-  staffId         String?  @map("staff_id") // Staff who gave feedback
-  rating          Int // 1-5 stars
-  behavior        String? // e.g., "excellent", "good", "fair", "poor"
-  note            String? // Private notes about the customer
-  wasOnTime       Boolean  @default(true) @map("was_on_time")
-  wasPolite       Boolean  @default(true) @map("was_polite")
-  wouldServeAgain Boolean  @default(true) @map("would_serve_again")
-  createdAt       DateTime @default(now()) @map("created_at")
-
-  @@index([userId])
-  @@index([shopId])
-  @@index([bookingId])
-  @@map("user_feedback")
+  AWAITING_CODE
+  IN_SERVICE
+  COMPLETED
+  DISPUTED
 }

@@ -55,7 +55,7 @@ export const Carousel: React.FC<CarouselProps> = ({ data }) => {
             <Image source={{ uri: item.imageUrl }} style={styles.image} />
             <View style={styles.overlay} />
             
-            <View style={styles.content}>
+            <View style={styles.content} pointerEvents="none">
               {item.tag && (
                 <View style={styles.tagContainer}>
                   <Text style={styles.tagText}>{item.tag}</Text>

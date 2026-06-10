@@ -58,8 +58,36 @@ export class NotificationsWorker {
   @Process('send-push')
   async handleSendPush(job: Job<SendPushJob>) {
     this.logger.log(`Processing push notification job #${job.id}`);
-    // FCM integration placeholder — will use firebase-admin when configured
-    this.logger.log(`Push to device: ${job.data.title} - ${job.data.body}`);
+    
+    try {
+      const admin = require('firebase-admin');
+      if (!admin.apps.length) {
+        this.logger.warn('Firebase Admin not initialized. Skipping push notification.');
+        return;
+      }
+
+      // Convert any boolean or number data fields to strings for FCM
+      const stringifiedData: Record<string, string> = {};
+      if (job.data.data) {
+        for (const [key, value] of Object.entries(job.data.data)) {
+          stringifiedData[key] = String(value);
+        }
+      }
+
+      await admin.messaging().send({
+        token: job.data.fcmToken,
+        notification: {
+          title: job.data.title,
+          body: job.data.body,
+        },
+        data: stringifiedData,
+      });
+      
+      this.logger.log(`Push successfully sent to device for job #${job.id}`);
+    } catch (err) {
+      this.logger.error(`Failed to send push notification: ${err}`);
+      throw err;
+    }
   }
 
   @OnQueueFailed()

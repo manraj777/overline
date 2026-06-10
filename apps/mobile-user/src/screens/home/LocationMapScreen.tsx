@@ -10,6 +10,7 @@ import {
   Image,
   Animated,
   Modal,
+  PermissionsAndroid,
 } from 'react-native';
 import { useQuery } from '@tanstack/react-query';
 import { shopsApi } from '../../api/client';
@@ -33,17 +34,7 @@ const { width, height } = Dimensions.get('window');
 const CARD_WIDTH = width * 0.8;
 const CARD_SPACING = 20;
 
-const mapsModule = (() => {
-  try {
-    return require('react-native-maps');
-  } catch {
-    return null;
-  }
-})();
-
-const MapView = mapsModule?.default;
-const Marker = mapsModule?.Marker;
-const UrlTile = mapsModule?.UrlTile;
+import MapView, { Marker, UrlTile } from 'react-native-maps';
 
 class SafeMapViewContainer extends Component<{ fallback: React.ReactNode; children: React.ReactNode }, { hasError: boolean }> {
   constructor(props: any) {
@@ -99,8 +90,15 @@ export default function LocationMapScreen() {
   React.useEffect(() => {
     async function requestPermission() {
       try {
-        const auth = await Geolocation.requestAuthorization('whenInUse');
-        setHasLocationPermission(auth === 'granted');
+        if (Platform.OS === 'ios') {
+          const auth = await Geolocation.requestAuthorization('whenInUse');
+          setHasLocationPermission(auth === 'granted');
+        } else if (Platform.OS === 'android') {
+          const granted = await PermissionsAndroid.request(
+            PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
+          );
+          setHasLocationPermission(granted === PermissionsAndroid.RESULTS.GRANTED);
+        }
       } catch (err) {
         console.warn('[LocationMapScreen] Geolocation permission query error:', err);
         setHasLocationPermission(false);
@@ -111,7 +109,7 @@ export default function LocationMapScreen() {
 
   React.useEffect(() => {
     if (shops.length > 0) {
-      const firstShopWithCoords = shops.find(s => s.latitude != null && s.longitude != null);
+      const firstShopWithCoords = shops.find(s => !isNaN(Number(s.latitude)) && !isNaN(Number(s.longitude)) && s.latitude != null && s.longitude != null);
       if (firstShopWithCoords && firstShopWithCoords.latitude && firstShopWithCoords.longitude) {
         const timer = setTimeout(() => {
           mapRef.current?.animateToRegion({
@@ -150,7 +148,7 @@ export default function LocationMapScreen() {
     flatListRef.current?.scrollToIndex({ index, animated: true });
     
     const shop = shops[index];
-    if (shop.latitude && shop.longitude) {
+    if (shop.latitude && shop.longitude && !isNaN(Number(shop.latitude)) && !isNaN(Number(shop.longitude))) {
       mapRef.current?.animateToRegion({
         latitude: Number(shop.latitude),
         longitude: Number(shop.longitude),
@@ -194,7 +192,6 @@ export default function LocationMapScreen() {
     <View style={styles.container}>
       <SafeMapViewContainer fallback={mapFallback}>
         <MapView
-          provider={null}
           mapType="none"
           ref={mapRef}
           style={styles.map}
@@ -282,7 +279,7 @@ export default function LocationMapScreen() {
               if (index !== activeShopIndex) {
                 setActiveShopIndex(index);
                 const shop = shops[index];
-                if (shop?.latitude != null && shop?.longitude != null) {
+                if (shop?.latitude != null && shop?.longitude != null && !isNaN(Number(shop.latitude)) && !isNaN(Number(shop.longitude))) {
                   mapRef.current?.animateToRegion({
                     latitude: Number(shop.latitude),
                     longitude: Number(shop.longitude),

@@ -2,6 +2,7 @@ apply plugin: "com.android.application"
 apply plugin: "org.jetbrains.kotlin.android"
 apply plugin: "com.facebook.react"
 apply plugin: "com.google.gms.google-services"
+apply plugin: 'com.google.firebase.crashlytics'
 
 /**
  * This is the configuration block to customize your React Native Android app.
@@ -146,4 +147,5 @@ dependencies {
     // Add Firebase Analytics
     implementation 'com.google.firebase:firebase-analytics'
     implementation 'com.google.firebase:firebase-auth'
+    implementation 'com.google.firebase:firebase-crashlytics'
 }

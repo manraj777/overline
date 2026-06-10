@@ -154,27 +154,49 @@ export default function RegisterProfileScreen() {
                 style={styles.gpsOption}
                 onPress={async () => {
                   setShowLocationModal(false);
-                  Geolocation.getCurrentPosition(
-                    async (pos) => {
-                      const { latitude, longitude } = pos.coords;
-                      try {
-                        const response = await fetch(
-                          `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`,
-                          { headers: { 'User-Agent': 'OverlineApp/1.0' } }
-                        );
-                        const data = await response.json();
-                        if (data && data.address) {
-                          const cityVal = data.address.city || data.address.town || data.address.suburb || '';
-                          const state = data.address.state || '';
-                          setCity(cityVal ? `${cityVal}, ${state}` : `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`);
-                        }
-                      } catch {
-                        setCity(`${latitude.toFixed(4)}, ${longitude.toFixed(4)}`);
+                  let hasPermission = false;
+                  if (Platform.OS === 'ios') {
+                    const auth = await Geolocation.requestAuthorization('whenInUse');
+                    hasPermission = auth === 'granted';
+                  } else if (Platform.OS === 'android') {
+                    const granted = await PermissionsAndroid.request(
+                      PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
+                      {
+                        title: 'Location Permission',
+                        message: 'We need access to your location.',
+                        buttonNeutral: 'Ask Later',
+                        buttonNegative: 'Cancel',
+                        buttonPositive: 'OK',
                       }
-                    },
-                    (err) => Alert.alert('Error', 'Unable to fetch GPS: ' + err.message),
-                    { enableHighAccuracy: true, timeout: 15000 }
-                  );
+                    );
+                    hasPermission = granted === PermissionsAndroid.RESULTS.GRANTED;
+                  }
+
+                  if (hasPermission) {
+                    Geolocation.getCurrentPosition(
+                      async (pos) => {
+                        const { latitude, longitude } = pos.coords;
+                        try {
+                          const response = await fetch(
+                            `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}`,
+                            { headers: { 'User-Agent': 'OverlineApp/1.0' } }
+                          );
+                          const data = await response.json();
+                          if (data && data.address) {
+                            const cityVal = data.address.city || data.address.town || data.address.suburb || '';
+                            const state = data.address.state || '';
+                            setCity(cityVal ? `${cityVal}, ${state}` : `${latitude.toFixed(4)}, ${longitude.toFixed(4)}`);
+                          }
+                        } catch {
+                          setCity(`${latitude.toFixed(4)}, ${longitude.toFixed(4)}`);
+                        }
+                      },
+                      (err) => Alert.alert('Error', 'Unable to fetch GPS: ' + err.message),
+                      { enableHighAccuracy: true, timeout: 15000 }
+                    );
+                  } else {
+                    Alert.alert('Permission Denied', 'Location permission is required to fetch current GPS location.');
+                  }
                 }}
               >
                 <Locate size={18} color={Colors.primary} />

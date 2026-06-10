@@ -498,11 +498,18 @@ export class AdminService {
   async createWalkIn(shopId: string, dto: CreateWalkInDto, tenantId: string) {
     await this.verifyShopAccess(shopId, tenantId);
 
+    // Walk-ins default to now + 1 minute buffer so the "Cannot book in the past"
+    // guard in BookingsService.create() doesn't reject the request due to
+    // sub-second race between Date.now() calls.
+    const walkInStart = dto.startTime
+      ? dto.startTime
+      : new Date(Date.now() + 60_000).toISOString();
+
     return this.bookingsService.create(
       {
         shopId,
         serviceIds: dto.serviceIds,
-        startTime: dto.startTime || new Date().toISOString(),
+        startTime: walkInStart,
         customerName: dto.customerName,
         customerPhone: dto.customerPhone,
         notes: dto.notes,

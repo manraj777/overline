@@ -704,50 +704,59 @@ export class ShopsService {
     return cities.map((c) => c.city);
   }
 
-  async getNearbyShops(latitude: number, longitude: number, radiusKm: number = 10) {
-    // For production, use PostGIS with ST_DWithin
-    // This is a simplified version using bounding box approximation
-    const latDelta = radiusKm / 111.32; // 1 degree latitude ≈ 111.32 km
-    const lngDelta = radiusKm / (111.32 * Math.cos((latitude * Math.PI) / 180));
+  async getNearbyShops(latitude: number, longitude: number, radiusKm: number = 5) {
+    if (isNaN(latitude) || isNaN(longitude)) {
+      console.warn('[getNearbyShops] Invalid coordinates provided');
+      return { data: [] };
+    }
+    
+    try {
+      const radiusDeg = radiusKm / 111.32; // Rough approximation: 1 degree ≈ 111.32 km
 
-    const shops = await this.prisma.shop.findMany({
-      where: {
-        isActive: true,
-        latitude: {
-          gte: latitude - latDelta,
-          lte: latitude + latDelta,
+      const shops = await this.prisma.shop.findMany({
+        where: {
+          isActive: true,
+          latitude: {
+            gte: latitude - radiusDeg,
+            lte: latitude + radiusDeg,
+            not: null,
+          },
+          longitude: {
+            gte: longitude - radiusDeg,
+            lte: longitude + radiusDeg,
+            not: null,
+          },
         },
-        longitude: {
-          gte: longitude - lngDelta,
-          lte: longitude + lngDelta,
+        include: {
+          tenant: {
+            select: { type: true },
+          },
+          workingHours: true,
+          _count: {
+            select: { services: { where: { isActive: true } } },
+          },
         },
-      },
-      include: {
-        tenant: {
-          select: { type: true },
-        },
-        workingHours: true,
-        _count: {
-          select: { services: { where: { isActive: true } } },
-        },
-      },
-      take: 50,
-    });
+        take: 50,
+      });
 
-    // Calculate actual distance and sort
-    const shopsWithDistance = shops.map((shop) => ({
-      ...shop,
-      distance: this.calculateDistance(
-        latitude,
-        longitude,
-        Number(shop.latitude),
-        Number(shop.longitude),
-      ),
-    }));
+      // Calculate actual distance and sort
+      const shopsWithDistance = shops.map((shop) => ({
+        ...shop,
+        distance: this.calculateDistance(
+          latitude,
+          longitude,
+          Number(shop.latitude),
+          Number(shop.longitude),
+        ),
+      }));
 
-    return shopsWithDistance
-      .filter((shop) => shop.distance <= radiusKm)
-      .sort((a, b) => a.distance - b.distance);
+      return shopsWithDistance
+        .filter((shop) => shop.distance <= radiusKm)
+        .sort((a, b) => a.distance - b.distance);
+    } catch (error: any) {
+      console.error('[getNearbyShops] Error:', error.message);
+      return [];
+    }
   }
 
   private calculateDistance(lat1: number, lng1: number, lat2: number, lng2: number): number {
@@ -778,43 +787,48 @@ export class ShopsService {
       }
     } catch (e) {}
 
-    const sevenDaysAgo = new Date();
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-
-    // Group by shopId in bookings
-    const trending = await this.prisma.booking.groupBy({
-      by: ['shopId'],
-      where: {
-        createdAt: { gte: sevenDaysAgo },
-      },
-      _count: { shopId: true },
-      orderBy: { _count: { shopId: 'desc' } },
-      take: limit,
-    });
-
-    if (trending.length === 0) return { data: [] };
-
-    // Fetch shop details
-    const shopIds = trending.map((t) => t.shopId);
-    const shops = await this.prisma.shop.findMany({
-      where: { id: { in: shopIds } },
-      include: {
-        tenant: {
-          select: { type: true },
-        },
-        workingHours: true,
-        _count: { select: { reviews: true } },
-      },
-    });
-
-    // Sort to match trending order
-    const sortedShops = shopIds.map((id) => shops.find((s) => s.id === id)).filter(Boolean);
-
-    const result = { data: sortedShops };
     try {
-      await this.redis.set(cacheKey, JSON.stringify(result), 3600); // 1 hour TTL
-    } catch (e) {}
-    return result;
+      const sevenDaysAgo = new Date();
+      sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+      // Group by shopId in bookings
+      const trending = await this.prisma.booking.groupBy({
+        by: ['shopId'],
+        where: {
+          createdAt: { gte: sevenDaysAgo },
+        },
+        _count: { shopId: true },
+        orderBy: { _count: { shopId: 'desc' } },
+        take: limit,
+      });
+
+      if (trending.length === 0) return { data: [] };
+
+      // Fetch shop details
+      const shopIds = trending.map((t) => t.shopId);
+      const shops = await this.prisma.shop.findMany({
+        where: { id: { in: shopIds } },
+        include: {
+          tenant: {
+            select: { type: true },
+          },
+          workingHours: true,
+          _count: { select: { reviews: true } },
+        },
+      });
+
+      // Sort to match trending order
+      const sortedShops = shopIds.map((id) => shops.find((s) => s.id === id)).filter(Boolean);
+
+      const result = { data: sortedShops };
+      try {
+        await this.redis.set(cacheKey, JSON.stringify(result), 3600); // 1 hour TTL
+      } catch (e) {}
+      return result;
+    } catch (error: any) {
+      console.error('[getTrendingShops] Error:', error.message);
+      return { data: [] };
+    }
   }
 
   async parseGoogleLink(url: string) {

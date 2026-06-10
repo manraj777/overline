@@ -13,6 +13,7 @@ async function main() {
   console.log(`Found ${shops.length} shops:`);
   for (const s of shops) {
     console.log(`- Shop: [${s.id}] Name: "${s.name}" Slug: "${s.slug}"`);
+    console.log(`  Location: Lat ${s.latitude}, Long ${s.longitude}, City: "${s.city}", Address: "${s.address}"`);
     console.log(`  Services: ${s.services.length}`);
     for (const srv of s.services) {
       console.log(`    - [${srv.id}] "${srv.name}" - ₹${srv.price} (${srv.isApproved ? 'Approved' : 'Pending'})`);

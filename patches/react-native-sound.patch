@@ -1,0 +1,26 @@
+diff --git a/android/build.gradle b/android/build.gradle
+index d1ee5f56b5830731de6e2fb84343c16c7fe5f11b..9bb92f4c3e9ec576a8b6b44eb7c67dbe45761882 100644
+--- a/android/build.gradle
++++ b/android/build.gradle
+@@ -26,9 +26,7 @@ def isNewArchitectureEnabled() {
+ apply plugin: "com.android.library"
+ apply plugin: "kotlin-android"
+ 
+-if (isNewArchitectureEnabled()) {
+-  apply plugin: "com.facebook.react"
+-}
++
+ 
+ def getExtOrDefault(name) {
+   return rootProject.ext.has(name) ? rootProject.ext.get(name) : project.properties["Sound_" + name]
+@@ -117,10 +115,3 @@ dependencies {
+   implementation "org.jetbrains.kotlin:kotlin-stdlib:$kotlin_version"
+ }
+ 
+-if (isNewArchitectureEnabled()) {
+-  react {
+-    jsRootDir = file("../src/")
+-    libraryName = "RNSound"
+-    codegenJavaPackageName = "com.zmxv.RNSound"
+-  }
+-}

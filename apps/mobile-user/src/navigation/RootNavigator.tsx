@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { NavigationContainer, DefaultTheme } from '@react-navigation/native';
+import { NavigationContainer, DefaultTheme, createNavigationContainerRef } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -32,6 +32,8 @@ import ProfileScreen from '../screens/profile/ProfileScreen';
 import EditProfileScreen from '../screens/profile/EditProfileScreen';
 import NotificationsScreen from '../screens/profile/NotificationsScreen';
 import LocationMapScreen from '../screens/home/LocationMapScreen';
+
+export const navigationRef = createNavigationContainerRef<RootStackParamList>();
 
 const Stack = createNativeStackNavigator<RootStackParamList>();
 const Tab = createBottomTabNavigator<MainTabParamList>();
@@ -168,6 +170,25 @@ export default function RootNavigator() {
     };
   }, []);
 
+  useEffect(() => {
+    if (isAuthenticated) {
+      AsyncStorage.getItem('postLoginRedirect').then(redirect => {
+        if (redirect) {
+          AsyncStorage.removeItem('postLoginRedirect');
+          try {
+            const { name, params } = JSON.parse(redirect);
+            // Give the navigator a tick to mount the authenticated screens
+            setTimeout(() => {
+              if (navigationRef.isReady()) {
+                navigationRef.navigate(name as any, params);
+              }
+            }, 300);
+          } catch (e) {}
+        }
+      });
+    }
+  }, [isAuthenticated]);
+
   if (isLoading || isFirstLaunch === null) {
     return (
       <NavigationContainer theme={DarkTheme}>
@@ -179,7 +200,7 @@ export default function RootNavigator() {
   }
 
   return (
-    <NavigationContainer theme={DarkTheme}>
+    <NavigationContainer theme={DarkTheme} ref={navigationRef}>
       <Stack.Navigator
         initialRouteName={isAuthenticated ? "Main" : (isFirstLaunch ? "Onboarding" : "Login")}
         screenOptions={{

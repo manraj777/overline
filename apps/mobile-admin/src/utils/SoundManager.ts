@@ -1,10 +1,31 @@
 import { Vibration, Alert, Platform } from 'react-native';
+import Sound from 'react-native-sound';
+
+// Enable playback in silence mode
+Sound.setCategory('Playback');
 
 class SoundManagerClass {
-  // Gentle double pulse for new queue booking updates (needs attention)
+  private bellSound: Sound | null = null;
+
+  constructor() {
+    // Load the sound file 'booking_bell.ogg' from the app bundle
+    this.bellSound = new Sound('booking_bell.ogg', Sound.MAIN_BUNDLE, (error) => {
+      if (error) {
+        console.log('[Admin SoundManager] failed to load the sound', error);
+        return;
+      }
+    });
+  }
+
+  // Double pulse & Sound for new queue booking updates
   playPending() {
     Vibration.vibrate([0, 120, 80, 120]);
-    console.log('[Admin SoundManager] New booking/pending update vibration triggered');
+    if (this.bellSound) {
+      this.bellSound.stop(() => {
+        this.bellSound?.play();
+      });
+    }
+    console.log('[Admin SoundManager] New booking/pending update vibration & sound triggered');
   }
 
   // Success chime pulse for confirmed actions

@@ -43,8 +43,10 @@ interface WhatsAppContact {
 }
 
 export default function PlatformDashboardPage() {
+  const [activeTab, setActiveTab] = useState<'OVERVIEW' | 'SHOPS' | 'USERS'>('OVERVIEW');
   const [stats, setStats] = useState<PlatformStats | null>(null);
   const [shops, setShops] = useState<any[]>([]);
+  const [users, setUsers] = useState<any[]>([]);
   const [loadingStats, setLoadingStats] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -97,17 +99,39 @@ export default function PlatformDashboardPage() {
     }
   };
 
+  const handleToggleShopStatus = async (shopId: string, currentStatus: boolean) => {
+    if (!confirm(`Are you sure you want to ${currentStatus ? 'Suspend' : 'Activate'} this shop?`)) return;
+    try {
+      await api.patch(`/admin/platform/shops/${shopId}`, { isActive: !currentStatus });
+      setShops(shops.map((s) => s.id === shopId ? { ...s, isActive: !currentStatus } : s));
+    } catch (err: any) {
+      alert(err.response?.data?.message || 'Failed to update shop status');
+    }
+  };
+
+  const handleToggleUserStatus = async (userId: string, currentStatus: boolean) => {
+    if (!confirm(`Are you sure you want to ${currentStatus ? 'Ban' : 'Unban'} this user?`)) return;
+    try {
+      await api.patch(`/admin/platform/users/${userId}`, { isActive: !currentStatus });
+      setUsers(users.map((u) => u.id === userId ? { ...u, isActive: !currentStatus } : u));
+    } catch (err: any) {
+      alert(err.response?.data?.message || 'Failed to update user status');
+    }
+  };
+
   // Load stats and shops from backend platform APIs
   const fetchData = async () => {
     setLoadingStats(true);
     setError(null);
     try {
-      const [statsRes, shopsRes] = await Promise.all([
+      const [statsRes, shopsRes, usersRes] = await Promise.all([
         api.get('/admin/platform/stats'),
         api.get('/admin/platform/shops?limit=100'),
+        api.get('/admin/platform/users?limit=100'),
       ]);
       setStats(statsRes.data);
       setShops(shopsRes.data.shops || []);
+      setUsers(usersRes.data.users || []);
     } catch (err: any) {
       console.error('Failed to fetch platform superadmin data', err);
       setError(
@@ -331,6 +355,25 @@ export default function PlatformDashboardPage() {
           </button>
         </div>
 
+        {/* Tab Switcher */}
+        <div className="flex items-center gap-2 border-b border-gray-200 pb-px">
+          {['OVERVIEW', 'SHOPS', 'USERS'].map((tab) => (
+            <button
+              key={tab}
+              onClick={() => setActiveTab(tab as any)}
+              className={`px-6 py-3 text-sm font-bold border-b-2 transition-all ${
+                activeTab === tab
+                  ? 'border-indigo-600 text-indigo-600'
+                  : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+            >
+              {tab === 'OVERVIEW' ? 'Growth & Overview' : tab === 'SHOPS' ? 'Shops Directory' : 'Users Directory'}
+            </button>
+          ))}
+        </div>
+
+        {activeTab === 'OVERVIEW' && (
+          <div className="space-y-8 animate-fade-in">
         {/* Booking Search & Diagnostics Console */}
         <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm space-y-6">
           <div className="flex items-center gap-3">
@@ -777,6 +820,133 @@ export default function PlatformDashboardPage() {
             </Card>
           </div>
         </div>
+        </div>
+        )}
+
+        {/* SHOPS TAB */}
+        {activeTab === 'SHOPS' && (
+          <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm animate-fade-in">
+            <h3 className="text-xl font-black text-gray-900 mb-6">Registered Shops Directory</h3>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm text-left">
+                <thead className="bg-gray-50 text-gray-600 font-semibold border-b border-gray-100">
+                  <tr>
+                    <th className="px-4 py-3">Shop Name & ID</th>
+                    <th className="px-4 py-3">Location</th>
+                    <th className="px-4 py-3">Owner</th>
+                    <th className="px-4 py-3 text-center">Status</th>
+                    <th className="px-4 py-3 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {shops.map((shop) => (
+                    <tr key={shop.id} className="hover:bg-gray-50/50 transition">
+                      <td className="px-4 py-3">
+                        <p className="font-bold text-gray-900">{shop.name}</p>
+                        <p className="text-xs text-gray-400 font-mono">{shop.id}</p>
+                      </td>
+                      <td className="px-4 py-3">
+                        <p className="text-gray-700 font-medium">{shop.city}</p>
+                        <p className="text-xs text-gray-500 truncate max-w-[200px]">{shop.address}</p>
+                      </td>
+                      <td className="px-4 py-3">
+                        <p className="font-medium text-gray-800">{shop.owner?.name}</p>
+                        <p className="text-xs text-gray-500">{shop.owner?.phone}</p>
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold ${
+                          shop.isActive ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' : 'bg-red-50 text-red-700 border border-red-100'
+                        }`}>
+                          {shop.isActive ? 'Active' : 'Suspended'}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        <button
+                          onClick={() => handleToggleShopStatus(shop.id, shop.isActive)}
+                          className={`px-4 py-1.5 rounded-lg text-xs font-bold transition shadow-sm ${
+                            shop.isActive ? 'bg-red-50 text-red-600 hover:bg-red-100' : 'bg-emerald-600 text-white hover:bg-emerald-700'
+                          }`}
+                        >
+                          {shop.isActive ? 'Suspend Shop' : 'Activate Shop'}
+                        </button>
+                      </td>
+                    </tr>
+                  ))}
+                  {shops.length === 0 && !loadingStats && (
+                    <tr>
+                      <td colSpan={5} className="text-center py-8 text-gray-500 font-medium">No shops found.</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
+        {/* USERS TAB */}
+        {activeTab === 'USERS' && (
+          <div className="bg-white p-6 rounded-3xl border border-gray-100 shadow-sm animate-fade-in">
+            <h3 className="text-xl font-black text-gray-900 mb-6">Platform Users Directory</h3>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm text-left">
+                <thead className="bg-gray-50 text-gray-600 font-semibold border-b border-gray-100">
+                  <tr>
+                    <th className="px-4 py-3">User & ID</th>
+                    <th className="px-4 py-3">Contact Info</th>
+                    <th className="px-4 py-3">Role</th>
+                    <th className="px-4 py-3 text-center">Status</th>
+                    <th className="px-4 py-3 text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-gray-100">
+                  {users.map((user) => (
+                    <tr key={user.id} className="hover:bg-gray-50/50 transition">
+                      <td className="px-4 py-3">
+                        <p className="font-bold text-gray-900 flex items-center gap-2">
+                          {user.name}
+                          {user.role === 'SUPER_ADMIN' && <span className="bg-indigo-100 text-indigo-700 px-1.5 py-0.5 rounded text-[10px] font-black uppercase">Admin</span>}
+                        </p>
+                        <p className="text-xs text-gray-400 font-mono">{user.id}</p>
+                      </td>
+                      <td className="px-4 py-3">
+                        <p className="text-gray-800 font-medium">{user.phone}</p>
+                        <p className="text-xs text-gray-500">{user.email}</p>
+                      </td>
+                      <td className="px-4 py-3">
+                        <span className="text-xs font-bold text-gray-500 uppercase tracking-wider">{user.role}</span>
+                      </td>
+                      <td className="px-4 py-3 text-center">
+                        <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-bold ${
+                          user.isActive ? 'bg-emerald-50 text-emerald-700 border border-emerald-100' : 'bg-red-50 text-red-700 border border-red-100'
+                        }`}>
+                          {user.isActive ? 'Active' : 'Banned'}
+                        </span>
+                      </td>
+                      <td className="px-4 py-3 text-right">
+                        {user.role !== 'SUPER_ADMIN' && (
+                          <button
+                            onClick={() => handleToggleUserStatus(user.id, user.isActive)}
+                            className={`px-4 py-1.5 rounded-lg text-xs font-bold transition shadow-sm ${
+                              user.isActive ? 'bg-red-50 text-red-600 hover:bg-red-100' : 'bg-emerald-600 text-white hover:bg-emerald-700'
+                            }`}
+                          >
+                            {user.isActive ? 'Ban User' : 'Unban User'}
+                          </button>
+                        )}
+                      </td>
+                    </tr>
+                  ))}
+                  {users.length === 0 && !loadingStats && (
+                    <tr>
+                      <td colSpan={5} className="text-center py-8 text-gray-500 font-medium">No users found.</td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </div>
+        )}
+
       </div>
     </>
   );

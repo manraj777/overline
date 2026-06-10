@@ -139,7 +139,7 @@ export default function StaffManagementScreen() {
     <View style={styles.staffCard}>
       <View style={styles.staffMain}>
         <View style={styles.avatar}>
-          <Text style={styles.avatarText}>{item.name.charAt(0).toUpperCase()}</Text>
+          <Text style={styles.avatarText}>{(item?.name || 'S').charAt(0).toUpperCase()}</Text>
         </View>
         <View style={styles.info}>
           <Text style={styles.name}>{item.name}</Text>

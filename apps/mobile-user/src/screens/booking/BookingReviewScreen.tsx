@@ -129,16 +129,47 @@ export default function BookingReviewScreen() {
     }
     loadAddresses();
 
-    Geolocation.getCurrentPosition(
-      (pos) => {
-        setCurrentCoords({
-          latitude: pos.coords.latitude,
-          longitude: pos.coords.longitude
-        });
-      },
-      (err) => console.log('[BookingReview] Error fetching location for travel calculations:', err),
-      { enableHighAccuracy: true, timeout: 15000, maximumAge: 10000 }
-    );
+    async function fetchLocationSafely() {
+      if (Platform.OS === 'android') {
+        try {
+          const { PermissionsAndroid } = require('react-native');
+          const granted = await PermissionsAndroid.request(
+            PermissionsAndroid.PERMISSIONS.ACCESS_FINE_LOCATION,
+            {
+              title: 'Location Permission',
+              message: 'We need access to your location to show travel ETA.',
+              buttonNeutral: 'Ask Me Later',
+              buttonNegative: 'Cancel',
+              buttonPositive: 'OK',
+            },
+          );
+          if (granted !== PermissionsAndroid.RESULTS.GRANTED) {
+            console.log('[BookingReview] Location permission denied');
+            return;
+          }
+        } catch (err) {
+          console.warn('[BookingReview] Permission error:', err);
+          return;
+        }
+      }
+
+      try {
+        Geolocation.getCurrentPosition(
+          (pos) => {
+            setCurrentCoords({
+              latitude: pos.coords.latitude,
+              longitude: pos.coords.longitude
+            });
+          },
+          (err) => console.log('[BookingReview] Error fetching location for travel calculations:', err),
+          { enableHighAccuracy: true, timeout: 15000, maximumAge: 10000 }
+        );
+      } catch (e) {
+        console.warn('[BookingReview] Geolocation crash caught:', e);
+      }
+    }
+    
+    fetchLocationSafely();
   }, []);
 
   const { data: shop, isLoading: loadingShop } = useQuery({
@@ -786,6 +817,10 @@ export default function BookingReviewScreen() {
               <Zap size={12} color="#F59E0B" fill="#F59E0B" />
               <Text style={styles.trustText}>FASTEST BOOKING GUARANTEED</Text>
             </View>
+            <View style={[styles.trustBadge, { backgroundColor: '#E0F2FE', borderColor: '#BAE6FD', marginTop: 8 }]}>
+              <Check size={12} color="#0284C7" />
+              <Text style={[styles.trustText, { color: '#0284C7' }]}>ACCEPTS UPI & CASH AT SHOP</Text>
+            </View>
           </View>
 
           <View style={{ height: 120 }} />
@@ -815,9 +850,8 @@ export default function BookingReviewScreen() {
               ) : (
                 <>
                   <Text style={styles.payBtnText}>
-                    {hasActiveBookingOverlap ? 'BOOKING EXISTS' : 'CONFIRM BOOKING'}
+                    {hasActiveBookingOverlap ? 'BOOKING EXISTS' : 'TEST_CONFIRM'}
                   </Text>
-                  <ChevronRight size={20} color="#FFF" strokeWidth={3} />
                 </>
               )}
             </TouchableOpacity>

@@ -6,5 +6,13 @@ module.exports = {
         ios: null,
       },
     },
+    'react-native-sound': {
+      platforms: {
+        android: {
+          cmakeListsPath: null,
+          libraryName: null
+        }
+      }
+    }
   },
 };

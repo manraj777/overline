@@ -22,6 +22,7 @@ import { format } from 'date-fns';
 import { shopsApi, reviewsApi } from '../../api/client';
 import { Service, RootStackParamList } from '../../types';
 import { useAuthStore } from '../../stores/authStore';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Colors, Spacing, BorderRadius, FontSizes, FontWeights, Shadows } from '../../theme';
 import { Badge, PrimaryButton, Divider } from '../../components/ui';
 import { 
@@ -33,13 +34,7 @@ import {
 type RouteProps = RouteProp<RootStackParamList, 'ShopDetail'>;
 type NavigationProp = NativeStackNavigationProp<RootStackParamList>;
 
-const mapsModule = (() => {
-  try {
-    return require('react-native-maps');
-  } catch {
-    return null;
-  }
-})();
+import MapView, { Marker, Polyline, UrlTile } from 'react-native-maps';
 
 class SafeMapViewContainer extends Component<{ fallback: React.ReactNode; children: React.ReactNode }, { hasError: boolean }> {
   constructor(props: any) {
@@ -94,20 +89,12 @@ function isShopOpenNow(workingHours: any[] | undefined): boolean {
   if (!workingHours || workingHours.length === 0) return false;
 
   const now = new Date();
-  const dayOfWeekStr = new Intl.DateTimeFormat('en-US', {
-    timeZone: 'Asia/Kolkata',
-    weekday: 'long',
-  }).format(now).toUpperCase();
+  const dayOfWeekStr = format(now, 'EEEE').toUpperCase();
 
   const workingHour = workingHours.find((wh: any) => wh.dayOfWeek === dayOfWeekStr);
   if (!workingHour || workingHour.isClosed) return false;
 
-  const timeStr = new Intl.DateTimeFormat('en-US', {
-    timeZone: 'Asia/Kolkata',
-    hour12: false,
-    hour: '2-digit',
-    minute: '2-digit',
-  }).format(now);
+  const timeStr = format(now, 'HH:mm');
 
   const [currentH, currentM] = timeStr.split(':').map(Number);
   const currentMinutes = currentH * 60 + currentM;
@@ -154,7 +141,7 @@ export default function ShopDetailScreen() {
 
   const { data: shop, isLoading } = useQuery({
     queryKey: ['shop', shopId],
-    queryFn: () => shopsApi.getBySlug(shopId).then(res => res.data),
+    queryFn: () => { console.log("FETCHING SHOP", shopId); return shopsApi.getBySlug(shopId).then(res => { console.log("SHOP FETCHED", res.data.id); return res.data; }).catch(err => { console.error("SHOP FETCH ERROR", err); throw err; }); },
     retry: 2,
   });
 
@@ -283,10 +270,7 @@ export default function ShopDetailScreen() {
   const isStaffAbsent = React.useCallback((person: any) => {
     if (!person) return false;
     const now = new Date();
-    const todayStr = new Intl.DateTimeFormat('en-US', {
-      timeZone: 'Asia/Kolkata',
-      weekday: 'long',
-    }).format(now).toUpperCase();
+    const todayStr = format(now, 'EEEE').toUpperCase();
 
     const wh = person.staffWorkingHours?.find((h: any) => String(h.dayOfWeek).toUpperCase() === todayStr);
     if (wh?.isOff) return true;
@@ -367,10 +351,7 @@ export default function ShopDetailScreen() {
   }
 
   // Safe require Map components
-  const MapView = mapsModule?.default;
-  const Marker = mapsModule?.Marker;
-  const Polyline = mapsModule?.Polyline;
-  const UrlTile = mapsModule?.UrlTile;
+
 
   return (
     <View style={styles.container}>
@@ -422,7 +403,7 @@ export default function ShopDetailScreen() {
           ) : (
             <View style={[styles.heroImage, styles.placeholderHero]}>
               <Text style={styles.placeholderLetter}>
-                {shop.name.charAt(0).toUpperCase()}
+                {(shop?.name || 'S').charAt(0).toUpperCase()}
               </Text>
             </View>
           )}
@@ -507,7 +488,7 @@ export default function ShopDetailScreen() {
               </View>
 
               {/* Mini Map Preview */}
-              {shop.latitude && shop.longitude && MapView && Marker && (
+              {!isNaN(Number(shop?.latitude)) && !isNaN(Number(shop?.longitude)) && shop?.latitude != null && shop?.longitude != null && (
                 <View style={styles.overviewMapBlock}>
                   <Text style={styles.cardHeaderTitle}>Interactive Map Locator</Text>
                   <View style={styles.miniMapWrap}>
@@ -519,7 +500,6 @@ export default function ShopDetailScreen() {
                     }>
                       <MapView
                         ref={mapRef}
-                        provider={null}
                         mapType="none"
                         style={StyleSheet.absoluteFillObject}
                         scrollEnabled={true}
@@ -567,7 +547,7 @@ export default function ShopDetailScreen() {
                       </MapView>
 
                       {/* Map Overlay Controls */}
-                      {userLocation && shop.latitude && (
+                      {userLocation && !isNaN(Number(shop?.latitude)) && !isNaN(Number(shop?.longitude)) && (
                         <View style={styles.mapOverlayControls}>
                           <TouchableOpacity
                             style={styles.mapFloatingBtn}
@@ -790,7 +770,7 @@ export default function ShopDetailScreen() {
                             <Image source={{ uri: person.avatarUrl }} style={styles.staffAvatar} />
                           ) : (
                             <View style={styles.staffAvatarPlaceholder}>
-                              <Text style={styles.avatarLetter}>{person.name?.charAt(0).toUpperCase()}</Text>
+                              <Text style={styles.avatarLetter}>{(person?.name || 'S').charAt(0).toUpperCase()}</Text>
                             </View>
                           )}
                         </View>
@@ -910,7 +890,7 @@ export default function ShopDetailScreen() {
                   <Text style={styles.infoDetailText}>Phone: {shop.phone || 'Not available'}</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
-                  style={styles.infoDetailRow}
+                  style={[styles.infoDetailRow, { backgroundColor: '#E8F5E9', padding: 12, borderRadius: 12, marginTop: 8 }]}
                   onPress={() => {
                     if (shop.phone) {
                       const clean = shop.phone.replace(/\D/g, '');
@@ -919,8 +899,8 @@ export default function ShopDetailScreen() {
                     }
                   }}
                 >
-                  <MessageCircle size={18} color="#25D366" />
-                  <Text style={[styles.infoDetailText, { color: '#25D366' }]}>WhatsApp Onboarding</Text>
+                  <MessageCircle size={20} color="#25D366" />
+                  <Text style={[styles.infoDetailText, { color: '#25D366', fontWeight: 'bold', fontSize: 16 }]}>Chat on WhatsApp</Text>
                 </TouchableOpacity>
                 <View style={styles.infoDetailRow}>
                   <Mail size={18} color={Colors.primary} />
@@ -966,7 +946,12 @@ export default function ShopDetailScreen() {
             title={`Add ${selectedServices.length} item${selectedServices.length > 1 ? 's' : ''} to cart`}
             onPress={() => {
               if (!isAuthenticated) {
-                navigation.navigate('Login' as any);
+                AsyncStorage.setItem('postLoginRedirect', JSON.stringify({
+                  name: 'BookingStaff',
+                  params: { shopId, selectedServices }
+                })).then(() => {
+                  navigation.navigate('Login' as any);
+                });
               } else {
                 navigation.navigate('BookingStaff', { shopId, selectedServices });
               }
@@ -1059,7 +1044,7 @@ export default function ShopDetailScreen() {
                   <Image source={{ uri: selectedStaff.avatarUrl }} style={styles.modalAvatar} />
                 ) : (
                   <View style={styles.modalAvatarPlaceholder}>
-                    <Text style={styles.modalAvatarLetter}>{selectedStaff?.name?.charAt(0).toUpperCase()}</Text>
+                    <Text style={styles.modalAvatarLetter}>{(selectedStaff?.name || 'S').charAt(0).toUpperCase()}</Text>
                   </View>
                 )}
                 <Text style={styles.modalStaffName}>{selectedStaff?.name}</Text>

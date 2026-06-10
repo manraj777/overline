@@ -4,6 +4,7 @@ import { Platform } from 'react-native';
 import DeviceInfo from '../utils/deviceInfo';
 
 import { resolveApiUrl } from './urlResolver';
+import axiosRetry from 'axios-retry';
 
 // Backend URL configuration
 const DEV_HOST =
@@ -33,6 +34,19 @@ export const apiClient = axios.create({
   headers: {
     'Content-Type': 'application/json',
   },
+});
+
+// Resilient network requests
+axiosRetry(apiClient, { 
+  retries: 3, 
+  retryDelay: axiosRetry.exponentialDelay,
+  retryCondition: (error) => {
+    return (
+      error.code === 'ECONNABORTED' || 
+      error.message === 'Network Error' || 
+      (error.response ? error.response.status >= 500 : false)
+    );
+  }
 });
 
 // Track if we're currently refreshing the token
@@ -147,6 +161,10 @@ export const authApi = {
     apiClient.post('/auth/refresh', { refreshToken }),
   resetPassword: (data: { identifier: string; otp: string; newPassword: string }) =>
     apiClient.post('/auth/reset-password', data),
+};
+
+export const userApi = {
+  updateFcmToken: (token: string) => apiClient.post('/users/fcm-token', { token }),
 };
 
 // OTP APIs

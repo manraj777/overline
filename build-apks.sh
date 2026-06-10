@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 
 set -euo pipefail
+export PATH="/usr/local/bin:$PATH"
+export NODE_BINARY="/usr/local/bin/node"
 
 MODE="${1:-release}"
 ROOT_DIR="$(cd "$(dirname "$0")" && pwd)"
@@ -11,7 +13,7 @@ if [[ "$MODE" != "debug" && "$MODE" != "release" ]]; then
 fi
 
 if [[ "$MODE" == "release" ]]; then
-	TASK="assembleRelease"
+	TASK="assembleRelease bundleRelease"
 	APK_DIR="release"
 else
 	TASK="assembleDebug"
@@ -68,16 +70,15 @@ console.log(`Verified Google OAuth config in ${filePath} for ${packageName}`);
 NODE
 }
 
-# Both Android apps require google-services.json for Google Sign-In/Firebase plugin.
 if [[ ! -f "$ROOT_DIR/apps/mobile-admin/android/app/google-services.json" ]]; then
 	echo "ERROR: Missing file apps/mobile-admin/android/app/google-services.json"
-	echo "Admin APK cannot provide Google login without Firebase Android config."
+	echo "Admin APK cannot provide Google login or FCM Push Notifications without Firebase Android config."
 	exit 1
 fi
 
 if [[ ! -f "$ROOT_DIR/apps/mobile-user/android/app/google-services.json" ]]; then
 	echo "ERROR: Missing file apps/mobile-user/android/app/google-services.json"
-	echo "User APK cannot provide Google login without Firebase Android config."
+	echo "User APK cannot provide Google login or FCM Push Notifications without Firebase Android config."
 	exit 1
 fi
 
@@ -86,14 +87,19 @@ validate_google_services "$ROOT_DIR/apps/mobile-user/android/app/google-services
 
 echo "\nBuilding Admin App (mobile-admin)..."
 cd "$ROOT_DIR/apps/mobile-admin/android"
-./gradlew clean "$TASK"
+./gradlew clean $TASK
 
 echo "\nBuilding User App (mobile-user)..."
 cd "$ROOT_DIR/apps/mobile-user/android"
-./gradlew clean "$TASK"
+./gradlew clean $TASK
 
 cd "$ROOT_DIR"
 
 echo "\nBuild completed successfully."
-echo "User App APK:  apps/mobile-user/android/app/build/outputs/apk/$APK_DIR/app-$APK_DIR.apk"
-echo "Admin App APK: apps/mobile-admin/android/app/build/outputs/apk/$APK_DIR/app-$APK_DIR.apk"
+if [[ "$MODE" == "release" ]]; then
+	echo "User App AAB:  apps/mobile-user/android/app/build/outputs/bundle/$APK_DIR/app-$APK_DIR.aab"
+	echo "Admin App AAB: apps/mobile-admin/android/app/build/outputs/bundle/$APK_DIR/app-$APK_DIR.aab"
+else
+	echo "User App APK:  apps/mobile-user/android/app/build/outputs/apk/$APK_DIR/app-$APK_DIR.apk"
+	echo "Admin App APK: apps/mobile-admin/android/app/build/outputs/apk/$APK_DIR/app-$APK_DIR.apk"
+fi

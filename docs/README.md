@@ -6,6 +6,19 @@ This folder contains comprehensive documentation for the **Overline** appointmen
 
 ## 📖 Documentation Files
 
+### 🌟 [APP_ECOSYSTEM_GUIDE.md](APP_ECOSYSTEM_GUIDE.md) - Features & Usage
+**Best for:** End-users, Shop Owners, and Product Managers  
+**Read time:** 15 minutes  
+**Contains:**
+- Overview of all 4 apps (User Mobile, Admin Mobile, User Web, Admin Web)
+- Target audience and platform specifics
+- Key benefits and value propositions
+- Step-by-step usage workflows
+
+👉 **Read this to understand what the product does and how to use it**
+
+---
+
 ### 🚀 [QUICK_REFERENCE.md](QUICK_REFERENCE.md) - START HERE!
 **Best for:** Quick lookup, code examples, testing scenarios  
 **Read time:** 10 minutes  
@@ -105,10 +118,11 @@ This folder contains comprehensive documentation for the **Overline** appointmen
 
 ### I'm a New Developer
 ```
-1. QUICK_REFERENCE.md        ← Overview in 10 min
-2. IMPLEMENTATION_SUMMARY.md ← What changed
-3. DATABASE_SCHEMA.md        ← How data is stored
-4. ADMIN_ONBOARDING.md       ← User workflows
+1. APP_ECOSYSTEM_GUIDE.md    ← What we are building
+2. QUICK_REFERENCE.md        ← Overview in 10 min
+3. IMPLEMENTATION_SUMMARY.md ← What changed
+4. DATABASE_SCHEMA.md        ← How data is stored
+5. ADMIN_ONBOARDING.md       ← User workflows
 ```
 
 ### I'm an Admin/Shop Owner

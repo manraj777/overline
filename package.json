@@ -36,5 +36,10 @@
     "playwright": "^1.60.0",
     "prettier": "^3.1.0",
     "typescript": "5.3.3"
+  },
+  "pnpm": {
+    "patchedDependencies": {
+      "react-native-sound": "patches/react-native-sound.patch"
+    }
   }
 }

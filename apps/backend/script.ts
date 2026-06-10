@@ -1,0 +1,1 @@
+import { PrismaClient } from "@prisma/client"; const prisma = new PrismaClient(); async function main() { const b = await prisma.booking.findFirst({ orderBy: { createdAt: "desc" }}); console.log(b.id, b.status); } main();

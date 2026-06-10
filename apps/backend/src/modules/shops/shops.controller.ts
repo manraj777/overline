@@ -62,11 +62,14 @@ export class ShopsController {
   @ApiQuery({ name: 'longitude', type: Number, required: true })
   @ApiQuery({ name: 'radiusKm', type: Number, required: false })
   async getNearby(
-    @Query('latitude') latitude: number,
-    @Query('longitude') longitude: number,
-    @Query('radiusKm') radiusKm?: number,
+    @Query('latitude') latitude: string,
+    @Query('longitude') longitude: string,
+    @Query('radiusKm') radiusKm?: string,
   ) {
-    return this.shopsService.getNearbyShops(latitude, longitude, radiusKm);
+    const lat = latitude ? Number(latitude) : NaN;
+    const lng = longitude ? Number(longitude) : NaN;
+    const radius = radiusKm ? Number(radiusKm) : undefined;
+    return this.shopsService.getNearbyShops(lat, lng, radius);
   }
 
   @Get('trending')
@@ -74,8 +77,11 @@ export class ShopsController {
   @ApiOperation({ summary: 'Get trending shops (most bookings in last 7 days)' })
   @ApiQuery({ name: 'limit', type: Number, required: false })
   @ApiResponse({ status: 200, description: 'List of trending shops' })
-  async getTrending(@Query('limit') limit?: number) {
-    return this.shopsService.getTrendingShops(limit);
+  async getTrending(@Query('limit') limit?: string) {
+    const parsedLimit = limit ? parseInt(limit, 10) : undefined;
+    return this.shopsService.getTrendingShops(
+      parsedLimit && !isNaN(parsedLimit) ? parsedLimit : 10
+    );
   }
 
   @Get(':slug')

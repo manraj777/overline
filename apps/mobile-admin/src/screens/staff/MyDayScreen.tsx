@@ -134,7 +134,7 @@ export default function MyDayScreen() {
           <TouchableOpacity style={styles.activeBooking} onPress={() => navigation.navigate('BookingDetail', { id: nextBooking.id })}>
             <View style={styles.bookingLeft}>
               <View style={styles.bookingAvatar}>
-                <Text style={styles.bookingAvatarText}>{nextBooking.user?.name?.charAt(0)}</Text>
+                <Text style={styles.bookingAvatarText}>{(nextBooking.user?.name || 'G').charAt(0)}</Text>
               </View>
               <View style={styles.bookingMeta}>
                 <Text style={styles.bookingClient}>{nextBooking.user?.name}</Text>
