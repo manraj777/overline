@@ -12,6 +12,7 @@ import {
   TextInput,
   ActivityIndicator,
   FlatList,
+  Share,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import { NativeStackNavigationProp } from '@react-navigation/native-stack';
@@ -27,7 +28,8 @@ import {
   Moon, 
   Bell,
   Share2, 
-  Info, 
+  Info,
+  MessageSquare,
   ShieldAlert, 
   LogOut, 
   Camera,
@@ -64,6 +66,7 @@ export default function SettingsScreen() {
   const [showPromoModal, setShowPromoModal] = useState(false);
   const [showLegalModal, setShowLegalModal] = useState(false);
   const [legalModalType, setLegalModalType] = useState<'PRIVACY' | 'TERMS'>('PRIVACY');
+  const [showWhatsAppModal, setShowWhatsAppModal] = useState(false);
   
   // Profile Form state
   const [name, setName] = useState(user?.name || '');
@@ -225,6 +228,14 @@ export default function SettingsScreen() {
                 subtitle="View active shop coupons"
                 color="#10B981" 
                 onPress={() => setShowPromoModal(true)}
+              />
+              <View style={styles.divider} />
+              <SettingItem 
+                icon={MessageSquare} 
+                title="WhatsApp Auto-Reply" 
+                subtitle="Set up free greeting messages"
+                color="#25D366" 
+                onPress={() => setShowWhatsAppModal(true)}
               />
               <View style={styles.divider} />
               <SettingItem 
@@ -411,6 +422,51 @@ export default function SettingsScreen() {
                     {legalModalType === 'PRIVACY' ? 'VIEW TERMS OF SERVICE' : 'CLOSE DIALOG'}
                   </Text>
                   <ChevronRight size={18} color="#FFF" />
+                </TouchableOpacity>
+              </ScrollView>
+            </View>
+          </View>
+        </Modal>
+
+        {/* WhatsApp Setup Modal */}
+        <Modal visible={showWhatsAppModal} animationType="slide" transparent>
+          <View style={styles.modalBackdrop}>
+            <View style={[styles.modalContent, { height: '85%' }]}>
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>WhatsApp Auto-Reply</Text>
+                <TouchableOpacity onPress={() => setShowWhatsAppModal(false)}><X size={24} color="#0F172A" /></TouchableOpacity>
+              </View>
+              <ScrollView contentContainerStyle={{ padding: 24 }}>
+                <View style={{ backgroundColor: '#ECFDF5', padding: 16, borderRadius: 16, marginBottom: 24 }}>
+                  <Text style={{ fontSize: 13, color: '#047857', fontWeight: '700', lineHeight: 20 }}>
+                    Enable automatic instant replies from your own phone number using the official WhatsApp Business App. It's 100% free and safe!
+                  </Text>
+                </View>
+
+                <Text style={styles.legalSectionTitle}>Step 1: Get the App</Text>
+                <Text style={styles.legalText}>Download the official "WhatsApp Business" app from the Play Store or App Store if you haven't already.</Text>
+
+                <Text style={styles.legalSectionTitle}>Step 2: Open Settings</Text>
+                <Text style={styles.legalText}>In WhatsApp Business, go to Settings → Business Tools → Greeting Message.</Text>
+
+                <Text style={styles.legalSectionTitle}>Step 3: Paste Your Link</Text>
+                <Text style={styles.legalText}>Turn on "Send greeting message" and paste the exact text below into the message box.</Text>
+
+                <View style={{ backgroundColor: '#F8FAFC', borderWidth: 1, borderColor: '#E2E8F0', borderRadius: 16, padding: 16, marginTop: 24, marginBottom: 24 }}>
+                  <Text style={{ fontSize: 15, fontWeight: '600', color: '#1E293B', lineHeight: 24 }}>
+                    Welcome to our shop! 🚀{"\n\n"}
+                    Book your exact slot instantly right here:{"\n"}
+                    https://overline.in/shop/{(user as any)?.shops?.[0]?.slug || 'demo-booking'}
+                  </Text>
+                </View>
+
+                <TouchableOpacity style={styles.saveBtn} onPress={() => {
+                  Share.share({
+                    message: `Welcome to our shop! 🚀\n\nBook your exact slot instantly right here:\nhttps://overline.in/shop/${(user as any)?.shops?.[0]?.slug || 'demo-booking'}`
+                  });
+                }}>
+                  <Share2 size={18} color="#FFF" />
+                  <Text style={styles.saveBtnText}>SHARE / COPY TEXT</Text>
                 </TouchableOpacity>
               </ScrollView>
             </View>
