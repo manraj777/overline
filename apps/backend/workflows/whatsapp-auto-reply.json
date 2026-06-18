@@ -1,0 +1,109 @@
+{
+  "name": "WhatsApp Auto-Reply",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "whatsapp-webhook",
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "e1f185c6-8f2c-4ec7-b863-71e86a04e548",
+      "name": "Meta Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1.1,
+      "position": [
+        460,
+        300
+      ],
+      "webhookId": "whatsapp-webhook"
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "string": [
+            {
+              "value1": "={{ $json.body.entry[0].changes[0].value.messages[0].text.body }}",
+              "operation": "contains",
+              "value2": "hey"
+            },
+            {
+              "value1": "={{ $json.body.entry[0].changes[0].value.messages[0].text.body }}",
+              "operation": "contains",
+              "value2": "book"
+            }
+          ]
+        },
+        "combineOperation": "any"
+      },
+      "id": "e0e29d61-39c0-449e-b9b5-680ed85db6fc",
+      "name": "Check Trigger Words",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [
+        680,
+        300
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://graph.facebook.com/v17.0/YOUR_PHONE_NUMBER_ID/messages",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"messaging_product\": \"whatsapp\",\n  \"recipient_type\": \"individual\",\n  \"to\": \"{{ $json.body.entry[0].changes[0].value.messages[0].from }}\",\n  \"type\": \"text\",\n  \"text\": {\n    \"body\": \"Welcome to Overline! 🚀\\n\\nBook your exact slot instantly right here:\\nhttps://overline.in/shop/demo-booking\"\n  }\n}",
+        "options": {}
+      },
+      "id": "766a5e17-5750-4820-9af6-42bb502baad2",
+      "name": "Send Auto-Reply",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        900,
+        280
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Meta Webhook": {
+      "main": [
+        [
+          {
+            "node": "Check Trigger Words",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Check Trigger Words": {
+      "main": [
+        [
+          {
+            "node": "Send Auto-Reply",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "f7ab0a7f-d5b7-4c40-a35f-15a0de79a0b0",
+  "id": "A4g5E8c2F5M9T2V1"
+}

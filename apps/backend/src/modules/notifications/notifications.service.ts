@@ -240,12 +240,24 @@ export class NotificationsService {
   }
 
   /**
-   * Send SMS — currently a no-op log. WhatsApp via Meta API is the live OTP
-   * channel (see auth.service.sendWhatsAppOtp). Wire a real SMS provider here
-   * if/when needed.
+   * Send SMS via n8n automation workflow
+   * We trigger the local n8n container, which then handles WhatsApp delivery.
    */
   private async sendSms(to: string, body: string): Promise<void> {
-    this.logger.log(`[SMS Mock] To: ${to}, Message: ${body}`);
+    try {
+      const axios = require('axios');
+      // Replace with your actual n8n internal container URL / exposed port
+      // If deployed via docker-compose, 'n8n' service is available internally.
+      const n8nWebhookUrl = 'http://n8n:5678/webhook/queue-update';
+      
+      await axios.post(n8nWebhookUrl, {
+        phoneNumber: to,
+        message: body,
+      });
+      this.logger.log(`[n8n Triggered] Sent WhatsApp notification to ${to}`);
+    } catch (error) {
+      this.logger.error(`[n8n Webhook Error] Failed to send message to ${to}:`, error.message);
+    }
   }
 
   /**

@@ -1,4 +1,5 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
+import { AppState } from 'react-native';
 import type { Socket } from 'socket.io-client';
 import { api } from '../api/client';
 
@@ -10,6 +11,7 @@ interface QueueBookingRealtimeOptions {
 export function useQueueBookingRealtime(options: QueueBookingRealtimeOptions) {
   const { bookingId, onBookingUpdate } = options;
   const [connected, setConnected] = useState(false);
+  const socketRef = useRef<Socket | null>(null);
 
   useEffect(() => {
     if (!bookingId) {
@@ -39,6 +41,7 @@ export function useQueueBookingRealtime(options: QueueBookingRealtimeOptions) {
       reconnectionDelay: 1000,
       reconnectionAttempts: Infinity,
     });
+    socketRef.current = socket;
 
     socket.on('connect', () => {
       setConnected(true);
@@ -57,8 +60,17 @@ export function useQueueBookingRealtime(options: QueueBookingRealtimeOptions) {
       }
     });
 
+    const subscription = AppState.addEventListener('change', nextAppState => {
+      if (nextAppState === 'active' && socket.connected) {
+        // Re-sync on app foreground
+        socket.emit('trackBooking', { bookingId });
+      }
+    });
+
     return () => {
+      subscription.remove();
       socket.disconnect();
+      socketRef.current = null;
     };
   }, [bookingId, onBookingUpdate]);
 

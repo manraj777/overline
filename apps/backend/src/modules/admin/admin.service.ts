@@ -412,6 +412,16 @@ export class AdminService {
         updateData.completedAt = new Date();
         break;
       case BookingStatus.NO_SHOW:
+        updateData.cancelledAt = new Date();
+        if (booking.userId) {
+          await this.prisma.user.update({
+            where: { id: booking.userId },
+            data: {
+              noShowBookings: { increment: 1 },
+              trustScore: { decrement: 10 },
+            },
+          });
+        }
         break;
       case BookingStatus.CANCELLED:
       case BookingStatus.REJECTED:

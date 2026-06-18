@@ -3,7 +3,6 @@ import { JwtModule } from '@nestjs/jwt';
 import { ConfigService } from '@nestjs/config';
 import { PrismaModule } from '../../common/prisma/prisma.module';
 import { NotificationsController } from './notifications.controller';
-import { WhatsappController } from './whatsapp.controller';
 import { NotificationsService } from './notifications.service';
 import { EventsGateway } from './events.gateway';
 import { resolveJwtSecret } from '../auth/auth.module';
@@ -29,7 +28,7 @@ import { resolveJwtSecret } from '../auth/auth.module';
       }),
     }),
   ],
-  controllers: [NotificationsController, WhatsappController],
+  controllers: [NotificationsController],
   providers: [NotificationsService, EventsGateway],
   exports: [NotificationsService, EventsGateway],
 })

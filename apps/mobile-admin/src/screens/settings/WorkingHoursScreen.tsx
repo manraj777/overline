@@ -116,7 +116,10 @@ export default function WorkingHoursScreen() {
   };
 
   const updateTimePart = (type: 'open' | 'close', part: 'hour' | 'minute', val: string) => {
+    const currentHours = workingHours[selectedDay as keyof WorkingHours];
+    if (!currentHours) return;
     const current = type === 'open' ? currentHours.openTime : currentHours.closeTime;
+    if (!current) return;
     const [h, m] = current.split(':');
     const newTime = part === 'hour' ? `${val}:${m}` : `${h}:${val}`;
     
@@ -134,7 +137,7 @@ export default function WorkingHoursScreen() {
     );
   }
 
-  const currentHours = workingHours[selectedDay as keyof WorkingHours];
+  const currentHours = workingHours[selectedDay as keyof WorkingHours] || { isOpen: false, openTime: '09:00', closeTime: '17:00' };
 
   return (
     <View style={styles.container}>
@@ -207,7 +210,7 @@ export default function WorkingHoursScreen() {
                   <View style={styles.pickerRow}>
                     <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.pickerScroll}>
                       {HOURS.map(h => {
-                        const [currH] = currentHours.openTime.split(':');
+                        const [currH] = (currentHours.openTime || '').split(':');
                         const active = currH === h;
                         return (
                           <TouchableOpacity 
@@ -223,7 +226,7 @@ export default function WorkingHoursScreen() {
                     <Text style={styles.pickerDivider}>:</Text>
                     <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.pickerScroll}>
                       {MINUTES.map(m => {
-                        const [, currM] = currentHours.openTime.split(':');
+                        const [, currM] = (currentHours.openTime || '').split(':');
                         const active = currM === m;
                         return (
                           <TouchableOpacity 
@@ -244,7 +247,7 @@ export default function WorkingHoursScreen() {
                   <View style={styles.pickerRow}>
                     <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.pickerScroll}>
                       {HOURS.map(h => {
-                        const [currH] = currentHours.closeTime.split(':');
+                        const [currH] = (currentHours.closeTime || '').split(':');
                         const active = currH === h;
                         return (
                           <TouchableOpacity 
@@ -260,7 +263,7 @@ export default function WorkingHoursScreen() {
                     <Text style={styles.pickerDivider}>:</Text>
                     <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.pickerScroll}>
                       {MINUTES.map(m => {
-                        const [, currM] = currentHours.closeTime.split(':');
+                        const [, currM] = (currentHours.closeTime || '').split(':');
                         const active = currM === m;
                         return (
                           <TouchableOpacity 

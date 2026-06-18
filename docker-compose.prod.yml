@@ -129,6 +129,23 @@ services:
     profiles:
       - debug
 
+  n8n:
+    image: docker.n8n.io/n8nio/n8n
+    container_name: overline-n8n
+    restart: unless-stopped
+    ports:
+      - '5678:5678'
+    environment:
+      - N8N_HOST=n8n.overline.in
+      - N8N_PORT=5678
+      - N8N_PROTOCOL=https
+      - NODE_ENV=production
+      - WEBHOOK_URL=https://n8n.overline.in/
+    volumes:
+      - n8n_data:/home/node/.n8n
+    networks:
+      - overline-network
+
 networks:
   overline-network:
     driver: bridge
@@ -137,3 +154,4 @@ volumes:
   postgres_data:
   redis_data:
   pgadmin_data:
+  n8n_data:

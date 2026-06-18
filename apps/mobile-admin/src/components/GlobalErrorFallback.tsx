@@ -3,12 +3,16 @@ import { View, Text, StyleSheet, TouchableOpacity, SafeAreaView, Platform } from
 import { FallbackProps } from 'react-error-boundary';
 import { AlertTriangle, RefreshCcw } from 'lucide-react-native';
 import crashlytics from '@react-native-firebase/crashlytics';
-import { Colors, FontSizes, FontWeights, Spacing, BorderRadius, Shadows } from '../theme';
+import { Colors, FontSize, FontWeight, Spacing, Radius, Shadows } from '../theme';
 
 export function GlobalErrorFallback({ error, resetErrorBoundary }: FallbackProps) {
   // Log to Crashlytics automatically when this screen is shown
   React.useEffect(() => {
-    crashlytics().recordError(error);
+    if (error instanceof Error) {
+      crashlytics().recordError(error);
+    } else {
+      crashlytics().recordError(new Error(String(error)));
+    }
   }, [error]);
 
   return (
@@ -27,7 +31,7 @@ export function GlobalErrorFallback({ error, resetErrorBoundary }: FallbackProps
         {__DEV__ && (
           <View style={styles.errorBox}>
             <Text style={styles.errorText} numberOfLines={5}>
-              {error.message}
+              {error instanceof Error ? error.message : String(error)}
             </Text>
           </View>
         )}
@@ -50,6 +54,23 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: Colors.background,
   },
+  card: {
+    backgroundColor: '#ffffff',
+    borderRadius: 24,
+    padding: Spacing.xl,
+    alignItems: 'center',
+    marginBottom: Spacing.xl,
+    ...Shadows.md,
+  },
+  iconContainer: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: '#fee2e2',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: Spacing.xl,
+  },
   container: {
     flex: 1,
     padding: Spacing.xl,
@@ -67,32 +88,32 @@ const styles = StyleSheet.create({
     ...Shadows.md,
   },
   title: {
-    fontSize: FontSizes.xl,
-    fontWeight: FontWeights.bold,
+    fontSize: FontSize.h1,
+    fontWeight: FontWeight.bold,
     color: Colors.textPrimary,
     textAlign: 'center',
     marginBottom: Spacing.md,
   },
   message: {
-    fontSize: FontSizes.md,
+    fontSize: FontSize.body,
     color: Colors.textSecondary,
     textAlign: 'center',
     lineHeight: 24,
-    marginBottom: Spacing['2xl'],
+    marginBottom: Spacing.xxl,
     paddingHorizontal: Spacing.md,
   },
   errorBox: {
-    backgroundColor: Colors.surfaceElevated,
+    backgroundColor: Colors.surface,
     padding: Spacing.md,
-    borderRadius: BorderRadius.md,
+    borderRadius: Radius.md,
     borderWidth: 1,
     borderColor: Colors.border,
     width: '100%',
-    marginBottom: Spacing['2xl'],
+    marginBottom: Spacing.xxl,
   },
   errorText: {
     fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',
-    fontSize: FontSizes.xs,
+    fontSize: FontSize.caption,
     color: '#DC2626',
   },
   button: {
@@ -102,14 +123,14 @@ const styles = StyleSheet.create({
     backgroundColor: Colors.primary,
     paddingVertical: Spacing.md,
     paddingHorizontal: Spacing.xl,
-    borderRadius: BorderRadius.lg,
+    borderRadius: Radius.lg,
     width: '100%',
     ...Shadows.md,
     gap: Spacing.sm,
   },
   buttonText: {
     color: '#FFFFFF',
-    fontSize: FontSizes.md,
-    fontWeight: FontWeights.bold,
+    fontSize: FontSize.body,
+    fontWeight: FontWeight.bold,
   },
 });

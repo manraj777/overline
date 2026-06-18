@@ -10,11 +10,12 @@ import { NotificationsModule } from '../notifications/notifications.module';
 import { FraudDetectionModule } from '../fraud-detection/fraud-detection.module';
 
 import { QueueTrackingService } from './queue-tracking.service';
+import { StaleQueueCronService } from './stale-queue.cron';
 
 @Module({
   imports: [PrismaModule, RedisModule, NotificationsModule, FraudDetectionModule],
   controllers: [QueueController, ChatController],
-  providers: [QueueService, QueueGateway, SlotEngineService, QueueTrackingService],
+  providers: [QueueService, QueueGateway, SlotEngineService, QueueTrackingService, StaleQueueCronService],
   exports: [QueueService, QueueGateway, SlotEngineService, QueueTrackingService],
 })
 export class QueueModule {}

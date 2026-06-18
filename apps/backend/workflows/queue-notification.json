@@ -1,0 +1,71 @@
+{
+  "name": "Queue Notification",
+  "nodes": [
+    {
+      "parameters": {
+        "httpMethod": "POST",
+        "path": "queue-update",
+        "responseMode": "onReceived",
+        "options": {}
+      },
+      "id": "c1f285c6-8f2c-4ec7-b863-71e86a04e549",
+      "name": "Internal Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1.1,
+      "position": [
+        460,
+        300
+      ],
+      "webhookId": "queue-update"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://graph.facebook.com/v17.0/YOUR_PHONE_NUMBER_ID/messages",
+        "authentication": "predefinedCredentialType",
+        "nodeCredentialType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"messaging_product\": \"whatsapp\",\n  \"recipient_type\": \"individual\",\n  \"to\": \"{{ $json.body.phoneNumber }}\",\n  \"type\": \"text\",\n  \"text\": {\n    \"body\": \"{{ $json.body.message }}\"\n  }\n}",
+        "options": {}
+      },
+      "id": "866a5e17-5750-4820-9af6-42bb502baad3",
+      "name": "Send Notification",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        680,
+        300
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Internal Webhook": {
+      "main": [
+        [
+          {
+            "node": "Send Notification",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "f8ab0a7f-d5b7-4c40-a35f-15a0de79a0b1",
+  "id": "A5g6E8c3F6M0T3V2"
+}

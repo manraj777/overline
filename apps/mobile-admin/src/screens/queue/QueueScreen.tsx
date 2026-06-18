@@ -14,6 +14,7 @@ import {useMutation, useQuery, useQueryClient} from '@tanstack/react-query';
 import {format} from 'date-fns';
 import {bookingsApi, shopApi} from '../../api/client';
 import {useAuthStore} from '../../stores/authStore';
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import {Booking} from '../../types';
 import {Colors, FontSize, FontWeight, Radius, Spacing} from '../../theme';
 
@@ -22,6 +23,20 @@ const QUEUE_STATUSES = ['PENDING', 'CONFIRMED', 'IN_PROGRESS'];
 export default function QueueScreen() {
   const {selectedShopId} = useAuthStore();
   const queryClient = useQueryClient();
+  const [showBatteryBanner, setShowBatteryBanner] = React.useState(false);
+
+  React.useEffect(() => {
+    AsyncStorage.getItem('dismissedBatteryBanner').then(val => {
+      if (val !== 'true') {
+        setShowBatteryBanner(true);
+      }
+    });
+  }, []);
+
+  const dismissBatteryBanner = () => {
+    setShowBatteryBanner(false);
+    AsyncStorage.setItem('dismissedBatteryBanner', 'true');
+  };
 
   const {
     data: queueBookings = [],
@@ -78,6 +93,17 @@ export default function QueueScreen() {
     updateStatus.mutate({bookingId, status: 'COMPLETED'});
   };
 
+  const onNoShow = (bookingId: string) => {
+    Alert.alert(
+      'Mark as No-Show?',
+      'This will cancel the booking, penalize the user\'s trust score, and remove them from the queue.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Confirm No-Show', style: 'destructive', onPress: () => updateStatus.mutate({bookingId, status: 'NO_SHOW'}) }
+      ]
+    );
+  };
+
   const renderItem = ({item, index}: {item: Booking; index: number}) => {
     return (
       <View style={styles.card}>
@@ -108,6 +134,12 @@ export default function QueueScreen() {
             <Text style={styles.btnPrimaryText}>Mark Done</Text>
           </TouchableOpacity>
         </View>
+        <TouchableOpacity
+          style={[styles.btn, styles.btnDestructive, { marginTop: Spacing.sm }]}
+          disabled={updateStatus.isPending}
+          onPress={() => onNoShow(item.id)}>
+          <Text style={styles.btnDestructiveText}>Mark No-Show</Text>
+        </TouchableOpacity>
       </View>
     );
   };
@@ -132,7 +164,17 @@ export default function QueueScreen() {
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
+      {showBatteryBanner && (
+        <View style={styles.batteryBanner}>
+          <Text style={styles.batteryBannerText}>
+            To ensure you receive booking alerts, please disable Battery Optimization for this app in your phone settings.
+          </Text>
+          <TouchableOpacity onPress={dismissBatteryBanner} style={styles.batteryBannerClose}>
+            <Text style={styles.batteryBannerCloseText}>Dismiss</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+      <View style={[styles.header, showBatteryBanner && { paddingTop: Spacing.md }]}>
         <View style={{ flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' }}>
           <View>
             <Text style={styles.headerTitle}>Live Queue</Text>
@@ -277,6 +319,39 @@ const styles = StyleSheet.create({
     color: Colors.primary600,
     fontWeight: FontWeight.semibold,
     fontSize: FontSize.body,
+  },
+  btnDestructive: {
+    backgroundColor: '#FEF2F2',
+    borderWidth: 1,
+    borderColor: '#FCA5A5',
+  },
+  btnDestructiveText: {
+    color: '#DC2626',
+    fontWeight: FontWeight.semibold,
+    fontSize: FontSize.body,
+  },
+  batteryBanner: {
+    backgroundColor: '#FEF3C7',
+    padding: Spacing.md,
+    paddingTop: 60,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  batteryBannerText: {
+    flex: 1,
+    color: '#92400E',
+    fontSize: 13,
+    lineHeight: 18,
+    marginRight: Spacing.sm,
+  },
+  batteryBannerClose: {
+    padding: Spacing.xs,
+  },
+  batteryBannerCloseText: {
+    color: '#92400E',
+    fontWeight: 'bold',
+    fontSize: 13,
   },
   emptyTitle: {
     fontSize: FontSize.h3,
