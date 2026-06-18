@@ -1,7 +1,7 @@
 import { Injectable, Logger } from '@nestjs/common';
 import { Cron, CronExpression } from '@nestjs/schedule';
 import { PrismaService } from '@/common/prisma/prisma.service';
-import { BookingStatus } from '@prisma/client';
+import { BookingStatus, NotificationType, NotificationChannel } from '@prisma/client';
 import { NotificationsService } from '../notifications/notifications.service';
 
 @Injectable()
@@ -47,16 +47,18 @@ export class StaleQueueCronService {
         // Find owner or staff who can receive a notification
         const shopOwnerId = booking.shop.ownerId;
         
-        await this.notificationsService.createNotification(
-          shopOwnerId,
-          'STALE_QUEUE_WARNING',
-          `Stale Queue Warning: Is ${booking.customerName || booking.user?.name || 'the customer'} still in the chair?`,
-          `This booking has been active for ${Math.floor(elapsedMinutes)} mins (expected: ${totalDuration} mins). Please complete or cancel it to keep the queue accurate.`,
-          {
+        await this.notificationsService.send({
+          userId: shopOwnerId,
+          bookingId: booking.id,
+          type: NotificationType.QUEUE_UPDATE,
+          title: `Stale Queue Warning: Is ${booking.customerName || booking.user?.name || 'the customer'} still in the chair?`,
+          body: `This booking has been active for ${Math.floor(elapsedMinutes)} mins (expected: ${totalDuration} mins). Please complete or cancel it to keep the queue accurate.`,
+          data: {
             bookingId: booking.id,
             shopId: booking.shopId,
-          }
-        );
+          },
+          channels: [NotificationChannel.PUSH],
+        });
       }
     }
   }
