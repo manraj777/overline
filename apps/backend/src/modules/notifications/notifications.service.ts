@@ -246,17 +246,20 @@ export class NotificationsService {
   private async sendSms(to: string, body: string): Promise<void> {
     try {
       const axios = require('axios');
-      // Replace with your actual n8n internal container URL / exposed port
-      // If deployed via docker-compose, 'n8n' service is available internally.
-      const n8nWebhookUrl = 'http://n8n:5678/webhook/queue-update';
+      
+      // Use env variable or fallback to localhost if testing locally
+      const n8nWebhookUrl = process.env.N8N_WEBHOOK_URL || 'http://localhost:5678/webhook/queue-update';
+      
+      // WhatsApp Meta API requires the phone number WITHOUT the '+' sign
+      const formattedPhone = to.replace('+', '');
       
       await axios.post(n8nWebhookUrl, {
-        phoneNumber: to,
+        phoneNumber: formattedPhone,
         message: body,
       });
-      this.logger.log(`[n8n Triggered] Sent WhatsApp notification to ${to}`);
+      this.logger.log(`[n8n Triggered] Sent WhatsApp notification to ${formattedPhone} via ${n8nWebhookUrl}`);
     } catch (error) {
-      this.logger.error(`[n8n Webhook Error] Failed to send message to ${to}:`, error.message);
+      this.logger.error(`[n8n Webhook Error] Failed to send message to ${to} via webhook:`, error.message);
     }
   }
 
